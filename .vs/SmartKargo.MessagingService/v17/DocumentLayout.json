@@ -1,0 +1,102 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\extensions\\diconfigextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\extensions\\diconfigextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{809f6ff3-8092-454a-8003-6d4091f9b5bb}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:13:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "SmartKargo.MessagingService",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "RelativeToolTip": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-31T12:36:28.152Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SmartKargo.MessagingService",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "RelativeToolTip": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-31T12:36:22.425Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DIConfigExtension.cs",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
+              "RelativeToolTip": "SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAABWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-31T09:19:02.84Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 1475,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            }
+          ]
+        },
+        {
+          "DockedWidth": 797,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
