@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
-      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\functions\\orchestrators\\receivemessageorchestrator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\functions\\orchestrators\\receivemessageorchestrator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\smartkargo.messagingservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\functions\\orchestrators\\sendmailorchestrator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\functions\\orchestrators\\sendmailorchestrator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\extensions\\diconfigextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\extensions\\diconfigextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|c:\\users\\rajendra\\downloads\\fnapp\\test\\smartkargo.messagingservice\\smartkargo.messagingservice\\functions\\entities\\configentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{01296B99-5E69-48FE-B006-B6186B49D873}|SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj|solutionrelative:smartkargo.messagingservice\\functions\\entities\\configentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -34,45 +34,56 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "SmartKargo.MessagingService",
-              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "RelativeToolTip": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-31T12:36:28.152Z",
+              "Title": "ReceiveMessageOrchestrator.cs",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Orchestrators\\ReceiveMessageOrchestrator.cs",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\Functions\\Orchestrators\\ReceiveMessageOrchestrator.cs",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Orchestrators\\ReceiveMessageOrchestrator.cs",
+              "RelativeToolTip": "SmartKargo.MessagingService\\Functions\\Orchestrators\\ReceiveMessageOrchestrator.cs",
+              "ViewState": "AgIAAA0AAAAAAAAAAAAuwCAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-04T17:50:18.963Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "SmartKargo.MessagingService",
-              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "RelativeToolTip": "SmartKargo.MessagingService\\SmartKargo.MessagingService.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-31T12:36:22.425Z",
+              "Title": "SendMailOrchestrator.cs",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Orchestrators\\SendMailOrchestrator.cs",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\Functions\\Orchestrators\\SendMailOrchestrator.cs",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Orchestrators\\SendMailOrchestrator.cs",
+              "RelativeToolTip": "SmartKargo.MessagingService\\Functions\\Orchestrators\\SendMailOrchestrator.cs",
+              "ViewState": "AgIAAKMAAAAAAAAAAAAQwLAAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-04T17:49:38.875Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "DIConfigExtension.cs",
-              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
-              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
-              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
-              "RelativeToolTip": "SmartKargo.MessagingService\\Extensions\\DIConfigExtension.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAABWAAAAAAAAAA==",
+              "Title": "ConfigEntity.cs",
+              "DocumentMoniker": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Entities\\ConfigEntity.cs",
+              "RelativeDocumentMoniker": "SmartKargo.MessagingService\\Functions\\Entities\\ConfigEntity.cs",
+              "ToolTip": "C:\\Users\\Rajendra\\Downloads\\fnapp\\test\\SmartKargo.MessagingService\\SmartKargo.MessagingService\\Functions\\Entities\\ConfigEntity.cs",
+              "RelativeToolTip": "SmartKargo.MessagingService\\Functions\\Entities\\ConfigEntity.cs",
+              "ViewState": "AgIAAEwAAAAAAAAAAAAkwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-31T09:19:02.84Z",
+              "WhenOpened": "2025-11-04T17:49:29.931Z",
               "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 1475,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             }
           ]
         },
@@ -90,6 +101,14 @@
           "DockedWidth": 797,
           "SelectedChildIndex": -1,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{a80febb4-e7e0-4147-b476-21aaf2453969}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"

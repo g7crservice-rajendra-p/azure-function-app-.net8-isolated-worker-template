@@ -3,5 +3,6 @@
     public static class StoredProcedures
     {
         public const string GetMessageConfiguration = "uspGetMessageConfiguration";
+        public const string MailtoSend = "spMailtoSend";
     }
 }

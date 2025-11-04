@@ -6,7 +6,7 @@ using SmartKargo.MessagingService.Extensions;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 // --------------------
-// 1️⃣ Environment Setup
+// Environment Setup
 // --------------------
 var environment = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT") ?? "Production";
 Console.WriteLine($"Starting SmartKargo Messaging Service - Environment: {environment}");
@@ -29,7 +29,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"❌ Failed to initialize Serilog: {ex.Message}");
+    Console.Error.WriteLine($"Failed to initialize Serilog: {ex.Message}");
     throw;
 }
 

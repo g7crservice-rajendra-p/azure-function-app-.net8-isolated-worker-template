@@ -7,6 +7,7 @@ using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Configurations;
 using SmartKargo.MessagingService.Functions.Entities;
+using SmartKargo.MessagingService.Services;
 
 namespace SmartKargo.MessagingService.Functions.Triggers;
 
@@ -14,6 +15,7 @@ public class HealthCheckHttpTrigger
 {
     private readonly ILogger<HealthCheckHttpTrigger> _logger;
     private readonly AppConfig _appConfig;
+    //private readonly ConfigReaderService _configReaderService;
 
     public HealthCheckHttpTrigger(ILogger<HealthCheckHttpTrigger> logger, AppConfig appConfig)
     {
@@ -22,10 +24,10 @@ public class HealthCheckHttpTrigger
     }
 
     [Function("HealthCheckHttpTrigger")]
-    public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req, [DurableClient] DurableTaskClient client)
+    public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req, [DurableClient] DurableTaskClient client, FunctionContext context)
     {
 
-       
+
         //return new OkObjectResult(_appConfig);
 
         try
@@ -34,6 +36,10 @@ public class HealthCheckHttpTrigger
             _logger.LogDebug("Debug");
             _logger.LogInformation("Information");
             _logger.LogWarning("Warning");
+            // var configReader = client.InstanceServices.GetRequiredService<ConfigReaderService>();
+            var config = ConfigCache.Snapshot();
+
+            var abc=ConfigCache.Get("ScreeningRequired");
 
             throw new InvalidOperationException("Invalid operation");
 
@@ -53,11 +59,11 @@ public class HealthCheckHttpTrigger
 
         // Call RefreshAsync
         EntityMetadata<ConfigState> entity = await client.Entities.GetEntityAsync<ConfigState>(entityId);
-        //if (entity != null && !entity.IncludesState)
-        //{
-            // Optionally signal the entity to initialize
+        if (entity != null && !entity.IncludesState)
+        {
+            //Optionally signal the entity to initialize
             await client.Entities.SignalEntityAsync(entityId, "RefreshAsync");
-        //}
+        }
 
         var currentValue = await client.Entities.GetEntityAsync<ConfigState>(entityId);
         var configState = currentValue.State.Config;

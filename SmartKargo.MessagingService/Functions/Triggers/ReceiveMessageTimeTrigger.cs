@@ -16,7 +16,7 @@ public class ReceiveMessageTimeTrigger
     }
 
     [Function(nameof(ReceiveMessageTimeTrigger))]
-    public async Task Run([TimerTrigger("0 */5 * * * *", RunOnStartup = false)] TimerInfo receiveMessageTimer, [DurableClient] DurableTaskClient client)
+    public async Task Run([TimerTrigger("0 */5 * * * *", RunOnStartup = true)] TimerInfo receiveMessageTimer, [DurableClient] DurableTaskClient client)
     {
         var instanceId = Guid.NewGuid().ToString();
 
