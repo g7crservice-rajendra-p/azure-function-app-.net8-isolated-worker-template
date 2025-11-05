@@ -94,8 +94,8 @@ namespace SmartKargo.MessagingService.Services
         /// <summary>
         /// Retrieves a single configuration value (null if not found).
         /// </summary>
-        public static string? Get(string key)
-            => key != null && _dict.TryGetValue(key, out var v) ? v : null;
+        public static string Get(string key)
+            => key != null && _dict.TryGetValue(key, out var v) ? v : "";
 
         /// <summary>
         /// Orchestration-aware initializer (deterministic).

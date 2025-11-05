@@ -19,7 +19,7 @@ public class SendMailTimeTriggerStarter
     }
 
     [Function(nameof(SendMailTimeTriggerStarter))]
-    public async Task Run([TimerTrigger("*/10 * * * * *", RunOnStartup = false)] TimerInfo sendMailTimer, [DurableClient] DurableTaskClient client)
+    public async Task Run([TimerTrigger("* */60 * * * *", RunOnStartup = false)] TimerInfo sendMailTimer, [DurableClient] DurableTaskClient client)
     {
         var instanceId = Guid.NewGuid().ToString();
 

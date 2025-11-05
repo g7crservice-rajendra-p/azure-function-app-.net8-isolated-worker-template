@@ -30,6 +30,9 @@ namespace SmartKargo.MessagingService.Functions.Triggers
         {
             try
             {
+
+                //genericFunction.ReadValueFromDb("msgService_FTPAlertEmailID");
+
                 _logger.LogInformation("ConfigCacheWarmup triggered at {Time}", DateTime.UtcNow);
 
                 var entityId = new EntityInstanceId(nameof(ConfigEntity), EntityKey);

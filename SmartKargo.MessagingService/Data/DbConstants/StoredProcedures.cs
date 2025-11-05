@@ -4,5 +4,7 @@
     {
         public const string GetMessageConfiguration = "uspGetMessageConfiguration";
         public const string MailtoSend = "spMailtoSend";
+        public const string MailSent = "spMailSent";
+        
     }
 }
