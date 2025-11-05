@@ -49,12 +49,12 @@ try
 {
     var host = builder.Build();
 
-    Log.Information("🚀 SmartKargo Messaging Service Function App starting up...");
+    Log.Information("SmartKargo Messaging Service Function App starting up...");
     host.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "❌ SmartKargo Messaging Service failed to start.");
+    Log.Fatal(ex, "SmartKargo Messaging Service failed to start.");
     throw;
 }
 finally
