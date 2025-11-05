@@ -25,49 +25,6 @@ public static class SendMailOrchestrator
 
         logger.LogInformation("SendMailOrchestrator started at orchestration time: {OrchestrationTime}", context.CurrentUtcDateTime);
 
-        // Entity key 'config' is used to fetch configuration dictionary from ConfigEntity.
-        var configEntityId = new EntityInstanceId(nameof(ConfigEntity), "config");
-
-        // 1) Try get full config from entity to know if it's initialized.
-        //    We request IDictionary<string, string> so callers receive a simple key/value map.
-        var config = await context.Entities.CallEntityAsync<IDictionary<string, string>>(configEntityId, "GetAll");
-
-        if (config == null || config.Count == 0)
-        {
-            logger.LogInformation("ConfigEntity returned no values (null or empty). Requesting synchronous refresh...");
-
-            try
-            {
-                // Force a synchronous refresh of the entity's backing config (if supported).
-                await context.Entities.CallEntityAsync<ConfigState>(configEntityId, "RefreshAsync", new ConfigEntity.RefreshOptions { ForceRefresh = true });
-
-                // Re-fetch config after refresh.
-                config = await context.Entities.CallEntityAsync<IDictionary<string, string>>(configEntityId, "GetAll");
-
-                if (config == null || config.Count == 0)
-                {
-                    logger.LogWarning("ConfigEntity refresh completed but config is still empty. Orchestrator will continue using empty config as fallback.");
-                }
-                else
-                {
-                    logger.LogInformation("ConfigEntity refresh succeeded. Loaded {Count} config entries.", config.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Catch any unexpected exceptions from the entity call so orchestration doesn't fail silently.
-                logger.LogError(ex, "Exception while forcing ConfigEntity refresh. Proceeding with fallback (empty) config.");
-                throw;
-            }
-        }
-        else
-        {
-            logger.LogInformation("Loaded {Count} configuration entries from ConfigEntity.", config.Count);
-        }
-
-        // Ensure a non-null, case-insensitive dictionary is passed to activities.
-        var configFallback = config ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
         bool isOn;
 
         do
@@ -121,15 +78,15 @@ public static class SendMailOrchestrator
             //    continue;
             //}
 
-            // Prepare input payload for the ProcessMessageActivity.
-            var input = new ProcessMessageInput
-            {
-                // DataSet is serializable and is safe to pass via durable orchestration history.
-                MessageDataSet = ds,
+            //// Prepare input payload for the ProcessMessageActivity.
+            //var input = new ProcessMessageInput
+            //{
+            //    // DataSet is serializable and is safe to pass via durable orchestration history.
+            //    MessageDataSet = ds,
 
-                // Pass a case-insensitive copy (or the original if already present) so activities can do insensitive lookups.
-                Config = new Dictionary<string, string>(configFallback, StringComparer.OrdinalIgnoreCase)
-            };
+            //    // Pass a case-insensitive copy (or the original if already present) so activities can do insensitive lookups.
+            //    Config = new Dictionary<string, string>(configFallback, StringComparer.OrdinalIgnoreCase)
+            //};
 
             //// Call the ProcessMessageActivity and log the result.
             //try

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="9603010b80fb487d8bc4081901423899" Name="Diagram1">
+        <EntityTypeShape EntityType="SISDBModel.AdhocSPARateMaster" Width="1.5" PointX="7.75" PointY="1.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.AdhocSPARateSlab" Width="1.5" PointX="10" PointY="5.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.AdhocSPARemark" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineAirWayBill" Width="1.5" PointX="9.75" PointY="9.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineAWBOC" Width="1.5" PointX="9.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineAWBRateLog" Width="1.5" PointX="11.75" PointY="9.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineAWBVAT" Width="1.5" PointX="2.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineBMAWB" Width="1.5" PointX="13.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineBMAWBOC" Width="1.5" PointX="15.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineBMAWBProrateLadder" Width="1.5" PointX="15.75" PointY="5.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineBMAWBVAT" Width="1.5" PointX="4.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineCMAWB" Width="1.5" PointX="15.75" PointY="10.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineCMAWBOC" Width="1.5" PointX="17.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineCMAWBProrateLadder" Width="1.5" PointX="17.75" PointY="5.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineCMAWBVAT" Width="1.5" PointX="17.75" PointY="10.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineFile" Width="1.5" PointX="17.75" PointY="15.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineInvoice" Width="1.5" PointX="11.75" PointY="18.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineInvoiceVAT" Width="1.5" PointX="19.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineRMAWB" Width="1.5" PointX="19.75" PointY="5.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineRMAWBOC" Width="1.5" PointX="21.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineRMAWBProrateLadder" Width="1.5" PointX="21.75" PointY="5.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingInterlineRMAWBVAT" Width="1.5" PointX="21.75" PointY="10.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InterlineAuditLog" Width="1.5" PointX="21.75" PointY="15.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InterlineInvoiceCollectionDetail" Width="1.5" PointX="23.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InterlineRemark" Width="1.5" PointX="0.75" PointY="23.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ProrationOverrideRouteDetail" Width="1.5" PointX="23.75" PointY="11.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.SAPInterlinePayableReceivable" Width="1.5" PointX="23.75" PointY="18.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.APIIPWhitelist" Width="1.5" PointX="17.75" PointY="24.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.AirWayBill" Width="1.5" PointX="3" PointY="4.875" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.AWBOtherCharge" Width="1.5" PointX="5.25" PointY="6.875" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.AWBVAT" Width="1.5" PointX="5.25" PointY="11.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingCodeSubTotal" Width="1.5" PointX="3" PointY="17.625" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingCodeSubTotalVAT" Width="1.5" PointX="5.25" PointY="18.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BillingMemo" Width="1.5" PointX="3" PointY="27.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BMAirWayBill" Width="1.5" PointX="5.25" PointY="23.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BMAWBOtherCharge" Width="1.5" PointX="7.5" PointY="22.875" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BMAWBProrateLadder" Width="1.5" PointX="7.5" PointY="27.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BMAWBVAT" Width="1.5" PointX="7.5" PointY="32" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.BMVAT" Width="1.5" PointX="5.25" PointY="36.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CalendarMaster" Width="1.5" PointX="25.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CMAirWayBill" Width="1.5" PointX="5.25" PointY="41.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CMAWBOtherCharge" Width="1.5" PointX="7.5" PointY="40.5" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CMAWBProrateLadder" Width="1.5" PointX="7.5" PointY="45" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CMAWBVAT" Width="1.5" PointX="7.5" PointY="49.625" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CMVAT" Width="1.5" PointX="5.25" PointY="53.875" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.CreditMemo" Width="1.5" PointX="3" PointY="45.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.FileHeader" Width="1.5" PointX="25.75" PointY="4.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.FileTotal" Width="1.5" PointX="25.75" PointY="9.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InterlineStatusMaster" Width="1.5" PointX="13.75" PointY="25.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InvoiceHeader" Width="1.5" PointX="0.75" PointY="41.5" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InvoiceTotal" Width="1.5" PointX="3" PointY="58.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.InvoiceTotalVAT" Width="1.5" PointX="3" PointY="63.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ISValidationDetailErrorReport" Width="1.5" PointX="25.75" PointY="14.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ISValidationFileHeader" Width="1.5" PointX="25.75" PointY="22.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ISValidationSummaryReport" Width="1.5" PointX="19.75" PointY="26.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ReasonCodeMaster" Width="1.5" PointX="21.75" PointY="26.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.ReferenceData" Width="1.5" PointX="23.75" PointY="26.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RejectionMemo" Width="1.5" PointX="3" PointY="71.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RMAirWayBill" Width="1.5" PointX="5.25" PointY="67.5" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RMAWBOtherCharge" Width="1.5" PointX="7.5" PointY="68.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RMAWBProrateLadder" Width="1.5" PointX="7.5" PointY="72.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RMAWBVAT" Width="1.5" PointX="7.5" PointY="77.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="SISDBModel.RMVAT" Width="1.5" PointX="5.25" PointY="82.5" IsExpanded="true" />
+        <AssociationConnector Association="SISDBModel.FK_AdhocSPAIDIBillingAdhocSPARateSlabs" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_AirWayBillIDAWBOtherCharges" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_AirWayBillIDAWBVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDAirWayBill" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BillingCodeSubTotalIDBillingCodeSubTotalVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDBillingCodeSubTotal" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BillingMemoIDBMAirWayBill" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BillingMemoIDBMVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDBillingMemo" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BMAirWayBillIDBMAWBOtherCharges" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BMAirWayBillIDBMAWBProrateLadder" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_BMAirWayBillIDBMAWBVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_CMAirWayBillIDCMAWBOtherCharges" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_CMAirWayBillIDCMAWBProrateLadder" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_CMAirWayBillIDCMAWBVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_CreditMemoIDCMAirWayBill" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_CreditMemoIDCMVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDCreditMemo" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDInvoiceHeader" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_InvoiceHeaderIDInvoiceTotal" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RejectionMemoIDRejectionMemo" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RejectionMemoIDRMAirWayBill" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RejectionMemoIDRMVAT" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RMAirWayBillIDRMAWBOtherCharges" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RMAirWayBillIDRMAWBProrateLadder" ManuallyRouted="false" />
+        <AssociationConnector Association="SISDBModel.FK_RMAirWayBillIDRMAWBVAT" ManuallyRouted="false" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>
