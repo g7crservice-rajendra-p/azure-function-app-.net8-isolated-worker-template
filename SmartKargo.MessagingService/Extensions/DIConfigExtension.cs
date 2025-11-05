@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SmartKargo.MessagingService.Data.Dao.Implementations;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 
 namespace SmartKargo.MessagingService.Extensions
 {
@@ -9,6 +10,8 @@ namespace SmartKargo.MessagingService.Extensions
     {
         public static void RegisterServices(FunctionsApplicationBuilder builder)
         {
+            builder.Services.AddSingleton<StartupReadiness>();
+
             // Application
             //builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 

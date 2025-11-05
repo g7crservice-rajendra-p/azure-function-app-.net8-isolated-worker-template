@@ -17,7 +17,7 @@ public static class ReceiveMessageOrchestrator
 
 
         // Initialize the process-level configuration cache on this host instance (if not already loaded).
-        var config = await ConfigCache.EnsureInitializedFromOrchestratorAsync(context);
+        //var config = await ConfigCache.EnsureInitializedFromOrchestratorAsync(context);
 
 
         // Two-way call to the entity which returns a value - awaits the response
@@ -31,6 +31,7 @@ public static class ReceiveMessageOrchestrator
 
         //string value = await context.Entities.CallEntityAsync<string>(entityId, "Get", "ACASAutomation");
 
+        var abc=ConfigCache.Snapshot();
 
 
         // Replace name and input with values relevant for your Durable Functions Activity
