@@ -12,12 +12,11 @@
       * Description           :   
      */
 #endregion
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Configuration;
 using System.Data;
-using System.Linq;
 
 namespace QidWorkerRole
 {
@@ -28,9 +27,18 @@ namespace QidWorkerRole
         const string PAGE_NAME = "CarditResiditManagementProcessor";
         SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         string AgentCode = string.Empty, AgentName = string.Empty;
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<EMAILOUT> _logger;
 
         public CarditResiditManagement()
         {
+            
+        }
+        public CarditResiditManagement(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<EMAILOUT> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
         }
 
         #region Make CarditClass and CarditConsignmentclass
@@ -94,7 +102,7 @@ namespace QidWorkerRole
         #endregion
 
 
-        public bool EncodeAndSaveCarditMessage(string strMessage, int Srno, out string Errormsg)
+        public async Task<(bool, string ErrorMsg)> EncodeAndSaveCarditMessage(string strMessage, int Srno)
         {
             bool status = false;
             CarditDetail cardit;
@@ -113,7 +121,7 @@ namespace QidWorkerRole
             MessageData.FltRouteDate flight2 = new MessageData.FltRouteDate("");
 
             DataSet dsDesCode = new DataSet();
-            dsDesCode = GetDesigCode();
+            dsDesCode = await GetDesigCode();
             if (dsDesCode != null && dsDesCode.Tables.Count > 0 && dsDesCode.Tables[0].Rows.Count > 0 && dsDesCode.Tables[0].Rows[0][0].ToString() != "")
             {
                 strDesignatorCode = dsDesCode.Tables[0].Rows[0]["DesignatorCode"].ToString();
@@ -551,7 +559,7 @@ namespace QidWorkerRole
                         }
                     }
                     
-                    SQLServer dbCardit = new SQLServer();
+                    //SQLServer dbCardit = new SQLServer();
                     int CarditID = 0;
                     int FlgRouteID = 0;
 
@@ -572,143 +580,193 @@ namespace QidWorkerRole
                             MailWeight = cd.objCarditCosnsignmentDetail.Sum(item => item.PackageGrossWeight);
                         }
 
-                        string[] Param = new string[]{
-                            "BagNumber",
-                            "MailType",
-                            "MailClass",
-                            "AWBOrigin",
-                            "AWBDestination",
-                            "TotalPieces",
-                            "TotalGrossWeight",
-                            "FlightNo",
-                            "FlightOrigin",
-                            "FlightDestination",
-                            "MessageArrivalDate",
-                            "MessageFlightDate",
-                            "CreatedOn",
-                            "CreatedBy",
-                            "PartnerCode",
-                            "HNDOrgCode",
-                            "HNDOrgLocSource",
-                            "HNDOrgLocName",
-                            "NDdestCode",
-                            "HNDdestLocSource",
-                            "HNDdestLocName",
-                            "PAWB",
-                            "StageQualifier",
-                            "ModeOfTransport",
-                            "MsgSeqNo",
-                            "MessageFunctionCode"
-                        };
-                        SqlDbType[] ParamSqlType = new SqlDbType[] {
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.Int,
-                            SqlDbType.Decimal,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.DateTime,
-                            SqlDbType.DateTime,
-                            SqlDbType.DateTime,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.VarChar,
-                            SqlDbType.Int,
-                            SqlDbType.VarChar
-                        };
-                        object[] ParamValue = {
-                            cd.BagNumber,
-                            cd.MailType == null ? "Cardit" : cd.MailType,
-                            cd.MailClass,
-                            cd.AWBOrigin,
-                            cd.AWBDestination == null ? cd.FlightDestination : cd.AWBDestination,
-                            //cd.TotalPieces == 0 ? MailPcs : cd.TotalPieces,
-                            // cd.TotalGrossWeight == 0 ? MailWeight : cd.TotalGrossWeight,
-                            MailPcs,
-                            MailWeight,                           
-                            cd.FlightNo,
-                            cd.FlightOrigin,
-                            cd.FlightDestination,
-                            cd.MessageArrivalDate,
-                            cd.MessageFlightDate,
-                            DateTime.Now,
-                            "CARDIT",
-                            cd.PartnerCode,
-                            cd.HNDOrg_Code,
-                            cd.HNDOrg_LocSource,
-                            cd.HNDOrg_LocName,
-                            cd.HNDdest_Code,
-                            cd.HNDdest_LocSource,
-                            cd.HNDdest_LocName,
-                            cd.PAWBNo == null ? "" : cd.PAWBPrefix + "-" + cd.PAWBNo,
-                            cd.StageQualifier,
-                            cd.ModeOfTransport,
-                            cd.MsgSeqNo,
-                            cd.MessageFunctionCode
+                        //string[] Param = new string[]{
+                        //    "BagNumber",
+                        //    "MailType",
+                        //    "MailClass",
+                        //    "AWBOrigin",
+                        //    "AWBDestination",
+                        //    "TotalPieces",
+                        //    "TotalGrossWeight",
+                        //    "FlightNo",
+                        //    "FlightOrigin",
+                        //    "FlightDestination",
+                        //    "MessageArrivalDate",
+                        //    "MessageFlightDate",
+                        //    "CreatedOn",
+                        //    "CreatedBy",
+                        //    "PartnerCode",
+                        //    "HNDOrgCode",
+                        //    "HNDOrgLocSource",
+                        //    "HNDOrgLocName",
+                        //    "NDdestCode",
+                        //    "HNDdestLocSource",
+                        //    "HNDdestLocName",
+                        //    "PAWB",
+                        //    "StageQualifier",
+                        //    "ModeOfTransport",
+                        //    "MsgSeqNo",
+                        //    "MessageFunctionCode"
+                        //};
+                        //SqlDbType[] ParamSqlType = new SqlDbType[] {
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.Int,
+                        //    SqlDbType.Decimal,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.DateTime,
+                        //    SqlDbType.DateTime,
+                        //    SqlDbType.DateTime,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.VarChar,
+                        //    SqlDbType.Int,
+                        //    SqlDbType.VarChar
+                        //};
+                        //object[] ParamValue = {
+                        //    cd.BagNumber,
+                        //    cd.MailType == null ? "Cardit" : cd.MailType,
+                        //    cd.MailClass,
+                        //    cd.AWBOrigin,
+                        //    cd.AWBDestination == null ? cd.FlightDestination : cd.AWBDestination,
+                        //    //cd.TotalPieces == 0 ? MailPcs : cd.TotalPieces,
+                        //    // cd.TotalGrossWeight == 0 ? MailWeight : cd.TotalGrossWeight,
+                        //    MailPcs,
+                        //    MailWeight,                           
+                        //    cd.FlightNo,
+                        //    cd.FlightOrigin,
+                        //    cd.FlightDestination,
+                        //    cd.MessageArrivalDate,
+                        //    cd.MessageFlightDate,
+                        //    DateTime.Now,
+                        //    "CARDIT",
+                        //    cd.PartnerCode,
+                        //    cd.HNDOrg_Code,
+                        //    cd.HNDOrg_LocSource,
+                        //    cd.HNDOrg_LocName,
+                        //    cd.HNDdest_Code,
+                        //    cd.HNDdest_LocSource,
+                        //    cd.HNDdest_LocName,
+                        //    cd.PAWBNo == null ? "" : cd.PAWBPrefix + "-" + cd.PAWBNo,
+                        //    cd.StageQualifier,
+                        //    cd.ModeOfTransport,
+                        //    cd.MsgSeqNo,
+                        //    cd.MessageFunctionCode
+                        //};
+
+                        SqlParameter[] parameters =
+                        {
+                            new SqlParameter("@BagNumber", SqlDbType.VarChar) { Value = cd.BagNumber },
+                            new SqlParameter("@MailType", SqlDbType.VarChar) { Value = cd.MailType ?? "Cardit" },
+                            new SqlParameter("@MailClass", SqlDbType.VarChar) { Value = cd.MailClass },
+                            new SqlParameter("@AWBOrigin", SqlDbType.VarChar) { Value = cd.AWBOrigin },
+                            new SqlParameter("@AWBDestination", SqlDbType.VarChar) { Value = cd.AWBDestination ?? cd.FlightDestination },
+                            new SqlParameter("@TotalPieces", SqlDbType.Int) { Value = MailPcs },
+                            new SqlParameter("@TotalGrossWeight", SqlDbType.Decimal) { Value = MailWeight },
+                            new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = cd.FlightNo },
+                            new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = cd.FlightOrigin },
+                            new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = cd.FlightDestination },
+                            new SqlParameter("@MessageArrivalDate", SqlDbType.DateTime) { Value = cd.MessageArrivalDate },
+                            new SqlParameter("@MessageFlightDate", SqlDbType.DateTime) { Value = cd.MessageFlightDate },
+                            new SqlParameter("@CreatedOn", SqlDbType.DateTime) { Value = DateTime.Now },
+                            new SqlParameter("@CreatedBy", SqlDbType.VarChar) { Value = "CARDIT" },
+                            new SqlParameter("@PartnerCode", SqlDbType.VarChar) { Value = cd.PartnerCode },
+                            new SqlParameter("@HNDOrgCode", SqlDbType.VarChar) { Value = cd.HNDOrg_Code },
+                            new SqlParameter("@HNDOrgLocSource", SqlDbType.VarChar) { Value = cd.HNDOrg_LocSource },
+                            new SqlParameter("@HNDOrgLocName", SqlDbType.VarChar) { Value = cd.HNDOrg_LocName },
+                            new SqlParameter("@NDdestCode", SqlDbType.VarChar) { Value = cd.HNDdest_Code },
+                            new SqlParameter("@HNDdestLocSource", SqlDbType.VarChar) { Value = cd.HNDdest_LocSource },
+                            new SqlParameter("@HNDdestLocName", SqlDbType.VarChar) { Value = cd.HNDdest_LocName },
+                            new SqlParameter("@PAWB", SqlDbType.VarChar) { Value = cd.PAWBNo == null ? "" : $"{cd.PAWBPrefix}-{cd.PAWBNo}" },
+                            new SqlParameter("@StageQualifier", SqlDbType.VarChar) { Value = cd.StageQualifier },
+                            new SqlParameter("@ModeOfTransport", SqlDbType.VarChar) { Value = cd.ModeOfTransport },
+                            new SqlParameter("@MsgSeqNo", SqlDbType.Int) { Value = cd.MsgSeqNo },
+                            new SqlParameter("@MessageFunctionCode", SqlDbType.VarChar) { Value = cd.MessageFunctionCode }
                         };
 
-                        SQLServer db = new SQLServer();
-                        CarditID = db.GetIntegerByProcedure("dbo.SaveCarditMessage", Param, ParamValue, ParamSqlType);
+                        //SQLServer db = new SQLServer();
+                        //CarditID = db.GetIntegerByProcedure("dbo.SaveCarditMessage", Param, ParamValue, ParamSqlType);
+
+                        CarditID = await _readWriteDao.GetIntegerByProcedureAsync("dbo.SaveCarditMessage", parameters);
                         if (CarditID < 1)
                         {
-                            clsLog.WriteLogAzure("Error saving CarditMessage:" + db.LastErrorDescription);
+                            //clsLog.WriteLogAzure("Error saving CarditMessage:" + db.LastErrorDescription);
+                            _logger.LogWarning("Error on saving in CarditMessage");
                         }
                         else
                         {
                             foreach (CarditCosnsignmentDetail cPg in cd.objCarditCosnsignmentDetail)
                             {
-                                string[] RName = new string[]{
-                                    "CarditID",
-                                    "PackageId",
-                                    "MessageID",
-                                    "PackageGrossWeight",
-                                    "PackageWeightCode",
-                                    "ConsID",
-                                    "AWBPrefix",
-                                    "AWBNumber",
-                                    "ReceptacleType",
-                                    "ReceptacleHndlingClass"
-                                };
-                                SqlDbType[] RType = new SqlDbType[] {
-                                    SqlDbType.Int,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.Decimal,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar
-                                };
-                                object[] RValues = { 
-                                    CarditID,
-                                    cPg.PackegeId,
-                                    cd.MessageRefNumber,
-                                    cPg.PackageGrossWeight,
-                                    cPg.PackageWeightCode,
-                                    cd.BagNumber,
-                                    cd.PAWBPrefix,
-                                    cd.PAWBNo,
-                                    cPg.ReceptacleType,
-                                    cPg.ReceptacleHndlingClass
+                                //string[] RName = new string[]{
+                                //    "CarditID",
+                                //    "PackageId",
+                                //    "MessageID",
+                                //    "PackageGrossWeight",
+                                //    "PackageWeightCode",
+                                //    "ConsID",
+                                //    "AWBPrefix",
+                                //    "AWBNumber",
+                                //    "ReceptacleType",
+                                //    "ReceptacleHndlingClass"
+                                //};
+                                //SqlDbType[] RType = new SqlDbType[] {
+                                //    SqlDbType.Int,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.Decimal,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar
+                                //};
+                                //object[] RValues = { 
+                                //    CarditID,
+                                //    cPg.PackegeId,
+                                //    cd.MessageRefNumber,
+                                //    cPg.PackageGrossWeight,
+                                //    cPg.PackageWeightCode,
+                                //    cd.BagNumber,
+                                //    cd.PAWBPrefix,
+                                //    cd.PAWBNo,
+                                //    cPg.ReceptacleType,
+                                //    cPg.ReceptacleHndlingClass
+                                //};
+                                //int SuccessSNo = db.GetIntegerByProcedure("dbo.SaveCarditPackageInformation", RName, RValues, RType);
+                                
+                                SqlParameter[] parametersR =
+                                {
+                                    new SqlParameter("@CarditID", SqlDbType.Int) { Value = CarditID },
+                                    new SqlParameter("@PackageId", SqlDbType.VarChar) { Value = cPg.PackegeId },
+                                    new SqlParameter("@MessageID", SqlDbType.VarChar) { Value = cd.MessageRefNumber },
+                                    new SqlParameter("@PackageGrossWeight", SqlDbType.Decimal) { Value = cPg.PackageGrossWeight },
+                                    new SqlParameter("@PackageWeightCode", SqlDbType.VarChar) { Value = cPg.PackageWeightCode },
+                                    new SqlParameter("@ConsID", SqlDbType.VarChar) { Value = cd.BagNumber },
+                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = cd.PAWBPrefix },
+                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = cd.PAWBNo },
+                                    new SqlParameter("@ReceptacleType", SqlDbType.VarChar) { Value = cPg.ReceptacleType },
+                                    new SqlParameter("@ReceptacleHndlingClass", SqlDbType.VarChar) { Value = cPg.ReceptacleHndlingClass }
                                 };
 
-                                int SuccessSNo = db.GetIntegerByProcedure("dbo.SaveCarditPackageInformation", RName, RValues, RType);
+
+                                int SuccessSNo = await _readWriteDao.GetIntegerByProcedureAsync("dbo.SaveCarditPackageInformation", parametersR);
                                 if (SuccessSNo < 1)
-                                    clsLog.WriteLogAzure("Error saving tblpomcontCARDIT Table :" + db.LastErrorDescription);
+                                    //clsLog.WriteLogAzure("Error saving tblpomcontCARDIT Table :" + db.LastErrorDescription);
+                                _logger.LogWarning( "Error on saving in tblpomcontCARDIT Table");
                             }
 
                             for (int lstIndex = 0; lstIndex < fltroute.Length; lstIndex++)
@@ -717,46 +775,59 @@ namespace QidWorkerRole
                                 if (cd.BagNumber == fltroute[lstIndex].BagNumber)
                                 {
 
-                                    string[] RName1 = new string[]{
-                                    "CarditID",
-                                    "PartnerCode",
-                                    "FlightOrigin",
-                                    "FlightDestination",
-                                    "FlightNo",
-                                    "FlightDate",
-                                    "PiecesCount",
-                                    "StageQualifier",
-                                    "ModeOfTransport",
-                                    "TotalGrossWeight"
-                                };
-                                    SqlDbType[] RType1 = new SqlDbType[] {
-                                    SqlDbType.Int,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.DateTime,
-                                    SqlDbType.Int,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.VarChar,
-                                    SqlDbType.Decimal
+                                    //    string[] RName1 = new string[]{
+                                    //    "CarditID",
+                                    //    "PartnerCode",
+                                    //    "FlightOrigin",
+                                    //    "FlightDestination",
+                                    //    "FlightNo",
+                                    //    "FlightDate",
+                                    //    "PiecesCount",
+                                    //    "StageQualifier",
+                                    //    "ModeOfTransport",
+                                    //    "TotalGrossWeight"
+                                    //};
+                                    //    SqlDbType[] RType1 = new SqlDbType[] {
+                                    //    SqlDbType.Int,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.DateTime,
+                                    //    SqlDbType.Int,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.Decimal
 
-                                };
-                                    object[] RValues1 = {
-                                    CarditID,
-                                    strDesignatorCode,
-                                    fltroute[lstIndex].fltdept,
-                                    fltroute[lstIndex].fltarrival,
-                                    fltroute[lstIndex].fltnum,
-                                    flightRoutedate[lstIndex].FltDate,
-                                  //  cd.TotalPieces,
-                                  MailPcs,
-                                    "",
-                                    "",
-                                  //  cd.TotalGrossWeight
-                                  MailWeight
-                                };
+                                    //};
+                                    //    object[] RValues1 = {
+                                    //    CarditID,
+                                    //    strDesignatorCode,
+                                    //    fltroute[lstIndex].fltdept,
+                                    //    fltroute[lstIndex].fltarrival,
+                                    //    fltroute[lstIndex].fltnum,
+                                    //    flightRoutedate[lstIndex].FltDate,
+                                    //  //  cd.TotalPieces,
+                                    //  MailPcs,
+                                    //    "",
+                                    //    "",
+                                    //  //  cd.TotalGrossWeight
+                                    //  MailWeight
+                                    //};
 
+                                    SqlParameter[] parametersRR =
+                                    {
+                                        new SqlParameter("@CarditID", SqlDbType.Int) { Value = CarditID },
+                                        new SqlParameter("@PartnerCode", SqlDbType.VarChar) { Value = strDesignatorCode },
+                                        new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltdept },
+                                        new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltarrival },
+                                        new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltnum },
+                                        new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightRoutedate[lstIndex].FltDate },
+                                        new SqlParameter("@PiecesCount", SqlDbType.Int) { Value = MailPcs },
+                                        new SqlParameter("@StageQualifier", SqlDbType.VarChar) { Value = "" },
+                                        new SqlParameter("@ModeOfTransport", SqlDbType.VarChar) { Value = "" },
+                                        new SqlParameter("@TotalGrossWeight", SqlDbType.Decimal) { Value = MailWeight }
+                                     };
                                     if (fltroute[lstIndex].fltnum.Substring(0, 2) == strDesignatorCode)
                                     {                                       
 
@@ -769,11 +840,12 @@ namespace QidWorkerRole
                                         
                                         
                                         strRouteDetails = strRouteDetails + "@" + fltroute[lstIndex].fltnum + "," + fltroute[lstIndex].fltdept + "," + fltroute[lstIndex].fltarrival + "," + "0" + "," + flightRoutedate[lstIndex].FltDate + ",";
-                                        SQLServer db1 = new SQLServer();
-                                        FlgRouteID = db1.GetIntegerByProcedure("dbo.SaveCarditRouteInfo", RName1, RValues1, RType1);
+                                        //SQLServer db1 = new SQLServer();
+                                        FlgRouteID = await _readWriteDao.GetIntegerByProcedureAsync("dbo.SaveCarditRouteInfo", parametersRR);
                                         if (FlgRouteID < 1)
                                         {
-                                            clsLog.WriteLogAzure("Error saving SaveCarditRouteInfo:" + db.LastErrorDescription);
+                                            //clsLog.WriteLogAzure("Error saving SaveCarditRouteInfo:" + db.LastErrorDescription);
+                                            _logger.LogInformation("Error on saving SaveCarditRouteInfo:");
                                         }
                                     }
                                 }
@@ -784,7 +856,7 @@ namespace QidWorkerRole
                             if (!string.IsNullOrEmpty(cd.PAWBNo))
                             {
                                 DataSet dsAgent = new DataSet();
-                                dsAgent = GetAgentCode(cd.AWBOrigin, DateTime.Now);
+                                dsAgent = await GetAgentCode(cd.AWBOrigin, DateTime.Now);
                                 if (dsAgent != null && dsAgent.Tables.Count > 0 && dsAgent.Tables[0].Rows.Count > 0 && dsAgent.Tables[0].Rows[0][0].ToString() != "")
                                 {
                                     AgentCode = dsAgent.Tables[0].Rows[0]["AgentCode"].ToString();
@@ -792,41 +864,94 @@ namespace QidWorkerRole
                                 }
 
                                 #region : Parameters to save the booking data through POMail :
-                                string[] ParamName = new string[]
+                                //string[] ParamName = new string[]
+                                //{
+                                //    "AirlinePrefix","AWBNum","Origin","Dest","PcsCount","Weight","Volume","ComodityCode","ComodityDesc","CarrierCode","FlightNum",
+                                //    "FlightDate","FlightOrigin","FlightDest","ShipperName","ShipperAddr","ShipperPlace","ShipperState","ShipperCountryCode","ShipperContactNo",
+                                //    "ConsName","ConsAddr","ConsPlace","ConsState","ConsCountryCode","ConsContactNo","CustAccNo","IATACargoAgentCode","CustName","SystemDate",
+                                //    "MeasureUnit","Length","Breadth","Height","PartnerStatus","REFNo","UpdatedBy","SpecialHandelingCode","ChargeableWeight","AgentCode","AgentName"
+                                //};
+                                //object[] ParamValues = new object[]
+                                //{
+                                //    cd.PAWBPrefix,cd.PAWBNo,cd.AWBOrigin,cd.AWBDestination == null ? cd.FlightDestination : cd.AWBDestination,MailPcs,MailWeight,"0","POMAIL-EMS",
+                                //    "POMAIL-EMS","","","","","","","","","","","","","","","","","","","","", DateTime.Now,
+                                //    "","","","","",0,"CARDIT","",Convert.ToDecimal(MailWeight),AgentCode,AgentName
+                                //};
+                                //SqlDbType[] ParamType = new SqlDbType[]
+                                //{
+                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar,SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Decimal,SqlDbType.VarChar,
+                                //    SqlDbType.VarChar
+                                //};
+
+                                SqlParameter[] ParamName =
                                 {
-                                    "AirlinePrefix","AWBNum","Origin","Dest","PcsCount","Weight","Volume","ComodityCode","ComodityDesc","CarrierCode","FlightNum",
-                                    "FlightDate","FlightOrigin","FlightDest","ShipperName","ShipperAddr","ShipperPlace","ShipperState","ShipperCountryCode","ShipperContactNo",
-                                    "ConsName","ConsAddr","ConsPlace","ConsState","ConsCountryCode","ConsContactNo","CustAccNo","IATACargoAgentCode","CustName","SystemDate",
-                                    "MeasureUnit","Length","Breadth","Height","PartnerStatus","REFNo","UpdatedBy","SpecialHandelingCode","ChargeableWeight","AgentCode","AgentName"
-                                };
-                                object[] ParamValues = new object[]
-                                {
-                                    cd.PAWBPrefix,cd.PAWBNo,cd.AWBOrigin,cd.AWBDestination == null ? cd.FlightDestination : cd.AWBDestination,MailPcs,MailWeight,"0","POMAIL-EMS",
-                                    "POMAIL-EMS","","","","","","","","","","","","","","","","","","","","", DateTime.Now,
-                                    "","","","","",0,"CARDIT","",Convert.ToDecimal(MailWeight),AgentCode,AgentName
-                                };
-                                SqlDbType[] ParamType = new SqlDbType[]
-                                {
-                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
-                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
-                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
-                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar,SqlDbType.VarChar,
-                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Decimal,SqlDbType.VarChar,
-                                    SqlDbType.VarChar
-                                };
+                                    new SqlParameter("@AirlinePrefix", SqlDbType.VarChar) { Value = cd.PAWBPrefix },
+                                    new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = cd.PAWBNo },
+                                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = cd.AWBOrigin },
+                                    new SqlParameter("@Dest", SqlDbType.VarChar) { Value = cd.AWBDestination ?? cd.FlightDestination },
+                                    new SqlParameter("@PcsCount", SqlDbType.VarChar) { Value = MailPcs },
+                                    new SqlParameter("@Weight", SqlDbType.VarChar) { Value = MailWeight },
+                                    new SqlParameter("@Volume", SqlDbType.VarChar) { Value = "0" },
+                                    new SqlParameter("@ComodityCode", SqlDbType.VarChar) { Value = "POMAIL-EMS" },
+                                    new SqlParameter("@ComodityDesc", SqlDbType.VarChar) { Value = "POMAIL-EMS" },
+                                    new SqlParameter("@CarrierCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@FlightNum", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@FlightDate", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@FlightDest", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperAddr", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperPlace", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperCountryCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ShipperContactNo", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsName", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsAddr", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsPlace", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsState", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsCountryCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ConsContactNo", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@CustName", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now },
+                                    new SqlParameter("@MeasureUnit", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@Length", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@Breadth", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@Height", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@PartnerStatus", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@REFNo", SqlDbType.VarChar) { Value = 0 },
+                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "CARDIT" },
+                                    new SqlParameter("@SpecialHandelingCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = Convert.ToDecimal(MailWeight) },
+                                    new SqlParameter("@AgentCode", SqlDbType.VarChar) { Value = AgentCode },
+                                    new SqlParameter("@AgentName", SqlDbType.VarChar) { Value = AgentName }
+                                    };
+
                                 #endregion Parameters to save the booking data through POMail
 
                                 string ProcedureName = "spInsertBookingDataPOMAIL";
-                                QID.DataAccess.SQLServer sqlServer = new QID.DataAccess.SQLServer();
-                                bool flag = sqlServer.InsertData(ProcedureName, ParamName, ParamType, ParamValues);
+                                //QID.DataAccess.SQLServer sqlServer = new QID.DataAccess.SQLServer();
+                                //bool flag = sqlServer.InsertData(ProcedureName, ParamName, ParamType, ParamValues);
+
+                                bool flag = await _readWriteDao.ExecuteNonQueryAsync(ProcedureName, ParamName);
 
                                 if (flag)
                                 {
-                                    string[] parname = new string[] { "AWBNum", "AWBPrefix" };
-                                    object[] parobject = new object[] { cd.PAWBNo, cd.PAWBPrefix };
-                                    SqlDbType[] partype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                                    //string[] parname = new string[] { "AWBNum", "AWBPrefix" };
+                                    //object[] parobject = new object[] { cd.PAWBNo, cd.PAWBPrefix };
+                                    //SqlDbType[] partype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
 
-                                    if (sqlServer.ExecuteProcedure("spDeleteAWBRouteFFR", parname, partype, parobject))
+                                    SqlParameter[] paramAWBNum =
+                                    {
+                                        new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = cd.PAWBNo },
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = cd.PAWBPrefix }
+                                    };
+                                    if (await _readWriteDao.ExecuteNonQueryAsync("spDeleteAWBRouteFFR", paramAWBNum))
                                     {
                                         string strOrigin = cd.AWBOrigin;
                                         string strdestination = cd.AWBDestination == null ? cd.FlightDestination : cd.AWBDestination;
@@ -835,84 +960,118 @@ namespace QidWorkerRole
                                         if (flag)
                                         {
                                             #region : Parameters to save Route Information :
-                                            string[] ParamNames = new string[]
-                                                    {
-                                                        "AWBNumber",
-                                                        "FltOrigin",
-                                                        "FltDestination",
-                                                        "FltNumber",
-                                                        "FltDate",
-                                                        "Status",
-                                                        "UpdatedBy",
-                                                        "UpdatedOn",
-                                                        "IsFFR",
-                                                        "REFNo",
-                                                        "date",
-                                                        "AWBPrefix"
-                                                    };
-                                            SqlDbType[] DataTypes = new SqlDbType[]
-                                                    {
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.DateTime,
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.VarChar,
-                                                        SqlDbType.DateTime,
-                                                        SqlDbType.Bit,
-                                                        SqlDbType.Int,
-                                                        SqlDbType.DateTime,
-                                                        SqlDbType.VarChar
-                                                    };
-                                            object[] ParamValuesRoute = new object[]
-                                                            {
+                                            //string[] ParamNames = new string[]
+                                            //        {
+                                            //            "AWBNumber",
+                                            //            "FltOrigin",
+                                            //            "FltDestination",
+                                            //            "FltNumber",
+                                            //            "FltDate",
+                                            //            "Status",
+                                            //            "UpdatedBy",
+                                            //            "UpdatedOn",
+                                            //            "IsFFR",
+                                            //            "REFNo",
+                                            //            "date",
+                                            //            "AWBPrefix"
+                                            //        };
+                                            //SqlDbType[] DataTypes = new SqlDbType[]
+                                            //        {
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.DateTime,
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.VarChar,
+                                            //            SqlDbType.DateTime,
+                                            //            SqlDbType.Bit,
+                                            //            SqlDbType.Int,
+                                            //            SqlDbType.DateTime,
+                                            //            SqlDbType.VarChar
+                                            //        };
+                                            //object[] ParamValuesRoute = new object[]
+                                            //                {
 
-                                                                cd.PAWBNo,
-                                                                strOrigin,
-                                                                strdestination,
-                                                                strFltNumber,
-                                                                dtFlightDate.ToShortDateString(),
-                                                                "C",
-                                                                "CARDIT",
-                                                                DateTime.Now,
-                                                                0,
-                                                                0,
-                                                                dtFlightDate.ToShortDateString(),
-                                                                cd.PAWBPrefix
-                                                            };
+                                            //                    cd.PAWBNo,
+                                            //                    strOrigin,
+                                            //                    strdestination,
+                                            //                    strFltNumber,
+                                            //                    dtFlightDate.ToShortDateString(),
+                                            //                    "C",
+                                            //                    "CARDIT",
+                                            //                    DateTime.Now,
+                                            //                    0,
+                                            //                    0,
+                                            //                    dtFlightDate.ToShortDateString(),
+                                            //                    cd.PAWBPrefix
+                                            //                };
+
+                                            SqlParameter[] ParamValuesRoute =
+                                            {
+                                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)      { Value = cd.PAWBNo },
+                                                new SqlParameter("@FltOrigin", SqlDbType.VarChar)      { Value = strOrigin },
+                                                new SqlParameter("@FltDestination", SqlDbType.VarChar) { Value = strdestination },
+                                                new SqlParameter("@FltNumber", SqlDbType.VarChar)      { Value = strFltNumber },
+                                                new SqlParameter("@FltDate", SqlDbType.DateTime)       { Value = dtFlightDate },
+                                                new SqlParameter("@Status", SqlDbType.VarChar)         { Value = "C" },
+                                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)      { Value = "CARDIT" },
+                                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime)     { Value = DateTime.Now },
+                                                new SqlParameter("@IsFFR", SqlDbType.Bit)             { Value = 0 },
+                                                new SqlParameter("@REFNo", SqlDbType.Int)             { Value = 0 },
+                                                new SqlParameter("@date", SqlDbType.DateTime)         { Value = dtFlightDate },
+                                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)     { Value = cd.PAWBPrefix }
+                                            };
+
                                             #endregion Parameters to save Route Information
 
-                                            if (!sqlServer.UpdateData("spSaveFFRAWBRoute", ParamNames, DataTypes, ParamValuesRoute))
-                                                clsLog.WriteLogAzure("Error saving spSaveFFRAWBRoute :" + db.LastErrorDescription);
-                                            else
-                                                clsLog.WriteLogAzure("Data saving Sucessfully spSaveFFRAWBRoute :" + db.LastErrorDescription);
+                                            if (! await _readWriteDao.ExecuteNonQueryAsync("spSaveFFRAWBRoute", ParamValuesRoute))
+                                                //clsLog.WriteLogAzure("Error saving spSaveFFRAWBRoute :" + db.LastErrorDescription);
 
+                                                _logger.LogInformation("Error on saving spSaveFFRAWBRoute");
+                                            else
+                                                //clsLog.WriteLogAzure("Data saving Sucessfully spSaveFFRAWBRoute :" + db.LastErrorDescription);
+                                                _logger.LogInformation("Data saving Sucessfully spSaveFFRAWBRoute ");
                                             #region Calculate Rate Process
                                             try
                                             {
-                                                string[] ParamName1 = new string[]
+                                                //string[] ParamName1 = new string[]
+                                                //{
+                                                //    "AWBNumber","AWBPrefix","UpdatedBy","UpdatedOn","ValidateMin","UpdateBooking","RouteFrom","UpdateBilling"
+                                                //};
+
+                                                //object[] ParamValue1 = new object[]
+                                                //{
+                                                //    cd.PAWBNo,cd.PAWBPrefix,"CARDIT",DateTime.Now,1,1,"B",0
+                                                //};
+                                                //SqlDbType[] ParamType1 = new SqlDbType[]
+                                                //{
+                                                //    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Bit,SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.Bit
+                                                //};
+
+                                                SqlParameter[] ParamValue1 =
                                                 {
-                                                    "AWBNumber","AWBPrefix","UpdatedBy","UpdatedOn","ValidateMin","UpdateBooking","RouteFrom","UpdateBilling"
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)   { Value = cd.PAWBNo },
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = cd.PAWBPrefix },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar)   { Value = "CARDIT" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)  { Value = DateTime.Now },
+                                                    new SqlParameter("@ValidateMin", SqlDbType.Bit)     { Value = 1 },
+                                                    new SqlParameter("@UpdateBooking", SqlDbType.Bit)   { Value = 1 },
+                                                    new SqlParameter("@RouteFrom", SqlDbType.VarChar)   { Value = "B" },
+                                                    new SqlParameter("@UpdateBilling", SqlDbType.Bit)   { Value = 0 }
                                                 };
 
-                                                object[] ParamValue1 = new object[]
-                                                {
-                                                    cd.PAWBNo,cd.PAWBPrefix,"CARDIT",DateTime.Now,1,1,"B",0
-                                                };
-                                                SqlDbType[] ParamType1 = new SqlDbType[]
-                                                {
-                                                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Bit,SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.Bit
-                                                };
-
-                                                if (!sqlServer.UpdateData("sp_CalculateAWBRatesReprocess", ParamName1, ParamType1, ParamValue1))
-                                                    clsLog.WriteLogAzure("Error saving sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
+                                                if (! await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", ParamValue1))
+                                                   // clsLog.WriteLogAzure("Error saving sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
+                                                    _logger.LogInformation("Error on saving sp_CalculateAWBRatesReprocess");
                                                 else
-                                                    clsLog.WriteLogAzure("Data saved in sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
+                                                    //clsLog.WriteLogAzure("Data saved in sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
+                                                    _logger.LogInformation("Data saved in sp_CalculateAWBRatesReprocess");
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure("Data saved in sp_CalculateAWBRatesReprocess :" + ex.InnerException);
+                                                //clsLog.WriteLogAzure("Data saved in sp_CalculateAWBRatesReprocess :" + ex.InnerException);
+                                                _logger.LogError(ex, "Data saved in sp_CalculateAWBRatesReprocess :");
                                             }
                                             #endregion Calculate Rate Process
 
@@ -947,7 +1106,7 @@ namespace QidWorkerRole
                             }
 
 
-                            dsPAWB = GenerateMailPAWB(cd.BagNumber, FltorgNumber, FltDestination, "0518", "INTL POMAIL", MailPcs, MailWeight, strRouteDetails, "MAL", "POMailList", "POMailList");
+                            dsPAWB = await GenerateMailPAWB(cd.BagNumber, FltorgNumber, FltDestination, "0518", "INTL POMAIL", MailPcs, MailWeight, strRouteDetails, "MAL", "POMailList", "POMailList");
 
 
                             ErrorDesc = string.Empty;
@@ -959,7 +1118,8 @@ namespace QidWorkerRole
                                     if (ErrorDesc.Length > 1)
                                     {
                                         status = false;
-                                        clsLog.WriteLogAzure(ErrorDesc + db.LastErrorDescription);
+                                        //clsLog.WriteLogAzure(ErrorDesc + db.LastErrorDescription);
+                                        _logger.LogInformation(ErrorDesc);
                                     }
                                 }
 
@@ -972,7 +1132,7 @@ namespace QidWorkerRole
                                     if (AWBNo != "" && AWBNo != "0")
                                     {
                                         status = true;
-                                        dsAWB = UpdatePAWBToConsignment(Convert.ToString(cd.BagNumber), "MAL", AWBNo);
+                                        dsAWB = await UpdatePAWBToConsignment(Convert.ToString(cd.BagNumber), "MAL", AWBNo);
 
                                     }
                                 }
@@ -997,14 +1157,17 @@ namespace QidWorkerRole
             {
                 ErrorDesc = ex.ToString();
                 status = false;
-                clsLog.WriteLogAzure("Error saving Ssaving Cardit Message :" + ex.ToString());
+                //clsLog.WriteLogAzure("Error saving Ssaving Cardit Message :" + ex.ToString());
+                _logger.LogError(ex, "Error on saving Ssaving Cardit Message");
+
             }
-            Errormsg = ErrorDesc;
-            return status;
+            //Errormsg = ErrorDesc;
+            //return status;
+            return (status, ErrorDesc);
         }
 
 
-        public bool EncodeAndSaveResditMessage(string strMessage)
+        public async Task<bool> EncodeAndSaveResditMessage(string strMessage)
         {
             bool status = false;
             CarditDetail cardit = new CarditDetail();
@@ -1284,7 +1447,7 @@ namespace QidWorkerRole
                     //    MailWeight = packgeConsignment.Sum(item => item.PackageGrossWeight);
 
                     //}
-                    SQLServer dbCardit = new SQLServer();
+                    //SQLServer dbCardit = new SQLServer();
                     //int CarditID = 0;
                     string strConsID = string.Empty;
                     string strRecID = string.Empty;
@@ -1315,30 +1478,42 @@ namespace QidWorkerRole
                         dtCreatedOn = Rcd.MessageFlightDate;
                     }
 
-                    string[] Param = new string[]
-                                                            {   "ConsID",
-                                                                "Receptacle",
-                                                                "Event",
-                                                                "MSGStn",
-                                                                "CreatedOn",                                                                
-                                                            };
+                    //string[] Param = new string[]
+                    //                                        {   "ConsID",
+                    //                                            "Receptacle",
+                    //                                            "Event",
+                    //                                            "MSGStn",
+                    //                                            "CreatedOn",                                                                
+                    //                                        };
 
-                    SqlDbType[] ParamSqlType = new SqlDbType[]
-                                                            {   SqlDbType.VarChar,
-                                                                SqlDbType.VarChar,
-                                                                SqlDbType.VarChar,  
-                                                                SqlDbType.VarChar,
-                                                                SqlDbType.DateTime,                                                               
-                                                            };
+                    //SqlDbType[] ParamSqlType = new SqlDbType[]
+                    //                                        {   SqlDbType.VarChar,
+                    //                                            SqlDbType.VarChar,
+                    //                                            SqlDbType.VarChar,  
+                    //                                            SqlDbType.VarChar,
+                    //                                            SqlDbType.DateTime,                                                               
+                    //                                        };
 
-                    object[] ParamValue = { strConsID, strRecID, strEventType, strMsgStn, dtCreatedOn };
+                    //object[] ParamValue = { strConsID, strRecID, strEventType, strMsgStn, dtCreatedOn };
 
-                    SQLServer db = new SQLServer();
-                    int Success = db.GetIntegerByProcedure("SaveRESDITPerReceptacle", Param, ParamValue, ParamSqlType);
+                    SqlParameter[] parameters =
+                    {
+                        new SqlParameter("@ConsID", SqlDbType.VarChar)   { Value = strConsID },
+                        new SqlParameter("@Receptacle", SqlDbType.VarChar) { Value = strRecID },
+                        new SqlParameter("@Event", SqlDbType.VarChar)    { Value = strEventType },
+                        new SqlParameter("@MSGStn", SqlDbType.VarChar)  { Value = strMsgStn },
+                        new SqlParameter("@CreatedOn", SqlDbType.DateTime) { Value = dtCreatedOn }
+                    };
+
+                    //SQLServer db = new SQLServer();
+                    //int Success = db.GetIntegerByProcedure("SaveRESDITPerReceptacle", Param, ParamValue, ParamSqlType);
+
+                    int Success = await _readWriteDao.GetIntegerByProcedureAsync("SaveRESDITPerReceptacle", parameters);
 
                     if (Success == 0)
                     {
-                        clsLog.WriteLogAzure("Error saving CarditMessage:" + db.LastErrorDescription);
+                        //clsLog.WriteLogAzure("Error saving CarditMessage:" + db.LastErrorDescription);
+                        _logger.LogWarning("Error on saving CarditMessage:");
                     }
                 }
                 status = true;
@@ -1347,55 +1522,17 @@ namespace QidWorkerRole
             {
                 ///SCMExceptionHandling.logexception(ref ex);
                 status = false;
-                clsLog.WriteLogAzure("Error saving Ssaving Cardit Message :" + ex.ToString());
+                //clsLog.WriteLogAzure("Error saving Ssaving Cardit Message :" + ex.ToString());
+                _logger.LogError(ex,"Error on saving Ssaving Cardit Message.");
             }
             return status;
         }
 
         #region Get Agent Code
-        public DataSet GetAgentCode(string origin, DateTime tranDate)
+        public async Task<DataSet> GetAgentCode(string origin, DateTime tranDate)
         {
-            SQLServer da = new SQLServer();
-            DataSet objDs = null;
-
-            try
-            {
-                string[] pname = new string[2];
-                object[] pvalue = new object[2];
-                SqlDbType[] ptype = new SqlDbType[2];
-
-                pname[0] = "Station";
-                pname[1] = "TranDate";
-
-                ptype[0] = SqlDbType.VarChar;
-                ptype[1] = SqlDbType.DateTime;
-
-                pvalue[0] = origin;
-                pvalue[1] = tranDate;
-
-                objDs = da.SelectRecords("spGetPOMAILAgentCode", pname, pvalue, ptype);
-
-                return objDs;
-            }
-            catch (Exception ex)
-            {
-                objDs = null;
-                clsLog.WriteLogAzure("Error saving spGetPOMAILAgentCode :" + ex.ToString());
-               // SCMExceptionHandling.logexception(ref ex);
-                return null;
-            }
-            finally
-            {
-                if (objDs != null)
-                    objDs.Dispose();
-            }
-        }
-        #endregion
-
-        public DataSet GetDesigCode()
-        {
-            SQLServer da = new SQLServer();
-            DataSet objDs = null;
+            //SQLServer da = new SQLServer();
+            DataSet? objDs = null;
 
             try
             {
@@ -1412,14 +1549,64 @@ namespace QidWorkerRole
                 //pvalue[0] = origin;
                 //pvalue[1] = tranDate;
 
-                objDs = da.SelectRecords("uspGetDesignatorCode");
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@Station", SqlDbType.VarChar)  { Value = origin },
+                    new SqlParameter("@TranDate", SqlDbType.DateTime) { Value = tranDate }
+                };
+                //objDs = da.SelectRecords("spGetPOMAILAgentCode", pname, pvalue, ptype);
+                
+                objDs = await _readWriteDao.SelectRecords("spGetPOMAILAgentCode", parameters);
 
                 return objDs;
             }
             catch (Exception ex)
             {
                 objDs = null;
-                clsLog.WriteLogAzure("Error saving spGetPOMAILAgentCode :" + ex.ToString());
+                //clsLog.WriteLogAzure("Error saving spGetPOMAILAgentCode :" + ex.ToString());
+                _logger.LogError(ex, "Error on saving spGetPOMAILAgentCode");
+                // SCMExceptionHandling.logexception(ref ex);
+                return null;
+            }
+            finally
+            {
+                if (objDs != null)
+                    objDs.Dispose();
+            }
+        }
+        #endregion
+
+        public async Task<DataSet> GetDesigCode()
+        {
+            //SQLServer da = new SQLServer();
+            DataSet? objDs = null;
+
+            try
+            {
+                //string[] pname = new string[2];
+                //object[] pvalue = new object[2];
+                //SqlDbType[] ptype = new SqlDbType[2];
+
+                //pname[0] = "Station";
+                //pname[1] = "TranDate";
+
+                //ptype[0] = SqlDbType.VarChar;
+                //ptype[1] = SqlDbType.DateTime;
+
+                //pvalue[0] = origin;
+                //pvalue[1] = tranDate;
+
+                //objDs = da.SelectRecords("uspGetDesignatorCode");
+
+                objDs = await _readWriteDao.SelectRecords("uspGetDesignatorCode");
+
+                return objDs;
+            }
+            catch (Exception ex)
+            {
+                objDs = null;
+                //clsLog.WriteLogAzure("Error on saving spGetPOMAILAgentCode :" + ex.ToString());
+                _logger.LogError(ex,"Error on saving spGetPOMAILAgentCode");
                 // SCMExceptionHandling.logexception(ref ex);
                 return null;
             }
@@ -1430,65 +1617,82 @@ namespace QidWorkerRole
             }
         }
 
-        public DataSet GenerateMailPAWB(string consignmentID, string station, string destination, string commodityCode, string commodityDesc, int pcs, decimal wgt, string fltDetails, string AWBprefix, string LoginName, string callFrom)
+        public async Task<DataSet> GenerateMailPAWB(string consignmentID, string station, string destination, string commodityCode, string commodityDesc, int pcs, decimal wgt, string fltDetails, string AWBprefix, string LoginName, string callFrom)
         {
-            SQLServer da = new SQLServer();
-            DataSet dsPOMailDetails = new DataSet();
+            //SQLServer da = new SQLServer();
+            DataSet? dsPOMailDetails = new DataSet();
 
             try
             {
-                string[] param = {
-                    "ConsignmentID"
-                    , "Station"
-                    , "Destination"
-                    , "Commcode"
-                    , "Commdesc"
-                    , "Pieces"
-                    , "TotWgt"
-                    , "MullegFlts"
-                    , "AWBPrefix"
-                    , "LoginName"
-                    , "callFrom"
-                    
-                };
-                SqlDbType[] types = {
-                    SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.Int
-                    , SqlDbType.Decimal
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                     
-                };
-                object[] values = {
-                     consignmentID
-                    , station
-                    , destination
-                    , commodityCode
-                    , commodityDesc
-                    , pcs
-                    , wgt
-                    , fltDetails
-                    , AWBprefix
-                    , LoginName
-                    , callFrom
-                  
+                //string[] param = {
+                //    "ConsignmentID"
+                //    , "Station"
+                //    , "Destination"
+                //    , "Commcode"
+                //    , "Commdesc"
+                //    , "Pieces"
+                //    , "TotWgt"
+                //    , "MullegFlts"
+                //    , "AWBPrefix"
+                //    , "LoginName"
+                //    , "callFrom"
+
+                //};
+                //SqlDbType[] types = {
+                //    SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.Int
+                //    , SqlDbType.Decimal
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+
+                //};
+                //object[] values = {
+                //     consignmentID
+                //    , station
+                //    , destination
+                //    , commodityCode
+                //    , commodityDesc
+                //    , pcs
+                //    , wgt
+                //    , fltDetails
+                //    , AWBprefix
+                //    , LoginName
+                //    , callFrom
+
+                //};
+                //dsPOMailDetails = da.SelectRecords("dbo.uspSavePAWBMailBooking", param, values, types);
+
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@ConsignmentID", SqlDbType.VarChar) { Value = consignmentID },
+                    new SqlParameter("@Station", SqlDbType.VarChar)       { Value = station },
+                    new SqlParameter("@Destination", SqlDbType.VarChar)   { Value = destination },
+                    new SqlParameter("@Commcode", SqlDbType.VarChar)      { Value = commodityCode },
+                    new SqlParameter("@Commdesc", SqlDbType.VarChar)      { Value = commodityDesc },
+                    new SqlParameter("@Pieces", SqlDbType.Int)            { Value = pcs },
+                    new SqlParameter("@TotWgt", SqlDbType.Decimal)       { Value = wgt },
+                    new SqlParameter("@MullegFlts", SqlDbType.VarChar)    { Value = fltDetails },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)     { Value = AWBprefix },
+                    new SqlParameter("@LoginName", SqlDbType.VarChar)     { Value = LoginName },
+                    new SqlParameter("@callFrom", SqlDbType.VarChar)      { Value = callFrom }
                 };
 
-                dsPOMailDetails = da.SelectRecords("dbo.uspSavePAWBMailBooking", param, values, types);
+                dsPOMailDetails = await _readWriteDao.SelectRecords("dbo.uspSavePAWBMailBooking", parameters);
 
                 if (dsPOMailDetails != null && dsPOMailDetails.Tables.Count > 0 && dsPOMailDetails.Tables[0].Rows.Count > 0)
                     return dsPOMailDetails;
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Data saved in uspSavePAWBMailBooking :" + ex.InnerException);
+                //clsLog.WriteLogAzure("Data saved in uspSavePAWBMailBooking :" + ex.InnerException);
+                _logger.LogError(ex, "Data saved in uspSavePAWBMailBooking" );
             }
 
             return null;
@@ -1514,44 +1718,53 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure("setTableNameToDataSetTable :" + ex.InnerException);
+                        //clsLog.WriteLogAzure("setTableNameToDataSetTable :" + ex.InnerException);
+                        _logger.LogError(ex, "Error on setTableNameToDataSetTable");
                     }
                 }
             return dsTables;
         }
 
-        public DataSet UpdatePAWBToConsignment(string ConsignmentID, string AWBPrefix, string AWBNumber)
+        public async Task<DataSet> UpdatePAWBToConsignment(string ConsignmentID, string AWBPrefix, string AWBNumber)
         {
-            SQLServer da = new SQLServer();
-            DataSet dsPOMailDetails = new DataSet();
+            //SQLServer da = new SQLServer();
+            DataSet? dsPOMailDetails = new DataSet();
 
             try
             {
-                string[] param = {
-                    "ConsignmentID"
-                    ,"AWBPrefix"
-                    , "AWBNumber"
+                //string[] param = {
+                //    "ConsignmentID"
+                //    ,"AWBPrefix"
+                //    , "AWBNumber"
 
-                };
-                SqlDbType[] types = {
-                    SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                    , SqlDbType.VarChar
-                };
-                object[] values = {
-                    ConsignmentID
-                    , AWBPrefix
-                    , AWBNumber
+                //};
+                //SqlDbType[] types = {
+                //    SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //    , SqlDbType.VarChar
+                //};
+                //object[] values = {
+                //    ConsignmentID
+                //    , AWBPrefix
+                //    , AWBNumber
+                //};
+
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@ConsignmentID", SqlDbType.VarChar) { Value = ConsignmentID },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)     { Value = AWBPrefix },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)     { Value = AWBNumber }
                 };
 
-                dsPOMailDetails = da.SelectRecords("dbo.uspUpdatePAWBConsignment", param, values, types);
+                dsPOMailDetails = await _readWriteDao.SelectRecords("dbo.uspUpdatePAWBConsignment", parameters);
 
                 if (dsPOMailDetails != null && dsPOMailDetails.Tables.Count > 0 && dsPOMailDetails.Tables[0].Rows.Count > 0)
                     return dsPOMailDetails;
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Data saved in uspUpdatePAWBConsignment :" + ex.InnerException);
+                //clsLog.WriteLogAzure("Data saved in uspUpdatePAWBConsignment :" + ex.InnerException);
+                _logger.LogError(ex, "Error on Data saved in uspUpdatePAWBConsignment");
             }
 
             return null;

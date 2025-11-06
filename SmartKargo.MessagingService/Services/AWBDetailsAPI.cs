@@ -1,23 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
+﻿using System.Data;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Web.Script.Serialization;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using QID.DataAccess;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using Microsoft.Data.SqlClient;
 
 namespace QidWorkerRole
 {
     public class AWBDetailsAPI
     {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<EMAILOUT> _logger;
         GenericFunction genericFunction = new GenericFunction();
 
-        public void GetAWBDetails(string awbPrefix, string awbNumber)
+        #region Constructor
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public AWBDetailsAPI(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<EMAILOUT> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+        }
+        #endregion
+
+        public async Task GetAWBDetails(string awbPrefix, string awbNumber)
         {
             DataSet dsAWBDeatils = new DataSet();
             AWBDetails objawbDetails = new AWBDetails();
@@ -27,15 +36,21 @@ namespace QidWorkerRole
 
             try
             {
+                //SQLServer db = new SQLServer();
+                //string[] QueryNames = { "AWBprefix", "AWBNumber", };
+                //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                //string[] QueryValues = { awbPrefix, awbNumber };
+                //dsAWBDeatils = db.SelectRecords("USPGetAWBDetails", QueryNames, QueryValues, QueryTypes);
 
-                DataSet dsAWBdetails = new DataSet();
-                string[] QueryNames = { "AWBprefix", "AWBNumber", };
-                SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                string[] QueryValues = { awbPrefix, awbNumber };
+                DataSet? dsAWBdetails = new DataSet();
                 StringBuilder[] sb = new StringBuilder[0];
-                SQLServer db = new SQLServer();
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@AWBprefix", SqlDbType.VarChar) { Value = awbPrefix },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber }
+                };
 
-                dsAWBDeatils = db.SelectRecords("USPGetAWBDetails", QueryNames, QueryValues, QueryTypes);
+                dsAWBDeatils = await _readWriteDao.SelectRecords("USPGetAWBDetails", parameters);
 
                 if (dsAWBDeatils != null)
                 {
@@ -175,9 +190,10 @@ namespace QidWorkerRole
                         objawbDetails.bookingStatus = Convert.ToString(dr["BookingStatus"]);
                         objawbDetails.awbStatus = Convert.ToString(dr["AWBStatus"]);
 
-                        string JsonInput = new JavaScriptSerializer().Serialize(objawbDetails);
+                        //string JsonInput = new JavaScriptSerializer().Serialize(objawbDetails);
+                        string JsonInput = System.Text.Json.JsonSerializer.Serialize(objawbDetails);
                         //Generate Access Token
-                        string accessToken = GenerateAccessToken();
+                        string accessToken = await GenerateAccessToken();
 
                         string FCTAPIURL;
                         FCTAPIURL = genericFunction.GetConfigurationValues("FCTAPIURL").Trim();
@@ -219,31 +235,45 @@ namespace QidWorkerRole
 
                         }
 
-                        db = new SQLServer();
-                        string[] QueryNames1 = { "IsUpdate", "AWBprefix", "AWBNumber", "IsProcessed", "APIError" };
-                        SqlDbType[] QueryTypes1 = { SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                        object[] QueryValues1 = { true, awbPrefix, awbNumber, IsProcessed, APIError };
-                        db.SelectRecords("USPGetPendingAWBList", QueryNames1, QueryValues1, QueryTypes1);
+                        //db = new SQLServer();
+                        //db.SelectRecords("USPGetPendingAWBList", QueryNames1, QueryValues1, QueryTypes1);
+                        //string[] QueryNames1 = { "IsUpdate", "AWBprefix", "AWBNumber", "IsProcessed", "APIError" };
+                        //SqlDbType[] QueryTypes1 = { SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                        //object[] QueryValues1 = { true, awbPrefix, awbNumber, IsProcessed, APIError };
+
+
+                        SqlParameter[] parametersValue =
+                        {
+                            new SqlParameter("@IsUpdate", SqlDbType.Bit)       { Value = true },
+                            new SqlParameter("@AWBprefix", SqlDbType.VarChar)  { Value = awbPrefix },
+                            new SqlParameter("@AWBNumber", SqlDbType.VarChar)  { Value = awbNumber },
+                            new SqlParameter("@IsProcessed", SqlDbType.Bit)    { Value = IsProcessed },
+                            new SqlParameter("@APIError", SqlDbType.VarChar)   { Value = APIError }
+                        };
+                       await _readWriteDao.SelectRecords("USPGetPendingAWBList", parametersValue);
 
                     }
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on GetAWBDetails.");
             }
 
 
 
         }
 
-        public void GetPendingAWBList()
+        public async Task GetPendingAWBList()
         {
            try
             {
-                SQLServer db = new SQLServer();
-                DataSet dsAWBlist = new DataSet();
-                dsAWBlist = db.SelectRecords("USPGetPendingAWBList");
+                //SQLServer db = new SQLServer();
+               // dsAWBlist = db.SelectRecords("USPGetPendingAWBList");
+
+                DataSet? dsAWBlist = new DataSet();
+                dsAWBlist = await _readWriteDao.SelectRecords("USPGetPendingAWBList");
 
                 if (dsAWBlist != null && dsAWBlist.Tables.Count > 0 && dsAWBlist.Tables[0].Rows.Count > 0)
                 {
@@ -256,11 +286,12 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on GetPendingAWBList.");
             }
         }
 
-        public string GenerateAccessToken()
+        public async Task<string> GenerateAccessToken()
         {
             AccessTokenResponse token = null;
 
@@ -275,7 +306,7 @@ namespace QidWorkerRole
                 try
                 {
                     //Check Token is expired or not.
-                    dsResult = validateOrUpdateToken(tokenKey, "C");
+                    dsResult = await validateOrUpdateToken(tokenKey, "C");
                     if (dsResult != null && dsResult.Tables.Count > 0 && dsResult.Tables[0].Rows.Count > 0)
                     {
                         //If token is not expired return exsting Token key
@@ -320,7 +351,7 @@ namespace QidWorkerRole
                             if (!string.IsNullOrEmpty(tokenKey))
                             {
                                 //update new token key to database
-                                dsResult = validateOrUpdateToken(tokenKey, "U");
+                                dsResult = await validateOrUpdateToken(tokenKey, "U");
                                 return tokenKey;
                             }
                             else
@@ -332,7 +363,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on GenerateAccessToken.");
                     return "";
                 }
                 return tokenKey;
@@ -371,22 +403,24 @@ namespace QidWorkerRole
 
 
 
-        public DataSet validateOrUpdateToken(string tokenKey, string flag)
+        public async Task<DataSet> validateOrUpdateToken(string tokenKey, string flag)
         {
-            DataSet dsResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsResult = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
+            //dsResult = sqlServer.SelectRecords("uspUpdateTokenForFCTAPI", sqlParameter);
             try
             {
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                      new SqlParameter("@TokenKey",tokenKey)
                     ,new SqlParameter("@Flag",flag)
                 };
-                dsResult = sqlServer.SelectRecords("uspUpdateTokenForFCTAPI", sqlParameter);
+                dsResult = await _readWriteDao.SelectRecords("uspUpdateTokenForFCTAPI", sqlParameter);
                 GC.Collect();
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on validateOrUpdateToken.");
                 return null;
             }
             return dsResult;
