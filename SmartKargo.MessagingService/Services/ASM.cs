@@ -1,17 +1,34 @@
-﻿using QidWorkerRole;
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.Extensions.Logging;
+//using QID.DataAccess;
+//using QidWorkerRole;
+//using SmartKargo.MessagingService.Data.Dao.Implementations;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+//using SmartKargo.MessagingService.Functions.Activities;
+//using System;
+//using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
-using System.Linq;
-using System.Web;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace QidWorkerRole
 {
     public class ASM
     {
+        private static ILogger<ASM>? _staticLogger;  // static shared logger
+        private readonly ILogger<ASM> _logger;//instance logger
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public ASM(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _staticLogger = staticLogger;
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
+        #endregion Constructor
+
         public string messageType = "MVT";
         public string messageIdentifier = string.Empty, messageTimeMode = string.Empty;
         public string originalMessage = string.Empty;
@@ -91,19 +108,20 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
+
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
                     return;
                 }
                 isProcessFlag = true;
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ToASM");
             }
         }
 
-        private void parseNEW(string[] arrLine, int srno)
+        private async Task parseNEW(string[] arrLine, int srno)
         {
             try
             {
@@ -254,7 +272,7 @@ namespace QidWorkerRole
                     aircraftType = dtSaveFlightInfo.Rows[i]["AircraftType"].ToString();
                     registrationNo = dtSaveFlightInfo.Rows[i]["RegistrationNo"].ToString();
                     DataSet dsScheduleDetails = new DataSet();
-                    dsScheduleDetails = SaveASMDetails(srno, scheduleID, isLastLeg);
+                    dsScheduleDetails = await SaveASMDetails(srno, scheduleID, isLastLeg);
                     //if (dsScheduleDetails != null && dsScheduleDetails.Tables.Count > 0 && dsScheduleDetails.Tables[0].Rows.Count > 0 && dsScheduleDetails.Tables[0].Columns.Contains("ScheduleID"))
                     //{
                     //    scheduleID = Convert.ToInt32(dsScheduleDetails.Tables[0].Rows[0]["ScheduleID"].ToString());
@@ -264,11 +282,12 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseNEW");
             }
         }
 
-        private void parseNEWRevised(string[] arrLine, int srno, string messageBody)
+        private async Task parseNEWRevised(string[] arrLine, int srno, string messageBody)
         {
             try
             {
@@ -405,16 +424,20 @@ namespace QidWorkerRole
                     }
                 }
                 DataTable dtUniqueFlightInfo = ssm.RemoveDuplicatesRecords(dtFlightInfo);
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
+                // dsFlightinfo = sqlServer.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
+
                 SqlParameter[] sqlParameter = new SqlParameter[]{
                     new  SqlParameter("@FlightInfoTableType", dtUniqueFlightInfo)
                 };
-                DataSet dsFlightinfo = new DataSet();
-                dsFlightinfo = sqlServer.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
+                DataSet? dsFlightinfo = new DataSet();
+
+                dsFlightinfo = await _readWriteDao.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseNEWRevised");
             }
         }
         private void parseCNL(string[] arrLine, int srno)
@@ -482,7 +505,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseCNL");
             }
         }
 
@@ -531,7 +555,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseRIN");
             }
         }
 
@@ -643,7 +668,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseRPL");
             }
         }
 
@@ -657,7 +683,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseADM");
             }
         }
 
@@ -714,7 +741,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseEQT");
             }
         }
 
@@ -834,7 +862,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseRRT");
             }
         }
 
@@ -945,11 +974,12 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on parseTIM");
             }
         }
 
-        private DataSet SaveASMDetails(int srno, int scheduleID = 0, bool isLastLeg = false)
+        private async Task<DataSet> SaveASMDetails(int srno, int scheduleID = 0, bool isLastLeg = false)
         {
             DataSet dsScheduleDetails = new DataSet();
             try
@@ -994,113 +1024,161 @@ namespace QidWorkerRole
                             ""//New flight number
                         };
 
-                dsScheduleDetails = UpdateToDatatabse(QueryValues);
+                dsScheduleDetails = await UpdateToDatatabse(QueryValues);
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on SaveASMDetails");
             }
             return dsScheduleDetails;
         }
 
-        public DataSet UpdateToDatatabse(object[] QueryValues)
+        public async Task<DataSet> UpdateToDatatabse(object[] QueryValues)
         {
             DataSet dsScheduleDetails = new DataSet();
             try
             {
-                string[] QueryNames = new string[37];
-                SqlDbType[] QueryTypes = new SqlDbType[37];
-                SQLServer db = new SQLServer();
+                //string[] QueryNames = new string[37];
+                //SqlDbType[] QueryTypes = new SqlDbType[37];
+                //SQLServer db = new SQLServer();
 
-                QueryNames[0] = "MsgType";
-                QueryNames[1] = "msgId";
-                QueryNames[2] = "msgBody";
-                QueryNames[3] = "flightNumber";
-                QueryNames[4] = "tailNumber";
-                QueryNames[5] = "aircraftType";
-                QueryNames[6] = "passangerCount";
-                QueryNames[7] = "airportOfDeparture";
-                QueryNames[8] = "airportOfArrival";
-                QueryNames[9] = "nextDestAirport";
-                QueryNames[10] = "schdDateOfArrival";
-                QueryNames[11] = "schdDateOfDeparture";
-                QueryNames[12] = "actualDateOfArrival";
-                QueryNames[13] = "actualDateOfDeparture";
-                QueryNames[14] = "schdTimeOfArrival";
-                QueryNames[15] = "schdTimeOfDeparture";
-                QueryNames[16] = "actualTimeOfArrival";
-                QueryNames[17] = "actualTimeOfDeparture";
-                QueryNames[18] = "onBlockTime";
-                QueryNames[19] = "serviceType";
-                QueryNames[20] = "delayCode";
-                QueryNames[21] = "nextInformation";
-                QueryNames[22] = "supplemtoryInfo";
-                QueryNames[23] = "createdOn";
-                QueryNames[24] = "srno";
-                QueryNames[25] = "MessageTimeMode";
-                QueryNames[26] = "LegNumber";
-                QueryNames[27] = "SSMFrequency";
-                QueryNames[28] = "DateVariationDep";
-                QueryNames[29] = "DateVariationArr";
-                QueryNames[30] = "ScheduleID";
-                QueryNames[31] = "IsLastLeg";
-                QueryNames[32] = "ScheduleIDs";
-                QueryNames[33] = "POL";
-                QueryNames[34] = "DepDate";
-                QueryNames[35] = "OrgDepTime";
-                QueryNames[36] = "NewFlightNumber";
 
-                QueryTypes[0] = SqlDbType.VarChar;
-                QueryTypes[1] = SqlDbType.VarChar;
-                QueryTypes[2] = SqlDbType.VarChar;
-                QueryTypes[3] = SqlDbType.VarChar;
-                QueryTypes[4] = SqlDbType.VarChar;
-                QueryTypes[5] = SqlDbType.VarChar;
-                QueryTypes[6] = SqlDbType.Int;
-                QueryTypes[7] = SqlDbType.VarChar;
-                QueryTypes[8] = SqlDbType.VarChar;
-                QueryTypes[9] = SqlDbType.VarChar;
-                QueryTypes[10] = SqlDbType.DateTime;
-                QueryTypes[11] = SqlDbType.DateTime;
-                QueryTypes[12] = SqlDbType.DateTime;
-                QueryTypes[13] = SqlDbType.DateTime;
-                QueryTypes[14] = SqlDbType.VarChar;
-                QueryTypes[15] = SqlDbType.VarChar;
-                QueryTypes[16] = SqlDbType.VarChar;
-                QueryTypes[17] = SqlDbType.VarChar;
-                QueryTypes[18] = SqlDbType.VarChar;
-                QueryTypes[19] = SqlDbType.VarChar;
-                QueryTypes[20] = SqlDbType.VarChar;
-                QueryTypes[21] = SqlDbType.VarChar;
-                QueryTypes[22] = SqlDbType.VarChar;
-                QueryTypes[23] = SqlDbType.DateTime;
-                QueryTypes[24] = SqlDbType.Int;
-                QueryTypes[25] = SqlDbType.VarChar;
-                QueryTypes[26] = SqlDbType.Int;
-                QueryTypes[27] = SqlDbType.VarChar;
-                QueryTypes[28] = SqlDbType.Int;
-                QueryTypes[29] = SqlDbType.Int;
-                QueryTypes[30] = SqlDbType.Int;
-                QueryTypes[31] = SqlDbType.Bit;
-                QueryTypes[32] = SqlDbType.VarChar;
-                QueryTypes[33] = SqlDbType.VarChar;
-                QueryTypes[34] = SqlDbType.DateTime;
-                QueryTypes[35] = SqlDbType.VarChar;
-                QueryTypes[36] = SqlDbType.VarChar;
+                //QueryNames[0] = "MsgType";
+                //QueryNames[1] = "msgId";
+                //QueryNames[2] = "msgBody";
+                //QueryNames[3] = "flightNumber";
+                //QueryNames[4] = "tailNumber";
+                //QueryNames[5] = "aircraftType";
+                //QueryNames[6] = "passangerCount";
+                //QueryNames[7] = "airportOfDeparture";
+                //QueryNames[8] = "airportOfArrival";
+                //QueryNames[9] = "nextDestAirport";
+                //QueryNames[10] = "schdDateOfArrival";
+                //QueryNames[11] = "schdDateOfDeparture";
+                //QueryNames[12] = "actualDateOfArrival";
+                //QueryNames[13] = "actualDateOfDeparture";
+                //QueryNames[14] = "schdTimeOfArrival";
+                //QueryNames[15] = "schdTimeOfDeparture";
+                //QueryNames[16] = "actualTimeOfArrival";
+                //QueryNames[17] = "actualTimeOfDeparture";
+                //QueryNames[18] = "onBlockTime";
+                //QueryNames[19] = "serviceType";
+                //QueryNames[20] = "delayCode";
+                //QueryNames[21] = "nextInformation";
+                //QueryNames[22] = "supplemtoryInfo";
+                //QueryNames[23] = "createdOn";
+                //QueryNames[24] = "srno";
+                //QueryNames[25] = "MessageTimeMode";
+                //QueryNames[26] = "LegNumber";
+                //QueryNames[27] = "SSMFrequency";
+                //QueryNames[28] = "DateVariationDep";
+                //QueryNames[29] = "DateVariationArr";
+                //QueryNames[30] = "ScheduleID";
+                //QueryNames[31] = "IsLastLeg";
+                //QueryNames[32] = "ScheduleIDs";
+                //QueryNames[33] = "POL";
+                //QueryNames[34] = "DepDate";
+                //QueryNames[35] = "OrgDepTime";
+                //QueryNames[36] = "NewFlightNumber";
 
-                if (QueryValues.Length == 27)
-                {
-                    Array.Resize(ref QueryValues, QueryValues.Length + 1);
-                    QueryValues[QueryValues.Length - 1] = 0;
-                }
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[1] = SqlDbType.VarChar;
+                //QueryTypes[2] = SqlDbType.VarChar;
+                //QueryTypes[3] = SqlDbType.VarChar;
+                //QueryTypes[4] = SqlDbType.VarChar;
+                //QueryTypes[5] = SqlDbType.VarChar;
+                //QueryTypes[6] = SqlDbType.Int;
+                //QueryTypes[7] = SqlDbType.VarChar;
+                //QueryTypes[8] = SqlDbType.VarChar;
+                //QueryTypes[9] = SqlDbType.VarChar;
+                //QueryTypes[10] = SqlDbType.DateTime;
+                //QueryTypes[11] = SqlDbType.DateTime;
+                //QueryTypes[12] = SqlDbType.DateTime;
+                //QueryTypes[13] = SqlDbType.DateTime;
+                //QueryTypes[14] = SqlDbType.VarChar;
+                //QueryTypes[15] = SqlDbType.VarChar;
+                //QueryTypes[16] = SqlDbType.VarChar;
+                //QueryTypes[17] = SqlDbType.VarChar;
+                //QueryTypes[18] = SqlDbType.VarChar;
+                //QueryTypes[19] = SqlDbType.VarChar;
+                //QueryTypes[20] = SqlDbType.VarChar;
+                //QueryTypes[21] = SqlDbType.VarChar;
+                //QueryTypes[22] = SqlDbType.VarChar;
+                //QueryTypes[23] = SqlDbType.DateTime;
+                //QueryTypes[24] = SqlDbType.Int;
+                //QueryTypes[25] = SqlDbType.VarChar;
+                //QueryTypes[26] = SqlDbType.Int;
+                //QueryTypes[27] = SqlDbType.VarChar;
+                //QueryTypes[28] = SqlDbType.Int;
+                //QueryTypes[29] = SqlDbType.Int;
+                //QueryTypes[30] = SqlDbType.Int;
+                //QueryTypes[31] = SqlDbType.Bit;
+                //QueryTypes[32] = SqlDbType.VarChar;
+                //QueryTypes[33] = SqlDbType.VarChar;
+                //QueryTypes[34] = SqlDbType.DateTime;
+                //QueryTypes[35] = SqlDbType.VarChar;
+                //QueryTypes[36] = SqlDbType.VarChar;
+                //if (QueryValues.Length == 27)
+                //{
+                //    Array.Resize(ref QueryValues, QueryValues.Length + 1);
+                //    QueryValues[QueryValues.Length - 1] = 0;
+                //}
+
                 QueryValues[2] = QueryValues[2].ToString().Replace("$", "\r\n");
+                //dsScheduleDetails = db.SelectRecords("Messaging.uspAddFlightMovementDetails", QueryNames, QueryValues, QueryTypes);
 
-                dsScheduleDetails = db.SelectRecords("Messaging.uspAddFlightMovementDetails", QueryNames, QueryValues, QueryTypes);
+                var parameters = new SqlParameter[]
+                {
+                    new("@MsgType", SqlDbType.VarChar) { Value = "" },
+                    new("@msgId", SqlDbType.VarChar) { Value = "" },
+                    new("@msgBody", SqlDbType.VarChar) { Value = "" },
+                    new("@flightNumber", SqlDbType.VarChar) { Value = "" },
+                    new("@tailNumber", SqlDbType.VarChar) { Value = "" },
+                    new("@aircraftType", SqlDbType.VarChar) { Value = "" },
+                    new("@passangerCount", SqlDbType.Int) { Value = 0 },
+                    new("@airportOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@airportOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@nextDestAirport", SqlDbType.VarChar) { Value = "" },
+                    new("@schdDateOfArrival", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@schdDateOfDeparture", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@actualDateOfArrival", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@actualDateOfDeparture", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@schdTimeOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@schdTimeOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@actualTimeOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@actualTimeOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@onBlockTime", SqlDbType.VarChar) { Value = "" },
+                    new("@serviceType", SqlDbType.VarChar) { Value = "" },
+                    new("@delayCode", SqlDbType.VarChar) { Value = "" },
+                    new("@nextInformation", SqlDbType.VarChar) { Value = "" },
+                    new("@supplemtoryInfo", SqlDbType.VarChar) { Value = "" },
+                    new("@createdOn", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@srno", SqlDbType.Int) { Value = 0 },
+                    new("@MessageTimeMode", SqlDbType.VarChar) { Value = "" },
+                    new("@LegNumber", SqlDbType.Int) { Value = 0 },
+                    new("@SSMFrequency", SqlDbType.VarChar) { Value = "" },
+                    new("@DateVariationDep", SqlDbType.Int) { Value = 0 },
+                    new("@DateVariationArr", SqlDbType.Int) { Value = 0 },
+                    new("@ScheduleID", SqlDbType.Int) { Value = 0 },
+                    new("@IsLastLeg", SqlDbType.Bit) { Value = 0 },
+                    new("@ScheduleIDs", SqlDbType.VarChar) { Value = "" },
+                    new("@POL", SqlDbType.VarChar) { Value = "" },
+                    new("@DepDate", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@OrgDepTime", SqlDbType.VarChar) { Value = "" },
+                    new("@NewFlightNumber", SqlDbType.VarChar) { Value = "" },
+                };
+                for (int i = 0; i < QueryValues.Length; i++)
+                {
+                    parameters[i].Value = QueryValues[i];
+                }
+                dsScheduleDetails = await _readWriteDao.SelectRecords("Messaging.uspAddFlightMovementDetails", parameters) ?? new DataSet();
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on UpdateToDatatabse");
             }
             return dsScheduleDetails;
         }
@@ -1116,7 +1194,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on CombineCarrierAndFlightCode");
             }
             return flightNumber;
         }
@@ -1250,7 +1329,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on CreateFlightInfoDataTable");
             }
             return dtFlightInfo;
         }
@@ -1287,7 +1367,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDate(input is integer type)");
                 return new DateTime(DateTime.Now.Year, DateTime.Now.Month, p).ToShortDateString();
             }
         }
@@ -1317,7 +1398,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDate(input schedDateOfArrival is string type)");
             }
             return tempDate.ToString("yyyy-MM-dd hh:mm:ss");
         }
@@ -1336,11 +1418,12 @@ namespace QidWorkerRole
                     string currentMonth = GetMonthNameByNumber(DateTime.Now.Month);
                     return schedDateOfArrival + currentMonth + DateTime.Now.ToString("yy");
                 }
-                
+
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDateDDMMMYY");
             }
             return "";
         }
@@ -1412,11 +1495,12 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on SetVariablesToDefaultValues");
             }
         }
 
-        private static string getConnectionString()
+        private static string? getConnectionString()
         {
             try
             {
@@ -1429,7 +1513,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _staticLogger?.LogError(ex, "Error on getConnectionString");
                 return null;
             }
         }
@@ -1437,6 +1522,21 @@ namespace QidWorkerRole
 
     public class MVT
     {
+        private static ILogger<ASM>? _staticLogger;  // static shared logger
+        private readonly ILogger<ASM> _logger;//instance logger
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ISqlDataHelperDao _readOnlyDao;
+
+        #region Constructor
+        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
+            _staticLogger = staticLogger;
+            _logger = logger;
+
+        }
+        #endregion
         public String messageType = "MVT";
         public String messageIdentifier = "";
         public String originalMessage = String.Empty;
@@ -1472,16 +1572,18 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDate MVT");
             }
             return tempDate.ToString("yyyy-MM-dd hh:mm:ss");
         }
 
-        public MVT ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
+        //public async Task<MVT> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
+        public async Task<(MVT mvt, string msgType, bool isProcessFlag)> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom)
         {
 
-            msgType = "MVT";
-            isProcessFlag = false;
+            string msgType = "MVT";
+            bool isProcessFlag = false;
             string tempMessageIdentifier = string.Empty;
             try
             {
@@ -1490,7 +1592,7 @@ namespace QidWorkerRole
                 if (arrLine.Length < 3)
                 {
                     errorMsg = "Message is not in correct format.Cant parse correctly.";
-                    return null;
+                    return (null, msgType, isProcessFlag);
                 }
                 messageType = arrLine[0];
 
@@ -1559,7 +1661,7 @@ namespace QidWorkerRole
                     srno
                 };
 
-                isProcessFlag = UpdateToDatatabse(QueryValues);
+                isProcessFlag = await UpdateToDatatabse(QueryValues);
 
                 if (isProcessFlag)
                 {
@@ -1575,17 +1677,21 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
-                        clsLog.WriteLogAzure("FDM message generation failed on MVT/AD! FlightNo: " + flightNo + " FlightDate: " + FlightDate.ToString() + " Time: " + DateTime.Now);
+                        //clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure("FDM message generation failed on MVT/AD! FlightNo: " + flightNo + " FlightDate: " + FlightDate.ToString() + " Time: " + DateTime.Now);
+
+                        _logger.LogError(ex, "Error on getDate ToMVT UpdateToDatatabse");
+                        _logger.LogError("FDM message generation failed on MVT/AD! FlightNo: \" + flightNo + \" FlightDate: \" + FlightDate.ToString() + \" Time: \" + DateTime.Now");
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDate ToMVT");
             }
-            return this;
+            return (this, msgType, isProcessFlag);
         }
 
         private void ParseEstimatedArrival(string[] arrLine, string actualMessageType)
@@ -1606,7 +1712,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ParseEstimatedArrival flightNo");
                     }
                     try
                     {
@@ -1615,7 +1722,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ParseEstimatedArrival schedDateOfArrival or actualDateOfDepart");
                     }
                     try
                     {
@@ -1623,7 +1731,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ParseEstimatedArrival registrationNo");
                     }
 
                     try
@@ -1632,7 +1741,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ParseEstimatedArrival airportOfArrival");
                     }
                 }
                 #endregion
@@ -1689,18 +1799,21 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ParseEstimatedArrival airportOfArrival");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on ParseEstimatedArrival for loop section");
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ParseEstimatedArrival");
             }
         }
 
@@ -1762,7 +1875,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ParseDaelay");
             }
         }
 
@@ -1961,12 +2075,14 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on ParseEstimatedArrival for loop section");
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ParseEstimatedArrival");
             }
         }
 
@@ -2013,7 +2129,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ParseArrival");
             }
         }
 
@@ -2025,12 +2142,13 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on getDate MVT Class");
             }
             return null;
         }
 
-        private static string getConnectionString()
+        private static string? getConnectionString()
         {
             try
             {
@@ -2041,83 +2159,118 @@ namespace QidWorkerRole
                 }
                 return strConnectionString;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _staticLogger?.LogError(ex, "Error on getConnectionString MVT Class");
                 return null;
             }
         }
 
-        public bool UpdateToDatatabse(object[] QueryValues)
+        public async Task<bool> UpdateToDatatabse(object[] QueryValues)
         {
             try
             {
 
-                string[] QueryNames = new string[25];
-                SqlDbType[] QueryTypes = new SqlDbType[25];
-                SQLServer db = new SQLServer();
+                //string[] QueryNames = new string[25];
+                //SqlDbType[] QueryTypes = new SqlDbType[25];
+                //SQLServer db = new SQLServer();
 
-                QueryNames[0] = "MsgType";
-                QueryNames[01] = "msgId";
-                QueryNames[02] = "msgBody";
-                QueryNames[03] = "flightNumber";
-                QueryNames[04] = "tailNumber";
-                QueryNames[05] = "aircraftType";
-                QueryNames[06] = "passangerCount";
-                QueryNames[07] = "airportOfDeparture";
-                QueryNames[08] = "airportOfArrival";
-                QueryNames[09] = "nextDestAirport";
-                QueryNames[10] = "schdDateOfArrival";
-                QueryNames[011] = "schdDateOfDeparture";
-                QueryNames[012] = "actualDateOfArrival";
-                QueryNames[013] = "actualDateOfDeparture";
-                QueryNames[014] = "schdTimeOfArrival";
-                QueryNames[015] = "schdTimeOfDeparture";
-                QueryNames[016] = "actualTimeOfArrival";
-                QueryNames[017] = "actualTimeOfDeparture";
-                QueryNames[018] = "onBlockTime";
-                QueryNames[019] = "serviceType";
-                QueryNames[20] = "delayCode";
-                QueryNames[021] = "nextInformation";
-                QueryNames[022] = "supplemtoryInfo";
-                QueryNames[023] = "createdOn";
-                QueryNames[024] = "srno";
-
-
-                QueryTypes[0] = SqlDbType.VarChar;
-                QueryTypes[01] = SqlDbType.VarChar;
-                QueryTypes[02] = SqlDbType.VarChar;
-                QueryTypes[03] = SqlDbType.VarChar;
-                QueryTypes[04] = SqlDbType.VarChar;
-                QueryTypes[05] = SqlDbType.VarChar;
-                QueryTypes[06] = SqlDbType.Int;
-                QueryTypes[07] = SqlDbType.VarChar;
-                QueryTypes[08] = SqlDbType.VarChar;
-                QueryTypes[09] = SqlDbType.VarChar;
-                QueryTypes[10] = SqlDbType.DateTime;
-                QueryTypes[011] = SqlDbType.DateTime;
-                QueryTypes[012] = SqlDbType.DateTime;
-                QueryTypes[013] = SqlDbType.DateTime;
-                QueryTypes[014] = SqlDbType.VarChar;
-                QueryTypes[015] = SqlDbType.VarChar;
-                QueryTypes[016] = SqlDbType.VarChar;
-                QueryTypes[017] = SqlDbType.VarChar;
-                QueryTypes[018] = SqlDbType.VarChar;
-
-                QueryTypes[019] = SqlDbType.VarChar;
-                QueryTypes[20] = SqlDbType.VarChar;
-                QueryTypes[021] = SqlDbType.VarChar;
-                QueryTypes[022] = SqlDbType.VarChar;
-                QueryTypes[023] = SqlDbType.DateTime;
-                QueryTypes[024] = SqlDbType.Int;
+                //QueryNames[0] = "MsgType";
+                //QueryNames[01] = "msgId";
+                //QueryNames[02] = "msgBody";
+                //QueryNames[03] = "flightNumber";
+                //QueryNames[04] = "tailNumber";
+                //QueryNames[05] = "aircraftType";
+                //QueryNames[06] = "passangerCount";
+                //QueryNames[07] = "airportOfDeparture";
+                //QueryNames[08] = "airportOfArrival";
+                //QueryNames[09] = "nextDestAirport";
+                //QueryNames[10] = "schdDateOfArrival";
+                //QueryNames[011] = "schdDateOfDeparture";
+                //QueryNames[012] = "actualDateOfArrival";
+                //QueryNames[013] = "actualDateOfDeparture";
+                //QueryNames[014] = "schdTimeOfArrival";
+                //QueryNames[015] = "schdTimeOfDeparture";
+                //QueryNames[016] = "actualTimeOfArrival";
+                //QueryNames[017] = "actualTimeOfDeparture";
+                //QueryNames[018] = "onBlockTime";
+                //QueryNames[019] = "serviceType";
+                //QueryNames[20] = "delayCode";
+                //QueryNames[021] = "nextInformation";
+                //QueryNames[022] = "supplemtoryInfo";
+                //QueryNames[023] = "createdOn";
+                //QueryNames[024] = "srno";
 
 
-                return db.ExecuteProcedure("Messaging.uspAddFlightMovementDetails", QueryNames, QueryTypes, QueryValues);
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[01] = SqlDbType.VarChar;
+                //QueryTypes[02] = SqlDbType.VarChar;
+                //QueryTypes[03] = SqlDbType.VarChar;
+                //QueryTypes[04] = SqlDbType.VarChar;
+                //QueryTypes[05] = SqlDbType.VarChar;
+                //QueryTypes[06] = SqlDbType.Int;
+                //QueryTypes[07] = SqlDbType.VarChar;
+                //QueryTypes[08] = SqlDbType.VarChar;
+                //QueryTypes[09] = SqlDbType.VarChar;
+                //QueryTypes[10] = SqlDbType.DateTime;
+                //QueryTypes[011] = SqlDbType.DateTime;
+                //QueryTypes[012] = SqlDbType.DateTime;
+                //QueryTypes[013] = SqlDbType.DateTime;
+                //QueryTypes[014] = SqlDbType.VarChar;
+                //QueryTypes[015] = SqlDbType.VarChar;
+                //QueryTypes[016] = SqlDbType.VarChar;
+                //QueryTypes[017] = SqlDbType.VarChar;
+                //QueryTypes[018] = SqlDbType.VarChar;
 
+                //QueryTypes[019] = SqlDbType.VarChar;
+                //QueryTypes[20] = SqlDbType.VarChar;
+                //QueryTypes[021] = SqlDbType.VarChar;
+                //QueryTypes[022] = SqlDbType.VarChar;
+                //QueryTypes[023] = SqlDbType.DateTime;
+                //QueryTypes[024] = SqlDbType.Int;
+
+
+                //return db.ExecuteProcedure("Messaging.uspAddFlightMovementDetails", QueryNames, QueryTypes, QueryValues);
+
+                var parameters = new SqlParameter[]
+                {
+                    new("@MsgType", SqlDbType.VarChar) { Value = "" },
+                    new("@msgId", SqlDbType.VarChar) { Value = ""},
+                    new("@msgBody", SqlDbType.VarChar) { Value = "" },
+                    new("@flightNumber", SqlDbType.VarChar) { Value = "" },
+                    new("@tailNumber", SqlDbType.VarChar) { Value = "" },
+                    new("@aircraftType", SqlDbType.VarChar) { Value = "" },
+                    new("@passangerCount", SqlDbType.Int) { Value = 0 },
+                    new("@airportOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@airportOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@nextDestAirport", SqlDbType.VarChar) { Value = "" },
+                    new("@schdDateOfArrival", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@schdDateOfDeparture", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@actualDateOfArrival", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@actualDateOfDeparture", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@schdTimeOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@schdTimeOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@actualTimeOfArrival", SqlDbType.VarChar) { Value = "" },
+                    new("@actualTimeOfDeparture", SqlDbType.VarChar) { Value = "" },
+                    new("@onBlockTime", SqlDbType.VarChar) { Value = "" },
+                    new("@serviceType", SqlDbType.VarChar) { Value = "" },
+                    new("@delayCode", SqlDbType.VarChar) { Value = "" },
+                    new("@nextInformation", SqlDbType.VarChar) { Value = "" },
+                    new("@supplemtoryInfo", SqlDbType.VarChar) { Value = "" },
+                    new("@createdOn", SqlDbType.DateTime) { Value = DBNull.Value },
+                    new("@srno", SqlDbType.Int) { Value = 0 }
+                };
+                for (int i = 0; i < QueryValues.Length; i++)
+                {
+                    parameters[i].Value = QueryValues[i];
+                }
+                return await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspAddFlightMovementDetails", parameters);
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on UpdateToDatatabse MVT Class");
             }
             return false;
         }
