@@ -22,7 +22,7 @@ namespace SmartKargo.MessagingService.Functions.Entities
         private readonly Lazy<ISqlDataHelperDao> _lazyDao;
 
         // Minimum interval between config refresh operations
-        private static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(2);
+        private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(24);
 
         #endregion
 
@@ -43,12 +43,12 @@ namespace SmartKargo.MessagingService.Functions.Entities
             // Lazy initialization ensures DAO is only created when first accessed
             _lazyDao = new Lazy<ISqlDataHelperDao>(() =>
             {
-                // TODO: Add logging
+                
                 _logger.LogInformation("Initializing SQL Data Helper DAO (read-only).");
                 return daoFactory.Create(readOnly: true);
             });
 
-            // TODO: Add logging
+            
             _logger.LogInformation("ConfigEntity initialized successfully with lazy DAO.");
         }
 
@@ -91,14 +91,13 @@ namespace SmartKargo.MessagingService.Functions.Entities
                 DateTime.UtcNow - State.LastRefreshTime < RefreshInterval &&
                 State.Config.Count > 0)
             {
-                // TODO: Add logging
+                
                 _logger.LogInformation("ConfigEntity: Cache valid, skipping DB refresh.");
                 return;
             }
 
             try
             {
-                // TODO: Add logging
                 _logger.LogInformation(
                     "ConfigEntity: Refreshing configuration from DB. ForceRefresh={ForceRefresh}",
                     options.ForceRefresh
@@ -109,7 +108,7 @@ namespace SmartKargo.MessagingService.Functions.Entities
 
                 if (dataSet == null || dataSet.Tables.Count == 0)
                 {
-                    // TODO: Add logging
+                    
                     _logger.LogWarning("ConfigEntity: No configuration data retrieved from DB.");
                     return;
                 }
@@ -130,12 +129,12 @@ namespace SmartKargo.MessagingService.Functions.Entities
                 State.Config = newConfig;
                 State.LastRefreshTime = DateTime.UtcNow;
 
-                // TODO: Add logging
+                
                 _logger.LogInformation("ConfigEntity: Refreshed {Count} configuration entries.", State.Config.Count);
             }
             catch (Exception ex)
             {
-                // TODO: Add logging
+                
                 _logger.LogError(ex, "ConfigEntity: Error occurred while refreshing configuration.");
                 throw;
             }
@@ -151,17 +150,31 @@ namespace SmartKargo.MessagingService.Functions.Entities
                 return value;
             }
 
-            // TODO: Add logging
+            
             _logger.LogWarning("ConfigEntity: Key '{Key}' not found in configuration.", key);
             return null;
         }
-        
+
 
         /// <summary>
         /// Retrieves all configuration key-value pairs (copy).
         /// </summary>
         public IDictionary<string, string> GetAll() =>
             new Dictionary<string, string>(State.Config);
+
+        //public IDictionary<string, string> GetAll()
+        //{
+        //    try
+        //    {
+        //        return new Dictionary<string, string>(State.Config);
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+
+        //        throw;
+        //    }
+        //}
 
         #endregion
 

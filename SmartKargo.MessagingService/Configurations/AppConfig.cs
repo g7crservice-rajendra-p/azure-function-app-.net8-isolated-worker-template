@@ -26,6 +26,6 @@ namespace SmartKargo.MessagingService.Configurations
     {
         public DatabaseConfig Database { get; set; } = new();
         public AppLoggingConfig AppLogging { get; set; } = new();
-        public string ReceiveMessageTimeTrigger1 { get; set; } = string.Empty;
+        
     }
 }

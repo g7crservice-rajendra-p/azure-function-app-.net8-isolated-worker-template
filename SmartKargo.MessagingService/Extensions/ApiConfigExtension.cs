@@ -31,11 +31,6 @@ namespace SmartKargo.MessagingService.Extensions
             builder.Services.AddSingleton(appConfig);
             builder.Services.Configure<AppConfig>(builder.Configuration);
 
-            // ✅ Ensure TimerTrigger placeholders work
-            //var receiveTrigger = builder.Configuration["ReceiveMessageTimeTrigger"];
-            //if (!string.IsNullOrEmpty(receiveTrigger))
-            Environment.SetEnvironmentVariable("ReceiveMessageTimeTrigger", "0 */1 * * * *");
-
             return builder;
         }
     }

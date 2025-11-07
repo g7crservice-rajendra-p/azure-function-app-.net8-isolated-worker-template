@@ -1,0 +1,36 @@
+<IS>
+  <idecFileResourceTypes>
+    <resourceType Key="00" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.FileHeaderRecord" />    
+    <resourceType Key="15" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.InvoiceHeaderRecord" />
+    <resourceType Key="1" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.ReferenceData1Record" />
+    <resourceType Key="2" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.ReferenceData2Record" />
+    <resourceType Key="25" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.AWBRecord" />
+    <resourceType Key="2528" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.AWBVatBreakdownRecord" />
+    <resourceType Key="2529" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.AWBOCBreakdownRecord" />
+    <resourceType Key="36" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.ReasonBreakdownRecord" />    
+    <resourceType Key="35" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RejectionMemoRecord" />    
+    <resourceType Key="3528" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RMVatRecord" />
+    <resourceType Key="26" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RMAWBRecord" />    
+    <resourceType Key="2628" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RMAWBVatRecord" />
+    <resourceType Key="2629" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RMAWBOCBreakdownRecord" />
+    <resourceType Key="2637" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.RMAwbProrateLadderRecord" />
+    <resourceType Key="55" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BillingMemoRecord" />    
+    <resourceType Key="5528" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BMVatRecord" />
+    <resourceType Key="5527" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BMAWBRecord" />    
+    <resourceType Key="552728" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BMAWBVatRecord" />
+    <resourceType Key="552729" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BMAWBOCBreakdownRecord" />
+    <resourceType Key="552737" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BMAwbProrateLadderRecord" />
+    <resourceType Key="56" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CreditMemoRecord" />    
+    <resourceType Key="5628" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CMVatRecord" />
+    <resourceType Key="5627" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CMAWBRecord" />    
+    <resourceType Key="562728" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CMAWBVatRecord" />
+    <resourceType Key="562729" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CMAWBOCBreakdownRecord" />
+    <resourceType Key="562737" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.CMAwbProrateLadderRecord" />
+    <resourceType Key="45" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BillingCodeSubTotalRecord" />
+    <resourceType Key="4528" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.BillingCodeSubTotalVatRecord" />
+    <resourceType Key="65" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.InvoiceTotalRecord" />
+    <resourceType Key="6528" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.InvoiceVatRecord" />
+    <resourceType Key="66" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.InvoiceFooterRecord" />    
+    <resourceType Key="75" Name="QidWorkerRole.SIS.FileHandling.Idec.RecordModels.FileTotalRecord" />
+  </idecFileResourceTypes>
+</IS>
