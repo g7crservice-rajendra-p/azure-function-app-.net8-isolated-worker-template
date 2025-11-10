@@ -119,6 +119,7 @@ namespace QidWorkerRole
         private readonly AWBDetailsAPI _aWBDetailsAPI;
         private readonly EMAILOUT _emailOut;
         private readonly GenericFunction _genericFunction;
+        private readonly AzureDrive _azureDrive;
 
         #endregion
 
@@ -130,7 +131,8 @@ namespace QidWorkerRole
             FTP ftp,
             AWBDetailsAPI aWBDetailsAPI,
             EMAILOUT emailOut,
-            GenericFunction genericFunction)
+            GenericFunction genericFunction,
+            AzureDrive azureDrive)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -138,6 +140,7 @@ namespace QidWorkerRole
             _aWBDetailsAPI = aWBDetailsAPI;
             _emailOut = emailOut;
             _genericFunction = genericFunction;
+
 
             //GenericFunction genericFunction = new GenericFunction();
             //smsUID = ConfigCache.Get("SMSUN");
@@ -4804,8 +4807,8 @@ namespace QidWorkerRole
                                 #region AZURE DRIVE
                                 if (msgCommType == "DRIVE" || msgCommType == "ALL")
                                 {
-                                    AzureDrive drive = new AzureDrive();
-                                    if (drive.UploadToDrive(DateTime.Now.ToString("yyyyMMdd_hhmmss_fff"), body, SITAFolderPath))
+                                    //AzureDrive drive = new AzureDrive();
+                                    if (_azureDrive.UploadToDrive(DateTime.Now.ToString("yyyyMMdd_hhmmss_fff"), body, SITAFolderPath))
                                     {
                                         //isMessageSent = true;
                                         //string[] pname = { "num", "Status" };
@@ -5308,8 +5311,8 @@ namespace QidWorkerRole
                     #region : DRIVE Upload :
                     if (dsMessagesToSend.Tables[4].Rows.Count > 0)
                     {
-                        AzureDrive azureDrive = new AzureDrive();
-                        azureDrive.DRIVEUpload(dsMessagesToSend.Tables[4]);
+                        //AzureDrive azureDrive = new AzureDrive();
+                        await _azureDrive.DRIVEUpload(dsMessagesToSend.Tables[4]);
                     }
                     #endregion DRIVE Upload
 
