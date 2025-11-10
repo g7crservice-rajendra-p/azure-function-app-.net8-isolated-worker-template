@@ -45,12 +45,10 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<AzureDrive> _logger;
-        private readonly AppConfig _appConfig;
         private readonly GenericFunction _genericFunction;
         public AzureDrive(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<AzureDrive> logger,
-            AppConfig appConfig,
             GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
