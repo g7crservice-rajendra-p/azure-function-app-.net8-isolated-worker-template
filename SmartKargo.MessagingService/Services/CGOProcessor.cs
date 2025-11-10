@@ -1,23 +1,26 @@
-﻿using System;
-using System.Linq;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
 
 namespace QidWorkerRole
 {
     public class CGOProcessor
     {
-        string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
-        const string PAGE_NAME = "CGOProcessor";
+        //string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+        //const string PAGE_NAME = "CGOProcessor";
 
         #region
-        public CGOProcessor()
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<CGOProcessor> _logger;
+        public CGOProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<CGOProcessor> logger)
         {
-            //
-            // TODO: Add constructor logic here
-            //
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
         }
         #endregion
 
@@ -28,11 +31,15 @@ namespace QidWorkerRole
         /// <param name="cgoMsg"></param>
         /// <param name="ActualCapacity"></param>
         /// <returns></returns>
-        public bool DecodeReceiveCGOMessage(string cgoMsg, ref float ActualCapacity)
+        /// 
+
+        /*removed ActualCapacity as it is not in use*/
+        //public async Task<bool> DecodeReceiveCGOMessage(string cgoMsg, ref float ActualCapacity)
+        public async Task<bool> DecodeReceiveCGOMessage(string cgoMsg)
         {
             bool flag = false;
-            MessageData.AWBBuildBUP awbBup = new MessageData.AWBBuildBUP("");
-            MessageData.dimensionnfo dimension = new MessageData.dimensionnfo("");
+            //MessageData.AWBBuildBUP awbBup = new MessageData.AWBBuildBUP("");
+            //MessageData.dimensionnfo dimension = new MessageData.dimensionnfo("");
             try
             {
                 string FlightNo = string.Empty, FlightOrigin = string.Empty, AllocatedSpace = "0", FlightDate = string.Empty, AircraftType = string.Empty, Month, Day;
@@ -163,7 +170,7 @@ namespace QidWorkerRole
                         }
                     }
 
-                    flag = UpdateCapacityFromCGOMessage(FlightNo, DateTime.Parse(FlightDate), FlightOrigin, AircraftType, float.Parse(AllocatedSpace));
+                    flag = await UpdateCapacityFromCGOMessage(FlightNo, DateTime.Parse(FlightDate), FlightOrigin, AircraftType, float.Parse(AllocatedSpace));
                 }
                 catch (Exception)
                 {
@@ -176,44 +183,60 @@ namespace QidWorkerRole
             }
             return flag;
         }
-        public bool UpdateCapacityFromCGOMessage(string FlightNo, DateTime FlightDate, string FlightOrigin, string AircraftType, float CargoCapacity)
+        public async Task<bool> UpdateCapacityFromCGOMessage(string FlightNo, DateTime FlightDate, string FlightOrigin, string AircraftType, float CargoCapacity)
         {
-            SQLServer dtb = new SQLServer();
+            //SQLServer dtb = new SQLServer();
 
             try
             {
-                string[] QueryNames = new string[5];
-                object[] QueryValues = new object[5];
-                SqlDbType[] QueryTypes = new SqlDbType[5];
+                //string[] QueryNames = new string[5];
+                //object[] QueryValues = new object[5];
+                //SqlDbType[] QueryTypes = new SqlDbType[5];
 
-                QueryNames[0] = "FlightNo";
-                QueryNames[1] = "FlightDate";
-                QueryNames[2] = "FlightOrigin";
-                QueryNames[3] = "AircraftType";
-                QueryNames[4] = "CargoCapacity";
-
-
-                QueryValues[0] = FlightNo;
-                QueryValues[1] = FlightDate;
-                QueryValues[2] = FlightOrigin;
-                QueryValues[3] = AircraftType;
-                QueryValues[4] = CargoCapacity;
+                //QueryNames[0] = "FlightNo";
+                //QueryNames[1] = "FlightDate";
+                //QueryNames[2] = "FlightOrigin";
+                //QueryNames[3] = "AircraftType";
+                //QueryNames[4] = "CargoCapacity";
 
 
-                QueryTypes[0] = SqlDbType.VarChar;
-                QueryTypes[1] = SqlDbType.VarChar;
-                QueryTypes[2] = SqlDbType.VarChar;
-                QueryTypes[3] = SqlDbType.VarChar;
-                QueryTypes[4] = SqlDbType.Float;
+                //QueryValues[0] = FlightNo;
+                //QueryValues[1] = FlightDate;
+                //QueryValues[2] = FlightOrigin;
+                //QueryValues[3] = AircraftType;
+                //QueryValues[4] = CargoCapacity;
 
-                if (dtb.ExecuteProcedure("uspUdateCargoCapacityfromCGO", QueryNames, QueryTypes, QueryValues))
-                { return true; }
-                else
-                    return false;
+
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[1] = SqlDbType.VarChar;
+                //QueryTypes[2] = SqlDbType.VarChar;
+                //QueryTypes[3] = SqlDbType.VarChar;
+                //QueryTypes[4] = SqlDbType.Float;
+
+                //if (dtb.ExecuteProcedure("uspUdateCargoCapacityfromCGO", QueryNames, QueryTypes, QueryValues))
+                //{
+                //    return true; 
+                //}
+                //else
+                //{
+                //    return false;
+                //}
+
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@FlightDate", SqlDbType.VarChar) { Value = FlightDate },
+                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FlightOrigin },
+                    new SqlParameter("@AircraftType", SqlDbType.VarChar) { Value = AircraftType },
+                    new SqlParameter("@CargoCapacity", SqlDbType.Float) { Value = CargoCapacity }
+                };
+
+                return await _readWriteDao.ExecuteNonQueryAsync("uspUdateCargoCapacityfromCGO", parameters);
+
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error while save Cargo Capacity via CGO Msg " + FlightNo + "-" + dtb.LastErrorDescription);
+                clsLog.WriteLogAzure("Error while save Cargo Capacity via CGO Msg " + FlightNo + ex);
                 return false;
             }
             #endregion
