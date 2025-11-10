@@ -1,15 +1,29 @@
 ﻿using AE.Net.Mail;
+using Azure;
 using Azure.Messaging.ServiceBus;
+using Azure.Storage;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
+//using DocumentFormat.OpenXml.InkML;
+//using DocumentFormat.OpenXml.Wordprocessing;
 using EAGetMail;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
+using Grpc.Core;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
+//using Microsoft.WindowsAzure;
+//using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NReco.PdfGenerator;
 using Pop3;
-using QID.DataAccess;
 using QueueManager;
 using RestSharp;
+using SendGrid.Helpers.Mail.Model;
+using SmartKargo.MessagingService.Configurations;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,72 +36,112 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.UI.WebControls;
-using System.Web.UI;
 using System.Web;
+//using System.Web.UI;
+//using System.Web.UI.HtmlControls;
+//using System.Web.UI.WebControls;
 using System.Xml;
 using System.Xml.Linq;
-using DocumentFormat.OpenXml.InkML;
-using DocumentFormat.OpenXml.Wordprocessing;
-using System.Web.UI.HtmlControls;
-using SendGrid.Helpers.Mail.Model;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace QidWorkerRole
 {
     public class Cls_BL
     {
+
         #region :: Variable Declaration ::
 
-        public static string smsUID;//ConfigurationManager.AppSettings["SMSUN"].ToString();
-        public static string smspswd;// = ConfigurationManager.AppSettings["SMSPASS"].ToString();
-        public static string SIATFTP = null;
-        public static string ftpInMsgFolder = null;
-        public static string SITAUser = null;
-        public static string SITAPWD = null;
-        public static string conStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //public static string smsUID;//ConfigurationManager.AppSettings["SMSUN"].ToString();
+        //public static string smspswd;// = ConfigurationManager.AppSettings["SMSPASS"].ToString();
+        //public static string SIATFTP = null;
+        //public static string ftpInMsgFolder = null;
+        //public static string SITAUser = null;
+        //public static string SITAPWD = null;
+        //public static string conStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //public static string accountEmail = null;
+        //public static string password = null;
+        //public static string BlobKey = string.Empty;
+        //public static string BlobName = string.Empty;
+        //public static string MailInServer = string.Empty;
+        //public static bool f_ReadEmailIMAP = true;
+        //public static bool f_SendOutgoingMail = true;
+        //public static bool f_CreateDBLogSnapshot = false;
+        //public static string f_AutoFBL = string.Empty;
+        //public int dbSyncTime = 10000;
+        //public string SFTPAddress = string.Empty;
+        //public string SFTPUserName = string.Empty;
+        //public string SFTPPassWord = string.Empty;
+        //public string SFTPFingerPrint = string.Empty;
+        //public string SFTPRemote = string.Empty;
+        //public string MailsendPort = string.Empty;
+        //public string MailReceivedIncomingPort = string.Empty;
+        //public static AzureDrive drive = null;
+        //const string PAGE_NAME = "MessageService-->Cls_BL";
+
+        //SCMExceptionHandlingWorkRole scmexception = new SCMExceptionHandlingWorkRole();
+        //string accessTokenUrl = ConfigurationManager.AppSettings["AccessTokenUrl"].ToString();
+        //string sendSMSUrl = ConfigurationManager.AppSettings["SendSMSUrl"].ToString();
+        //string basicAuthenticationHeader = ConfigurationManager.AppSettings["BasicAuthenticationHeader"].ToString();
+        //string SMSNewAPI = ConfigurationManager.AppSettings["SMSNewAPI"].ToString();
+        //AWBDetailsAPI objAWBdetailsAPI = new AWBDetailsAPI();
+        //string[] eAWBPrintArray = null;
+        //CultureInfo bz;
+        //_appConfig.Sms.SendSMSUrl
+
+        public static string BlobName = string.Empty;
+        public static string BlobKey = string.Empty;
+        public static bool f_SendOutgoingMail = true;
         public static string accountEmail = null;
         public static string password = null;
-        public static string BlobKey = String.Empty;
-        public static string BlobName = String.Empty;
-        public static string MailInServer = String.Empty;
-        public static bool f_ReadEmailIMAP = true;
-        public static bool f_SendOutgoingMail = true;
-        public static bool f_CreateDBLogSnapshot = false;
-        public static string f_AutoFBL = string.Empty;
-        public int dbSyncTime = 10000;
+        public string MailsendPort = string.Empty;
         public string SFTPAddress = string.Empty;
         public string SFTPUserName = string.Empty;
         public string SFTPPassWord = string.Empty;
         public string SFTPFingerPrint = string.Empty;
         public string SFTPRemote = string.Empty;
-        public string MailsendPort = string.Empty;
-        public string MailReceivedIncomingPort = string.Empty;
-        public static AzureDrive drive = null;
-        const string PAGE_NAME = "MessageService-->Cls_BL";
-        SCMExceptionHandlingWorkRole scmexception = new SCMExceptionHandlingWorkRole();
-        string accessTokenUrl = ConfigurationManager.AppSettings["AccessTokenUrl"].ToString();
-        string sendSMSUrl = ConfigurationManager.AppSettings["SendSMSUrl"].ToString();
-        string basicAuthenticationHeader = ConfigurationManager.AppSettings["BasicAuthenticationHeader"].ToString();
-        string SMSNewAPI = ConfigurationManager.AppSettings["SMSNewAPI"].ToString();
-        AWBDetailsAPI objAWBdetailsAPI = new AWBDetailsAPI();
+        public static string SIATFTP = null;
+        public static string SITAUser = null;
+        public static string SITAPWD = null;
+        public static string ftpInMsgFolder = null;
         string[] eAWBPrintArray = null;
-        //CultureInfo bz;
 
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<Cls_BL> _logger;
+        private readonly AppConfig _appConfig;
+        private readonly FTP _ftp;
+        private readonly AWBDetailsAPI _aWBDetailsAPI;
+        private readonly EMAILOUT _emailOut;
+        private readonly GenericFunction _genericFunction;
 
         #endregion
 
         #region :: Constructor ::
-        public Cls_BL()
+        public Cls_BL(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<Cls_BL> logger,
+            AppConfig appConfig,
+            FTP ftp,
+            AWBDetailsAPI aWBDetailsAPI,
+            EMAILOUT emailOut,
+            GenericFunction genericFunction)
         {
-            GenericFunction genericFunction = new GenericFunction();
-            smsUID = genericFunction.ReadValueFromDb("SMSUN");
-            smspswd = genericFunction.ReadValueFromDb("SMSPASS");
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _ftp = ftp;
+            _aWBDetailsAPI = aWBDetailsAPI;
+            _emailOut = emailOut;
+            _genericFunction = genericFunction;
+
+            //GenericFunction genericFunction = new GenericFunction();
+            //smsUID = ConfigCache.Get("SMSUN");
+            //smspswd = ConfigCache.Get("SMSPASS");
         }
         #endregion
 
@@ -97,24 +151,27 @@ namespace QidWorkerRole
 
             try
             {
-                clsLog.WriteLogAzure("In ReadMailFromMailBox()");
-                GenericFunction genericFunction = new GenericFunction();
-                MailInServer = genericFunction.ReadValueFromDb("msgService_EmailInServer");
-                accountEmail = genericFunction.ReadValueFromDb("msgService_EmailId");
-                password = genericFunction.ReadValueFromDb("msgService_EmailPassword");
-                f_ReadEmailIMAP = (genericFunction.ReadValueFromDb("msgService_EmailServerType")).ToUpper().Contains("IMAP");
-                MailsendPort = genericFunction.ReadValueFromDb("msgService_OutgoingMessagePort");
-                MailReceivedIncomingPort = genericFunction.ReadValueFromDb("msgService_EmailPort");
+                //clsLog.WriteLogAzure("In ReadMailFromMailBox()");
+                //GenericFunction genericFunction = new GenericFunction();
 
-                string gmailMailINServer = genericFunction.ReadValueFromDb("GMAILMailINServer");
-                string gmailAccountEmail = genericFunction.ReadValueFromDb("GMAILAccountEmail");
-                string gmailPassword = genericFunction.ReadValueFromDb("GMAILAccountPassword");
-                string gmailInPortNo = genericFunction.ReadValueFromDb("GMAILEmailInPortNo");
+                _logger.LogInformation("In ReadMailFromMailBox()");
 
-                string Office365AuthType = genericFunction.ReadValueFromDb("Office365AuthType");
-                string Office365OAuth2ClientID = genericFunction.ReadValueFromDb("Office365OAuth2ClientID");
-                string Office365OAuth2ClientSecretKey = genericFunction.ReadValueFromDb("Office365OAuth2ClientSecretKey");
-                string Office365OAuth2TenantID = genericFunction.ReadValueFromDb("Office365OAuth2TenantID");
+                string MailInServer = ConfigCache.Get("msgService_EmailInServer");
+                string accountEmail = ConfigCache.Get("msgService_EmailId");
+                string password = ConfigCache.Get("msgService_EmailPassword");
+                bool f_ReadEmailIMAP = (ConfigCache.Get("msgService_EmailServerType")).ToUpper().Contains("IMAP");
+                string MailsendPort = ConfigCache.Get("msgService_OutgoingMessagePort");
+                string MailReceivedIncomingPort = ConfigCache.Get("msgService_EmailPort");
+
+                string gmailMailINServer = ConfigCache.Get("GMAILMailINServer");
+                string gmailAccountEmail = ConfigCache.Get("GMAILAccountEmail");
+                string gmailPassword = ConfigCache.Get("GMAILAccountPassword");
+                string gmailInPortNo = ConfigCache.Get("GMAILEmailInPortNo");
+
+                string Office365AuthType = ConfigCache.Get("Office365AuthType");
+                string Office365OAuth2ClientID = ConfigCache.Get("Office365OAuth2ClientID");
+                string Office365OAuth2ClientSecretKey = ConfigCache.Get("Office365OAuth2ClientSecretKey");
+                string Office365OAuth2TenantID = ConfigCache.Get("Office365OAuth2TenantID");
 
 
                 if (f_ReadEmailIMAP)
@@ -144,7 +201,7 @@ namespace QidWorkerRole
             }
         }
 
-        public void ReadFromIMAPGmail(string mailInServer, string accountEmail, string password, string mailsendPort)
+        public async Task ReadFromIMAPGmail(string mailInServer, string accountEmail, string password, string mailsendPort)
         {
             try
             {
@@ -243,7 +300,7 @@ namespace QidWorkerRole
                             }
                         }
                         string Subject = obj.Subject;
-                        if (String.IsNullOrEmpty(Subject))
+                        if (string.IsNullOrEmpty(Subject))
                             Subject = "Subject";
 
                         string fromEmail = obj.From.Address;
@@ -269,7 +326,7 @@ namespace QidWorkerRole
                         // string status = "Active";
                         try
                         {
-                            if (StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
+                            if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
                             {
                                 clsLog.WriteLogAzure("Email saved From imap.gmail.com");
                             }
@@ -317,7 +374,7 @@ namespace QidWorkerRole
                         {
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
-                            if (StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
+                            if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
                                 clsLog.WriteLogAzure("Email saved From imap.gmail.com");
                             ic.DeleteMessage(obj.Uid);
                         }
@@ -336,7 +393,7 @@ namespace QidWorkerRole
             }
         }
 
-        public void ReadFromIMAP(string mailInServer, string accountEmail, string password, string mailsendPort)
+        public async Task ReadFromIMAP(string mailInServer, string accountEmail, string password, string mailsendPort)
         {
             try
             {
@@ -351,7 +408,7 @@ namespace QidWorkerRole
 
                 foreach (Lazy<MailMessage> message in messages)
                 {
-                    string _receivedString = string.Empty, MessageType = string.Empty;
+                    string _receivedString = System.String.Empty, MessageType = string.Empty;
                     MailMessage obj = message.Value;
                     _receivedString = obj.Body.ToString().ToUpper().Trim();
 
@@ -431,7 +488,7 @@ namespace QidWorkerRole
                             }
                         }
                         string Subject = obj.Subject;
-                        if (String.IsNullOrEmpty(Subject))
+                        if (string.IsNullOrEmpty(Subject))
                             Subject = "Subject";
 
                         string fromEmail = obj.From.Address;
@@ -456,7 +513,7 @@ namespace QidWorkerRole
 
                         try
                         {
-                            if (StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
+                            if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
                             {
                                 clsLog.WriteLogAzure("Email saved From imap.gmail.com");
                             }
@@ -504,7 +561,7 @@ namespace QidWorkerRole
                         {
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
-                            if (StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
+                            if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
                                 clsLog.WriteLogAzure("Email saved From imap.gmail.com");
                             ic.DeleteMessage(obj.Uid);
                         }
@@ -568,7 +625,7 @@ namespace QidWorkerRole
             }
         }
 
-        public void RetrieveOffice365EmailsUsingOAuth2(string accountEmail, string client_id, string client_secret, string tenantId)
+        public async Task RetrieveOffice365EmailsUsingOAuth2(string accountEmail, string client_id, string client_secret, string tenantId)
         {
             try
             {
@@ -691,7 +748,7 @@ namespace QidWorkerRole
                             }
                         }
                         string Subject = obj.Subject;
-                        if (String.IsNullOrEmpty(Subject))
+                        if (string.IsNullOrEmpty(Subject))
                             Subject = "Subject";
                         else
                             Subject = Subject.Replace("(Trial Version)", "");
@@ -718,7 +775,7 @@ namespace QidWorkerRole
 
                         try
                         {
-                            if (StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "O365"))
+                            if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "O365"))
                             {
                                 //Mark email as read to prevent retrieving this email again.
                                 oClient.MarkAsRead(info, true);
@@ -761,7 +818,7 @@ namespace QidWorkerRole
                         {
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
-                            if (StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
+                            if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
                                 clsLog.WriteLogAzure("Email saved From imap.gmail.com");
                             oClient.Delete(info);
                         }
@@ -778,10 +835,10 @@ namespace QidWorkerRole
         }
 
 
-        public DataSet DBCalls()
+        public async Task<DataSet> DBCalls()
         {
             clsLog.WriteLogAzure("In DBCalls()");
-            DataSet dsUploadMasters = new DataSet();
+            DataSet dsUploadMasters = new();
             try
             {
                 ///Process messages from tblInbox
@@ -794,32 +851,42 @@ namespace QidWorkerRole
                 ///Generate auto messages using configuration
                 AutoMessages();
 
-                ///Auto Volaris Payload functionality
-                SQLServer sqlServerCargoPayLoad = new SQLServer();
-                sqlServerCargoPayLoad.SelectRecords("Messaging.uspSentCargoPayLoad");
+                //SQLServer sqlServerCargoPayLoad = new SQLServer();
+                //sqlServerCargoPayLoad.SelectRecords("Messaging.uspSentCargoPayLoad");
 
-                ///Auto Send FSU Message
-                SQLServer sqlServerMakeFSUMessage = new SQLServer();
-                sqlServerMakeFSUMessage.SelectRecords("GetRecordforMakeFSUMessage");
+                // Auto Volaris Payload functionality
+                await _readWriteDao.SelectRecords("Messaging.uspSentCargoPayLoad");
 
-                ///Process ASM messages from Queue
-                SQLServer ProcessASMMessages = new SQLServer();
-                ProcessASMMessages.SelectRecords("Messaging.uspProcessASMMessages");
+                //SQLServer sqlServerMakeFSUMessage = new SQLServer();
+                //sqlServerMakeFSUMessage.SelectRecords("GetRecordforMakeFSUMessage");
+
+                //Auto Send FSU Message
+                await _readWriteDao.SelectRecords("GetRecordforMakeFSUMessage");
+
+
+                //SQLServer ProcessASMMessages = new SQLServer();
+                //ProcessASMMessages.SelectRecords("Messaging.uspProcessASMMessages");
+
+                //Process ASM messages from Queue
+                await _readWriteDao.SelectRecords("Messaging.uspProcessASMMessages");
+
 
                 #region : Auto NIL FFM :
                 GenericFunction genericFunction = new GenericFunction();
-                bool sendAutoNILFFM = bool.Parse(genericFunction.ReadValueFromDb("AutoNILFFM").Trim() == string.Empty ? "false" : genericFunction.ReadValueFromDb("AutoNILFFM").Trim());
-                bool sendAutoDepartManifestedFlight = bool.Parse(genericFunction.ReadValueFromDb("AutoDepartManifestedFlight").Trim() == string.Empty ? "false" : genericFunction.ReadValueFromDb("AutoDepartManifestedFlight").Trim());
-                bool isAutoDepartTruck = bool.Parse(genericFunction.ReadValueFromDb("IsAutoDepartTruck").Trim() == string.Empty ? "false" : genericFunction.ReadValueFromDb("IsAutoDepartTruck").Trim());
+                bool sendAutoNILFFM = bool.Parse(ConfigCache.Get("AutoNILFFM").Trim() == string.Empty ? "false" : ConfigCache.Get("AutoNILFFM").Trim());
+                bool sendAutoDepartManifestedFlight = bool.Parse(ConfigCache.Get("AutoDepartManifestedFlight").Trim() == string.Empty ? "false" : ConfigCache.Get("AutoDepartManifestedFlight").Trim());
+                bool isAutoDepartTruck = bool.Parse(ConfigCache.Get("IsAutoDepartTruck").Trim() == string.Empty ? "false" : ConfigCache.Get("IsAutoDepartTruck").Trim());
                 if (sendAutoNILFFM || sendAutoDepartManifestedFlight || isAutoDepartTruck)
                 {
-                    SQLServer sqlServerNILFlights = new SQLServer();
-                    DataSet dsAutoDepartFlights = sqlServerNILFlights.SelectRecords("uspAutoDepartFlights");
+                    //SQLServer sqlServerNILFlights = new SQLServer();
+                    //DataSet dsAutoDepartFlights = sqlServerNILFlights.SelectRecords("uspAutoDepartFlights");
+                    DataSet? dsAutoDepartFlights = await _readWriteDao.SelectRecords("uspAutoDepartFlights");
+
                     if (dsAutoDepartFlights != null && dsAutoDepartFlights.Tables.Count > 0)
                     {
                         for (int j = 0; j < dsAutoDepartFlights.Tables.Count; j++)
                         {
-                            if (dsAutoDepartFlights.Tables[j].Rows.Count > 0 )
+                            if (dsAutoDepartFlights.Tables[j].Rows.Count > 0)
                             {
                                 if (dsAutoDepartFlights.Tables[j].Rows[0]["Type"].ToString().ToUpper() == "AUTODEPARTFLIGHTS")
                                 {
@@ -883,67 +950,73 @@ namespace QidWorkerRole
                 #endregion
 
                 ///Get all records to upload masters
-                if (genericFunction.ReadValueFromDb("MSServiceType").ToUpper() != "WINDOWSSERVICE")
+                if (ConfigCache.Get("MSServiceType").ToUpper() != "WINDOWSSERVICE")
                 {
-                    SQLServer sqlServerUplodedFile = new SQLServer();
-                    dsUploadMasters = sqlServerUplodedFile.SelectRecords("uspGetUplodedFile");
+                    //SQLServer sqlServerUplodedFile = new SQLServer();
+                    //dsUploadMasters = sqlServerUplodedFile.SelectRecords("uspGetUplodedFile");
+
+                    dsUploadMasters = await _readWriteDao.SelectRecords("uspGetUplodedFile");
+
                 }
 
                 genericFunction.AIMSLoadPlan();
 
                 ///Oman Data Dump
-                string dataDumpFolderPath = genericFunction.ReadValueFromDb("DataDumpFolderPath");
+                string dataDumpFolderPath = ConfigCache.Get("DataDumpFolderPath");
                 if (dataDumpFolderPath != string.Empty)
                 {
-                    FTP ftp = new FTP();
-                    SQLServer OmanBIDataDump = new SQLServer();
-                    DataSet dsOmanBIDataDump = OmanBIDataDump.SelectRecords("BI.ExportOmanBIDataDump");
+                    //FTP ftp = new FTP();
+                    //SQLServer OmanBIDataDump = new SQLServer();
+                    //DataSet dsOmanBIDataDump = OmanBIDataDump.SelectRecords("BI.ExportOmanBIDataDump");
+
+                    DataSet? dsOmanBIDataDump = await _readWriteDao.SelectRecords("BI.ExportOmanBIDataDump");
+
 
                     if (dsOmanBIDataDump != null && dsOmanBIDataDump.Tables.Count > 0 && dsOmanBIDataDump.Tables[0].Rows.Count > 0)
                     {
-                        ftp.ZIPandSFPTUpload(dsOmanBIDataDump);
-                        ftp.UploadDataDumpFileToSFTP(dataDumpFolderPath, dsOmanBIDataDump.Tables[0].Rows[0]["ZIPFileName"].ToString());
+                        _ftp.ZIPandSFPTUpload(dsOmanBIDataDump);
+                        _ftp.UploadDataDumpFileToSFTP(dataDumpFolderPath, dsOmanBIDataDump.Tables[0].Rows[0]["ZIPFileName"].ToString());
                     }
                 }
 
                 //SMS process for ARRIVAL SMS Notifications
-                string SendArrivalSMSNotifications = genericFunction.ReadValueFromDb("SendArrivalSMSNotifications");
+                string SendArrivalSMSNotifications = ConfigCache.Get("SendArrivalSMSNotifications");
                 if (SendArrivalSMSNotifications != "" && SendArrivalSMSNotifications.ToUpper() == "TRUE")
                     ProcessArrivalSMSNotifications();
 
-                string SendLyingListAutoGenerated = genericFunction.ReadValueFromDb("LyingList");
+                string SendLyingListAutoGenerated = ConfigCache.Get("LyingList");
                 if (SendLyingListAutoGenerated != "" && SendLyingListAutoGenerated.ToUpper() == "TRUE")
                 {
                     SendLyingListReport();
                 }
 
                 //Added For VJ-62
-                string SendFlightControlGenerated = genericFunction.ReadValueFromDb("AutoSendFlightControlExportData");
+                string SendFlightControlGenerated = ConfigCache.Get("AutoSendFlightControlExportData");
                 if (SendFlightControlGenerated != "" && SendFlightControlGenerated.ToUpper() == "TRUE")
                 {
                     SendFlightControlListReport();
                 }
 
-                string SendAutoExportToManifest = genericFunction.ReadValueFromDb("AutoSendCargoLoadBSTD");
+                string SendAutoExportToManifest = ConfigCache.Get("AutoSendCargoLoadBSTD");
                 if (SendAutoExportToManifest != "" && SendAutoExportToManifest.ToUpper() == "TRUE")
                 {
                     SendBSTDDataInXML();
                 }
 
-                string AutoSendLoadPlanData = genericFunction.ReadValueFromDb("AutoSendLoadPlanData");
+                string AutoSendLoadPlanData = ConfigCache.Get("AutoSendLoadPlanData");
                 if (AutoSendLoadPlanData != "" && AutoSendLoadPlanData.ToUpper() == "TRUE")
                 {
                     SendCargoLoadPlan();
                 }
 
-                string AutoSendUnDepartedAleart = genericFunction.ReadValueFromDb("AutoSendUnDepartedAleart");
+                string AutoSendUnDepartedAleart = ConfigCache.Get("AutoSendUnDepartedAleart");
                 if (AutoSendUnDepartedAleart != "" && AutoSendUnDepartedAleart.ToUpper() == "TRUE")
                 {
                     AutoSendUnDepartedAleartFunc();
                 }
 
                 // Added by Aishwarya for VJ-32
-                string AutoSendFlightLoadPlanData = genericFunction.ReadValueFromDb("AutoSendFlightLoadPlanData");
+                string AutoSendFlightLoadPlanData = ConfigCache.Get("AutoSendFlightLoadPlanData");
                 if (AutoSendFlightLoadPlanData != "" && AutoSendFlightLoadPlanData.ToUpper() == "TRUE")
                 {
                     SendFlightLoadPlan();
@@ -951,7 +1024,7 @@ namespace QidWorkerRole
 
                 // Added by Ujjaini for VJ-221
 
-                string AutoSendManageCapacityFLP = genericFunction.ReadValueFromDb("AutoSendManageCapacityFLP");
+                string AutoSendManageCapacityFLP = ConfigCache.Get("AutoSendManageCapacityFLP");
                 if (AutoSendManageCapacityFLP != "" && AutoSendManageCapacityFLP.ToUpper() == "TRUE")
                 {
                     SendManageCapacityFlightLoadPlan();
@@ -959,20 +1032,20 @@ namespace QidWorkerRole
 
                 RemoveLyingListProcess();
 
-                string enableForexAPIupload = genericFunction.ReadValueFromDb("ForexRateAPIURL");
+                string enableForexAPIupload = ConfigCache.Get("ForexRateAPIURL");
                 if (enableForexAPIupload != "")
                     ExchangeRates();
 
-                string updateULDDetailsFromJson = genericFunction.ReadValueFromDb("UpdateULDDetailsFromJson");
+                string updateULDDetailsFromJson = ConfigCache.Get("UpdateULDDetailsFromJson");
                 if (updateULDDetailsFromJson.ToUpper() == "TRUE")
                     UpdateULDStock();
 
-                string updateRapidFile = genericFunction.ReadValueFromDb("updateRapidFile");
+                string updateRapidFile = ConfigCache.Get("updateRapidFile");
                 RapidInterfaceMethods objrapid = new RapidInterfaceMethods();
                 if (updateRapidFile.ToUpper() == "TRUE")
                     objrapid.UpdateRapidDetails();
 
-                string updateRapidFileForCebu = genericFunction.ReadValueFromDb("updateRapidFileForCebu");
+                string updateRapidFileForCebu = ConfigCache.Get("updateRapidFileForCebu");
                 RapidInterfaceMethods objRapidforCebu = new RapidInterfaceMethods();
                 if (updateRapidFileForCebu.ToUpper() == "TRUE")
                     objrapid.UpdateRapidDetailsForCebu();
@@ -980,7 +1053,7 @@ namespace QidWorkerRole
 
 
                 // Added by Ravendra for AK-3426
-                string AutoReleaseAllocation = genericFunction.ReadValueFromDb("AutoReleaseAllocation");
+                string AutoReleaseAllocation = ConfigCache.Get("AutoReleaseAllocation");
                 if (AutoReleaseAllocation != "" && AutoReleaseAllocation.ToUpper() == "TRUE")
                 {
                     AutoReleaseCapacityAllocation();
@@ -989,7 +1062,7 @@ namespace QidWorkerRole
                 NoShowCalculationAsPerAgent();
 
                 // Added by Anil for HC-49
-                string AutoSendRateLineExpiryNotification = genericFunction.ReadValueFromDb("AutoSendRateLineExpiryNotification");
+                string AutoSendRateLineExpiryNotification = ConfigCache.Get("AutoSendRateLineExpiryNotification");
                 if (AutoSendRateLineExpiryNotification != "" && AutoSendRateLineExpiryNotification.ToUpper() == "TRUE")
                 {
                     RateExpiryAlert rateExpiryAlert = new RateExpiryAlert();
@@ -1003,7 +1076,7 @@ namespace QidWorkerRole
 
                 //Added by Ravikumar for HC - 78
 
-                string AutoSendExchangeRateLineExpiryNotification = genericFunction.ReadValueFromDb("AutoSendExchangeRateExpiryNotification");
+                string AutoSendExchangeRateLineExpiryNotification = ConfigCache.Get("AutoSendExchangeRateExpiryNotification");
                 if (AutoSendExchangeRateLineExpiryNotification != "" && AutoSendExchangeRateLineExpiryNotification.ToUpper() == "TRUE")
                 {
                     ExchangeRateExpiryAlert exchangerateExpiryAlert = new ExchangeRateExpiryAlert();
@@ -1014,7 +1087,8 @@ namespace QidWorkerRole
                 {
                     if (genericFunction.GetConfigurationValues("PushDatatoFCT") == "true")
                     {
-                        objAWBdetailsAPI.GetPendingAWBList();
+                        //objAWBdetailsAPI.GetPendingAWBList();
+                        _aWBDetailsAPI.GetPendingAWBList();
                     }
                 }
                 catch (Exception ex)
@@ -1050,7 +1124,7 @@ namespace QidWorkerRole
 
                 try
                 {
-                    string NotificationAlertBondExpiry = genericFunction.ReadValueFromDb("BondNotification");
+                    string NotificationAlertBondExpiry = ConfigCache.Get("BondNotification");
                     if (NotificationAlertBondExpiry != "" && NotificationAlertBondExpiry.ToUpper() == "TRUE")
                     {
                         SendNotificationAlertBondExpiry();
@@ -1060,11 +1134,14 @@ namespace QidWorkerRole
 
                 try
                 {
-                    string RejectedMessages = genericFunction.ReadValueFromDb("RejectedMessages");
+                    string RejectedMessages = ConfigCache.Get("RejectedMessages");
                     if (RejectedMessages != "" && RejectedMessages.ToUpper() == "TRUE")
                     {
-                        SQLServer sqlServerFmsg = new SQLServer();
-                        sqlServerFmsg.SelectRecords("Messaging.uspFailedMessageDetails");
+                        //SQLServer sqlServerFmsg = new SQLServer();
+                        //sqlServerFmsg.SelectRecords("Messaging.uspFailedMessageDetails");
+
+                        await _readWriteDao.SelectRecords("Messaging.uspFailedMessageDetails");
+
                     }
 
                 }
@@ -1075,7 +1152,7 @@ namespace QidWorkerRole
                 //
                 try
                 {
-                    string updateRapidExceptionFileForCebu = genericFunction.ReadValueFromDb("updateRapidExceptionFileForCebu");
+                    string updateRapidExceptionFileForCebu = ConfigCache.Get("updateRapidExceptionFileForCebu");
                     RapidException objRapidExceptionCebu = new RapidException();
                     if (updateRapidExceptionFileForCebu.ToUpper() == "TRUE")
                         objRapidExceptionCebu.RapidExceptionCEBU();
@@ -1093,12 +1170,12 @@ namespace QidWorkerRole
             return dsUploadMasters;
         }
 
-        public void SendExcelUploadBookingEmailNotification()
+        public async Task SendExcelUploadBookingEmailNotification()
         {
             try
             {
                 string htmlContent = "<!DOCTYPE html>\r\n<html>\r\n<head>\r\n    <title></title>\r\n    <style type=\"text/css\">\r\n        .FontBold {\r\n            font-weight: bold;\r\n            font-size: medium;\r\n            width: auto;\r\n        }\r\n\r\n        .tableBorder {\r\n            border: 1px solid black;\r\n            border-collapse: collapse;\r\n            border-color: gray;\r\n        }\r\n    </style>\r\n</head>\r\n<body>\r\n    <div style=\"font-family:Verdana;\">\r\n        <div>\r\n            <table style=\"width: 100%\" cellspacing=\"5\" cellpadding=\"5\">\r\n                @NotificationDetails@\r\n            </table>           \r\n        </div>\r\n    </div>\r\n</body>\r\n</html>";
-                
+
                 string emailAddress = string.Empty
                     , totalRecords = string.Empty
                     , successRecords = string.Empty
@@ -1108,10 +1185,13 @@ namespace QidWorkerRole
 
                 StringBuilder sbNotification = new StringBuilder();
                 GenericFunction genericFunction = new GenericFunction();
-                DataSet dsUploadDetails = new DataSet();
-                SQLServer sqlServer = new SQLServer();
+                DataSet? dsUploadDetails = new DataSet();
 
-                dsUploadDetails = sqlServer.SelectRecords("Messaging.uspSendExcelBookingUploadNotification");
+                //SQLServer sqlServer = new SQLServer();
+                //dsUploadDetails = sqlServer.SelectRecords("Messaging.uspSendExcelBookingUploadNotification");
+
+                dsUploadDetails = await _readWriteDao.SelectRecords("Messaging.uspSendExcelBookingUploadNotification");
+
 
                 if (dsUploadDetails != null && dsUploadDetails.Tables.Count > 0 && dsUploadDetails.Tables[0].Rows.Count > 0)
                 {
@@ -1127,7 +1207,7 @@ namespace QidWorkerRole
                             sbNotification.Append("<td class='tableBorder' style='font-size:13px;'><b>ErrorWarning</b></td>");
                             sbNotification.Append("</tr>");
                         }
-                        
+
                         sbNotification.Append("<tr style='page-break-inside: avoid'>");
                         sbNotification.Append("<td class='tableBorder' style='font-size:13px;'>" + Convert.ToString(dsUploadDetails.Tables[0].Rows[i]["RowNum"]) + "</td>");
                         sbNotification.Append("<td class='tableBorder' style='font-size:13px;'>" + Convert.ToString(dsUploadDetails.Tables[0].Rows[i]["AWBNumber"]) + "</td>");
@@ -1135,7 +1215,7 @@ namespace QidWorkerRole
                         sbNotification.Append("<td class='tableBorder' style='font-size:13px;'>" + Convert.ToString(dsUploadDetails.Tables[0].Rows[i]["ConvertedToFFR"]) + "</td>");
                         sbNotification.Append("<td class='tableBorder' style='font-size:13px;'>" + Convert.ToString(dsUploadDetails.Tables[0].Rows[i]["ErrorWarning"]) + "</td>");
                         sbNotification.Append("</tr>");
-                        
+
                     }
 
                     emailAddress = genericFunction.GetConfigurationValues("ExcelUploadBookingEmail");
@@ -1159,21 +1239,21 @@ namespace QidWorkerRole
                         if (!string.IsNullOrWhiteSpace(Convert.ToString(dsUploadDetails.Tables[1].Rows[0]["UserEmail"])) && Convert.ToString(dsUploadDetails.Tables[1].Rows[0]["UserEmail"]).Contains("@"))
                         {
                             emailAddress = Convert.ToString(dsUploadDetails.Tables[1].Rows[0]["UserEmail"]);
-                        }                       
+                        }
                     }
 
                     DateTime TimeStamp = DateTime.UtcNow;
                     string sMailSubject = "Cargo Wise Upload file Notification";
-                    String sMailBody = "\r\nHello, \r\nThe Cargo Wise Excel file ("+ DocfileName + ") has been successfully processed in SmartKargo. Below is the summary of the results:"
-                        + "\r\n\r\nFile Name: "+ DocfileName
+                    System.String sMailBody = "\r\nHello, \r\nThe Cargo Wise Excel file (" + DocfileName + ") has been successfully processed in SmartKargo. Below is the summary of the results:"
+                        + "\r\n\r\nFile Name: " + DocfileName
                         + "\r\nTotal Entries in File: " + totalRecords
                         + "\r\nSuccessful Entries: " + successRecords
                         + "\r\nFailed Entries: " + failedRecords
                         + "\r\nConverted to Bookings via FFR: " + convertedToBookingRecords
                         + "\r\nFailed booking/FFR error : " + ffrFailedRecords
                         + "\r\n\r\nThanks.\r\n\r\n";
-                    
-                    DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "ExcelUploadBookingNotif", "", true, genericFunction.ReadValueFromDb("msgService_EmailId"), emailAddress, msExcel, ".xls", FileExcelURL, "0", "Outbox", FileExcelURL, msExcel, DocfileName.Replace(".xls", "").Replace(".XLS", ""));
+
+                    DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "ExcelUploadBookingNotif", "", true, ConfigCache.Get("msgService_EmailId"), emailAddress, msExcel, ".xls", FileExcelURL, "0", "Outbox", FileExcelURL, msExcel, DocfileName.Replace(".xls", "").Replace(".XLS", ""));
                 }
 
             }
@@ -1210,12 +1290,12 @@ namespace QidWorkerRole
             }
         }
 
-        private void SendManageCapacityFlightLoadPlan()
+        private async Task SendManageCapacityFlightLoadPlan()
         {
             clsLog.WriteLogAzure("AutoManageCapacityFLP: In SendManageCapacityFlightLoadPlan");
-            SQLServer objSQL = new SQLServer();
-            DataSet dsFLPData = null;
-            DataSet dsEmail = null;
+            //SQLServer objSQL = new SQLServer();
+            DataSet? dsFLPData = null;
+            DataSet? dsEmail = null;
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
             try
             {
@@ -1233,9 +1313,17 @@ namespace QidWorkerRole
 
                 clsLog.WriteLogAzure("AutoManageCapacityFLP: Before calling uspSendManageCapacityLoadPlan");
 
-                dsFLPData = objSQL.SelectRecords("uspSendManageCapacityLoadPlan");
+                //dsFLPData = objSQL.SelectRecords("uspSendManageCapacityLoadPlan");
+                //dsEmail = objSQL.SelectRecords("usp_getTblConfigurationStatus", "MessageType", "AutoManageCapacityFLP", SqlDbType.VarChar);
 
-                dsEmail = objSQL.SelectRecords("usp_getTblConfigurationStatus", "MessageType", "AutoManageCapacityFLP", SqlDbType.VarChar);
+                dsFLPData = await _readWriteDao.SelectRecords("uspSendManageCapacityLoadPlan");
+
+                SqlParameter[] parameters =
+                 [
+                     new("@MessageType", SqlDbType.VarChar) { Value = "AutoManageCapacityFLP" }
+                 ];
+
+                dsEmail = await _readWriteDao.SelectRecords("usp_getTblConfigurationStatus", parameters);
 
                 clsLog.WriteLogAzure("AutoManageCapacityFLP: After called uspSendManageCapacityLoadPlan");
 
@@ -1790,7 +1878,7 @@ namespace QidWorkerRole
 
                                         DateTime TimeStamp = DateTime.Now;
                                         string sMailSubject = "VJC " + Domestic + " Load Plan " + Convert.ToDateTime(fltDate).ToString("dd/MM/yyyy") + " Ex:" + org;
-                                        String sMailBody = "\r\nDear All, \r\n\t<br/><br/>Please see " + Domestic + " Load Plan for " + Convert.ToDateTime(fltDate).ToString("dd/MM/yyyy") + " Ex:" + org + " is below:";
+                                        System.String sMailBody = "\r\nDear All, \r\n\t<br/><br/>Please see " + Domestic + " Load Plan for " + Convert.ToDateTime(fltDate).ToString("dd/MM/yyyy") + " Ex:" + org + " is below:";
 
 
                                         sMailBody = sMailBody + "\n" + htmlContent;
@@ -2321,7 +2409,7 @@ namespace QidWorkerRole
 
                                 DateTime TimeStamp = DateTime.Now;
                                 string sMailSubject = "FLIGHT LOAD PLAN FOR " + FltNo + "/" + Convert.ToDateTime(FlightDate).ToString("ddMMMyyyy");
-                                String sMailBody = "\r\nDear All, \r\n\t<br/><br/>Please see Flight Load Plan for " + " Flight No: " + FltNo + ", Flight Date : " + Convert.ToDateTime(FlightDate).ToString("dd/MM/yyyy") + "\r\n\r\n";
+                                System.String sMailBody = "\r\nDear All, \r\n\t<br/><br/>Please see Flight Load Plan for " + " Flight No: " + FltNo + ", Flight Date : " + Convert.ToDateTime(FlightDate).ToString("dd/MM/yyyy") + "\r\n\r\n";
                                 sMailBody = sMailBody + htmlContent;
                                 //clsLog.WriteLogAzure("AutoManageCapacityFLP: Parameters to GetSitaAddressandMessageVersion: " + FltNo.Substring(0, 2) + "-" + "AutoManageCapacityFLP" + "-" + "AIR" + "-" + flightOrigin + "-" + flightDest + "-" + "''" + "-" + "''");
 
@@ -2337,7 +2425,7 @@ namespace QidWorkerRole
                                 //    + ":: FileExcelURL: " + FileExcelURL.Length.ToString()
                                 //    + ":: msExcel: " + msExcel.Length.ToString());
                                 addMsgToOutBox(sMailSubject, sMailBody, "", EmailID, false, true, "AutoManageCapacityFLP");
-                                //DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "AutoManageCapacityFLP", "", true, genericFunction.ReadValueFromDb("msgService_EmailId"), EmailID, ms, ".pdf", sFileUrl, "0", "Outbox", FileExcelURL, msExcel, DocfileName);
+                                //DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "AutoManageCapacityFLP", "", true, ConfigCache.Get("msgService_EmailId"), EmailID, ms, ".pdf", sFileUrl, "0", "Outbox", FileExcelURL, msExcel, DocfileName);
 
                                 //clsLog.WriteLogAzure("DumpInterfaceInformation: Message sent for: " + DocfileName);
 
@@ -2361,22 +2449,19 @@ namespace QidWorkerRole
                 clsLog.WriteLogAzure("DumpInterfaceInformation: Exception");
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                dsFLPData = null;
-                GC.Collect();
-            }
-
-
-
+            //finally
+            //{
+            //    objSQL = null;
+            //    dsFLPData = null;
+            //    GC.Collect();
+            //}
         }
 
         // Added by Aishwarya for VJ-32
-        private void SendFlightLoadPlan()
+        private async Task SendFlightLoadPlan()
         {
-            SQLServer objSQL = new SQLServer();
-            DataSet dsFLPData = null;
+            //SQLServer objSQL = new SQLServer();
+            DataSet? dsFLPData = null;
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
             try
             {
@@ -2390,7 +2475,9 @@ namespace QidWorkerRole
                 string fltDate, FlightDate;
 
 
-                dsFLPData = objSQL.SelectRecords("uspSendFlightLoadPlan");
+                //dsFLPData = objSQL.SelectRecords("uspSendFlightLoadPlan");
+                dsFLPData = await _readWriteDao.SelectRecords("uspSendFlightLoadPlan");
+
                 if (dsFLPData != null)
                 {
                     if (dsFLPData.Tables.Count > 0)
@@ -2750,11 +2837,11 @@ namespace QidWorkerRole
 
                                     DateTime TimeStamp = DateTime.Now;
                                     string sMailSubject = "Flight Load Plan for " + FltNo + "/" + FlightDate;
-                                    String sMailBody = "\r\nHello, \r\n\tPlease find attached Flight Load Plan: " + " Flight No: " + FltNo + ", Flight Date : " + FlightDate + "\r\n\r\n Thanks\r\n\r\n";
+                                    System.String sMailBody = "\r\nHello, \r\n\tPlease find attached Flight Load Plan: " + " Flight No: " + FltNo + ", Flight Date : " + FlightDate + "\r\n\r\n Thanks\r\n\r\n";
                                     DataSet dsconfiguration = genericFunction.GetSitaAddressandMessageVersion("VJ", "AutoFLP", "AIR", "", "", "", string.Empty);
 
                                     string EmailID = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                                    DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "AutoFLP", "", true, genericFunction.ReadValueFromDb("msgService_EmailId"), EmailID, ms, ".pdf", sFileUrl, "0", "Outbox", FileExcelURL, msExcel, DocfileName);
+                                    await DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "AutoFLP", "", true, ConfigCache.Get("msgService_EmailId"), EmailID, ms, ".pdf", sFileUrl, "0", "Outbox", FileExcelURL, msExcel, DocfileName);
 
                                     //null Objects
                                     dtTable1 = null;
@@ -2776,17 +2863,17 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                dsFLPData = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    dsFLPData = null;
+            //    GC.Collect();
+            //}
         }
 
 
 
-        public void UpdateULDStock()
+        public async Task UpdateULDStock()
         {
             clsLog.WriteLogAzure("UpdateULDStock()");
             try
@@ -2856,9 +2943,16 @@ namespace QidWorkerRole
 
                                 if (!string.IsNullOrEmpty(uldIdentifier))
                                 {
-                                    SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@tblULDDetailJson", dtULDDetails), new SqlParameter("@UpdatedBy", UpdatedBy) };
-                                    SQLServer sqlServer = new SQLServer();
-                                    sqlServer.SelectRecords("Messaging.uspUpdateULDDetailsFromJson", sqlParameters);
+                                    //SQLServer sqlServer = new SQLServer();
+                                    //sqlServer.SelectRecords("Messaging.uspUpdateULDDetailsFromJson", sqlParameters);
+
+                                    SqlParameter[] sqlParameters = new SqlParameter[]
+                                    {
+                                        new SqlParameter("@tblULDDetailJson", dtULDDetails),
+                                        new SqlParameter("@UpdatedBy", UpdatedBy)
+                                    };
+                                    await _readWriteDao.SelectRecords("Messaging.uspUpdateULDDetailsFromJson", sqlParameters);
+
                                     status = "Processed";
                                     dtULDDetails = null;
                                 }
@@ -2952,7 +3046,7 @@ namespace QidWorkerRole
                 return null;
             }
         }
-        private async void AutoMessages()
+        private async Task AutoMessages()
         {
             try
             {
@@ -2980,7 +3074,7 @@ namespace QidWorkerRole
         /// <summary>
         /// Call methods to read messages from FTP and SFTP
         /// </summary>
-        public void FTPListener()
+        public async Task FTPListener()
         {
             try
             {
@@ -3002,24 +3096,24 @@ namespace QidWorkerRole
                 }
 
                 if (!stopReadFromALLFTP)
-                    ReadFromALLFTP();
+                    await ReadFromALLFTP();
 
                 if (!stopReadFromFTP)
                     ReadFromFTP();
 
                 if (!stopReadFromSFTP)
-                    ReadFromSFTP();
+                    await ReadFromSFTP();
 
 
                 //SSIMFTPUpload();
                 if (genericFunction.GetConfigurationValues("SISFileAutomation").Equals("True", StringComparison.OrdinalIgnoreCase))
                 {
-                    FTP objFTP = new FTP();
-                    objFTP.SISFilesReadProcess();
-                    UploadSISReceivableFileonSFTP();
+                    //FTP _ftp = new FTP();
+                    _ftp.SISFilesReadProcess();
+                    await UploadSISReceivableFileonSFTP();
                 }
 
-                string updateRapidFile = genericFunction.ReadValueFromDb("updateRapidFile");
+                string updateRapidFile = ConfigCache.Get("updateRapidFile");
                 if (updateRapidFile.ToUpper() == "TRUE")
                 {
                     RapidInterfaceMethods RapidObj = new RapidInterfaceMethods();
@@ -3036,9 +3130,9 @@ namespace QidWorkerRole
         /// <summary>
         /// DB Log Snapshot For Performance Monitor
         /// </summary>
-        public void LOGDBSnapshot()
+        public async Task LOGDBSnapshot()
         {
-            SQLServer db = new SQLServer();
+            //SQLServer db = new SQLServer();
             GenericFunction genericFunction = new GenericFunction();
             try
             {
@@ -3046,10 +3140,13 @@ namespace QidWorkerRole
                 #region LOGDBSnapshot
                 try
                 {
-                    f_CreateDBLogSnapshot = Convert.ToBoolean(genericFunction.ReadValueFromDb("CreateDBLogSnapshot"));
+                    bool f_CreateDBLogSnapshot = Convert.ToBoolean(ConfigCache.Get("CreateDBLogSnapshot"));
                     if (f_CreateDBLogSnapshot)
                     {
-                        if (db.ExecuteProcedure("sp_WHO3Logging"))
+                        //db.ExecuteProcedure("sp_WHO3Logging")
+
+                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("sp_WHO3Logging");
+                        if (dbRes)
                         {
                             clsLog.WriteLogAzure("DB Log Snapshot created for Performance Monitor @" + DateTime.Now.ToString());
                         }
@@ -3060,11 +3157,11 @@ namespace QidWorkerRole
                 {
                     clsLog.WriteLogAzure(ex);
                 }
-                finally
-                {
-                    db = null;
-                    GC.Collect();
-                }
+                //finally
+                //{
+                //    db = null;
+                //    GC.Collect();
+                //}
                 #endregion
 
             }
@@ -3074,12 +3171,11 @@ namespace QidWorkerRole
             }
         }
 
-        public void ReceiveMail_POP(string sServer, string sUserName, string sPassword, bool bSSLConnection)
+        public async Task ReceiveMail_POP(string sServer, string sUserName, string sPassword, bool bSSLConnection)
         {
             var popClient = new Pop3.Pop3Client();
             try
             {
-
                 string EmailSubject = string.Empty;
                 try
                 {
@@ -3372,7 +3468,7 @@ namespace QidWorkerRole
 
 
 
-                        if (StoreIROPSEmail(EmailSubject, ReceivedString.ToUpper(), EmailFrom, EmailTo, DateTime.Now, DateTime.Now, FormatName == "" ? EmailSubject : FormatName, "ACTIVE", "EMAIL"))
+                        if (await StoreIROPSEmail(EmailSubject, ReceivedString.ToUpper(), EmailFrom, EmailTo, DateTime.Now, DateTime.Now, FormatName == "" ? EmailSubject : FormatName, "ACTIVE", "EMAIL"))
                         {
                             clsLog.WriteLogAzure("Email Saved");
                         }
@@ -3419,10 +3515,10 @@ namespace QidWorkerRole
                     }
 
                     msg = msg.Substring(indexOfbodyStart, (indexOfbodyEnd - indexOfbodyStart) - 1);
-                    msg = Regex.Replace(msg, @"<(.|\n)*?>", String.Empty);
+                    msg = Regex.Replace(msg, @"<(.|\n)*?>", string.Empty);
                     msg = Regex.Replace(msg, @"\r\n\r\n", Environment.NewLine);
-                    msg = Regex.Replace(msg, @"&nbsp;", String.Empty);
-                    msg = Regex.Replace(msg, @"&amp;", String.Empty);
+                    msg = Regex.Replace(msg, @"&nbsp;", string.Empty);
+                    msg = Regex.Replace(msg, @"&amp;", string.Empty);
                 }
             }
             catch (Exception ex)
@@ -3554,7 +3650,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void StoreEmailToInbox(string[] arrUID, TcpIMAP imap)
+        private async Task StoreEmailToInbox(string[] arrUID, TcpIMAP imap)
         {
             try
             {
@@ -3649,7 +3745,7 @@ namespace QidWorkerRole
 
 
                         string Subject = imap.GetSubjectByUid(arrUID[i]).ToString();
-                        if (String.IsNullOrEmpty(Subject))
+                        if (string.IsNullOrEmpty(Subject))
                             Subject = "Subject";
 
                         string fromEmail = imap.GetFromByUid(arrUID[i]).ToString();
@@ -3675,7 +3771,7 @@ namespace QidWorkerRole
                         // string status = "Active";
                         try
                         {
-                            if (StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "EMAIL"))
+                            if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "EMAIL"))
                             {
                                 clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
                             }
@@ -3724,7 +3820,7 @@ namespace QidWorkerRole
                         {
                             fromEmail = imap.GetFromByUid(arrUID[i]).ToString();
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
-                            if (StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
+                            if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
                                 clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
                             imap.Delete(arrUID[i]);
                         }
@@ -3738,21 +3834,36 @@ namespace QidWorkerRole
             }
         }
 
-        public bool StoreIROPSEmail(string subject, string body, string fromId, string toId, DateTime recievedOn, DateTime sendOn, string type, string status, string CommunicationType)
+        public async Task<bool> StoreIROPSEmail(string subject, string body, string fromId, string toId, DateTime recievedOn, DateTime sendOn, string type, string status, string CommunicationType)
         {
             bool flag = false;
             try
             {
                 clsLog.WriteLogAzure("StoreMail to Db: " + (subject.Trim().Length > 55 ? subject.Substring(0, 50) : subject.Trim()));
 
-                SQLServer db = new SQLServer(); ;
-                string[] param = { "subject", "body", "fromId", "toId", "recievedOn", "sendOn", "type", "status", "CommunicationType" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                object[] values = { subject, body, fromId, toId, recievedOn, sendOn, type, status, CommunicationType };
+                //SQLServer db = new SQLServer(); ;
+                //string[] param = { "subject", "body", "fromId", "toId", "recievedOn", "sendOn", "type", "status", "CommunicationType" };
+                //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                //object[] values = { subject, body, fromId, toId, recievedOn, sendOn, type, status, CommunicationType };
 
-                flag = db.InsertData("spSavetoInbox", param, sqldbtypes, values);
-                db = null;
-                GC.Collect();
+                //flag = db.InsertData("spSavetoInbox", param, sqldbtypes, values);
+                //db = null;
+                //GC.Collect();
+
+                SqlParameter[] parameters =
+                [
+                    new("@subject", SqlDbType.VarChar) { Value = subject },
+                    new("@body", SqlDbType.VarChar) { Value = body },
+                    new("@fromId", SqlDbType.VarChar) { Value = fromId },
+                    new("@toId", SqlDbType.VarChar) { Value = toId },
+                    new("@recievedOn", SqlDbType.DateTime) { Value = recievedOn },
+                    new("@sendOn", SqlDbType.DateTime) { Value = sendOn },
+                    new("@type", SqlDbType.VarChar) { Value = type },
+                    new("@status", SqlDbType.VarChar) { Value = status },
+                    new("@CommunicationType", SqlDbType.VarChar) { Value = CommunicationType }
+                ];
+
+                flag = await _readWriteDao.ExecuteNonQueryAsync("spSavetoInbox", parameters);
             }
             catch (Exception ex)
             {
@@ -3790,43 +3901,91 @@ namespace QidWorkerRole
         //    return null;
         //}
 
-        public byte[] DownloadBlobX(string filenameOrUrl)
-        {
-            try
-            {
 
-                string containerName = ""; //container must be lowercase, no special characters
-                if (filenameOrUrl.Contains('/'))
-                {
-                    filenameOrUrl = filenameOrUrl.ToLower();
-                    containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
-                    filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
-                }
+        /*Not in use*/
+        //public byte[] DownloadBlobX(string filenameOrUrl)
+        //{
+        //    try
+        //    {
 
-                byte[] downloadStream = null;
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey("hawaiianstorage", "wcafYuM5usLvBUfQ642acJs41ZCOe6ZlGIFt3PFT2xooLfwTiZpKS+Fs73m7cmfwUN1BAxBYfLcpBsicwoRe8A==");
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        string containerName = ""; //container must be lowercase, no special characters
+        //        if (filenameOrUrl.Contains('/'))
+        //        {
+        //            filenameOrUrl = filenameOrUrl.ToLower();
+        //            containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
+        //            filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
+        //        }
 
-                //get a reference to the blob
-                CloudBlob blob = blobClient.GetBlobReference("/attachments/2.png");//(string.Format("{0}/{1}", containerName, filenameOrUrl));
+        //        byte[] downloadStream = null;
+        //        StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey("hawaiianstorage", "wcafYuM5usLvBUfQ642acJs41ZCOe6ZlGIFt3PFT2xooLfwTiZpKS+Fs73m7cmfwUN1BAxBYfLcpBsicwoRe8A==");
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
 
-                //write the file to the http response
-                //blob.DownloadToStream(downloadStream);
-                downloadStream = blob.DownloadByteArray();
-                //FetchAttributes();
+        //        //get a reference to the blob
+        //        CloudBlob blob = blobClient.GetBlobReference("/attachments/2.png");//(string.Format("{0}/{1}", containerName, filenameOrUrl));
 
-                return downloadStream;
+        //        //write the file to the http response
+        //        //blob.DownloadToStream(downloadStream);
+        //        downloadStream = blob.DownloadByteArray();
+        //        //FetchAttributes();
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return null;
-            }
+        //        return downloadStream;
 
-        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return null;
+        //    }
+
+        //}
+
+        /*WindowsAzure.Storage nuget package is deprecated and using the Azure.Storage.Blobs*/
+        //public byte[] DownloadBlob(string filenameOrUrl)
+        //{
+        //    try
+        //    {
+
+        //        string containerName = "";
+        //        string str = filenameOrUrl;
+        //        if (filenameOrUrl.Contains('/'))
+        //        {
+        //            containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
+        //            containerName = containerName.ToLower();//Container name should be in lower case.
+        //            filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
+        //        }
+        //        byte[] downloadStream = null;
+        //        StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        try
+        //        {
+        //            CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filenameOrUrl));
+        //            downloadStream = blob.DownloadByteArray();
+
+
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            clsLog.WriteLogAzure(ex);
+        //            CloudBlob blob = blobClient.GetBlobReference(str);
+        //            downloadStream = blob.DownloadByteArray();
+        //        }
+
+        //        return downloadStream;
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+
+        //        clsLog.WriteLogAzure(ex);
+        //        return null;
+
+        //    }
+
+        //}
 
         public byte[] DownloadBlob(string filenameOrUrl)
         {
@@ -3841,77 +4000,107 @@ namespace QidWorkerRole
                     containerName = containerName.ToLower();//Container name should be in lower case.
                     filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
                 }
+
                 byte[] downloadStream = null;
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+
+                // Set TLS 1.2 (still recommended for compatibility)
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+
+                // Use connection string or account name + key
+                string storageAccountName = getStorageName();
+                string storageKey = getStorageKey();
+
+                // Preferred: Use shared key credential
+                string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new StorageSharedKeyCredential(storageAccountName, storageKey)
+                );
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
                 try
                 {
-                    CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filenameOrUrl));
-                    downloadStream = blob.DownloadByteArray();
-
-
+                    // Try with extracted container + blob name
+                    BlobClient blobClient = containerClient.GetBlobClient(filenameOrUrl);
+                    downloadStream = DownloadBlobContent(blobClient);
                 }
                 catch (Exception ex)
                 {
+                    // Log exception (preserving original behavior)
                     clsLog.WriteLogAzure(ex);
-                    CloudBlob blob = blobClient.GetBlobReference(str);
-                    downloadStream = blob.DownloadByteArray();
+
+                    // Fallback: Use full URL or original string as blob URI
+                    BlobClient blobClient = containerClient.GetBlobClient(str);
+                    downloadStream = DownloadBlobContent(blobClient);
                 }
 
                 return downloadStream;
-
             }
             catch (Exception ex)
             {
-
                 clsLog.WriteLogAzure(ex);
                 return null;
-
             }
-
         }
 
-        public byte[] DownloadBlobOld(string filenameOrUrl)
+        // Helper method to download blob as byte[]
+        private byte[] DownloadBlobContent(BlobClient blobClient)
         {
             try
             {
-
-                string containerName = ""; //container must be lowercase, no special characters
-                if (filenameOrUrl.Contains('/'))
+                using (var memoryStream = new MemoryStream())
                 {
-                    filenameOrUrl = filenameOrUrl.ToLower();
-                    containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
-                    filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
+                    blobClient.DownloadTo(memoryStream);
+                    return memoryStream.ToArray();
                 }
-
-                byte[] downloadStream = null;
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-
-                //get a reference to the blob
-                //containerName = "attachments";
-                //filenameOrUrl = "2.jpg";
-                CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filenameOrUrl));
-
-                //write the file to the http response
-                //blob.DownloadToStream(downloadStream);
-                downloadStream = blob.DownloadByteArray();
-                //FetchAttributes();
-
-                return downloadStream;
-
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
                 return null;
             }
-
         }
+
+        /*Not in use*/
+        //public byte[] DownloadBlobOld(string filenameOrUrl)
+        //{
+        //    try
+        //    {
+
+        //        string containerName = ""; //container must be lowercase, no special characters
+        //        if (filenameOrUrl.Contains('/'))
+        //        {
+        //            filenameOrUrl = filenameOrUrl.ToLower();
+        //            containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
+        //            filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
+        //        }
+
+        //        byte[] downloadStream = null;
+        //        StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+
+        //        //get a reference to the blob
+        //        //containerName = "attachments";
+        //        //filenameOrUrl = "2.jpg";
+        //        CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filenameOrUrl));
+
+        //        //write the file to the http response
+        //        //blob.DownloadToStream(downloadStream);
+        //        downloadStream = blob.DownloadByteArray();
+        //        //FetchAttributes();
+
+        //        return downloadStream;
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return null;
+        //    }
+
+        //}
 
 
 
@@ -3923,7 +4112,7 @@ namespace QidWorkerRole
         //    {
         //        GenericFunction genericFunction = new GenericFunction();
         //        // int outport = 0;
-        //        f_SendOutgoingMail = Convert.ToBoolean(genericFunction.ReadValueFromDb("msgService_SendEmail") == string.Empty ? "false" : genericFunction.ReadValueFromDb("msgService_SendEmail"));
+        //        f_SendOutgoingMail = Convert.ToBoolean(ConfigCache.Get("msgService_SendEmail") == string.Empty ? "false" : ConfigCache.Get("msgService_SendEmail"));
         //        bool isOn = false;
         //        // bool ishtml = false;
         //        // string status = "Processed";
@@ -3974,30 +4163,30 @@ namespace QidWorkerRole
 
 
 
-        public void SendMail()
+        public async Task SendMail()
         {
             clsLog.WriteLogAzure("In SendMail()");
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-
-
+                //GenericFunction genericFunction = new GenericFunction();
 
                 int outport = 0;
-                f_SendOutgoingMail = Convert.ToBoolean(genericFunction.ReadValueFromDb("msgService_SendEmail") == string.Empty ? "false" : genericFunction.ReadValueFromDb("msgService_SendEmail"));
+                f_SendOutgoingMail = Convert.ToBoolean(ConfigCache.Get("msgService_SendEmail") == string.Empty ? "false" : ConfigCache.Get("msgService_SendEmail"));
                 bool isOn = false;
                 bool ishtml = false;
                 string status = "Processed";
                 string SMTPUserName = string.Empty;
 
-                SQLServer objsql = new SQLServer();
+                //SQLServer objsql = new SQLServer();
                 do
                 {
                     string ftpUrl = string.Empty, ftpUserName = string.Empty, ftpPassword = string.Empty, ccadd = string.Empty, FileExtension = string.Empty
                         , msgCommType = string.Empty;
                     isOn = false;
-                    DataSet ds = null;
-                    ds = objsql.SelectRecords("spMailtoSend");
+                    //ds = objsql.SelectRecords("spMailtoSend");
+
+                    DataSet? ds = null;
+                    ds = await _readWriteDao.SelectRecords("spMailtoSend");
 
                     if (ds != null)
                     {
@@ -4060,7 +4249,7 @@ namespace QidWorkerRole
                                 if (msgCommType.ToUpper() == "FTP" || msgCommType.ToUpper() == "ALL")
                                 {
 
-                                    FTP objFtp = new FTP();
+                                    //FTP _ftp = new FTP();
                                     if (drMsg != null && drMsg.ItemArray.Length > 0)
                                     {
                                         if (drMsg["FTPID"].ToString() != "" && drMsg["FTPUserName"].ToString() != "" && drMsg["FTPPassword"].ToString() != "")
@@ -4072,16 +4261,16 @@ namespace QidWorkerRole
                                         } // Rohidas added else condition for live issue on 30 aug 2017
                                         else
                                         {
-                                            ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
-                                            ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
-                                            ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+                                            ftpUrl = ConfigCache.Get("FTPURLofFileUpload");
+                                            ftpUserName = ConfigCache.Get("FTPUserofFileUpload");
+                                            ftpPassword = ConfigCache.Get("FTPPasswordofFileUpload");
                                         }
                                     }
                                     else
                                     {
-                                        ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
-                                        ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
-                                        ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+                                        ftpUrl = ConfigCache.Get("FTPURLofFileUpload");
+                                        ftpUserName = ConfigCache.Get("FTPUserofFileUpload");
+                                        ftpPassword = ConfigCache.Get("FTPPasswordofFileUpload");
                                     }
                                     if (FileName.ToUpper().Contains(".TXT"))
                                     {
@@ -4109,14 +4298,28 @@ namespace QidWorkerRole
                                         FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
                                     if (ftpUrl != "")
                                     {
-                                        if (objFtp.UploadfileThrougFTPAndRenamefileAfterUploaded(ftpUrl, ftpUserName, ftpPassword, body, FileName, FileExtension == "" ? "SND" : FileExtension))
+                                        bool uploadRes = _ftp.UploadfileThrougFTPAndRenamefileAfterUploaded(ftpUrl, ftpUserName, ftpPassword, body, FileName, FileExtension == "" ? "SND" : FileExtension);
+                                        if (uploadRes)
                                         {
+                                            //string[] pname = { "num", "Status" };
+                                            //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                            //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                            //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                            //    clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+
                                             isMessageSent = true;
-                                            string[] pname = { "num", "Status" };
-                                            object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                            SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                            if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                            SqlParameter[] parameters =
+                                            {
+                                                new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                            };
+                                            var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                            if (dbRes)
+                                            {
                                                 clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                            }
+
                                         }
                                         else
                                         {
@@ -4134,19 +4337,19 @@ namespace QidWorkerRole
                                 #region Email
                                 if ((msgCommType.ToUpper() == "EMAIL" || msgCommType.ToUpper() == "ALL") && (f_SendOutgoingMail == true))
                                 {
-                                    accountEmail = genericFunction.ReadValueFromDb("msgService_OutEmailId");
-                                    password = genericFunction.ReadValueFromDb("msgService_OutEmailPassword");
-                                    string MailIouterver = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
-                                    MailsendPort = genericFunction.ReadValueFromDb("msgService_OutgoingMessagePort");
+                                    accountEmail = ConfigCache.Get("msgService_OutEmailId");
+                                    password = ConfigCache.Get("msgService_OutEmailPassword");
+                                    string MailIouterver = ConfigCache.Get("msgService_EmailOutServer");
+                                    MailsendPort = ConfigCache.Get("msgService_OutgoingMessagePort");
 
 
                                     if (ds.Tables.Count > 3 && ds.Tables[3].Rows.Count > 0)
                                     {
                                         drEmailAccount = ds.Tables[3].Rows[0];
-                                        if (drEmailAccount["EmailAddress"].ToString().Trim() != String.Empty
-                                            && drEmailAccount["Password"].ToString().Trim() != String.Empty
-                                            && drEmailAccount["ServerName"].ToString().Trim() != String.Empty
-                                            && drEmailAccount["PortNumber"].ToString().Trim() != String.Empty)
+                                        if (drEmailAccount["EmailAddress"].ToString().Trim() != string.Empty
+                                            && drEmailAccount["Password"].ToString().Trim() != string.Empty
+                                            && drEmailAccount["ServerName"].ToString().Trim() != string.Empty
+                                            && drEmailAccount["PortNumber"].ToString().Trim() != string.Empty)
                                         {
                                             accountEmail = drEmailAccount["EmailAddress"].ToString().Trim();
                                             password = drEmailAccount["Password"].ToString().Trim();
@@ -4155,14 +4358,15 @@ namespace QidWorkerRole
                                             SMTPUserName = drEmailAccount["SMTPUserName"].ToString().Trim();
                                         }
                                     }
-                                  
+
 
                                     if (MailsendPort != "")
                                         outport = int.Parse(MailsendPort == "" ? "110" : MailsendPort);
                                     else
-                                        outport = int.Parse(Convert.ToString(genericFunction.ReadValueFromDb("OutPort")));//outport = int.Parse(ConfigurationManager.AppSettings["OutPort"].ToString());
+                                        outport = int.Parse(Convert.ToString(ConfigCache.Get("OutPort")));//outport = int.Parse(ConfigurationManager.AppSettings["OutPort"].ToString());
+
                                     #region Email
-                                    EMAILOUT objmail = new EMAILOUT();
+                                    //EMAILOUT objmail = new EMAILOUT();
                                     MailKitManager ObjMailKit = new MailKitManager();
 
                                     if (sentadd.Length > 2 && sentadd.Contains("@") && sentadd.Contains("."))
@@ -4174,7 +4378,7 @@ namespace QidWorkerRole
                                             {
                                                 if (sentadd.Length > 0 && sentadd.Contains("@") && accountEmail != "" && password != "" && sentadd != "" && body != "")
                                                 {
-                                                    success = objmail.SendEmailOutSendgrid(ds, accountEmail, sentadd, password, subject, body, ishtml, ccadd, subject);
+                                                    success = _emailOut.SendEmailOutSendgrid(ds, accountEmail, sentadd, password, subject, body, ishtml, ccadd, subject);
                                                 }
                                             }
                                             catch (Exception ex)
@@ -4183,11 +4387,22 @@ namespace QidWorkerRole
                                             }
                                             if (success)
                                             {
+                                                //string[] pname = { "num", "Status" };
+                                                //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                //{
+                                                //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                //}
+
                                                 isMessageSent = true;
-                                                string[] pname = { "num", "Status" };
-                                                object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                SqlParameter[] parameters =
+                                                {
+                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                };
+                                                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                if (dbRes)
                                                 {
                                                     clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                                 }
@@ -4197,7 +4412,7 @@ namespace QidWorkerRole
                                                 isMessageSent = false;
                                             }
                                         }
-                                        else if(MailIouterver.ToUpper() == "EMAIL-SMTP.AP-SOUTHEAST-1.AMAZONAWS.COM")
+                                        else if (MailIouterver.ToUpper() == "EMAIL-SMTP.AP-SOUTHEAST-1.AMAZONAWS.COM")
                                         {
                                             bool success = false;
                                             try
@@ -4213,11 +4428,22 @@ namespace QidWorkerRole
                                             }
                                             if (success)
                                             {
+                                                //string[] pname = { "num", "Status" };
+                                                //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                //{
+                                                //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                //}
+
                                                 isMessageSent = true;
-                                                string[] pname = { "num", "Status" };
-                                                object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                SqlParameter[] parameters =
+                                                {
+                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                };
+                                                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                if (dbRes)
                                                 {
                                                     clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                                 }
@@ -4265,16 +4491,31 @@ namespace QidWorkerRole
                                                         }
                                                         if (accountEmail != "" && password != "" && sentadd != "" && body != "")
                                                         {
-                                                            if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions, messageType, MailIouterver))
+                                                            //if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions, messageType, MailIouterver))
+
+                                                            bool isSuccess = _emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions, messageType, MailIouterver);
+
+                                                            if (isSuccess)
                                                             {
+
+                                                                //string[] pname = { "num", "Status" };
+                                                                //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                                //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                                //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+
                                                                 isMessageSent = true;
                                                                 clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
-                                                                string[] pname = { "num", "Status" };
-                                                                object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                                if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                                SqlParameter[] parameters =
+                                                                {
+                                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                                };
+                                                                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                                if (dbRes)
+                                                                {
                                                                     clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
-
+                                                                }
                                                             }
                                                             else
                                                             {
@@ -4294,14 +4535,27 @@ namespace QidWorkerRole
                                                     #region Send Email
                                                     if (accountEmail != "" && password != "" && sentadd != "" && body != "")
                                                     {
-                                                        if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, messageType, MailIouterver))
+                                                        //if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, messageType, MailIouterver))
+
+                                                        if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, messageType, MailIouterver))
                                                         {
+                                                            //string[] pname = { "num", "Status" };
+                                                            //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                            //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                            //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                            //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+
                                                             isMessageSent = true;
-                                                            string[] pname = { "num", "Status" };
-                                                            object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                            SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                            if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                            SqlParameter[] parameters =
+                                                                {
+                                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                                };
+                                                            var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                            if (dbRes)
+                                                            {
                                                                 clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                            }
 
                                                         }
                                                         else
@@ -4320,13 +4574,25 @@ namespace QidWorkerRole
                                                 if (accountEmail != "" && password != "" && sentadd != "" && body != "")
                                                 {
 
-                                                    if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, "", MailIouterver))
+                                                    if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, "", MailIouterver))
                                                     {
+                                                        //isMessageSent = true;
+                                                        //string[] pname = { "num", "Status" };
+                                                        //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                        //{
+                                                        //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                        //}
+
                                                         isMessageSent = true;
-                                                        string[] pname = { "num", "Status" };
-                                                        object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                        SqlParameter[] parameters =
+                                                        {
+                                                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                            new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                        };
+                                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                        if (dbRes)
                                                         {
                                                             clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                                         }
@@ -4351,7 +4617,8 @@ namespace QidWorkerRole
                                 #region SFTP Upload
                                 if (msgCommType.ToUpper() == "SFTP" || msgCommType.ToUpper() == "ALL" || msgCommType.Equals("SFTP", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    FTP objFtp = new FTP();
+                                    //FTP _ftp = new FTP();
+
                                     string SFTPFingerPrint = string.Empty, StpFolerParth = string.Empty, SFTPPortNumber = string.Empty, GHAOutFolderPath = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty;
                                     foreach (DataRow drSFTP in ds.Tables[2].Rows)
                                     {
@@ -4364,23 +4631,24 @@ namespace QidWorkerRole
                                             SFTPFingerPrint = drSFTP["FingerPrint"].ToString();
                                             StpFolerParth = drSFTP["RemotePath"].ToString();
                                             SFTPPortNumber = drSFTP["PortNumber"].ToString();
-                                            GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                                            GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                                         }
                                         else
                                         {
-                                            SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                                            SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                                            SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                                            ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
-                                            SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                                            StpFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
-                                            SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
-                                            GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                                            SFTPAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                                            SFTPUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                                            SFTPPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                                            ppkFileName = ConfigCache.Get("PPKFileName");
+                                            SFTPFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                                            StpFolerParth = ConfigCache.Get("msgService_OUT_FolderPath");
+                                            SFTPPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
+                                            GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                                         }
 
                                         if (ppkFileName != string.Empty)
                                         {
-                                            ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                                            //ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                                            ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                                         }
 
                                         FileName = dr["Subject"].ToString();
@@ -4415,15 +4683,26 @@ namespace QidWorkerRole
                                         if (SFTPAddress != "" && SFTPUserName != "" && (SFTPPassWord != "" || ppkFileName != string.Empty) && SFTPFingerPrint != "" && StpFolerParth != "" && SFTPPortNumber.Trim() != string.Empty)
                                         {
                                             int portNumber = Convert.ToInt32(SFTPPortNumber);
-                                            if (objFtp.SaveSFTPUpload(SFTPAddress, SFTPUserName, SFTPPassWord, SFTPFingerPrint, body, FileName, FileExtension == string.Empty ? ".SND" : FileExtension, StpFolerParth, portNumber, ppkLocalFilePath, GHAOutFolderPath))
+                                            if (_ftp.SaveSFTPUpload(SFTPAddress, SFTPUserName, SFTPPassWord, SFTPFingerPrint, body, FileName, FileExtension == string.Empty ? ".SND" : FileExtension, StpFolerParth, portNumber, ppkLocalFilePath, GHAOutFolderPath))
                                             {
-                                                isMessageSent = true;
-                                                string[] pname = { "num", "Status" };
-                                                object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
-                                                    clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                //isMessageSent = true;
+                                                //string[] pname = { "num", "Status" };
+                                                //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                //    clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
 
+                                                isMessageSent = true;
+                                                SqlParameter[] parameters =
+                                                {
+                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                };
+                                                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                if (dbRes)
+                                                {
+                                                    clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                }
                                             }
                                             else
                                             {
@@ -4440,7 +4719,7 @@ namespace QidWorkerRole
                                     || msgCommType.Equals("SITA", StringComparison.OrdinalIgnoreCase)
                                     || msgCommType.Equals("SITAFTP", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    FTP objFtp = new FTP();
+                                    //FTP _ftp = new FTP();
                                     string SFTPFingerPrint = string.Empty, StpFolerParth = string.Empty, SFTPPortNumber = string.Empty, GHAOutFolderPath = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty;
 
                                     if (drMsg != null && drMsg.ItemArray.Length > 0 && drMsg["FTPID"].ToString() != "" && drMsg["FTPUserName"].ToString() != "" && drMsg["FTPPassword"].ToString() != "")
@@ -4452,22 +4731,22 @@ namespace QidWorkerRole
                                         SFTPFingerPrint = drMsg["FingerPrint"].ToString();
                                         StpFolerParth = drMsg["RemotePath"].ToString();
                                         SFTPPortNumber = drMsg["PortNumber"].ToString();
-                                        GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                                        GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                                     }
                                     else
                                     {
-                                        SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                                        SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                                        SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                                        ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
-                                        SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                                        StpFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
-                                        SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
-                                        GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                                        SFTPAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                                        SFTPUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                                        SFTPPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                                        ppkFileName = ConfigCache.Get("PPKFileName");
+                                        SFTPFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                                        StpFolerParth = ConfigCache.Get("msgService_OUT_FolderPath");
+                                        SFTPPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
+                                        GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                                     }
                                     if (ppkFileName != string.Empty)
                                     {
-                                        ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                                        ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                                     }
                                     if (FileName.ToUpper().Contains(".TXT"))
                                     {
@@ -4492,14 +4771,25 @@ namespace QidWorkerRole
                                     if (SFTPAddress != "" && SFTPUserName != "" && (SFTPPassWord != "" || ppkFileName != string.Empty) && SFTPFingerPrint != "" && StpFolerParth != "" && SFTPPortNumber.Trim() != string.Empty)
                                     {
                                         int portNumber = Convert.ToInt32(SFTPPortNumber);
-                                        if (objFtp.SaveSFTPUpload(SFTPAddress, SFTPUserName, SFTPPassWord, SFTPFingerPrint, body, FileName, FileExtension == string.Empty ? ".SND" : FileExtension, StpFolerParth, portNumber, ppkLocalFilePath, GHAOutFolderPath))
+                                        if (_ftp.SaveSFTPUpload(SFTPAddress, SFTPUserName, SFTPPassWord, SFTPFingerPrint, body, FileName, FileExtension == string.Empty ? ".SND" : FileExtension, StpFolerParth, portNumber, ppkLocalFilePath, GHAOutFolderPath))
                                         {
+                                            //string[] pname = { "num", "Status" };
+                                            //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                            //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                            //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                            //    clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+
                                             isMessageSent = true;
-                                            string[] pname = { "num", "Status" };
-                                            object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                            SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                            if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                            SqlParameter[] parameters =
+                                            {
+                                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                };
+                                            var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                            if (dbRes)
+                                            {
                                                 clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                            }
 
                                         }
                                         else
@@ -4517,12 +4807,24 @@ namespace QidWorkerRole
                                     AzureDrive drive = new AzureDrive();
                                     if (drive.UploadToDrive(DateTime.Now.ToString("yyyyMMdd_hhmmss_fff"), body, SITAFolderPath))
                                     {
+                                        //isMessageSent = true;
+                                        //string[] pname = { "num", "Status" };
+                                        //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //    clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dr[0].ToString());
+
                                         isMessageSent = true;
-                                        string[] pname = { "num", "Status" };
-                                        object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        SqlParameter[] parameters =
+                                        {
+                                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                            new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                        };
+                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                        if (dbRes)
+                                        {
                                             clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dr[0].ToString());
+                                        }
 
                                     }
                                     else
@@ -4567,12 +4869,24 @@ namespace QidWorkerRole
                                                 {
                                                     //clsLog.WriteLogAzure("MQMessage sent successfully");
                                                     //Console.WriteLine("MQMessage sent successfully");
+                                                    //isMessageSent = true;
+                                                    //string[] pname = { "num", "Status" };
+                                                    //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                                    //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                                    //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                    //    clsLog.WriteLogAzure("MQ Message Sent successfully to:" + dr[0].ToString());
+
                                                     isMessageSent = true;
-                                                    string[] pname = { "num", "Status" };
-                                                    object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                                    SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                                    if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                    SqlParameter[] parameters =
+                                                    {
+                                                        new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                        new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                                    };
+                                                    var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                    if (dbRes)
+                                                    {
                                                         clsLog.WriteLogAzure("MQ Message Sent successfully to:" + dr[0].ToString());
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -4597,7 +4911,7 @@ namespace QidWorkerRole
                                 if (msgCommType.ToUpper() == "UFTP" || msgCommType == "ALL")
                                 {
 
-                                    FTP objFtp = new FTP();
+                                    //FTP _ftp = new FTP();
                                     if (drMsg != null && drMsg.ItemArray.Length > 0)
                                     {
                                         if (drMsg["FTPID"].ToString() != "" && drMsg["FTPUserName"].ToString() != "" && drMsg["FTPPassword"].ToString() != "")
@@ -4609,16 +4923,16 @@ namespace QidWorkerRole
                                         } // Rohidas added else condition for live issue on 30 aug 2017
                                         else
                                         {
-                                            ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
-                                            ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
-                                            ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+                                            ftpUrl = ConfigCache.Get("FTPURLofFileUpload");
+                                            ftpUserName = ConfigCache.Get("FTPUserofFileUpload");
+                                            ftpPassword = ConfigCache.Get("FTPPasswordofFileUpload");
                                         }
                                     }
                                     else
                                     {
-                                        ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
-                                        ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
-                                        ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+                                        ftpUrl = ConfigCache.Get("FTPURLofFileUpload");
+                                        ftpUserName = ConfigCache.Get("FTPUserofFileUpload");
+                                        ftpPassword = ConfigCache.Get("FTPPasswordofFileUpload");
                                     }
                                     if (FileName.ToUpper().Contains(".TXT"))
                                     {
@@ -4643,14 +4957,26 @@ namespace QidWorkerRole
                                         FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
                                     if (ftpUrl != "")
                                     {
-                                        if (objFtp.DownloadBlobAndFTPUpload(actualMsg, ftpUrl, ftpUserName, ftpPassword, body, FileName, FileExtension == "" ? "SND" : FileExtension))
+                                        if (_ftp.DownloadBlobAndFTPUpload(actualMsg, ftpUrl, ftpUserName, ftpPassword, body, FileName, FileExtension == "" ? "SND" : FileExtension))
                                         {
+                                            //isMessageSent = true;
+                                            //string[] pname = { "num", "Status" };
+                                            //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                            //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                            //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                            //    clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+
                                             isMessageSent = true;
-                                            string[] pname = { "num", "Status" };
-                                            object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                            SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                            if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                            SqlParameter[] parameters =
+                                            {
+                                                 new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                 new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                            };
+                                            var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                            if (dbRes)
+                                            {
                                                 clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                            }
                                         }
                                         else
                                         {
@@ -4703,13 +5029,25 @@ namespace QidWorkerRole
 
                                         SaveMessage("DACCustoms", results, "WebService", "", DateTime.Now, DateTime.Now, messageType, "Active", "WebService", awbNumber, flightNo, flightDate);
                                         clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
-                                        isMessageSent = true;
 
-                                        string[] pname = { "num", "Status" };
-                                        object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //isMessageSent = true;
+                                        //string[] pname = { "num", "Status" };
+                                        //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //    clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+
+                                        isMessageSent = true;
+                                        SqlParameter[] parameters =
+                                        {
+                                             new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                             new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                         };
+                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                        if (dbRes)
+                                        {
                                             clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -4731,7 +5069,7 @@ namespace QidWorkerRole
                                         string customsName = drMsg["CustomsName"].ToString();
                                         if (messageType == "FFM")
                                         {
-                                            WebService ws = new WebService(URL, "",username, Password, body);
+                                            WebService ws = new WebService(URL, "", username, Password, body);
 
                                             //ws.Params.Add("airline", PartnerCode);
                                             //ws.Params.Add("xffm", body);
@@ -4740,7 +5078,7 @@ namespace QidWorkerRole
                                         }
                                         else if (messageType == "FWB")
                                         {
-                                            WebService ws = new WebService(URL,"", username, Password, body);
+                                            WebService ws = new WebService(URL, "", username, Password, body);
 
                                             // ws.Params.Add("airline", PartnerCode);
                                             //ws.Params.Add("xfwb", body);
@@ -4749,7 +5087,7 @@ namespace QidWorkerRole
                                         }
                                         else if (messageType == "FHL")
                                         {
-                                            WebService ws = new WebService(URL,"", username, Password, body);
+                                            WebService ws = new WebService(URL, "", username, Password, body);
 
                                             //ws.Params.Add("airline", PartnerCode);
                                             //ws.Params.Add("xfzb", body);
@@ -4759,13 +5097,25 @@ namespace QidWorkerRole
 
                                         SaveMessage("DACCustoms", results, "WebService", "", DateTime.Now, DateTime.Now, messageType, "Active", "WebService", awbNumber, flightNo, flightDate);
                                         clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
-                                        isMessageSent = true;
 
-                                        string[] pname = { "num", "Status" };
-                                        object[] pvalue = { int.Parse(dr[0].ToString()), status };
-                                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //isMessageSent = true;
+                                        //string[] pname = { "num", "Status" };
+                                        //object[] pvalue = { int.Parse(dr[0].ToString()), status };
+                                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //    clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+
+                                        isMessageSent = true;
+                                        SqlParameter[] parameters =
+                                        {
+                                             new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                             new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                         };
+                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                        if (dbRes)
+                                        {
                                             clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -4779,28 +5129,45 @@ namespace QidWorkerRole
                                     string ErrorMsg = "Error occured while processing sending request";
                                     if (!isFTPUploadSuccessfully)
                                     {
-                                        FTP ftp = new FTP();
-                                        ftp.FTPConnectionAlert();
+                                        //FTP ftp = new FTP();
+                                        _ftp.FTPConnectionAlert();
                                         ErrorMsg = "FTP folder of SITA is not accessible";
                                     }
-                                    string[] pname = { "num", "Status", "ErrorMsg", "MsgDeliveryType" };
-                                    object[] pvalue = { int.Parse(dr[0].ToString()), status, ErrorMsg, msgCommType.ToUpper().Trim() };
-                                    SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                                    if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                    //string[] pname = { "num", "Status", "ErrorMsg", "MsgDeliveryType" };
+                                    //object[] pvalue = { int.Parse(dr[0].ToString()), status, ErrorMsg, msgCommType.ToUpper().Trim() };
+                                    //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                                    //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                    //    clsLog.WriteLogAzure("Fail to sent email to:" + dr[0].ToString());
+
+                                    SqlParameter[] parameters =
+                                    {
+                                        new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                        new SqlParameter("@Status", SqlDbType.VarChar) { Value = status },
+                                        new SqlParameter("@ErrorMsg", SqlDbType.VarChar) { Value = ErrorMsg },
+                                        new SqlParameter("@MsgDeliveryType", SqlDbType.VarChar) { Value = msgCommType.ToUpper().Trim() }
+                                    };
+
+                                    var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                    if (dbRes)
+                                    {
                                         clsLog.WriteLogAzure("Fail to sent email to:" + dr[0].ToString());
+                                    }
 
                                 }
                             }
                         }
                     }
                     else
+                    {
                         isOn = false;
+                    }
                     clsLog.WriteLogAzure("SendMail While loop : " + isOn.ToString());
 
                 } while (isOn);
 
-                objsql = null;
-                GC.Collect();
+                //objsql = null;
+                //GC.Collect();
             }
             catch (Exception ex)
             {
@@ -4813,40 +5180,43 @@ namespace QidWorkerRole
         /// <summary>
         /// Method to send the message via perticuler communication type
         /// </summary>
-        public void SendMessage()
+        public async Task SendMessage()
         {
             try
             {
                 string ftpUrl = string.Empty, ftpUserName = string.Empty, ftpPassword = string.Empty, OutgoingMailServer = string.Empty, msgCommType = string.Empty;
                 int outport = 0;
-                FTP ftp = new FTP();
+                //FTP ftp = new FTP();
                 bool isSendOutgoingMail = false;
                 GenericFunction genericFunction = new GenericFunction();
-                isSendOutgoingMail = Convert.ToBoolean(genericFunction.ReadValueFromDb("msgService_SendEmail") == string.Empty ? "false" : genericFunction.ReadValueFromDb("msgService_SendEmail"));
+                isSendOutgoingMail = Convert.ToBoolean(ConfigCache.Get("msgService_SendEmail") == string.Empty ? "false" : ConfigCache.Get("msgService_SendEmail"));
 
-                SQLServer sqlServer = new SQLServer();
-                DataSet dsMessagesToSend = new DataSet();
-                dsMessagesToSend = sqlServer.SelectRecords("spSendMessages");
+                //SQLServer sqlServer = new SQLServer();
+                DataSet? dsMessagesToSend = new DataSet();
+                //dsMessagesToSend = sqlServer.SelectRecords("spSendMessages");
+
+                dsMessagesToSend = await _readWriteDao.SelectRecords("spSendMessages");
+
                 if (dsMessagesToSend != null && dsMessagesToSend.Tables.Count > 0)
                 {
                     #region : Send Email :
                     if (dsMessagesToSend.Tables[0].Rows.Count > 0 && isSendOutgoingMail)
                     {
                         #region Email Configurations
-                        accountEmail = genericFunction.ReadValueFromDb("msgService_OutEmailId");
-                        password = genericFunction.ReadValueFromDb("msgService_OutEmailPassword");
-                        MailsendPort = genericFunction.ReadValueFromDb("msgService_OutgoingMessagePort");
-                        OutgoingMailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
+                        accountEmail = ConfigCache.Get("msgService_OutEmailId");
+                        password = ConfigCache.Get("msgService_OutEmailPassword");
+                        MailsendPort = ConfigCache.Get("msgService_OutgoingMessagePort");
+                        OutgoingMailServer = ConfigCache.Get("msgService_EmailOutServer");
                         if (MailsendPort != "")
                             outport = int.Parse(MailsendPort == "" ? "110" : MailsendPort);
                         else
-                            outport = int.Parse(Convert.ToString(genericFunction.ReadValueFromDb("OutPort")));
+                            outport = int.Parse(Convert.ToString(ConfigCache.Get("OutPort")));
 
                         #endregion
                         if (accountEmail != "" && password != "" && OutgoingMailServer != "" && MailsendPort != "")
                         {
-                            EMAILOUT emailout = new EMAILOUT();
-                            emailout.sendEmail(dsMessagesToSend, accountEmail, password, MailsendPort, OutgoingMailServer, outport);
+                            //EMAILOUT emailout = new EMAILOUT();
+                            await _emailOut.sendEmail(dsMessagesToSend, accountEmail, password, MailsendPort, OutgoingMailServer, outport);
                         }
 
                     }
@@ -4860,19 +5230,19 @@ namespace QidWorkerRole
                         string FingerPrint = string.Empty, FolerParth = string.Empty, PortNumber = string.Empty, GHAOutFolderPath = string.Empty, ppkLocalFilePath = string.Empty;
                         int portNumber = 0;
 
-                        SITAAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                        SITAUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                        SITAPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                        SITAFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                        SITAFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
-                        SITAPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
-                        GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                        SITAAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                        SITAUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                        SITAPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                        SITAFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                        SITAFolerParth = ConfigCache.Get("msgService_OUT_FolderPath");
+                        SITAPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
+                        GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                         #endregion Variable declaration & Get SITA Server Configurations
 
                         if (SITAAddress != "" && SITAUserName != "" && SITAPassWord != "" && SITAFingerPrint != "" && SITAFolerParth != "" && SITAPortNumber.Trim() != string.Empty)
                         {
                             portNumber = Convert.ToInt32(SITAPortNumber);
-                            ftp.SITAUpload(dsMessagesToSend.Tables[1], SITAAddress, SITAUserName, SITAPassWord, SITAFingerPrint, SITAFolerParth, portNumber, GHAOutFolderPath, ppkLocalFilePath);
+                            _ftp.SITAUpload(dsMessagesToSend.Tables[1], SITAAddress, SITAUserName, SITAPassWord, SITAFingerPrint, SITAFolerParth, portNumber, GHAOutFolderPath, ppkLocalFilePath);
                         }
                     }
                     #endregion SITA Upload
@@ -4888,7 +5258,7 @@ namespace QidWorkerRole
                             {
                                 dtMessagesToSend.DefaultView.RowFilter = "FTPID = '" + dtFTPIDs.Rows[i]["FTPID"].ToString() + "'";
                                 dtMessagesToSend = dtMessagesToSend.DefaultView.ToTable();
-                                ftp.FTPUpload(dtMessagesToSend);
+                                _ftp.FTPUpload(dtMessagesToSend);
                                 for (int j = dsMessagesToSend.Tables[2].Rows.Count - 1; j >= 0; j--)
                                 {
                                     if (dsMessagesToSend.Tables[2].Rows[j]["FTPID"].ToString().Trim() == dtFTPIDs.Rows[i]["FTPID"].ToString().Trim())
@@ -4901,7 +5271,7 @@ namespace QidWorkerRole
                         }
                         if (dsMessagesToSend.Tables[2].Rows.Count > 0)
                         {
-                            ftp.FTPUpload(dsMessagesToSend.Tables[2]);
+                            _ftp.FTPUpload(dsMessagesToSend.Tables[2]);
                         }
                     }
                     #endregion FTP Upload
@@ -4917,7 +5287,7 @@ namespace QidWorkerRole
                             {
                                 dtMessagesToSend.DefaultView.RowFilter = "FTPID = '" + dtFTPIDs.Rows[i]["FTPID"].ToString() + "'";
                                 dtMessagesToSend = dtMessagesToSend.DefaultView.ToTable();
-                                ftp.SFTPUpload(dtMessagesToSend);
+                                _ftp.SFTPUpload(dtMessagesToSend);
                                 for (int j = dsMessagesToSend.Tables[4].Rows.Count - 1; j >= 0; j--)
                                 {
                                     if (dsMessagesToSend.Tables[3].Rows[j]["FTPID"].ToString().Trim() == dtFTPIDs.Rows[i]["FTPID"].ToString().Trim())
@@ -4930,7 +5300,7 @@ namespace QidWorkerRole
                         }
                         if (dsMessagesToSend.Tables[3].Rows.Count > 0)
                         {
-                            ftp.SFTPUpload(dsMessagesToSend.Tables[3]);
+                            _ftp.SFTPUpload(dsMessagesToSend.Tables[3]);
                         }
                     }
                     #endregion SFTP Upload
@@ -4954,7 +5324,7 @@ namespace QidWorkerRole
                             {
                                 dtMessagesToSend.DefaultView.RowFilter = "MQPort = '" + dtMQPort.Rows[i]["MQPort"].ToString() + "'";
                                 dtMessagesToSend = dtMessagesToSend.DefaultView.ToTable();
-                                ftp.SendMQMessage(dtMessagesToSend);
+                                _ftp.SendMQMessage(dtMessagesToSend);
                                 for (int j = dsMessagesToSend.Tables[5].Rows.Count - 1; j >= 0; j--)
                                 {
                                     if (dsMessagesToSend.Tables[5].Rows[j]["FTPID"].ToString().Trim() == dtMQPort.Rows[i]["FTPID"].ToString().Trim())
@@ -4967,7 +5337,7 @@ namespace QidWorkerRole
                         }
                         if (dsMessagesToSend.Tables[5].Rows.Count > 0)
                         {
-                            ftp.SendMQMessage(dsMessagesToSend.Tables[5]);
+                            _ftp.SendMQMessage(dsMessagesToSend.Tables[5]);
                         }
 
                     }
@@ -5008,30 +5378,30 @@ namespace QidWorkerRole
         //    return random;
         //}
 
-        public void ReadFromFTP()
+        public async Task ReadFromFTP()
         {
             //clsLog.WriteLogAzure("In ReadFromFTP()");
-            FTP objFTP = new FTP();
-            GenericFunction genericFunction = new GenericFunction();
+            //FTP _ftp = new FTP();
+            //GenericFunction genericFunction = new GenericFunction();
             try
             {
 
-                SIATFTP = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP"); //ConfigurationSettings.AppSettings["SITAIN"].ToString();
-                SITAUser = genericFunction.ReadValueFromDb("msgService_IN_SITAUser"); //ConfigurationSettings.AppSettings["SITAUser"].ToString();
-                SITAPWD = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD"); //ConfigurationSettings.AppSettings["SITAPWD"].ToString();
-                ftpInMsgFolder = genericFunction.ReadValueFromDb("msgService_IN_SITAFolder");
+                SIATFTP = ConfigCache.Get("msgService_IN_SITAFTP"); //ConfigurationSettings.AppSettings["SITAIN"].ToString();
+                SITAUser = ConfigCache.Get("msgService_IN_SITAUser"); //ConfigurationSettings.AppSettings["SITAUser"].ToString();
+                SITAPWD = ConfigCache.Get("msgService_IN_SITAPWD"); //ConfigurationSettings.AppSettings["SITAPWD"].ToString();
+                ftpInMsgFolder = ConfigCache.Get("msgService_IN_SITAFolder");
 
                 //Get list of files from FTP path.
                 string[] strFiles = null;
-                if (!String.IsNullOrEmpty(SIATFTP))
+                if (!string.IsNullOrEmpty(SIATFTP))
                 {
-                    if (!String.IsNullOrEmpty(ftpInMsgFolder))
+                    if (!string.IsNullOrEmpty(ftpInMsgFolder))
                     {
-                        strFiles = objFTP.FTPFilesList(SIATFTP + "/" + ftpInMsgFolder, SITAUser, SITAPWD);
+                        strFiles = _ftp.FTPFilesList(SIATFTP + "/" + ftpInMsgFolder, SITAUser, SITAPWD);
                     }
                     else
                     {
-                        strFiles = objFTP.FTPFilesList(SIATFTP, SITAUser, SITAPWD);
+                        strFiles = _ftp.FTPFilesList(SIATFTP, SITAUser, SITAPWD);
                     }
                 }
 
@@ -5070,13 +5440,13 @@ namespace QidWorkerRole
                         {
                             ftpFilePath = SIATFTP + "/" + filename;
                         }
-                        string strData = objFTP.ReadFTPFile(ftpFilePath, SITAUser, SITAPWD);
+                        string strData = _ftp.ReadFTPFile(ftpFilePath, SITAUser, SITAPWD);
                         if (strData == null || strData.Contains("Error:") || strData.Length < 5)
                         {
                             ///Save and delete Error files
                             try
                             {
-                                if (objFTP.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
+                                if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                 {
                                     clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
                                 }
@@ -5087,7 +5457,7 @@ namespace QidWorkerRole
                             }
 
 
-                            if (objFTP.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
+                            if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                             {
                                 clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
                             }
@@ -5095,7 +5465,7 @@ namespace QidWorkerRole
                         }
                         else
                         {
-                            if (!StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
+                            if (!await StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
                             {
                                 clsLog.WriteLogAzure("FTP file not saved:" + filename);
                             }
@@ -5103,7 +5473,7 @@ namespace QidWorkerRole
                             #region SAve the file before delete
                             try
                             {
-                                if (objFTP.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
+                                if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                 {
                                     clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
                                 }
@@ -5114,7 +5484,7 @@ namespace QidWorkerRole
                             }
                             #endregion
 
-                            if (objFTP.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
+                            if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                             {
                                 clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
                             }
@@ -5128,19 +5498,20 @@ namespace QidWorkerRole
             }
         }
 
-        public void ReadFromALLFTP()
+        public async Task ReadFromALLFTP()
         {
-            FTP objFTP = new FTP();
+            //FTP _ftp = new FTP();
 
             try
             {
-                SQLServer objsql = new SQLServer();
+                //SQLServer objsql = new SQLServer();
+                //ds = objsql.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
 
-                DataSet ds = null;
+                DataSet? ds = null;
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                     new SqlParameter("@MsgCommType", "FTP")
                 };
-                ds = objsql.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
+                ds = await _readWriteDao.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
 
                 //ftpInMsgFolder="IN";
                 foreach (DataRow drMsg in ds.Tables[0].Rows)
@@ -5150,22 +5521,23 @@ namespace QidWorkerRole
                         continue;
                     }
 
-                    FTP objFtp = new FTP();
+                    //FTP _ftp = new FTP();
+
                     ftpInMsgFolder = "";
                     SIATFTP = drMsg["FTPID"].ToString();
                     SITAUser = drMsg["FTPUserName"].ToString();
                     SITAPWD = drMsg["FTPPassword"].ToString();
 
                     string[] strFiles = null;
-                    if (!String.IsNullOrEmpty(SIATFTP))
+                    if (!string.IsNullOrEmpty(SIATFTP))
                     {
-                        if (!String.IsNullOrEmpty(ftpInMsgFolder))
+                        if (!string.IsNullOrEmpty(ftpInMsgFolder))
                         {
-                            strFiles = objFTP.FTPFilesList(SIATFTP + "/" + ftpInMsgFolder, SITAUser, SITAPWD);
+                            strFiles = _ftp.FTPFilesList(SIATFTP + "/" + ftpInMsgFolder, SITAUser, SITAPWD);
                         }
                         else
                         {
-                            strFiles = objFTP.FTPFilesList(SIATFTP, SITAUser, SITAPWD);
+                            strFiles = _ftp.FTPFilesList(SIATFTP, SITAUser, SITAPWD);
                         }
                     }
 
@@ -5204,21 +5576,21 @@ namespace QidWorkerRole
                             {
                                 ftpFilePath = SIATFTP + "/" + filename;
                             }
-                            string strData = objFTP.ReadFTPFile(ftpFilePath, SITAUser, SITAPWD);
+                            string strData = _ftp.ReadFTPFile(ftpFilePath, SITAUser, SITAPWD);
                             if (strData == null || strData.Contains("Error:") || strData.Length < 5)
                             {
                                 continue;
                             }
                             else
                             {
-                                if (!StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
+                                if (!await StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
                                 {
                                     clsLog.WriteLogAzure("FTP file not saved:" + filename.Replace('/', '-'));
                                 }
                                 #region SAve the file before delete
                                 try
                                 {
-                                    if (objFTP.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
+                                    if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                     {
                                         clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
                                     }
@@ -5228,7 +5600,7 @@ namespace QidWorkerRole
                                     clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
                                 }
                                 #endregion
-                                if (objFTP.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
+                                if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                                 {
                                     clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
                                 }
@@ -5246,7 +5618,7 @@ namespace QidWorkerRole
 
         }
 
-        public void RecieveMailfromIMAPServer(string sServer, string sUserName, string sPassword)
+        public async Task RecieveMailfromIMAPServer(string sServer, string sUserName, string sPassword)
         {
             try
             {
@@ -5301,7 +5673,7 @@ namespace QidWorkerRole
                         }
                         try
                         {
-                            if (StoreIROPSEmail(Subject, MailBody, fromEmail, toEmail, dtRec, dtSend, Subject, status, "EMAIL"))
+                            if (await StoreIROPSEmail(Subject, MailBody, fromEmail, toEmail, dtRec, dtSend, Subject, status, "EMAIL"))
                             {
                                 clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
                             }
@@ -5346,7 +5718,7 @@ namespace QidWorkerRole
             return sb.ToString();
         }
 
-        public void ReadFromSFTP()
+        public async Task ReadFromSFTP()
         {
             clsLog.WriteLogAzure("In FTPListener() => ReadFromSFTP()");
             try
@@ -5354,16 +5726,19 @@ namespace QidWorkerRole
                 string FTPAddress = string.Empty, UserName = string.Empty, Password = string.Empty, remotePath = string.Empty, localPath = string.Empty
                     , fingerPrint = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty, messageType = string.Empty, archivalPath = string.Empty;
                 int portNumber = 0;
-                SQLServer objsql = new SQLServer();
-                DataSet ds = new DataSet("ds_SSIMFTPUpload");
+
+                //SQLServer objsql = new SQLServer();
+                //ds = objsql.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
+
+                DataSet? ds = new DataSet("ds_SSIMFTPUpload");
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                     new SqlParameter("@MsgCommType", "SFTP")
                 };
-                ds = objsql.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
+                ds = await _readWriteDao.SelectRecords("sp_MessageConfigurationIn", sqlParameter);
 
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
-                    FTP FTPFuction = new FTP();
+                    //FTP FTPFuction = new FTP();
 
                     foreach (DataRow drow in ds.Tables[0].Rows)
                     {
@@ -5386,7 +5761,7 @@ namespace QidWorkerRole
                                 ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
                             }
 
-                            if (FTPFuction.SFTPDownload(FTPAddress, remotePath, Path.GetTempPath() + localPath, UserName, Password, fingerPrint, portNumber, ppkLocalFilePath, messageType, archivalPath))
+                            if (_ftp.SFTPDownload(FTPAddress, remotePath, Path.GetTempPath() + localPath, UserName, Password, fingerPrint, portNumber, ppkLocalFilePath, messageType, archivalPath))
                             {
                                 clsLog.WriteLogAzure("SFTP Downloaded successfully for SFTP Address: " + FTPAddress + " !! RemotePath : " + remotePath);
                             }
@@ -5411,7 +5786,7 @@ namespace QidWorkerRole
 
                 #region : Copy files to blob :
                 GenericFunction genericFunction = new GenericFunction();
-                string sourcePath = Convert.ToString(genericFunction.ReadValueFromDb("sourcePathSSIM"));  //ConfigurationManager.AppSettings["sourcePathSSIM"].ToString();
+                string sourcePath = Convert.ToString(ConfigCache.Get("sourcePathSSIM"));  //ConfigurationManager.AppSettings["sourcePathSSIM"].ToString();
                 string containerName = GenericFunction.ContainerName.schedules.ToString();
                 genericFunction.MoveAllFilesToBlob(sourcePath, containerName);
                 DirectoryInfo directory = new DirectoryInfo(sourcePath);
@@ -5461,11 +5836,11 @@ namespace QidWorkerRole
             }
         }
 
-        public void GetSSIMData(string SSIMUpload)
+        public async Task GetSSIMData(string SSIMUpload)
         {
             try
             {
-                QID.DataAccess.SQLServer db = new SQLServer(); ;
+                //QID.DataAccess.SQLServer db = new SQLServer(); ;
                 string[] DesignationCode = new string[0];
                 string[] AirlinePrefix = new string[0];
                 string[] ArrivalTimeZone = new string[0];
@@ -5678,84 +6053,144 @@ namespace QidWorkerRole
 
                 #region Preparing Parameters for SSIM Export to Update Airline Schedule
 
-                string[] QueryNames = new string[17];
-                object[] QueryValues = new object[17];
-                SqlDbType[] QueryTypes = new SqlDbType[17];
-                string[] Names = new string[17];
-                object[] Values = new object[17];
-                SqlDbType[] Types = new SqlDbType[17];
+                //string[] QueryNames = new string[17];
+                //object[] QueryValues = new object[17];
+                //SqlDbType[] QueryTypes = new SqlDbType[17];
+                //string[] Names = new string[17];
+                //object[] Values = new object[17];
+                //SqlDbType[] Types = new SqlDbType[17];
 
+                //for (int i = 0; i < AirSchMasterFlightID.Length; i++)
+                //{
+                //    QueryNames[0] = "FromDate";
+                //    QueryNames[1] = "ToDate";
+                //    QueryNames[2] = "FlightID";
+                //    QueryNames[3] = "Source";
+                //    QueryNames[4] = "Dest";
+                //    QueryNames[5] = "ScheduleDepttime";
+                //    QueryNames[6] = "SchArrtime";
+                //    QueryNames[7] = "frequency";
+                //    QueryNames[8] = "EquipmentNo";
+                //    QueryNames[9] = "ArrTimeZone";
+                //    QueryNames[10] = "DeptTimeZone";
+                //    QueryNames[11] = "FlightPrefix";
+                //    QueryNames[12] = "AircraftType";
+                //    QueryNames[13] = "UTCDeptDay";
+                //    QueryNames[14] = "UTCArrDay";
+                //    QueryNames[15] = "Itinerary";
+                //    QueryNames[16] = "LegSeqNo";
+
+                //    QueryValues[0] = AirSchFromDate[i];
+                //    QueryValues[1] = AirSchToDate[i];
+                //    QueryValues[2] = AirSchMasterFlightID[i];
+                //    QueryValues[3] = AirSchMasterOrigin[i];
+                //    QueryValues[4] = AirSchMasterDest[i];
+                //    QueryValues[5] = AirSchMasterDepartureTime[i];
+                //    QueryValues[6] = AirSchMasterArrivalTime[i];
+                //    QueryValues[7] = AirSchFrequency[i];
+                //    QueryValues[8] = AirSchTailNo[i];
+                //    QueryValues[9] = AirSchArrTimeZone[i];
+                //    QueryValues[10] = AirSchDeptTimeZone[i];
+                //    QueryValues[11] = AirSchAirlinePrefix[i];
+                //    QueryValues[12] = AirSchAirCraftType[i];
+                //    QueryValues[13] = AirSchUTCDeptDay[i];
+                //    QueryValues[14] = AirSchUTCArrDay[i];
+                //    QueryValues[15] = AirSchIteneary[i];
+                //    QueryValues[16] = AirSchLegSequence[i];
+
+
+                //    QueryTypes[0] = SqlDbType.VarChar;
+                //    QueryTypes[1] = SqlDbType.VarChar;
+                //    QueryTypes[2] = SqlDbType.VarChar;
+                //    QueryTypes[3] = SqlDbType.VarChar;
+                //    QueryTypes[4] = SqlDbType.VarChar;
+                //    QueryTypes[5] = SqlDbType.VarChar;
+                //    QueryTypes[6] = SqlDbType.VarChar;
+                //    QueryTypes[7] = SqlDbType.VarChar;
+                //    QueryTypes[8] = SqlDbType.VarChar;
+                //    QueryTypes[9] = SqlDbType.VarChar;
+                //    QueryTypes[10] = SqlDbType.VarChar;
+                //    QueryTypes[11] = SqlDbType.VarChar;
+                //    QueryTypes[12] = SqlDbType.VarChar;
+                //    QueryTypes[13] = SqlDbType.VarChar;
+                //    QueryTypes[14] = SqlDbType.VarChar;
+                //    QueryTypes[15] = SqlDbType.VarChar;
+                //    QueryTypes[16] = SqlDbType.VarChar;
+
+                //    #region Preparing Parameters for SSIM Export to Update Airline Schedule
+
+                //    bool val = db.InsertData("spSavePartnerSchedule_SSIM_ViaLogic_Partner", QueryNames, QueryTypes, QueryValues);
+                //    if (!val)
+                //    {
+                //        clsLog.WriteLogAzure("SSIM Updating failed!");
+                //        return;
+                //    }
+                //    #endregion
+                //}
+
+                // define your parameter names and types ONCE outside the loop
+                string[] QueryNames =
+                {
+                    "FromDate", "ToDate", "FlightID", "Source", "Dest",
+                    "ScheduleDepttime", "SchArrtime", "frequency", "EquipmentNo",
+                    "ArrTimeZone", "DeptTimeZone", "FlightPrefix", "AircraftType",
+                    "UTCDeptDay", "UTCArrDay", "Itinerary", "LegSeqNo"
+                };
+
+                SqlDbType[] QueryTypes = Enumerable.Repeat(SqlDbType.VarChar, QueryNames.Length).ToArray();
+
+                // loop through all flights
                 for (int i = 0; i < AirSchMasterFlightID.Length; i++)
                 {
-                    QueryNames[0] = "FromDate";
-                    QueryNames[1] = "ToDate";
-                    QueryNames[2] = "FlightID";
-                    QueryNames[3] = "Source";
-                    QueryNames[4] = "Dest";
-                    QueryNames[5] = "ScheduleDepttime";
-                    QueryNames[6] = "SchArrtime";
-                    QueryNames[7] = "frequency";
-                    QueryNames[8] = "EquipmentNo";
-                    QueryNames[9] = "ArrTimeZone";
-                    QueryNames[10] = "DeptTimeZone";
-                    QueryNames[11] = "FlightPrefix";
-                    QueryNames[12] = "AircraftType";
-                    QueryNames[13] = "UTCDeptDay";
-                    QueryNames[14] = "UTCArrDay";
-                    QueryNames[15] = "Itinerary";
-                    QueryNames[16] = "LegSeqNo";
+                    object[] QueryValues =
+                    {
+                        AirSchFromDate[i],
+                        AirSchToDate[i],
+                        AirSchMasterFlightID[i],
+                        AirSchMasterOrigin[i],
+                        AirSchMasterDest[i],
+                        AirSchMasterDepartureTime[i],
+                        AirSchMasterArrivalTime[i],
+                        AirSchFrequency[i],
+                        AirSchTailNo[i],
+                        AirSchArrTimeZone[i],
+                        AirSchDeptTimeZone[i],
+                        AirSchAirlinePrefix[i],
+                        AirSchAirCraftType[i],
+                        AirSchUTCDeptDay[i],
+                        AirSchUTCArrDay[i],
+                        AirSchIteneary[i],
+                        AirSchLegSequence[i]
+                    };
 
-                    QueryValues[0] = AirSchFromDate[i];
-                    QueryValues[1] = AirSchToDate[i];
-                    QueryValues[2] = AirSchMasterFlightID[i];
-                    QueryValues[3] = AirSchMasterOrigin[i];
-                    QueryValues[4] = AirSchMasterDest[i];
-                    QueryValues[5] = AirSchMasterDepartureTime[i];
-                    QueryValues[6] = AirSchMasterArrivalTime[i];
-                    QueryValues[7] = AirSchFrequency[i];
-                    QueryValues[8] = AirSchTailNo[i];
-                    QueryValues[9] = AirSchArrTimeZone[i];
-                    QueryValues[10] = AirSchDeptTimeZone[i];
-                    QueryValues[11] = AirSchAirlinePrefix[i];
-                    QueryValues[12] = AirSchAirCraftType[i];
-                    QueryValues[13] = AirSchUTCDeptDay[i];
-                    QueryValues[14] = AirSchUTCArrDay[i];
-                    QueryValues[15] = AirSchIteneary[i];
-                    QueryValues[16] = AirSchLegSequence[i];
+                    // convert arrays to SqlParameter[]
+                    SqlParameter[] parameters = QueryNames
+                        .Select((name, index) => new SqlParameter("@" + name, QueryTypes[index])
+                        {
+                            Value = QueryValues[index] ?? DBNull.Value
+                        })
+                        .ToArray();
 
+                    // execute your stored procedure
+                    bool val = await _readWriteDao.ExecuteNonQueryAsync("spSavePartnerSchedule_SSIM_ViaLogic_Partner", parameters);
 
-                    QueryTypes[0] = SqlDbType.VarChar;
-                    QueryTypes[1] = SqlDbType.VarChar;
-                    QueryTypes[2] = SqlDbType.VarChar;
-                    QueryTypes[3] = SqlDbType.VarChar;
-                    QueryTypes[4] = SqlDbType.VarChar;
-                    QueryTypes[5] = SqlDbType.VarChar;
-                    QueryTypes[6] = SqlDbType.VarChar;
-                    QueryTypes[7] = SqlDbType.VarChar;
-                    QueryTypes[8] = SqlDbType.VarChar;
-                    QueryTypes[9] = SqlDbType.VarChar;
-                    QueryTypes[10] = SqlDbType.VarChar;
-                    QueryTypes[11] = SqlDbType.VarChar;
-                    QueryTypes[12] = SqlDbType.VarChar;
-                    QueryTypes[13] = SqlDbType.VarChar;
-                    QueryTypes[14] = SqlDbType.VarChar;
-                    QueryTypes[15] = SqlDbType.VarChar;
-                    QueryTypes[16] = SqlDbType.VarChar;
-
-                    #region Preparing Parameters for SSIM Export to Update Airline Schedule
-
-                    bool val = db.InsertData("spSavePartnerSchedule_SSIM_ViaLogic_Partner", QueryNames, QueryTypes, QueryValues);
                     if (!val)
                     {
                         clsLog.WriteLogAzure("SSIM Updating failed!");
                         return;
                     }
-                    #endregion
                 }
 
+
+                //db.ExecuteProcedure("sp_UpdateDatesSSIM");
+
                 //To update the From Date & To Date for conflicting schedules
-                if (db.ExecuteProcedure("sp_UpdateDatesSSIM"))
+                bool dbRes = await _readWriteDao.ExecuteNonQueryAsync("sp_UpdateDatesSSIM");
+
+                if (dbRes)
+                {
                     clsLog.WriteLogAzure("Schedule Uploaded Successfully!");
+                }
                 #endregion
 
             }
@@ -5780,14 +6215,17 @@ namespace QidWorkerRole
         /// Read MQ Message and save it to the inbox
         /// Added by prashantz
         /// </summary>
-        public void ReceiveMQMessage()
+        public async Task ReceiveMQMessage()
         {
-            DataSet dsMQConfiguration = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsMQConfiguration = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
 
             try
             {
-                dsMQConfiguration = sqlServer.SelectRecords("uspGetMQConfiguration");
+                //dsMQConfiguration = sqlServer.SelectRecords("uspGetMQConfiguration");
+
+                dsMQConfiguration = await _readWriteDao.SelectRecords("uspGetMQConfiguration");
+
                 if (dsMQConfiguration != null)
                 {
                     if (dsMQConfiguration.Tables.Count > 0 && dsMQConfiguration.Tables[0].Rows.Count > 0)
@@ -5822,7 +6260,7 @@ namespace QidWorkerRole
 
                                 if (MessageBody.Trim() != string.Empty)
                                 {
-                                    if (SaveMessage(Subject.ToUpper(), MessageBody.Trim(), fromEmail, toEmail, dtRec, dtSend, MessageType, status, "Message Queue", "", "", Convert.ToDateTime("1900-01-01 00:00:00.000")))
+                                    if (await SaveMessage(Subject.ToUpper(), MessageBody.Trim(), fromEmail, toEmail, dtRec, dtSend, MessageType, status, "Message Queue", "", "", Convert.ToDateTime("1900-01-01 00:00:00.000")))
                                     {
                                         //clsLog.WriteLogAzure("MQMessage saved successfully in to inbox : " + DateTime.Now);
                                     }
@@ -5853,13 +6291,16 @@ namespace QidWorkerRole
         /// Save message to the 'tblInbox' table 
         /// Added by prashantz
         /// </summary>
-        public bool SaveMessage(string subject, string body, string fromId, string toId, DateTime recievedOn, DateTime sendOn, string type, string status, string CommunicationType, string awbNumber, string flightNo, DateTime flightDate)
+        public async Task<bool> SaveMessage(string subject, string body, string fromId, string toId, DateTime recievedOn, DateTime sendOn, string type, string status, string CommunicationType, string awbNumber, string flightNo, DateTime flightDate)
         {
             bool flag = false;
-            DataSet dsResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsResult = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
             try
             {
+
+                //dsResult = sqlServer.SelectRecords("spSavetoInbox", sqlParameter);
+
                 ///Paramters are changes by prashantz
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                      new SqlParameter("@subject",subject)
@@ -5876,7 +6317,7 @@ namespace QidWorkerRole
                     ,new SqlParameter("@FlightDate",flightDate)
                 };
 
-                dsResult = sqlServer.SelectRecords("spSavetoInbox", sqlParameter);
+                dsResult = await _readWriteDao.SelectRecords("spSavetoInbox", sqlParameter);
 
                 if (dsResult != null && dsResult.Tables.Count > 0 && dsResult.Tables[0].Rows.Count > 0)
                     if (Convert.ToInt32(dsResult.Tables[0].Rows[0][0].ToString()) > 0)
@@ -5911,14 +6352,18 @@ namespace QidWorkerRole
         #endregion
 
         #region :: Internal Methods ::
-        internal void SyncTblueData()
+        internal async Task SyncTblueData()
         {
             try
             {
-                SQLServer db = new SQLServer(); ;
-                db.ExecuteProcedure("sp_UpdateBudgetSummary");
-                db.ExecuteProcedure("sp_BIUpdateBookingTransaction");
-                db.ExecuteProcedure("sp_BI_UpdateBookingSummary");
+                //SQLServer db = new SQLServer(); ;
+                //db.ExecuteProcedure("sp_UpdateBudgetSummary");
+                //db.ExecuteProcedure("sp_BIUpdateBookingTransaction");
+                //db.ExecuteProcedure("sp_BI_UpdateBookingSummary");
+
+                await _readWriteDao.SelectRecords("sp_UpdateBudgetSummary");
+                await _readWriteDao.SelectRecords("sp_BIUpdateBookingTransaction");
+                await _readWriteDao.SelectRecords("sp_BIUpdateBookingTransaction");
 
             }
             catch (Exception ex)
@@ -5929,15 +6374,19 @@ namespace QidWorkerRole
         #endregion
 
         #region :: Private Methods ::
-        private void CheckMessagesforProcessing()
+        private async Task CheckMessagesforProcessing()
         {
             try
             {
-                SQLServer db = new SQLServer();
-                DataSet ds = null;
+                //SQLServer db = new SQLServer();
+                //ds = db.SelectRecords("spGetMessageForInsert");
+
+                DataSet? ds = null;
                 string status = "Re-Processed", MessageFrom = string.Empty;
 
-                ds = db.SelectRecords("spGetMessageForInsert");
+
+                ds = await _readWriteDao.SelectRecords("spGetMessageForInsert");
+
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     for (int row = 0; row < ds.Tables[0].Rows.Count; row++)
@@ -6032,18 +6481,35 @@ namespace QidWorkerRole
                             Errmsg = Errmsg.Replace("Input string was not in a correct format.", "");
                         }
 
-                        string[] PName = new string[] { "srno", "status", "body", "PIMAddress", "FromID", "MSGBody", "Error" }; //  In sp body will update to Mssage Type (Cond is handeled in DB)
-                        object[] PValues = new object[] { Convert.ToInt32(ds.Tables[0].Rows[row][0].ToString()), status, msgType, PIMAAddress, MessageFrom, origmsg.Trim(), Errmsg };
-                        SqlDbType[] PType = new SqlDbType[] { SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                        if (!db.ExecuteProcedure("spUpdateMessageStatus", PName, PType, PValues))
+                        //string[] PName = new string[] { "srno", "status", "body", "PIMAddress", "FromID", "MSGBody", "Error" }; //  In sp body will update to Mssage Type (Cond is handeled in DB)
+                        //object[] PValues = new object[] { Convert.ToInt32(ds.Tables[0].Rows[row][0].ToString()), status, msgType, PIMAAddress, MessageFrom, origmsg.Trim(), Errmsg };
+                        //SqlDbType[] PType = new SqlDbType[] { SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                        //if (!db.ExecuteProcedure("spUpdateMessageStatus", PName, PType, PValues))
+                        //{
+                        //    clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
+                        //}
+
+                        SqlParameter[] parameters =
+                        {
+                            new SqlParameter("@srno", SqlDbType.Int) { Value = Convert.ToInt32(ds.Tables[0].Rows[row][0].ToString()) },
+                            new SqlParameter("@status", SqlDbType.VarChar) { Value = status },
+                            new SqlParameter("@body", SqlDbType.VarChar) { Value = msgType },
+                            new SqlParameter("@PIMAddress", SqlDbType.VarChar) { Value = PIMAAddress },
+                            new SqlParameter("@FromID", SqlDbType.VarChar) { Value = MessageFrom },
+                            new SqlParameter("@MSGBody", SqlDbType.VarChar) { Value = origmsg.Trim() },
+                            new SqlParameter("@Error", SqlDbType.VarChar) { Value = Errmsg }
+                        };
+
+                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spUpdateMessageStatus", parameters);
+                        if (!dbRes)
                         {
                             clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
                         }
                     }
                 }
 
-                db = null;
-                GC.Collect();
+                //db = null;
+                //GC.Collect();
             }
             catch (Exception ex)
             {
@@ -6051,23 +6517,26 @@ namespace QidWorkerRole
             }
         }
 
-        private void sendmail_V1()
+        private async Task sendmail_V1()
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-                string OutEmailPassword = genericFunction.ReadValueFromDb("msgService_OutEmailPassword");
-                string OutEmailId = genericFunction.ReadValueFromDb("msgService_OutEmailId");
-                string OutEmailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
-                int outport = int.Parse(Convert.ToString(genericFunction.ReadValueFromDb("OutPort")));  //int.Parse(ConfigurationManager.AppSettings["OutPort"].ToString());
+                //GenericFunction genericFunction = new GenericFunction();
+                string OutEmailPassword = ConfigCache.Get("msgService_OutEmailPassword");
+                string OutEmailId = ConfigCache.Get("msgService_OutEmailId");
+                string OutEmailServer = ConfigCache.Get("msgService_EmailOutServer");
+                int outport = int.Parse(Convert.ToString(ConfigCache.Get("OutPort")));  //int.Parse(ConfigurationManager.AppSettings["OutPort"].ToString());
                 bool isOn = false;
                 bool ishtml = false;
-                SQLServer objsql = new SQLServer();
+                //SQLServer objsql = new SQLServer();
                 do
                 {
+                    //DataSet ds = null;
+                    //ds = objsql.SelectRecords("spMailtoSend");
+
                     isOn = false;
-                    DataSet ds = null;
-                    ds = objsql.SelectRecords("spMailtoSend");
+                    DataSet? ds = await _readWriteDao.SelectRecords("spMailtoSend");
+
                     if (ds != null)
                     {
                         if (ds.Tables.Count > 0)
@@ -6107,15 +6576,27 @@ namespace QidWorkerRole
                                     try
                                     {
                                         isMessageSent = true;
-                                        FTP objFtp = new FTP();
+                                        //FTP _ftp = new FTP();
                                         if (drMsg != null)
                                         {
-                                            objFtp.SaveFTP(drMsg["FTPID"].ToString(), drMsg["FTPUserName"].ToString(), drMsg["FTPPassword"].ToString(), body, DateTime.Now.ToString("yyyyMMdd_hhmmss_fff"));
+                                            _ftp.SaveFTP(drMsg["FTPID"].ToString(), drMsg["FTPUserName"].ToString(), drMsg["FTPPassword"].ToString(), body, DateTime.Now.ToString("yyyyMMdd_hhmmss_fff"));
                                         }
-                                        string pname = "num";
-                                        object pvalue = int.Parse(dr[0].ToString());
-                                        SqlDbType ptype = SqlDbType.Int;
-                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                        //string pname = "num";
+                                        //object pvalue = int.Parse(dr[0].ToString());
+                                        //SqlDbType ptype = SqlDbType.Int;
+                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //{
+                                        //    clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                        //}
+
+                                        SqlParameter[] parameters =
+                                        {
+                                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                        };
+
+                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                        if (dbRes)
                                         {
                                             clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
                                         }
@@ -6132,7 +6613,7 @@ namespace QidWorkerRole
                                     {
                                         // isMessageSent = true;
                                         #region Email
-                                        EMAILOUT objmail = new EMAILOUT();
+                                        //EMAILOUT objmail = new EMAILOUT();
                                         if (sentadd.Length > 2 && sentadd.Contains("@") && sentadd.Contains("."))
                                         {
                                             isMessageSent = true;
@@ -6164,13 +6645,24 @@ namespace QidWorkerRole
                                                         }
 
                                                     }
-                                                    if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions))
+                                                    if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions))
                                                     {
                                                         clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
-                                                        string pname = "num";
-                                                        object pvalue = int.Parse(dr[0].ToString());
-                                                        SqlDbType ptype = SqlDbType.Int;
-                                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                        //string pname = "num";
+                                                        //object pvalue = int.Parse(dr[0].ToString());
+                                                        //SqlDbType ptype = SqlDbType.Int;
+                                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                        //{
+                                                        //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                        //}
+
+                                                        SqlParameter[] parameters =
+                                                        {
+                                                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                        };
+
+                                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                        if (dbRes)
                                                         {
                                                             clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                                         }
@@ -6188,12 +6680,23 @@ namespace QidWorkerRole
                                             else
                                             {
                                                 #region Send Email
-                                                if (objmail.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, ""))
+                                                if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, ""))
                                                 {
-                                                    string pname = "num";
-                                                    object pvalue = int.Parse(dr[0].ToString());
-                                                    SqlDbType ptype = SqlDbType.Int;
-                                                    if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                    //string pname = "num";
+                                                    //object pvalue = int.Parse(dr[0].ToString());
+                                                    //SqlDbType ptype = SqlDbType.Int;
+                                                    //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                                    //{
+                                                    //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                    //}
+
+                                                    SqlParameter[] parameters =
+                                                    {
+                                                        new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                                    };
+
+                                                    var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                                    if (dbRes)
                                                     {
                                                         clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                                     }
@@ -6218,10 +6721,21 @@ namespace QidWorkerRole
                                 {
                                     try
                                     {
-                                        string[] pname = { "num", "ErrorMsg" };
-                                        object[] pvalue = { int.Parse(dr[0].ToString()), "Outgoing FTP or emaild not configured." };
-                                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                        if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //string[] pname = { "num", "ErrorMsg" };
+                                        //object[] pvalue = { int.Parse(dr[0].ToString()), "Outgoing FTP or emaild not configured." };
+                                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+                                        //if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                        //{
+                                        //    clsLog.WriteLogAzure("Fail to sent Email to:" + dr[0].ToString());
+                                        //}
+
+                                        SqlParameter[] parameters =
+                                        {
+                                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
+                                            new SqlParameter("@ErrorMsg", SqlDbType.VarChar) { Value = "Outgoing FTP or email not configured." }
+                                        };
+                                        var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
+                                        if (dbRes)
                                         {
                                             clsLog.WriteLogAzure("Fail to sent Email to:" + dr[0].ToString());
                                         }
@@ -6247,8 +6761,8 @@ namespace QidWorkerRole
 
                 } while (isOn);
 
-                objsql = null;
-                GC.Collect();
+                //objsql = null;
+                //GC.Collect();
             }
             catch (Exception ex)
             {
@@ -6261,10 +6775,10 @@ namespace QidWorkerRole
             //String Key = "NUro8/C7+kMqtwOwLbe6agUvA83s+8xSTBqrkMwSjPP6MAxVkdtsLDGjyfyEqQIPv6JHEEf5F5s4a+DFPsSQfg==";
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-                if (String.IsNullOrEmpty(BlobKey))
+                //GenericFunction genericFunction = new GenericFunction();
+                if (string.IsNullOrEmpty(BlobKey))
                 {
-                    BlobKey = genericFunction.ReadValueFromDb("BlobStorageKey");
+                    BlobKey = ConfigCache.Get("BlobStorageKey");
                 }
             }
             catch (Exception ex)
@@ -6278,10 +6792,10 @@ namespace QidWorkerRole
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-                if (String.IsNullOrEmpty(BlobName))
+                //GenericFunction genericFunction = new GenericFunction();
+                if (string.IsNullOrEmpty(BlobName))
                 {
-                    BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                    BlobName = ConfigCache.Get("BlobStorageName");
                 }
             }
             catch (Exception ex)
@@ -6291,27 +6805,30 @@ namespace QidWorkerRole
             return BlobName;
         }
 
-        private bool setSMSFlag(string SrNo)
-        {
-            bool flag = false;
-            try
-            {
-                SQLServer objSQL = new SQLServer();
-                string procedure = "spSetSMSProcessFlag";
-                flag = objSQL.UpdateData(procedure, "SrNo", SqlDbType.BigInt, SrNo);
-                objSQL = null;
-                GC.Collect();
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return flag;
-        }
+        /*Not in use*/
+        //private bool setSMSFlag(string SrNo)
+        //{
+        //    bool flag = false;
+        //    try
+        //    {
+        //        SQLServer objSQL = new SQLServer();
+        //        string procedure = "spSetSMSProcessFlag";
+        //        flag = objSQL.UpdateData(procedure, "SrNo", SqlDbType.BigInt, SrNo);
+        //        objSQL = null;
+        //        GC.Collect();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return flag;
+        //}
 
         private bool SendSMS(string MobileNo, string Message)
         {
             bool flag = false;
+            string smsUID = ConfigCache.Get("SMSUN");
+            string smspswd = ConfigCache.Get("SMSPASS");
             try
             {
                 if (MobileNo.Trim().Length > 0)
@@ -6338,11 +6855,11 @@ namespace QidWorkerRole
         {
             try
             {
-                DataSet dsFlightsDetail = new DataSet();
-                SQLServer db = new SQLServer();
+                DataSet? dsFlightsDetail = new DataSet();
+                //SQLServer db = new SQLServer();
                 GenericFunction genericFunction = new GenericFunction();
-                string f_AutoFBL = genericFunction.ReadValueFromDb("AutoFBL");
-                string autoFWBFHL = genericFunction.ReadValueFromDb("AutoForwardFWBFHL");
+                string f_AutoFBL = ConfigCache.Get("AutoFBL");
+                string autoFWBFHL = ConfigCache.Get("AutoForwardFWBFHL");
 
                 DateTime lastFBLSentOn = System.DateTime.UtcNow;
 
@@ -6350,10 +6867,13 @@ namespace QidWorkerRole
                 {
                     #region : FBL to SFTP :
 
+                    //dsFlightsDetail = db.SelectRecords("Messaging.uspGetFlightsForFBL", sqlParameter);
+
                     SqlParameter[] sqlParameter = new SqlParameter[] {
-                    new SqlParameter("SendFBLToSFTP", "true")
+                        new SqlParameter("SendFBLToSFTP", "true")
                     };
-                    dsFlightsDetail = db.SelectRecords("Messaging.uspGetFlightsForFBL", sqlParameter);
+                    dsFlightsDetail = await _readWriteDao.SelectRecords("Messaging.uspGetFlightsForFBL", sqlParameter);
+
                     clsLog.WriteLogAzure("FBLTOSFTP BBB");
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
@@ -6383,9 +6903,11 @@ namespace QidWorkerRole
 
                     #region : Auto FBL :
 
+                    //SQLServer sqlServer = new SQLServer();
+                    //dsFlightsDetail = sqlServer.SelectRecords("Messaging.uspGetFlightsForFBL");
+
                     dsFlightsDetail = null;
-                    SQLServer sqlServer = new SQLServer();
-                    dsFlightsDetail = sqlServer.SelectRecords("Messaging.uspGetFlightsForFBL");
+                    dsFlightsDetail = await _readWriteDao.SelectRecords("Messaging.uspGetFlightsForFBL", sqlParameter);
 
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
@@ -6418,9 +6940,11 @@ namespace QidWorkerRole
                 {
                     #region : Auto FWB/FHL :
 
+                    //SQLServer sqlServer1 = new SQLServer();
+                    //dsFlightsDetail = sqlServer1.SelectRecords("Messaging.uspGetFlightsForFWBFHL");
+
                     dsFlightsDetail = null;
-                    SQLServer sqlServer1 = new SQLServer();
-                    dsFlightsDetail = sqlServer1.SelectRecords("Messaging.uspGetFlightsForFWBFHL");
+                    dsFlightsDetail = await _readWriteDao.SelectRecords("Messaging.uspGetFlightsForFWBFHL");
 
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
@@ -6460,14 +6984,16 @@ namespace QidWorkerRole
 
         public async Task AutoSendXFSUMessages()
         {
-            SQLServer sqlServer = new SQLServer();
-            DataSet dsXFSUData = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
+            DataSet? dsXFSUData = new DataSet();
             GenericFunction genericFunction = new GenericFunction();
             try
             {
                 if (!string.IsNullOrEmpty(genericFunction.GetConfigurationValues("AutoSendXFSUMessages")) && genericFunction.GetConfigurationValues("AutoSendXFSUMessages").Equals("True", StringComparison.OrdinalIgnoreCase))
                 {
-                    dsXFSUData = sqlServer.SelectRecords("Messaging.GetRecordforMakeXFSUMessage");
+                    //dsXFSUData = sqlServer.SelectRecords("Messaging.GetRecordforMakeXFSUMessage");
+                    dsXFSUData = await _readWriteDao.SelectRecords("Messaging.GetRecordforMakeXFSUMessage");
+
                     if (dsXFSUData != null)
                     {
                         if (dsXFSUData.Tables.Count > 0)
@@ -6507,7 +7033,7 @@ namespace QidWorkerRole
                                                     Convert.ToString(dtToAdress.Rows[0]["MessageID"]), sitaHeaderType);
                                             }
                                         }
-                                        
+
                                         if (SitaMessageHeader.Length > 0)
                                         {
                                             clsLog.WriteLogAzure(" AutoSendXFSUMessages SitaMessageHeader send ");
@@ -6547,12 +7073,18 @@ namespace QidWorkerRole
                                 Toid = Toid.Remove(0, 1);
                                 if (Toid != "")
                                 {
-                                    string[] PFWB = new string[] { "TOID" };
-                                    SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar };
-                                    object[] paramValue = { Toid };
+                                    //string[] PFWB = new string[] { "TOID" };
+                                    //SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar };
+                                    //object[] paramValue = { Toid };
+                                    //string strProcedure = "SPUpdateIsStatusSentFoxXFSU";
+                                    //sqlServer.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
 
                                     string strProcedure = "SPUpdateIsStatusSentFoxXFSU";
-                                    sqlServer.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
+                                    SqlParameter[] parameters =
+                                    [
+                                        new("@TOID", SqlDbType.VarChar) { Value = Toid }
+                                    ];
+                                    await _readWriteDao.ExecuteNonQueryAsync(strProcedure, parameters);
                                 }
                             }
                             else
@@ -6572,13 +7104,16 @@ namespace QidWorkerRole
         /// <summary>
         /// Send Auto FFR to System
         /// </summary>
-        private void sendAutoFFR()
+        private async Task sendAutoFFR()
         {
             try
             {
-                SQLServer db = new SQLServer(); ;
-                DataSet ds = null;
-                ds = db.SelectRecords("spStimulateAutoFFR");
+                //SQLServer db = new SQLServer(); ;
+                //ds = db.SelectRecords("spStimulateAutoFFR");
+
+                DataSet? ds = null;
+                ds = await _readWriteDao.SelectRecords("spStimulateAutoFFR");
+
                 if (ds != null)
                 {
                     if (ds.Tables.Count > 0)
@@ -6591,8 +7126,8 @@ namespace QidWorkerRole
                     }
                 }
 
-                db = null;
-                GC.Collect();
+                //db = null;
+                //GC.Collect();
             }
             catch (Exception ex)
             {
@@ -6714,7 +7249,7 @@ namespace QidWorkerRole
             try
             {
                 string[] lines = Message.Split(' ');
-                // Message = String.Join(Environment.NewLine, Message.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                // Message = string.Join(Environment.NewLine, Message.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
                 // Message = Regex.Replace(Message, @"\s+", Environment.NewLine);
                 for (int i = 0; i < lines.Length; i++)
                 {
@@ -6747,16 +7282,19 @@ namespace QidWorkerRole
             return Message;
         }
 
-        private DataSet getAWBListForAlert()
+        private async Task<DataSet> getAWBListForAlert()
         {
-            DataSet dsData = new DataSet();
+            DataSet? dsData = new DataSet();
             try
             {
+                //SQLServer objSQL = new SQLServer();
+                //dsData = objSQL.SelectRecords(procedure);
+                //objSQL = null;
+                //GC.Collect();
+
                 string procedure = "spGetDataForDwellTimeAlert";
-                SQLServer objSQL = new SQLServer();
-                dsData = objSQL.SelectRecords(procedure);
-                objSQL = null;
-                GC.Collect();
+                dsData = await _readWriteDao.SelectRecords(procedure);
+
             }
             catch (Exception ex)
             {
@@ -6765,13 +7303,13 @@ namespace QidWorkerRole
             return dsData;
         }
 
-        private bool sendMailLogic()
+        private async Task<bool> sendMailLogic()
         {
             bool flag = false;
             try
             {
                 DataSet dsData = new DataSet();
-                dsData = getAWBListForAlert();
+                dsData = await getAWBListForAlert();
                 if (dsData != null && dsData.Tables.Count > 0 && dsData.Tables[0].Rows.Count > 0)
                 {
                     string AWBPrefix = "";
@@ -6821,14 +7359,15 @@ namespace QidWorkerRole
             return flag;
         }
 
-        private void CheckAWBDataforProcessing()
+        private async Task CheckAWBDataforProcessing()
         {
             try
             {
-                SQLServer db = new SQLServer(); ;
-                db.ExecuteProcedure("spProcessUploadedAWBData");
-                db = null;
-                GC.Collect();
+                //SQLServer db = new SQLServer(); ;
+                //db.ExecuteProcedure("spProcessUploadedAWBData");
+                //db = null;
+                //GC.Collect();
+                await _readWriteDao.SelectRecords("spProcessUploadedAWBData");
             }
             catch (Exception ex)
             {
@@ -6836,19 +7375,24 @@ namespace QidWorkerRole
             }
         }
 
-        private void ProcessArrivalSMSNotifications()
+        private async Task ProcessArrivalSMSNotifications()
         {
-            DataSet dsData = null;
-            SQLServer objSQL = new SQLServer();
+            DataSet? dsData = null;
+            //SQLServer objSQL = new SQLServer();
             int rowID = 0;
             string errorDesc = string.Empty;
             string SMSResponse = string.Empty;
             object[] consigneeInfo = null;
+            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
 
             try
             {
                 // Get pending records to process the SMS
-                dsData = objSQL.SelectRecords("Log.uspGetArrivalSMSNotification");
+
+                //dsData = objSQL.SelectRecords("Log.uspGetArrivalSMSNotification");
+
+                dsData = await _readWriteDao.SelectRecords("Log.uspGetArrivalSMSNotification");
+
                 if (dsData != null && dsData.Tables.Count > 0 && dsData.Tables[0].Rows.Count > 0)
                 {
                     for (int intCount = 0; intCount < dsData.Tables[0].Rows.Count; intCount++)
@@ -6873,13 +7417,16 @@ namespace QidWorkerRole
                         object[] consigneeInfoOld = { consigneePhoneNumber, consigneesName, arrivedPieces, arrivedWeight, awbNumber,
                             origin, destination, clientName, clientPhoneNumber, UpdateStatus};
 
-                        if (SMSNewAPI.ToUpper() == "TRUE")
+                        //if (SMSNewAPI.ToUpper() == "TRUE")
+                        if (isSMSNewApi)
+                        {
                             consigneeInfo = consigneeInfoNew;
+                        }
                         else
                             consigneeInfo = consigneeInfoOld;
 
                         //Call SMS API and process the SMS
-                        string apiToken = GenerateAPIToken();
+                        string apiToken = await GenerateAPIToken();
 
                         if (!string.IsNullOrEmpty(apiToken))
                         {
@@ -6887,7 +7434,7 @@ namespace QidWorkerRole
                         }
 
                         // Update the SMS log with result
-                        updateSMSStatus(rowID, errorDesc, SMSResponse);
+                        await updateSMSStatus(rowID, errorDesc, SMSResponse);
                     }
                 }
             }
@@ -6895,21 +7442,24 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                dsData = null;
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    dsData = null;
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
-        private void RemoveLyingListProcess()
+        private async Task RemoveLyingListProcess()
         {
-            SQLServer objSQL = new SQLServer();
-            DataSet ds = null;
+            //SQLServer objSQL = new SQLServer();
+            DataSet? ds = null;
             try
             {
-                ds = objSQL.SelectRecords("dbo.UspRemoveLyingListOfShipment");
+                //ds = objSQL.SelectRecords("dbo.UspRemoveLyingListOfShipment");
+
+                ds = await _readWriteDao.SelectRecords("dbo.UspRemoveLyingListOfShipment");
+
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     string PartnerEmailIds = ds.Tables[0].Rows[0][0].ToString();
@@ -6924,7 +7474,7 @@ namespace QidWorkerRole
                         MemoryStream stream = null;
                         string FileURL = null;
 
-                        String FileNameFormat = "LyingExcel_" + DateTime.Now.ToString("yyyyMMddhhmmss");
+                        System.String FileNameFormat = "LyingExcel_" + DateTime.Now.ToString("yyyyMMddhhmmss");
 
                         StringBuilder Excel = GetExcelDatafromDT(ds.Tables[1]);
                         byteArray = Encoding.ASCII.GetBytes(Excel.ToString());
@@ -6946,22 +7496,29 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
-        private void SendLyingListReport()
+        private async Task SendLyingListReport()
         {
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
-            SQLServer objSQL = new SQLServer();
-            DataSet ds = null;
+            //SQLServer objSQL = new SQLServer();
+            DataSet? ds = null;
             try
             {
                 //ds = objSQL.SelectRecords("dbo.UspSendLyingListReport");
-                ds = objSQL.SelectRecords("dbo.UspSendLyingListReport", "UTCDatetime", UTCDatetime, SqlDbType.DateTime);
+
+                //ds = objSQL.SelectRecords("dbo.UspSendLyingListReport", "UTCDatetime", UTCDatetime, SqlDbType.DateTime);
+                SqlParameter[] parameters =
+                [
+                    new("@UTCDatetime", SqlDbType.DateTime) { Value = UTCDatetime }
+                ];
+                ds = await _readWriteDao.SelectRecords("dbo.UspSendLyingListReport", parameters);
+
                 if (ds != null)
                 {
                     if (ds.Tables.Count > 0)
@@ -6980,7 +7537,7 @@ namespace QidWorkerRole
                                 MemoryStream stream = null;
                                 string FileURL = null;
 
-                                String FileNameFormat = "WareHouseInventoryExportFltLevel_" + UTCDatetime.ToString("MMddyyyyhhmm");
+                                System.String FileNameFormat = "WareHouseInventoryExportFltLevel_" + UTCDatetime.ToString("MMddyyyyhhmm");
 
                                 StringBuilder Excel = GetExcelDatafromDT(ds.Tables[1]);
                                 byteArray = Encoding.ASCII.GetBytes(Excel.ToString());
@@ -7006,30 +7563,29 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
 
         /// <summary>
         /// SendFlightControlListReport
         /// </summary>
-        private void SendFlightControlListReport()
+        private async Task SendFlightControlListReport()
         {
-
-
-
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
-            SQLServer objSQL = new SQLServer();
+            //SQLServer objSQL = new SQLServer();
 
-            DataSet DsEmails = null;
+            DataSet? DsEmails = null;
 
             try
             {
-                DsEmails = objSQL.SelectRecords("USPGetEmailIdsForFltCnt");
+                //DsEmails = objSQL.SelectRecords("USPGetEmailIdsForFltCnt");
+                DsEmails = await _readWriteDao.SelectRecords("USPGetEmailIdsForFltCnt");
+
             }
             catch (Exception ex)
             {
@@ -7058,11 +7614,14 @@ namespace QidWorkerRole
                                 {
                                     IsUpdate = 1;
                                 }
-                                DataSet ds = null;
+                                DataSet? ds = null;
+
+
+                                //SQLServer sqlServer = new SQLServer();
+                                //ds = sqlServer.SelectRecords("USPSendFlightControlData", sqlParameters);
 
                                 SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@Source", Source), new SqlParameter("@Dest", Dest), new SqlParameter("@IsUpdate", IsUpdate), new SqlParameter("@IsFlighttype", FlightType) };
-                                SQLServer sqlServer = new SQLServer();
-                                ds = sqlServer.SelectRecords("USPSendFlightControlData", sqlParameters);
+                                ds = await _readWriteDao.SelectRecords("USPSendFlightControlData", sqlParameters);
 
                                 if (ds != null)
                                 {
@@ -7112,12 +7671,12 @@ namespace QidWorkerRole
                             {
                                 clsLog.WriteLogAzure(ex);
                             }
-                            finally
-                            {
-                                objSQL = null;
-                                GC.Collect();
+                            //finally
+                            //{
+                            //    objSQL = null;
+                            //    GC.Collect();
 
-                            }
+                            //}
                         }
                     }
                 }
@@ -7126,14 +7685,17 @@ namespace QidWorkerRole
         }
 
 
-        private void SendBSTDDataInXML()
+        private async Task SendBSTDDataInXML()
         {
-            SQLServer objSQL = new SQLServer();
-            DataSet ds = null;
+            ///SQLServer objSQL = new SQLServer();
+            DataSet? ds = null;
 
             try
             {
-                ds = objSQL.SelectRecords("uspGetPlanCargoLoadsDetails");
+                //ds = objSQL.SelectRecords("uspGetPlanCargoLoadsDetails");
+
+                ds = await _readWriteDao.SelectRecords("uspGetPlanCargoLoadsDetails");
+
                 if (ds != null)
                 {
                     if (ds.Tables.Count > 0)
@@ -7273,21 +7835,24 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
-        private void SendCargoLoadPlan()
+        private async Task SendCargoLoadPlan()
         {
-            SQLServer objSQL = new SQLServer();
-            DataSet dsCLPData = null;
+
+            //SQLServer objSQL = new SQLServer();
+            DataSet? dsCLPData = null;
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
             try
             {
-                dsCLPData = objSQL.SelectRecords("uspSendCargoLoadPlanToSFTP");
+                //dsCLPData = objSQL.SelectRecords("uspSendCargoLoadPlanToSFTP");
+                dsCLPData = await _readWriteDao.SelectRecords("uspSendCargoLoadPlanToSFTP");
+
                 if (dsCLPData != null)
                 {
                     if (dsCLPData.Tables.Count > 0)
@@ -7328,20 +7893,23 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
-        private void AutoSendUnDepartedAleartFunc()
+        private async Task AutoSendUnDepartedAleartFunc()
         {
-            SQLServer objSQL = new SQLServer();
-            DataSet ds = null;
+            //SQLServer objSQL = new SQLServer();
+            DataSet? ds = null;
             try
             {
-                ds = objSQL.SelectRecords("dbo.UspSendAleartUnDepartedFlt");
+                //ds = objSQL.SelectRecords("dbo.UspSendAleartUnDepartedFlt");
+
+                ds = await _readWriteDao.SelectRecords("dbo.UspSendAleartUnDepartedFlt");
+
                 if (ds != null)
                 {
                     if (ds.Tables.Count > 0)
@@ -7379,23 +7947,25 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                objSQL = null;
-                GC.Collect();
-            }
+            //finally
+            //{
+            //    objSQL = null;
+            //    GC.Collect();
+            //}
         }
 
         #region Arrival SMS Integration
-        public string GenerateAPIToken()
+        public async Task<string> GenerateAPIToken()
         {
-
-            DataSet dsResult = new DataSet();
+            DataSet? dsResult = new DataSet();
             string tokenKey = string.Empty;
+            string accessTokenUrl = _appConfig.Authentication.AccessTokenUrl;
+            string basicAuthenticationHeader = _appConfig.Authentication.BasicAuthenticationHeader;
+            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
             try
             {
                 //Check Token is expired or not.
-                dsResult = validateOrUpdateToken(tokenKey, "C");
+                dsResult = await validateOrUpdateToken(tokenKey, "C");
                 if (dsResult != null && dsResult.Tables.Count > 0 && dsResult.Tables[0].Rows.Count > 0)
                 {
                     //If token is not expired return exsting Token key
@@ -7413,6 +7983,7 @@ namespace QidWorkerRole
                                | SecurityProtocolType.Tls11
                                | SecurityProtocolType.Tls12
                                | SecurityProtocolType.Ssl3;
+
                         //var authCredential = Encoding.UTF8.GetBytes("E8Lxqumi5oe8H2GbRQhfALTMmuEVdb7h:ryhSsA67XJ4GhWRi");
                         //basicAuthenticationHeader = Convert.ToBase64String(authCredential);
                         var client = new RestClient(accessTokenUrl);
@@ -7423,7 +7994,9 @@ namespace QidWorkerRole
 
                         request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
 
-                        if (SMSNewAPI.ToUpper() == "TRUE")
+                        //if (SMSNewAPI.ToUpper() == "TRUE")
+
+                        if (isSMSNewApi)
                         {
                             request.AddHeader("cache-control", "no-cache");
                             request.AddParameter("application/x-www-form-urlencoded", "grant_type=client_credentials&client_id=" + ClientId + "&client_secret=" + ClientSeceret, ParameterType.RequestBody);
@@ -7438,15 +8011,24 @@ namespace QidWorkerRole
                         string jsonData = "[" + response.Content + "]";
                         var obj = JArray.Parse(jsonData);
 
-                        if (SMSNewAPI.ToUpper() == "TRUE")
+                        //if (SMSNewAPI.ToUpper() == "TRUE")
+                        //    tokenKey = (string)obj[0]["access_token"];
+                        //else
+                        //    tokenKey = (string)obj[0]["accessToken"]["accessToken"];
+
+                        if (isSMSNewApi)
+                        {
                             tokenKey = (string)obj[0]["access_token"];
+                        }
                         else
+                        {
                             tokenKey = (string)obj[0]["accessToken"]["accessToken"];
+                        }
 
                         if (!string.IsNullOrEmpty(tokenKey))
                         {
                             //update new token key to database
-                            dsResult = validateOrUpdateToken(tokenKey, "U");
+                            dsResult = await validateOrUpdateToken(tokenKey, "U");
                             return tokenKey;
                         }
                         else
@@ -7466,7 +8048,8 @@ namespace QidWorkerRole
         public string SendSMS(string token, object[] consigneeInfo, ref string strResponce)
         {
             string errorDesc = string.Empty;
-
+            string sendSMSUrl = _appConfig.Sms.SendSMSUrl;
+            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
             try
             {
                 ServicePointManager.Expect100Continue = true;
@@ -7481,7 +8064,8 @@ namespace QidWorkerRole
                 request.AddHeader("Authorization", "Bearer " + token);
                 request.AddHeader("Content-type", "application/json");
 
-                if (SMSNewAPI.ToUpper() != "TRUE")
+                //if (SMSNewAPI.ToUpper() != "TRUE")
+                if (isSMSNewApi)
                 {
                     request.AddHeader("token", token);
                     request.AddHeader("Accept", "application/json");
@@ -7489,7 +8073,8 @@ namespace QidWorkerRole
 
                 string eventDefinitionKey = ConfigurationManager.AppSettings["EventDefinitionKey"].ToString();
 
-                if (SMSNewAPI.ToUpper() == "TRUE")
+                //if (SMSNewAPI.ToUpper() == "TRUE")
+                if (isSMSNewApi)
                 {
                     var bodyNew = new
                     {
@@ -7571,22 +8156,26 @@ namespace QidWorkerRole
             {
                 strResponce = ex.InnerException.Message;
                 errorDesc = ex.InnerException.Message;
+                clsLog.WriteLogAzure(ex);
             }
 
             return errorDesc;
         }
-        public DataSet validateOrUpdateToken(string tokenKey, string flag)
+        public async Task<DataSet?> validateOrUpdateToken(string tokenKey, string flag)
         {
-            DataSet dsResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsResult = new DataSet();
             try
             {
+                //SQLServer sqlServer = new SQLServer();
+                //dsResult = sqlServer.SelectRecords("uspUpdateTokenForArrivalSMS", sqlParameter);
+                //GC.Collect();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                      new SqlParameter("@TokenKey",tokenKey)
                     ,new SqlParameter("@Flag",flag)
                 };
-                dsResult = sqlServer.SelectRecords("uspUpdateTokenForArrivalSMS", sqlParameter);
-                GC.Collect();
+                dsResult = await _readWriteDao.SelectRecords("uspUpdateTokenForArrivalSMS", sqlParameter);
+
             }
             catch (Exception ex)
             {
@@ -7596,20 +8185,24 @@ namespace QidWorkerRole
             return dsResult;
         }
 
-        public DataSet updateSMSStatus(int rowID, string errorDesc, string APIResponse)
+        public async Task<DataSet?> updateSMSStatus(int rowID, string errorDesc, string APIResponse)
         {
-            DataSet dsResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsResult = new DataSet();
             try
             {
+
+
+                //SQLServer sqlServer = new SQLServer();
+                //dsResult = sqlServer.SelectRecords("Log.uspUpdateArrivalSMSNotification", sqlParameter);
+                //GC.Collect();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                              new SqlParameter("@ROWId",rowID)
                             ,new SqlParameter("@ErrorDesc",errorDesc)
                             ,new SqlParameter("@APIResponse",APIResponse)
                         };
+                dsResult = await _readWriteDao.SelectRecords("Log.uspUpdateArrivalSMSNotification", sqlParameter);
 
-                dsResult = sqlServer.SelectRecords("Log.uspUpdateArrivalSMSNotification", sqlParameter);
-                GC.Collect();
             }
             catch (Exception ex)
             {
@@ -7693,7 +8286,7 @@ namespace QidWorkerRole
 
         #region "Exchange Rates API"
 
-        public string GenerateExchangeAPIToken()
+        public async Task<string> GenerateExchangeAPIToken()
         {
 
             DataSet dsResult = new DataSet();
@@ -7704,7 +8297,7 @@ namespace QidWorkerRole
             try
             {
                 //Check Token is expired or not.
-                dsResult = validateOrUpdateForexToken(tokenKey, "C");
+                dsResult = await validateOrUpdateForexToken(tokenKey, "C");
                 if (dsResult != null && dsResult.Tables.Count > 0 && dsResult.Tables[0].Rows.Count > 0)
                 {
                     //If token is not expired return exsting Token key
@@ -7717,10 +8310,10 @@ namespace QidWorkerRole
                     // If token is expired generate new Token
                     if (Convert.ToString(dsResult.Tables[0].Rows[0]["IsExpired"]).Equals("Y"))
                     {
-                        GenericFunction objgenericFunction = new GenericFunction();
-                        tokenURL = objgenericFunction.ReadValueFromDb("ForexTokenURL").Trim();
-                        forexClientId = objgenericFunction.ReadValueFromDb("ForexClientID").Trim();
-                        forexClientSecret = objgenericFunction.ReadValueFromDb("ForexClientSecret").Trim();
+                        //GenericFunction objgenericFunction = new GenericFunction();
+                        tokenURL = ConfigCache.Get("ForexTokenURL").Trim();
+                        forexClientId = ConfigCache.Get("ForexClientID").Trim();
+                        forexClientSecret = ConfigCache.Get("ForexClientSecret").Trim();
 
                         ServicePointManager.Expect100Continue = true;
                         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls
@@ -7747,7 +8340,7 @@ namespace QidWorkerRole
                         if (!string.IsNullOrEmpty(tokenKey))
                         {
                             //update new token key to database
-                            dsResult = validateOrUpdateForexToken(tokenKey, "U");
+                            dsResult = await validateOrUpdateForexToken(tokenKey, "U");
                             return tokenKey;
                         }
                         else
@@ -7765,18 +8358,20 @@ namespace QidWorkerRole
             return tokenKey;
         }
 
-        public DataSet validateOrUpdateForexToken(string tokenKey, string flag)
+        public async Task<DataSet?> validateOrUpdateForexToken(string tokenKey, string flag)
         {
-            DataSet dsResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dsResult = new DataSet();
             try
             {
+                //SQLServer sqlServer = new SQLServer();
+                //dsResult = sqlServer.SelectRecords("uspUpdateTokenForForexAPI", sqlParameter);
+                //GC.Collect();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                      new SqlParameter("@TokenKey",tokenKey)
                     ,new SqlParameter("@Flag",flag)
                 };
-                dsResult = sqlServer.SelectRecords("uspUpdateTokenForForexAPI", sqlParameter);
-                GC.Collect();
+                dsResult = await _readWriteDao.SelectRecords("uspUpdateTokenForForexAPI", sqlParameter);
             }
             catch (Exception ex)
             {
@@ -7786,11 +8381,11 @@ namespace QidWorkerRole
             return dsResult;
         }
 
-        private void ExchangeRates()
+        private async Task ExchangeRates()
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
+            //DataSet dsMessageConfig = null;
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
-            DataSet dsMessageConfig = null;
             string apiToken = string.Empty;
             string strError = "Success";
             string InterfaceID = "ForexAPI";
@@ -7799,10 +8394,10 @@ namespace QidWorkerRole
 
             try
             {
-                dsMessageConfig = genericFunction.ExchangeRateCall(Procedure, UTCDatetime);
+                DataSet dsMessageConfig = _genericFunction.ExchangeRateCall(Procedure, UTCDatetime);
                 if (dsMessageConfig != null && dsMessageConfig.Tables.Count > 0 && dsMessageConfig.Tables[0].Rows.Count > 0)
                 {
-                    apiToken = GenerateExchangeAPIToken();
+                    apiToken = await GenerateExchangeAPIToken();
                     if (!string.IsNullOrEmpty(apiToken))
                     {
                         string strRequest = string.Empty;
@@ -7810,7 +8405,7 @@ namespace QidWorkerRole
                         string forexRateAPIURL = string.Empty;
                         string conversionSnapshotID = string.Empty;
                         string baseConversionRates = string.Empty;
-                        forexRateAPIURL = genericFunction.ReadValueFromDb("ForexRateAPIURL").Trim();
+                        forexRateAPIURL = ConfigCache.Get("ForexRateAPIURL").Trim();
                         try
                         {
                             string errorDesc = string.Empty;
@@ -7863,8 +8458,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception Ex) { strError = Ex.Message; }
 
-                        genericFunction.CreateExchangeRatesAPI(strCurrency.ToString(), UTCDatetime, UTCDatetime);
-                        genericFunction.SaveForexAPILog(InterfaceID, forexRateAPIURL, baseConversionRates, conversionSnapshotID, strError);
+                        _genericFunction.CreateExchangeRatesAPI(strCurrency.ToString(), UTCDatetime, UTCDatetime);
+                        _genericFunction.SaveForexAPILog(InterfaceID, forexRateAPIURL, baseConversionRates, conversionSnapshotID, strError);
                     }
                 }
             }
@@ -7872,11 +8467,11 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                genericFunction = null;
-                dsMessageConfig = null;
-            }
+            //finally
+            //{
+            //    genericFunction = null;
+            //    dsMessageConfig = null;
+            //}
         }
 
         public void SendUWSMessage(string FlightNumber, string fltDate, string fltOrigin, string fltDest, bool isAuto)
@@ -7886,10 +8481,12 @@ namespace QidWorkerRole
                 string MessageVersion = "4";
                 DataSet ds = new DataSet();
                 string email = string.Empty, msgCommType = string.Empty, message = string.Empty, updatedBy = "Auto ExpToMan";
-                GenericFunction genericFunction = new GenericFunction();
+
+                //GenericFunction _genericFunction = new GenericFunction();
+
                 string SFTPMessageHeader = string.Empty, messageHeader = string.Empty;
 
-                ds = genericFunction.GetSitaAddressandMessageVersion(FlightNumber.Substring(0, 2), "UWS", "AIR", fltOrigin, fltDest, FlightNumber, string.Empty);
+                ds = _genericFunction.GetSitaAddressandMessageVersion(FlightNumber.Substring(0, 2), "UWS", "AIR", fltOrigin, fltDest, FlightNumber, string.Empty);
 
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
@@ -7901,17 +8498,17 @@ namespace QidWorkerRole
                     if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                     {
                         if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().ToUpper() != "WITHOUT SFTP HEADER")
-                            SFTPMessageHeader = genericFunction.MakeMailMessageFormat(Convert.ToString(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["OriginSenderAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["MessageID"]), ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                            SFTPMessageHeader = _genericFunction.MakeMailMessageFormat(Convert.ToString(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["OriginSenderAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["MessageID"]), ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
                         else
                         {
                             SFTPMessageHeader = ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().ToUpper();
                         }
                     }
                     if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
-                        messageHeader = genericFunction.MakeMailMessageFormat(Convert.ToString(ds.Tables[0].Rows[0]["PatnerSitaID"]), Convert.ToString(ds.Tables[0].Rows[0]["OriginSenderAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["MessageID"]), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
+                        messageHeader = _genericFunction.MakeMailMessageFormat(Convert.ToString(ds.Tables[0].Rows[0]["PatnerSitaID"]), Convert.ToString(ds.Tables[0].Rows[0]["OriginSenderAddress"]), Convert.ToString(ds.Tables[0].Rows[0]["MessageID"]), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
 
                 }
-                string UWSConfig = genericFunction.GetConfigurationValues("ShowVolumeInUWSSI");
+                string UWSConfig = _genericFunction.GetConfigurationValues("ShowVolumeInUWSSI");
                 cls_Encode_Decode clsEncodeDecode = new cls_Encode_Decode();
                 message = clsEncodeDecode.EncodeUWS(fltOrigin, FlightNumber, Convert.ToDateTime(fltDate), "1", UWSConfig);
 
@@ -7920,17 +8517,17 @@ namespace QidWorkerRole
                     if (message.Length > 0)
                     {
                         if (email.Length > 0)
-                            genericFunction.SaveMessageOutBox("UWS", message, "", email, fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
+                            _genericFunction.SaveMessageOutBox("UWS", message, "", email, fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
 
                         if (messageHeader.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("SITA:UWS", messageHeader + "\r\n" + message, "", "SITA", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
+                            _genericFunction.SaveMessageOutBox("SITA:UWS", messageHeader + "\r\n" + message, "", "SITA", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
 
                         if (SFTPMessageHeader.Length > 0)
                         {
                             if (SFTPMessageHeader.Trim() == "WITHOUT SFTP HEADER")
-                                genericFunction.SaveMessageOutBox("SFTP:UWS", message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
+                                _genericFunction.SaveMessageOutBox("SFTP:UWS", message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
                             else
-                                genericFunction.SaveMessageOutBox("SFTP:UWS", SFTPMessageHeader + "\r\n" + message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
+                                _genericFunction.SaveMessageOutBox("SFTP:UWS", SFTPMessageHeader + "\r\n" + message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "UWS");
                         }
                     }
                 }
@@ -7949,12 +8546,12 @@ namespace QidWorkerRole
 
                 string email = string.Empty, msgCommType = string.Empty, message = string.Empty, aircraftregistrtionno = "", updatedBy = "Auto ExpToMan";
 
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
                 string SFTPMessageHeader = string.Empty, messageHeader = string.Empty;
 
                 DataSet dsMSGAddress = new DataSet();
 
-                dsMSGAddress = genericFunction.GetSitaAddressandMessageVersion(FlightNumber.Substring(0, 2), "NTM", "AIR", fltOrigin, fltDest, FlightNumber, string.Empty);
+                dsMSGAddress = _genericFunction.GetSitaAddressandMessageVersion(FlightNumber.Substring(0, 2), "NTM", "AIR", fltOrigin, fltDest, FlightNumber, string.Empty);
 
                 if (dsMSGAddress != null && dsMSGAddress.Tables[0].Rows.Count > 0)
                 {
@@ -7964,7 +8561,7 @@ namespace QidWorkerRole
                     if (dsMSGAddress.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                     {
                         if (dsMSGAddress.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().ToUpper() != "WITHOUT SFTP HEADER")
-                            SFTPMessageHeader = genericFunction.MakeMailMessageFormat(dsMSGAddress.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMSGAddress.Tables[0].Rows[0]["MessageID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["SITAHeaderType"].ToString());
+                            SFTPMessageHeader = _genericFunction.MakeMailMessageFormat(dsMSGAddress.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMSGAddress.Tables[0].Rows[0]["MessageID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["SITAHeaderType"].ToString());
                         else
                         {
                             SFTPMessageHeader = dsMSGAddress.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().ToUpper();
@@ -7973,7 +8570,7 @@ namespace QidWorkerRole
                     }
                     if (dsMSGAddress.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
                     {
-                        messageHeader = genericFunction.MakeMailMessageFormat(dsMSGAddress.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMSGAddress.Tables[0].Rows[0]["MessageID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["SITAHeaderType"].ToString());
+                        messageHeader = _genericFunction.MakeMailMessageFormat(dsMSGAddress.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMSGAddress.Tables[0].Rows[0]["MessageID"].ToString(), dsMSGAddress.Tables[0].Rows[0]["SITAHeaderType"].ToString());
                     }
                 }
                 cls_Encode_Decode clsEncodeDecode = new cls_Encode_Decode();
@@ -7985,18 +8582,18 @@ namespace QidWorkerRole
                     {
                         clsLog.WriteLogAzure("NTM SFTP Header: " + SFTPMessageHeader + " : " + FlightNumber + " : " + fltDate);
                         if (email.Length > 0)
-                            genericFunction.SaveMessageOutBox("NTM", message, "", email, fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
+                            _genericFunction.SaveMessageOutBox("NTM", message, "", email, fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
 
                         if (messageHeader.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("SITA:NTM", messageHeader + "\r\n" + message, "", "SITAFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
+                            _genericFunction.SaveMessageOutBox("SITA:NTM", messageHeader + "\r\n" + message, "", "SITAFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
 
                         if (SFTPMessageHeader.Trim() == "WITHOUT SFTP HEADER")
                         {
-                            genericFunction.SaveMessageOutBox("SFTP:NTM", message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
+                            _genericFunction.SaveMessageOutBox("SFTP:NTM", message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
                             clsLog.WriteLogAzure("NTM Message sent: " + FlightNumber + " : " + fltDate);
                         }
                         else if (SFTPMessageHeader.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("SFTP:NTM", SFTPMessageHeader + "\r\n" + message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
+                            _genericFunction.SaveMessageOutBox("SFTP:NTM", SFTPMessageHeader + "\r\n" + message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
                     }
                 }
             }
@@ -8039,110 +8636,250 @@ namespace QidWorkerRole
             return flag;
         }
 
+
+        /*Deprecated*/
+        //public string uploadtoblob(stream stream, string filename, string containername)
+        //{
+        //    try
+        //    {
+        //        containername = containername.tolower();
+        //        storagecredentialsaccountandkey cred = new storagecredentialsaccountandkey(getstoragename(), getstoragekey());
+        //        servicepointmanager.securityprotocol = securityprotocoltype.tls12;
+        //        cloudstorageaccount storageaccount = new cloudstorageaccount(cred, true);
+        //        string sas = getsasurl(containername, storageaccount);
+        //        storagecredentialssharedaccesssignature sascreds = new storagecredentialssharedaccesssignature(sas);
+        //        cloudblobclient sasblobclient = new cloudblobclient(storageaccount.blobendpoint,
+        //        new storagecredentialssharedaccesssignature(sas));
+        //        cloudblob blob = sasblobclient.getblobreference(containername + @"/" + filename);
+        //        blob.properties.contenttype = "";
+        //        blob.metadata["filename"] = filename;
+        //        blob.uploadfromstream(stream);
+        //        return "https://" + getstoragename() + ".blob.core.windows.net/" + containername + "/" + filename;
+        //    }
+        //    catch (exception ex)
+        //    {
+        //        clslog.writelogazure(ex);
+        //        return "";
+        //    }
+        //}
+
         public string UploadToBlob(Stream stream, string fileName, string containerName)
         {
             try
             {
                 containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+
+                // Set TLS 1.2 for compatibility
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                string sas = GetSASUrl(containerName, storageAccount);
-                StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
-                CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
-                new StorageCredentialsSharedAccessSignature(sas));
-                CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + fileName);
-                blob.Properties.ContentType = "";
-                blob.Metadata["FileName"] = fileName;
-                blob.UploadFromStream(stream);
-                return "https://" + getStorageName() + ".blob.core.windows.net/" + containerName + "/" + fileName;
+
+                string storageAccountName = getStorageName();
+                string storageKey = getStorageKey();
+
+                // Create BlobServiceClient with account key
+                string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new Azure.Storage.StorageSharedKeyCredential(storageAccountName, storageKey)
+                );
+
+                // Generate SAS for the container (preserving original GetSASUrl logic)
+                string sas = GetSASUrl(containerName, blobServiceClient);
+
+                // Create BlobClient using SAS
+                Uri blobSasUri = new Uri($"{accountUrl}/{containerName}/{fileName}?{sas}");
+                BlobClient blobClient = new BlobClient(blobSasUri);
+
+                // Set headers (ContentType and Metadata)
+                BlobUploadOptions options = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = "" // Explicitly empty as in original
+                    },
+                    Metadata = new Dictionary<string, string>
+                {
+                    { "FileName", fileName }
+                }
+                };
+
+                // Upload stream
+                stream.Position = 0; // Ensure stream is at start
+                blobClient.Upload(stream, options);
+
+                // Return public URL (without SAS)
+                return $"https://{storageAccountName}.blob.core.windows.net/{containerName}/{fileName}";
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
                 return "";
             }
-
         }
 
-        public string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+        /*Deprecated*/
+        //public string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+        //{
+        //    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+        //    CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+        //    container.CreateIfNotExist();
+
+        //    BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+        //    GenericFunction genericFunction = new GenericFunction();
+        //    string sasactivetime = ConfigCache.Get("BlobStorageactiveSASTime");
+        //    double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+        //    containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+        //    {
+        //        SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
+        //        SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
+        //        Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
+        //    });
+
+        //    string IsBlobPrivate = ConfigCache.Get("IsBlobPrivate");
+        //    IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
+        //    if (IsBlobPrivate == "1")
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+        //    }
+        //    else
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+        //    }
+        //    container.SetPermissions(containerPermissions);
+        //    string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
+        //    return sas;
+        //}
+
+        public string GetSASUrl(string containerName, BlobServiceClient blobServiceClient)
         {
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExist();
-
-            BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
-            GenericFunction genericFunction = new GenericFunction();
-            string sasactivetime = genericFunction.ReadValueFromDb("BlobStorageactiveSASTime");
-            double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
-
-            containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+            try
             {
-                SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
-                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
-                Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
-            });
+                // 1. Get (or create) the container
+                BlobContainerClient container = blobServiceClient.GetBlobContainerClient(containerName);
+                container.CreateIfNotExists();               // same as container.CreateIfNotExist()
 
-            string IsBlobPrivate = genericFunction.ReadValueFromDb("IsBlobPrivate");
-            IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
-            if (IsBlobPrivate == "1")
-            {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+                // 2. Read configuration values
+                string sasactivetime = ConfigCache.Get("BlobStorageactiveSASTime");
+                double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+                string isBlobPrivate = ConfigCache.Get("IsBlobPrivate");
+                isBlobPrivate = string.IsNullOrWhiteSpace(isBlobPrivate) ? "NA" : isBlobPrivate.Trim();
+
+                // 3. Build the shared-access-policy
+                var policy = new BlobSignedIdentifier
+                {
+                    Id = "defaultpolicy",
+                    AccessPolicy = new BlobAccessPolicy
+                    {
+                        StartsOn = DateTimeOffset.UtcNow.AddMinutes(-1),
+                        ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(_SaSactiveTime),
+                        Permissions = "rwl" // CORRECT: string with r=read, w=write, l=list
+                    }
+                };
+
+                // 4. Apply public-access setting
+                PublicAccessType publicAccess = (isBlobPrivate == "1")
+                    ? PublicAccessType.None
+                    : PublicAccessType.BlobContainer;   // Container = full public read
+
+                // 5. Set permissions + policy in ONE call
+                container.SetAccessPolicy(
+                    permissions: new[] { policy },
+                    accessType: publicAccess);
+
+                // 6. Generate the SAS token for the *container* using the stored policy
+                BlobSasBuilder sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    Resource = "c",                     // container-level SAS
+                    Identifier = "defaultpolicy"        // use the stored policy
+                };
+
+                // The SDK adds the leading '?' – we strip it to match the old behaviour
+                string sas = container.GenerateSasUri(sasBuilder).Query.TrimStart('?');
+                return sas;
             }
-            else
+            catch (Exception ex)
             {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+                clsLog.WriteLogAzure(ex);
+                throw;
             }
-            container.SetPermissions(containerPermissions);
-            string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
-            return sas;
+            
         }
 
-        public static int DumpInterfaceInformation(string subject, string Msg, DateTime TimeStamp, string MessageType, string ErrorDesc, bool IsBlog,
+        public async Task<int> DumpInterfaceInformation(string subject, string Msg, DateTime TimeStamp, string MessageType, string ErrorDesc, bool IsBlog,
             string FromEmailId, string ToEmailId, MemoryStream Attachments, string AttachmentExtension, string FileUrl, string isProcessed, string MessageBoxType, string FileUrlExcel = null, MemoryStream attachExcel = null, string AttachmentName = "")
         {
             int SerialNo = 0;
 
             try
             {
+
+
+                //SQLServer dtb = new SQLServer();
+                //    string[] paramname = new string[] { "Subject",
+                //                                    "Body",
+                //                                    "TimeStamp",
+                //                                    "MessageType",
+                //                                    "ErrorDesc",
+                //                                    "IsBlog",
+                //"FromId", "ToId","Attachment","Extension","FileUrl","isProcessed","MessageBoxType", "AttachmentExcel","FileUrlExcel","AttachmentName"};
+
+
+
+
+                //    object[] paramvalue = new object[] {subject,
+                //                                    Msg,
+                //                                    TimeStamp,
+                //                                    MessageType,
+                //                                    ErrorDesc,
+                //                                    IsBlog, FromEmailId,ToEmailId, objBytes,AttachmentExtension,FileUrl,isProcessed,MessageBoxType,attachExcel,FileUrlExcel,AttachmentName};
+
+                //    SqlDbType[] paramtype = new SqlDbType[] {SqlDbType.VarChar,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.DateTime,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar, SqlDbType.VarChar};
+
+                //objDS = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+
+
                 string procedure = "uspAddMessageAttachmentDetails";
-                SQLServer dtb = new SQLServer();
-                DataSet objDS = null;
-                byte[] objBytes = null;
+                DataSet? objDS = null;
+                byte[]? objBytes = null;
 
                 if (Attachments != null)
+                {
                     objBytes = Attachments.ToArray();
+                }
+                SqlParameter[] parameters =
+                [
+                    new("@Subject", SqlDbType.VarChar)         { Value = subject },
+                    new("@Body", SqlDbType.VarChar)            { Value = Msg },
+                    new("@TimeStamp", SqlDbType.DateTime)      { Value = TimeStamp },
+                    new("@MessageType", SqlDbType.VarChar)     { Value = MessageType },
+                    new("@ErrorDesc", SqlDbType.VarChar)       { Value = ErrorDesc },
+                    new("@IsBlog", SqlDbType.Bit)              { Value = IsBlog },
+                    new("@FromId", SqlDbType.VarChar)          { Value = FromEmailId },
+                    new("@ToId", SqlDbType.VarChar)            { Value = ToEmailId },
+                    new("@Attachment", SqlDbType.VarBinary)    { Value = objBytes },
+                    new("@Extension", SqlDbType.VarChar)       { Value = AttachmentExtension },
+                    new("@FileUrl", SqlDbType.VarChar)         { Value = FileUrl },
+                    new("@isProcessed", SqlDbType.VarChar)     { Value = isProcessed },
+                    new("@MessageBoxType", SqlDbType.VarChar)  { Value = MessageBoxType },
+                    new("@AttachmentExcel", SqlDbType.VarBinary) { Value = attachExcel },
+                    new("@FileUrlExcel", SqlDbType.VarChar)    { Value = FileUrlExcel },
+                    new("@AttachmentName", SqlDbType.VarChar)  { Value = AttachmentName }
+                ];
 
+                objDS = await _readWriteDao.SelectRecords(procedure, parameters);
 
-                string[] paramname = new string[] { "Subject",
-                                                "Body",
-                                                "TimeStamp",
-                                                "MessageType",
-                                                "ErrorDesc",
-                                                "IsBlog",
-            "FromId", "ToId","Attachment","Extension","FileUrl","isProcessed","MessageBoxType", "AttachmentExcel","FileUrlExcel","AttachmentName"};
-
-
-
-
-                object[] paramvalue = new object[] {subject,
-                                                Msg,
-                                                TimeStamp,
-                                                MessageType,
-                                                ErrorDesc,
-                                                IsBlog, FromEmailId,ToEmailId, objBytes,AttachmentExtension,FileUrl,isProcessed,MessageBoxType,attachExcel,FileUrlExcel,AttachmentName};
-
-                SqlDbType[] paramtype = new SqlDbType[] {SqlDbType.VarChar,
-                                                     SqlDbType.VarChar,
-                                                     SqlDbType.DateTime,
-                                                     SqlDbType.VarChar,
-                                                     SqlDbType.VarChar,
-                                                     SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar, SqlDbType.VarChar};
-
-                objDS = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
 
                 if (objDS != null && objDS.Tables.Count > 0 && objDS.Tables[0].Rows.Count > 0)
+                {
                     SerialNo = Convert.ToInt32(objDS.Tables[0].Rows[0][0]);
+                }
             }
             catch (Exception ex)
             {
@@ -8155,47 +8892,50 @@ namespace QidWorkerRole
 
         private void AutoReleaseCapacityAllocation()
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
+            //DataSet dsMessageConfig = null;
+            //StringBuilder strCurrency = new StringBuilder();
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
-            DataSet dsMessageConfig = null;
-            StringBuilder strCurrency = new StringBuilder();
             string Procedure = "uspReleaseAllocatedCapacityAtCutoff";
 
             try
             {
-                dsMessageConfig = genericFunction.AutoReleaseCapacityAllocation(Procedure, 5);
+                //dsMessageConfig = genericFunction.AutoReleaseCapacityAllocation(Procedure, 5);
+                _genericFunction.AutoReleaseCapacityAllocation(Procedure, 5);
+
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                genericFunction = null;
-                dsMessageConfig = null;
-            }
+            //finally
+            //{
+            //    genericFunction = null;
+            //    dsMessageConfig = null;
+            //}
         }
 
         private void NoShowCalculationAsPerAgent()
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
+            //DataSet dsMessageConfig = null;
             DateTime UTCDatetime = DateTime.UtcNow.AddHours(+7); //ARS time;
-            DataSet dsMessageConfig = null;
             string Procedure = "uspCalculateNoShowAsPerAgent";
 
             try
             {
-                dsMessageConfig = genericFunction.NoShowCalculation(Procedure, UTCDatetime);
+                //dsMessageConfig = _genericFunction.NoShowCalculation(Procedure, UTCDatetime);
+                _genericFunction.NoShowCalculation(Procedure, UTCDatetime);
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                genericFunction = null;
-                dsMessageConfig = null;
-            }
+            //finally
+            //{
+            //    genericFunction = null;
+            //    dsMessageConfig = null;
+            //}
         }
         public static Int32 Next(Int32 minValue, Int32 maxValue)
         {
@@ -8222,62 +8962,66 @@ namespace QidWorkerRole
 
         private void SendDwellTimeInformation()
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
             string Procedure = "uspSendDwellTimeInformation";
             bool blnResult = false;
 
             try
             {
-                blnResult = genericFunction.SendInformationtoSP(Procedure);
+                blnResult = _genericFunction.SendInformationtoSP(Procedure);
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                genericFunction = null;
-            }
+            //finally
+            //{
+            //    genericFunction = null;
+            //}
         }
 
         private void Lockuser90Days()
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
             string Procedure = "uspAutoLockuser";
             bool blnResult = false;
 
             try
             {
-                blnResult = genericFunction.SendInformationtoSP(Procedure);
+                blnResult = _genericFunction.SendInformationtoSP(Procedure);
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
-            finally
-            {
-                genericFunction = null;
-            }
+            //finally
+            //{
+            //    genericFunction = null;
+            //}
         }
-        public void SendNotificationAlertBondExpiry()
+        public async Task SendNotificationAlertBondExpiry()
         {
             try
             {
-                SQLServer db = new SQLServer();
-                db.SelectRecords("uspNotificationAlertBondExpiry");
+                //SQLServer db = new SQLServer();
+                //db.SelectRecords("uspNotificationAlertBondExpiry");
+
+                await _readWriteDao.SelectRecords("uspNotificationAlertBondExpiry");
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
         }
-        public void GetPendingNotification()
+        public async Task GetPendingNotification()
         {
             try
             {
-                SQLServer db = new SQLServer();
-                DataSet dsAWBlist = new DataSet();
-                dsAWBlist = db.SelectRecords("USPGetPendingNotificationList");
+                //SQLServer db = new SQLServer();
+                //dsAWBlist = db.SelectRecords("USPGetPendingNotificationList");
+
+                DataSet? dsAWBlist = new DataSet();
+                dsAWBlist = await _readWriteDao.SelectRecords("USPGetPendingNotificationList");
 
                 if (dsAWBlist != null && dsAWBlist.Tables.Count > 0 && dsAWBlist.Tables[0].Rows.Count > 0)
                 {
@@ -8293,22 +9037,31 @@ namespace QidWorkerRole
             }
         }
 
-        public void GetAWBPrefix(string awbPrefix, string awbNumber, string Status, int SerialNumber)
+        public async Task GetAWBPrefix(string awbPrefix, string awbNumber, string Status, int SerialNumber)
         {
-            DataSet dsAWBDeatils = new DataSet();
-            string[] QueryNames = { "AWBprefix", "AWBNumber" };
-            SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-            string[] QueryValues = { awbPrefix, awbNumber };
-            StringBuilder[] sb = new StringBuilder[0];
-            SQLServer db = new SQLServer();
-            GenericFunction genericFunction = new GenericFunction();
+            DataSet? dsAWBDeatils = new DataSet();
+
+            //StringBuilder[] sb = new StringBuilder[0];
+            //GenericFunction genericFunction = new GenericFunction();
+
             string container = "eawb";
 
             string specifier = string.Empty;
             CultureInfo bz;
             MemoryStream ms = new MemoryStream();
 
-            dsAWBDeatils = db.SelectRecords("SP_GetAWBDetailsPrefix", QueryNames, QueryValues, QueryTypes);
+            //SQLServer db = new SQLServer();
+            //string[] QueryNames = { "AWBprefix", "AWBNumber" };
+            //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+            //string[] QueryValues = { awbPrefix, awbNumber };
+
+            SqlParameter[] parameters =
+            [
+                new("@AWBprefix", SqlDbType.VarChar) { Value = awbPrefix },
+                new("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber }
+            ];
+            dsAWBDeatils = await _readWriteDao.SelectRecords("SP_GetAWBDetailsPrefix", parameters);
+
             string AWBNumber = dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
             string AWBPrefix = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim();
             string FLTOrigin = dsAWBDeatils.Tables[3].Rows[0]["FltOrigin"].ToString().Trim();
@@ -8325,7 +9078,7 @@ namespace QidWorkerRole
                     try
                     {
                         DataSet dsBLOB = new DataSet();
-                        DataSet dsnotification = genericFunction.GetFlightNotification(AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status);
+                        DataSet dsnotification = _genericFunction.GetFlightNotification(AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status);
                         if (dsnotification != null && dsnotification.Tables.Count > 0 && dsnotification.Tables[0].Rows.Count > 0)
                         {
                             string Toid = dsnotification.Tables[0].Rows[0]["Toid"].ToString().Trim();
@@ -8335,7 +9088,7 @@ namespace QidWorkerRole
                             bool IsAgreed = false;
                             string strAgentPreference = string.Empty;
 
-                            strAgentPreference = genericFunction.GeteAWBPrintPrefence(dsAWBDeatils.Tables[0].Rows[0]["AgentCode"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim());
+                            strAgentPreference = _genericFunction.GeteAWBPrintPrefence(dsAWBDeatils.Tables[0].Rows[0]["AgentCode"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim());
 
                             if (strAgentPreference.Length < 1 || strAgentPreference == "")
                                 strAgentPreference = "IATA";
@@ -8361,13 +9114,13 @@ namespace QidWorkerRole
                             ProductType = dsAWBDeatils.Tables[0].Rows[0]["ProductType"].ToString().Trim();
                             string SHCDesc = string.Empty;
                             bool SCHDesc = false;
-                            SCHDesc = Convert.ToBoolean(genericFunction.ReadValueFromDb("eAWBSHCDesc"));
+                            SCHDesc = Convert.ToBoolean(ConfigCache.Get("eAWBSHCDesc"));
 
                             if (SCHDesc)
                             {
                                 if (dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim() != "")
                                 {
-                                    SHCDesc = genericFunction.GetSHCCodesandDesc(dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim());
+                                    SHCDesc = _genericFunction.GetSHCCodesandDesc(dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim());
                                     SHCDesc = SHCDesc.Replace("&amp;", "&");
                                 }
                             }
@@ -8459,7 +9212,7 @@ namespace QidWorkerRole
 
                             try
                             {
-                                fltresult = Convert.ToBoolean(genericFunction.ReadValueFromDb("FlightDescInEAWBPrint"));
+                                fltresult = Convert.ToBoolean(ConfigCache.Get("FlightDescInEAWBPrint"));
                             }
                             catch (Exception ex)
                             {
@@ -8470,11 +9223,11 @@ namespace QidWorkerRole
 
                             if (fltresult)
                             {
-                                //DateTime.ParseExact(dsResult.Tables[3].Rows[0]["FltDate"].ToString().Trim(), genericFunction.ReadValueFromDb("SystemDateFormat"), null);
+                                //DateTime.ParseExact(dsResult.Tables[3].Rows[0]["FltDate"].ToString().Trim(), ConfigCache.Get("SystemDateFormat"), null);
                                 for (int i = 0; i < dsResult.Tables[3].Rows.Count && i < 3; i++)
                                 {
                                     FltNo = FltNo + dsResult.Tables[3].Rows[0]["FltNumber"].ToString() + ",";
-                                    FltDate = FltDate + Convert.ToDateTime(dsResult.Tables[3].Rows[0]["FltDate"]).ToString(genericFunction.ReadValueFromDb("SystemDateFormat"), CultureInfo.InvariantCulture) + ",";
+                                    FltDate = FltDate + Convert.ToDateTime(dsResult.Tables[3].Rows[0]["FltDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + ",";
 
                                 }
 
@@ -8529,11 +9282,11 @@ namespace QidWorkerRole
                             #region handlininfo
                             string HandlingInfo_Extra = "";
                             bool handleres = false;
-                            string export = genericFunction.checkexportValidation(Origin);
+                            string export = _genericFunction.checkexportValidation(Origin);
                             if (export == "US")
                             {
-                                if (genericFunction.ReadValueFromDb("Handlinginfo_EAWB") != string.Empty)
-                                    handleres = bool.Parse(genericFunction.ReadValueFromDb("Handlinginfo_EAWB"));
+                                if (ConfigCache.Get("Handlinginfo_EAWB") != string.Empty)
+                                    handleres = bool.Parse(ConfigCache.Get("Handlinginfo_EAWB"));
                             }
 
                             if (handleres)
@@ -8654,8 +9407,8 @@ namespace QidWorkerRole
                             string accountnumber = "";
                             bool res = (dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALKIN") || dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALK-IN"));
 
-                            DataSet dsShipmentType = genericFunction.GetShipmentTypeNew(Origin, Dest);
-                            string shipmentType = String.Empty;
+                            DataSet dsShipmentType = _genericFunction.GetShipmentTypeNew(Origin, Dest);
+                            string shipmentType = string.Empty;
                             if (dsShipmentType != null && dsShipmentType.Tables.Count > 0 && dsShipmentType.Tables[0].Rows.Count > 0)
                                 shipmentType = Convert.ToString(dsShipmentType.Tables[0].Rows[0]["AWBShipmentType"]).Trim();
 
@@ -8684,14 +9437,14 @@ namespace QidWorkerRole
                             string strDimension = "";
                             string prepaid = "";
                             string TotalPrepaid = "";
-                            string ExecDate = String.Empty, ExecBy = String.Empty, ExecAT = String.Empty;
+                            string ExecDate = string.Empty, ExecBy = string.Empty, ExecAT = string.Empty;
 
                             //// Get AWB Executed At, Executed By, and Execution Date
-                            DataSet dsExec = genericFunction.GetAWBExecutionInfo(AWBPrefix, AWBNumber);
+                            DataSet dsExec = _genericFunction.GetAWBExecutionInfo(AWBPrefix, AWBNumber);
 
                             if (dsExec != null && dsExec.Tables.Count > 0 && dsExec.Tables[0].Rows.Count > 0)
                             {
-                                ExecDate = Convert.ToDateTime(dsExec.Tables[0].Rows[0]["ExecutionDate"]).ToString(genericFunction.ReadValueFromDb("SystemDateFormat"), CultureInfo.InvariantCulture) + " " + Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutionTime"]);
+                                ExecDate = Convert.ToDateTime(dsExec.Tables[0].Rows[0]["ExecutionDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + " " + Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutionTime"]);
                                 ExecBy = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedBy"]);
                                 ExecAT = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedAt"]);
                             }
@@ -8724,35 +9477,35 @@ namespace QidWorkerRole
 
                             string ShipperName = ShprName + Environment.NewLine + ShrpAddress1;
 
-                            if (!String.IsNullOrEmpty(ShptAddress2))
+                            if (!string.IsNullOrEmpty(ShptAddress2))
                                 ShipperName += ", " + ShptAddress2;
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim()))
                                 shipperState = dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim()))
                                 shipperCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
                                 ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim() + ", ";
-                            else if (String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
+                            else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
                                 ShipperName += Environment.NewLine;
 
-                            if (!String.IsNullOrEmpty(shipperState))
+                            if (!string.IsNullOrEmpty(shipperState))
                                 ShipperName += shipperState;
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim()))
                                 ShipperName += " " + dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(shipperCountry))
+                            if (!string.IsNullOrEmpty(shipperCountry))
                                 ShipperName += shipperCountry;
                             string Clientname = string.Empty;
                             DataSet dsClientName = new DataSet("dsClientName");
-                            dsClientName = genericFunction.GetClientName();
+                            dsClientName = _genericFunction.GetClientName();
                             Clientname = Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]);
                             if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
                             {
-                                if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
+                                if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
                                     ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim();
                             }
 
@@ -8770,32 +9523,32 @@ namespace QidWorkerRole
 
                             string Consigneename = ConsName + Environment.NewLine + ConsAddress1;
 
-                            if (!String.IsNullOrEmpty(ConsAddress2))
+                            if (!string.IsNullOrEmpty(ConsAddress2))
                                 Consigneename += ", " + ConsAddress2;
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim()))
                                 consignerState = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim()))
                                 consignerCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
                                 Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim() + ", ";
-                            else if (String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
+                            else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
                                 Consigneename += Environment.NewLine;
 
-                            if (!String.IsNullOrEmpty(consignerState))
+                            if (!string.IsNullOrEmpty(consignerState))
                                 Consigneename += consignerState;
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim()))
                                 Consigneename += " " + dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(consignerCountry))
+                            if (!string.IsNullOrEmpty(consignerCountry))
                                 Consigneename += consignerCountry;
 
                             if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
                             {
-                                if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
+                                if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
                                     Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim();
                             }
 
@@ -8960,21 +9713,21 @@ namespace QidWorkerRole
                             else
                                 SHP_print = "ID: " + SHP_print;
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim()))
                                 ConsId = "ID: " + dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim();
                             else
                                 ConsId = "";
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim()))
                                 ShipperName += Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim()))
                                 Consigneename = Consigneename + Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim()))
                                 Consigneename = Consigneename + Environment.NewLine + "Notify Name: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim();
 
-                            if (!String.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim()))
+                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim()))
                                 Consigneename = Consigneename + Environment.NewLine + "Notify Phone: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim();
 
                             DataTable dsDimesionAll = new DataTable("GHA_QuickBooking_32");
@@ -9063,7 +9816,7 @@ namespace QidWorkerRole
                             //MasterBAL ObjMsBAl = new MasterBAL();
                             DataSet dsMasterAirline = new DataSet("GHA_QuickBooking_33");
                             //Added by swati
-                            dsMasterAirline = genericFunction.GetAirlineDetails(Origin, Dest, AirlinePrefix);
+                            dsMasterAirline = _genericFunction.GetAirlineDetails(Origin, Dest, AirlinePrefix);
                             //ObjMsBAl = null;
 
                             if (dsMasterAirline != null)
@@ -9072,11 +9825,11 @@ namespace QidWorkerRole
                                 {
                                     if (dsMasterAirline.Tables[1].Rows.Count > 0)
                                     {
-                                        OriginCity = genericFunction.getorg(Origin);
+                                        OriginCity = _genericFunction.getorg(Origin);
 
                                         if (dsMasterAirline.Tables[2].Rows.Count > 0)
                                         {
-                                            DestinationCity = genericFunction.getorg(Dest);
+                                            DestinationCity = _genericFunction.getorg(Dest);
                                             if (dsMasterAirline.Tables[0].Rows.Count > 0)
                                                 CustomerSupportInfo = dsMasterAirline.Tables[0].Rows[0]["CustomerSupportInfo"].ToString();
                                         }
@@ -9110,7 +9863,7 @@ namespace QidWorkerRole
                             }
 
                             //CEBV4-3209
-                            string AWBStatus = genericFunction.GetAWBStatus(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim());
+                            string AWBStatus = _genericFunction.GetAWBStatus(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim());
                             //Session["AWBStatus"] = AWBStatus;
 
                             if (dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim() != null && dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim().Equals("B"))
@@ -9153,13 +9906,13 @@ namespace QidWorkerRole
                                 InsAmount = "XXX";
 
                             // HA-373: Get multiple rate lines
-                            DataSet dsRateLog = genericFunction.GetAWBRateLog(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), IsAgreed, dsAWBDeatils.Tables[0].Rows[0]["UpdatedBy"].ToString().Trim());
-                            string UOM = String.Empty;
-                            string totalRate = String.Empty;
+                            DataSet dsRateLog = _genericFunction.GetAWBRateLog(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), IsAgreed, dsAWBDeatils.Tables[0].Rows[0]["UpdatedBy"].ToString().Trim());
+                            string UOM = string.Empty;
+                            string totalRate = string.Empty;
                             string dims = string.Empty;
-                            string totalFrtCharge = String.Empty;
-                            string totalTax = String.Empty;
-                            string totalAmount = String.Empty;
+                            string totalFrtCharge = string.Empty;
+                            string totalTax = string.Empty;
+                            string totalAmount = string.Empty;
                             //string Logo = "";
 
                             //int  pcs1 = 0;
@@ -9170,12 +9923,12 @@ namespace QidWorkerRole
                             {
                                 TotalPcsU = 0;
                                 totalgwt = 0;
-                                Pcs = String.Empty;
-                                GrossWgt = String.Empty;
-                                RateClause = String.Empty;
-                                CommCode = String.Empty;
-                                ChargeWgt = String.Empty;
-                                RatePerKg = String.Empty;
+                                Pcs = string.Empty;
+                                GrossWgt = string.Empty;
+                                RateClause = string.Empty;
+                                CommCode = string.Empty;
+                                ChargeWgt = string.Empty;
+                                RatePerKg = string.Empty;
 
                                 foreach (DataRow dr in dsRateLog.Tables[0].Rows)
                                 {
@@ -9230,10 +9983,10 @@ namespace QidWorkerRole
                                     //totalAmount = Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
                                     totalAmount = dsAWBDeatils.Tables[7].Rows[0]["Total"].ToString().Trim();
 
-                                    if (!String.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
+                                    if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
                                         Total = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
 
-                                    if (!String.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
+                                    if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
                                         SerTax = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["FrtTax"]);
 
                                     // Show pcs and wt from rate log table
@@ -9336,8 +10089,8 @@ namespace QidWorkerRole
                                 }
 
 
-                                bz = new CultureInfo(genericFunction.ReadValueFromDb("ShowCurrencyFormat"));
-                                specifier = genericFunction.ReadValueFromDb("AllowedDecimalNumber");
+                                bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
+                                specifier = ConfigCache.Get("AllowedDecimalNumber");
 
 
                                 string zeroValueFormat = Convert.ToDecimal(0).ToString(specifier, bz);
@@ -9365,14 +10118,14 @@ namespace QidWorkerRole
 
                             // HA-642: added by swati for signature field..
                             DataSet dsSign = new DataSet("dsEAWBSignature");
-                            dsSign = genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "AWBSignature");
+                            dsSign = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "AWBSignature");
 
                             System.IO.MemoryStream signMemStream = null;
 
-                            if (dsSign != null && dsSign.Tables.Count > 0 && !String.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"]).Trim()))
+                            if (dsSign != null && dsSign.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"]).Trim()))
                             {
                                 byte[] sign = null;
-                                sign = genericFunction.DownloadFromBlob(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
+                                sign = _genericFunction.DownloadFromBlob(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
                                 signMemStream = (sign == null ? new System.IO.MemoryStream() : new System.IO.MemoryStream(sign));
                             }
 
@@ -9398,7 +10151,7 @@ namespace QidWorkerRole
                             string WaterMark = "";//(new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "//Images//WaterMark002.png";
                             DataColumn dcWaterMark = new DataColumn("WaterMark", System.Type.GetType("System.String"));
 
-                            if (genericFunction.ReadValueFromDb("IsWaterMarkPrintEawb") == "true")
+                            if (ConfigCache.Get("IsWaterMarkPrintEawb") == "true")
                                 dcWaterMark.DefaultValue = WaterMark;
                             else
                                 dcWaterMark.DefaultValue = "";
@@ -9406,15 +10159,15 @@ namespace QidWorkerRole
                             DTExport.Columns.Add(dcWaterMark);
                             // End Of  Added By Niranjan 24/09/2015 --------------------------------------------------------
 
-                            string signUrl = String.Empty;
+                            string signUrl = string.Empty;
                             string clientName = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();//Convert.ToString("AirlinePrefix");
                             if (clientName.Trim().ToUpper() == "VJ" || clientName.Trim().ToUpper() == "VZ")
                             {
                                 signUrl = AgentNameOnly;
                             }
-                            else if (!String.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim())))
+                            else if (!string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim())))
                             {
-                                string FileUrl = genericFunction.GetSASBlobUrl(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
+                                string FileUrl = _genericFunction.GetSASBlobUrl(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
                                 signUrl = "<img src=\"" + FileUrl + "\" width=\"192px\" height=\"24px\" />";
                             }
                             DataColumn dcSignUrl = new DataColumn("HTMLSignature", System.Type.GetType("System.String"));
@@ -9423,24 +10176,24 @@ namespace QidWorkerRole
 
                             // Barcode
                             DataColumn dcBarCode = new DataColumn("HTMLBarCode", System.Type.GetType("System.String"));
-                            string barCodeUrl = String.Empty;
+                            string barCodeUrl = string.Empty;
 
-                            DataSet dsBarCode = genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "barcode");
+                            DataSet dsBarCode = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "barcode");
 
-                            if (dsBarCode != null && dsBarCode.Tables.Count > 0 && !String.IsNullOrEmpty(Convert.ToString(dsBarCode.Tables[0].Rows[0]["FileUrl"]).Trim()))
+                            if (dsBarCode != null && dsBarCode.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsBarCode.Tables[0].Rows[0]["FileUrl"]).Trim()))
                             {
                                 barCodeUrl = dsBarCode.Tables[0].Rows[0]["fileurl"].ToString().Trim();
-                                barCodeUrl = genericFunction.GetSASBlobUrl(barCodeUrl);
+                                barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
                             }
                             else
                             {
                                 ms.Seek(0, SeekOrigin.Begin);
-                                barCodeUrl = genericFunction.UploadToBlob(ms, dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "_" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim() + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + ".png", "barcode");
-                                genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), barCodeUrl, "barcode");
-                                barCodeUrl = genericFunction.GetSASBlobUrl(barCodeUrl);
+                                barCodeUrl = _genericFunction.UploadToBlob(ms, dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "_" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim() + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + ".png", "barcode");
+                                _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), barCodeUrl, "barcode");
+                                barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
                             }
 
-                            if (genericFunction.ReadValueFromDb("ShowBarCodeInEAWBPrint") == "1")
+                            if (ConfigCache.Get("ShowBarCodeInEAWBPrint") == "1")
                                 dcBarCode.DefaultValue = "<img src=\"" + barCodeUrl + "\"  width=\"192px\" height=\"24px\" />";
                             else
                                 dcBarCode.DefaultValue = "";
@@ -9479,7 +10232,7 @@ namespace QidWorkerRole
 
                             string HTMLData = string.Empty;
                             // Generate PDF from Html or RDLC based on config
-                            if (genericFunction.ReadValueFromDb("EAWBHTMLPrint") == "1")
+                            if (ConfigCache.Get("EAWBHTMLPrint") == "1")
                                 HTMLData = RenderReportHtml(DTExport, dsRateLog, dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim(), dsDimesionAll);
 
                             HtmlToPdfConverter htmlToPdfConverter = null;
@@ -9498,10 +10251,10 @@ namespace QidWorkerRole
                             //string FileExcelURL = "";
 
 
-                            string fileUrl = genericFunction.UploadToBlob(ms, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC.pdf", container);
-                            genericFunction.CheckIfAWBOnBLOB(AWBPrefix + AWBNumber, fileUrl, container);
-                            DumpInterfaceInformation(Subject, body, TimeStamp, "BKDCNFNotification", "", true, "", Toid, ms, ".pdf", fileUrl, "0", "Outbox", "", null, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC");
-                            GetUpdateNotification(AWBPrefix, AWBNumber,SerialNumber);
+                            string fileUrl = _genericFunction.UploadToBlob(ms, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC.pdf", container);
+                            _genericFunction.CheckIfAWBOnBLOB(AWBPrefix + AWBNumber, fileUrl, container);
+                            await DumpInterfaceInformation(Subject, body, TimeStamp, "BKDCNFNotification", "", true, "", Toid, ms, ".pdf", fileUrl, "0", "Outbox", "", null, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC");
+                            await GetUpdateNotification(AWBPrefix, AWBNumber, SerialNumber);
 
                             try
                             {
@@ -9526,7 +10279,8 @@ namespace QidWorkerRole
                                 DTExportSubDetails = null;
                                 DTvolume = null;
                                 dsDimesionAll = null;
-                                dsOtherDetails = null; clsLog.WriteLogAzure(ex);
+                                dsOtherDetails = null;
+                                clsLog.WriteLogAzure(ex);
                             }
                         }
                     }
@@ -9540,8 +10294,6 @@ namespace QidWorkerRole
 
         public DataSet GetChargeSummury(DataSet dsAWBDeatils)
         {
-
-
             try
             {
                 DataTable dtRates = new DataTable("GHA_QuickBooking_19");
@@ -9633,15 +10385,15 @@ namespace QidWorkerRole
         {
             string AWBNo = dtTable.Rows[0][2].ToString();
             string[] AWBPrefix = AWBNo.Split('-');
-            string rateInfo = String.Empty;
+            string rateInfo = string.Empty;
             int maxCommDescLen = 0;
 
             GenericFunction genericFunction = new GenericFunction();
 
             string specifier = string.Empty;
             CultureInfo bz;
-            bz = new CultureInfo(genericFunction.ReadValueFromDb("ShowCurrencyFormat"));
-            specifier = genericFunction.ReadValueFromDb("AllowedDecimalNumber");
+            bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
+            specifier = ConfigCache.Get("AllowedDecimalNumber");
             // Read HTML in string
             StringReader htmlFile = new StringReader("");
 
@@ -9666,7 +10418,7 @@ namespace QidWorkerRole
             //-------- SQF Number Added by Nitin for CEBU
 
             string SQFName = "";
-            SQFName = genericFunction.ReadValueFromDb("QSFPrintEAWB");
+            SQFName = ConfigCache.Get("QSFPrintEAWB");
             if (!string.IsNullOrEmpty(SQFName))
             {
                 string[] strArray = SQFName.Split('|');
@@ -9719,7 +10471,7 @@ namespace QidWorkerRole
             DataSet dsClientName = new DataSet("dsClientName");
             dsClientName = genericFunction.GetClientName();
             int maxDimsRowsOnAWBPrint = 0;
-            Int32.TryParse(genericFunction.ReadValueFromDb("MaxDimsRowsOnAWBPrint"), out maxDimsRowsOnAWBPrint);
+            Int32.TryParse(ConfigCache.Get("MaxDimsRowsOnAWBPrint"), out maxDimsRowsOnAWBPrint);
             string DimsData = string.Empty;
 
             decimal dcTotalVal = 0;
@@ -9977,16 +10729,24 @@ namespace QidWorkerRole
 
         }
 
-        public void GetUpdateNotification(string awbPrefix, string awbNumber, int SerialNumber)
+        public async Task GetUpdateNotification(string awbPrefix, string awbNumber, int SerialNumber)
         {
             try
             {
-                DataSet dsUpdate = new DataSet();
-                string[] QueryNames = { "AWBprefix", "AWBNumber", "SerialNumber" };
-                SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                string[] QueryValues = { awbPrefix, awbNumber, SerialNumber.ToString() };
-                SQLServer db = new SQLServer();
-                dsUpdate = db.SelectRecords("USPUpdatePendingNotificationList", QueryNames, QueryValues, QueryTypes);
+                DataSet? dsUpdate = new DataSet();
+                //string[] QueryNames = { "AWBprefix", "AWBNumber", "SerialNumber" };
+                //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                //string[] QueryValues = { awbPrefix, awbNumber, SerialNumber.ToString() };
+                //SQLServer db = new SQLServer();
+                //dsUpdate = db.SelectRecords("USPUpdatePendingNotificationList", QueryNames, QueryValues, QueryTypes);
+
+                SqlParameter[] parameters =
+                [
+                    new("@AWBprefix", SqlDbType.VarChar)   { Value = awbPrefix },
+                    new("@AWBNumber", SqlDbType.VarChar)   { Value = awbNumber },
+                    new("@SerialNumber", SqlDbType.VarChar){ Value = SerialNumber.ToString() }
+                ];
+                dsUpdate = await _readWriteDao.SelectRecords("USPUpdatePendingNotificationList", parameters);
             }
             catch (Exception ex)
             {
@@ -9994,24 +10754,29 @@ namespace QidWorkerRole
             }
         }
 
-        public void UploadSISReceivableFileonSFTP()
+        public async Task UploadSISReceivableFileonSFTP()
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
+                //DataSet dsSFTPDetails = sqlServer.SelectRecords("uspGetMessageConfiguration2", sqlParameter);
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                     new SqlParameter("@Messagetype", MessageData.MessageTypeName.SISFILES)
                 };
-                DataSet dsSFTPDetails = sqlServer.SelectRecords("uspGetMessageConfiguration2", sqlParameter);
+                DataSet? dsSFTPDetails = await _readWriteDao.SelectRecords("uspGetMessageConfiguration2", sqlParameter);
+
                 if (dsSFTPDetails != null && dsSFTPDetails.Tables.Count > 0 && dsSFTPDetails.Tables[0].Rows.Count > 0)
                 {
-                    FTP objFTP = new FTP();
-                    objFTP.UploadSISReceivableFileonSFTP(dsSFTPDetails.Tables[0]);
+                    //FTP _ftp = new FTP();
+                    _ftp.UploadSISReceivableFileonSFTP(dsSFTPDetails.Tables[0]);
                 }
             }
             catch (Exception ex)
             {
-                throw ex;
+                clsLog.WriteLogAzure(ex);
+                throw;
+
             }
         }
 
@@ -10130,10 +10895,11 @@ namespace QidWorkerRole
             {
                 clsLog.WriteLogAzure("WEBSERVICE Error" + webex.Response.ToString());
             }
+            catch (Exception ex)
+            {
+                clsLog.WriteLogAzure(ex);
+            }
         }
-
-
-
     }
     #endregion
 }
