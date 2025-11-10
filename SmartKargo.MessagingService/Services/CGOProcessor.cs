@@ -14,10 +14,10 @@ namespace QidWorkerRole
         #region
 
         private readonly ISqlDataHelperDao _readWriteDao;
-        private readonly ILogger<AzureDrive> _logger;
+        private readonly ILogger<CGOProcessor> _logger;
         public CGOProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<AzureDrive> logger)
+            ILogger<CGOProcessor> logger)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
