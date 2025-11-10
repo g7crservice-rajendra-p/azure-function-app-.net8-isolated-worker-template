@@ -10,6 +10,12 @@ artifacts/
 publish/
 dist/
 
+# Azurite local storage emulator data
+__azurite_db*
+__blobstorage__
+__queuestorage__
+__tablestorage__
+
 # Azure Functions specific
 **/local.settings.json
 **/appsettings.Development.json
