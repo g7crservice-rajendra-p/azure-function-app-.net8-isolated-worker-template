@@ -172,13 +172,15 @@ namespace QidWorkerRole
 
                     flag = await UpdateCapacityFromCGOMessage(FlightNo, DateTime.Parse(FlightDate), FlightOrigin, AircraftType, float.Parse(AllocatedSpace));
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error on DecodeReceiveCGOMessage.");
                     flag = false;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error on DecodeReceiveCGOMessage.");
                 flag = false;
             }
             return flag;
@@ -236,7 +238,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error while save Cargo Capacity via CGO Msg " + FlightNo + ex);
+                // clsLog.WriteLogAzure("Error while save Cargo Capacity via CGO Msg " + FlightNo + ex);
+                _logger.LogError(ex, "Error while save Cargo Capacity via CGO Msg {FlightNo}" , FlightNo + ex);
                 return false;
             }
             #endregion

@@ -99,7 +99,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in InsertRapidInterfaceData");
+                _logger.LogError(ex, "Error on InsertRapidInterfaceData");
                 return ds;
             }
         }
@@ -143,7 +143,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in GetRapidInterfaceData");
+                _logger.LogError(ex, "Error on GetRapidInterfaceData");
                 return ds;
             }
         }
@@ -203,7 +203,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "InsertRapidFlownTransaction");
+                _logger.LogError(ex, "Error on InsertRapidFlownTransaction");
                 return ds;
             }
         }
@@ -246,7 +246,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in GetRapidFlownTransaction");
+                _logger.LogError(ex, "Error on GetRapidFlownTransaction");
                 return ds;
             }
         }
@@ -304,7 +304,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in InsertRapidCTMTransaction");
+                _logger.LogError(ex, "Error on InsertRapidCTMTransaction");
                 return ds;
             }
         }
@@ -348,7 +348,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in GetRapidCTMTransaction");
+                _logger.LogError(ex, "Error on GetRapidCTMTransaction");
                 return ds;
             }
         }
@@ -410,7 +410,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in InsertRapidCCAPXTransaction");
+                _logger.LogError(ex, "Error on InsertRapidCCAPXTransaction");
                 return ds;
             }
         }
@@ -457,7 +457,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error in GetRapidCCAPXTransaction");
+                _logger.LogError(ex, "Error on GetRapidCCAPXTransaction");
                 return ds;
             }
         }
