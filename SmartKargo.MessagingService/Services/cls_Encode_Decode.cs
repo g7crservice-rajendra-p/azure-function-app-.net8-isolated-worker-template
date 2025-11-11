@@ -329,7 +329,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
                                     _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                                 }
 
@@ -737,7 +737,7 @@ namespace QidWorkerRole
                     }
                 }
                 catch (Exception ex) {
-                    clsLog.WriteLogAzure(ex.Message); 
+                    // clsLog.WriteLogAzure(ex.Message); 
                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                      }
                 #endregion
@@ -770,7 +770,7 @@ namespace QidWorkerRole
                     }
                 }
                 catch (Exception ex) {
-                    clsLog.WriteLogAzure(ex.Message);
+                    // clsLog.WriteLogAzure(ex.Message);
                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
                 #endregion
@@ -993,7 +993,7 @@ namespace QidWorkerRole
                     }
                 }
                 catch (Exception ex) {
-                    clsLog.WriteLogAzure(ex.Message);
+                    // clsLog.WriteLogAzure(ex.Message);
                      _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                       }
                 #endregion
@@ -1078,7 +1078,7 @@ namespace QidWorkerRole
                     }
                 }
                 catch (Exception ex) {
-                    clsLog.WriteLogAzure(ex.Message); 
+                    // clsLog.WriteLogAzure(ex.Message); 
                      _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                      }
                 #endregion
@@ -2746,7 +2746,7 @@ namespace QidWorkerRole
                                                     }
                                                 }
                                                 catch (Exception ex) {
-                                                    clsLog.WriteLogAzure(ex.Message);
+                                                    // clsLog.WriteLogAzure(ex.Message);
                                                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                  }
                                                 Array.Resize(ref unloadingport, unloadingport.Length + 1);
@@ -10585,21 +10585,29 @@ namespace QidWorkerRole
 
         public DataTable SelectDistinct(DataTable SourceTable, string FieldName)
         {
-            // Create a Datatable â€“ datatype same as FieldName
-            DataTable dt = new DataTable(SourceTable.TableName);
-            dt.Columns.Add(FieldName, SourceTable.Columns[FieldName].DataType);
-            // Loop each row & compare each value with one another
-            // Add it to datatable if the values are mismatch
-            object LastValue = null;
-            foreach (DataRow dr in SourceTable.Select("", FieldName))
-            {
-                if (LastValue == null || !(ColumnEqual(LastValue, dr[FieldName])))
-                {
-                    LastValue = dr[FieldName];
-                    dt.Rows.Add(new object[] { LastValue });
-                }
-            }
-            return dt;
+           try
+           {
+             // Create a Datatable â€“ datatype same as FieldName
+             DataTable dt = new DataTable(SourceTable.TableName);
+             dt.Columns.Add(FieldName, SourceTable.Columns[FieldName].DataType);
+             // Loop each row & compare each value with one another
+             // Add it to datatable if the values are mismatch
+             object LastValue = null;
+             foreach (DataRow dr in SourceTable.Select("", FieldName))
+             {
+                 if (LastValue == null || !(ColumnEqual(LastValue, dr[FieldName])))
+                 {
+                     LastValue = dr[FieldName];
+                     dt.Rows.Add(new object[] { LastValue });
+                 }
+             }
+             return dt;
+           }
+           catch (System.Exception ex)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
         private bool ColumnEqual(object A, object B)
