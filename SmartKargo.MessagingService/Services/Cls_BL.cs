@@ -7104,39 +7104,41 @@ namespace QidWorkerRole
             }
         }
 
+        /*Not in use*/
+
         /// <summary>
         /// Send Auto FFR to System
         /// </summary>
-        private async Task sendAutoFFR()
-        {
-            try
-            {
-                //SQLServer db = new SQLServer(); ;
-                //ds = db.SelectRecords("spStimulateAutoFFR");
+        //private async Task sendAutoFFR()
+        //{
+        //    try
+        //    {
+        //        //SQLServer db = new SQLServer(); ;
+        //        //ds = db.SelectRecords("spStimulateAutoFFR");
 
-                DataSet? ds = null;
-                ds = await _readWriteDao.SelectRecords("spStimulateAutoFFR");
+        //        DataSet? ds = null;
+        //        ds = await _readWriteDao.SelectRecords("spStimulateAutoFFR");
 
-                if (ds != null)
-                {
-                    if (ds.Tables.Count > 0)
-                    {
-                        if (ds.Tables[0].Rows.Count > 0)
-                        {
-                            cls_SCMBL clscmbl = new cls_SCMBL();
-                            clscmbl.EncodeFFRForSend(ds, 0);
-                        }
-                    }
-                }
+        //        if (ds != null)
+        //        {
+        //            if (ds.Tables.Count > 0)
+        //            {
+        //                if (ds.Tables[0].Rows.Count > 0)
+        //                {
+        //                    cls_SCMBL clscmbl = new cls_SCMBL();
+        //                    clscmbl.EncodeFFRForSend(ds, 0);
+        //                }
+        //            }
+        //        }
 
-                //db = null;
-                //GC.Collect();
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-        }
+        //        //db = null;
+        //        //GC.Collect();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //}
 
         private string RemoveBinaryData(string orgmsg)
         {

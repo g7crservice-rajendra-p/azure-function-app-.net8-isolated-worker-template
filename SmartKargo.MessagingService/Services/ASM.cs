@@ -1578,8 +1578,8 @@ namespace QidWorkerRole
             return tempDate.ToString("yyyy-MM-dd hh:mm:ss");
         }
 
-        //public async Task<MVT> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
-        public async Task<(MVT mvt, string msgType, bool isProcessFlag)> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom)
+        //public MVT ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
+        public async Task<(string msgType, bool isProcessFlag)> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom)
         {
 
             string msgType = "MVT";
@@ -1592,7 +1592,7 @@ namespace QidWorkerRole
                 if (arrLine.Length < 3)
                 {
                     errorMsg = "Message is not in correct format.Cant parse correctly.";
-                    return (null, msgType, isProcessFlag);
+                    return (msgType, isProcessFlag);
                 }
                 messageType = arrLine[0];
 
@@ -1691,7 +1691,7 @@ namespace QidWorkerRole
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, "Error on getDate ToMVT");
             }
-            return (this, msgType, isProcessFlag);
+            return (msgType, isProcessFlag);
         }
 
         private void ParseEstimatedArrival(string[] arrLine, string actualMessageType)
