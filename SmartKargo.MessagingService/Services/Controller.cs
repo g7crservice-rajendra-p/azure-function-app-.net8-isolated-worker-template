@@ -234,14 +234,14 @@ namespace QidWorkerRole
                 //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar };
                 var parameters = new SqlParameter[]
                 {
-                    new("@subject", SqlDbType.VarChar)      { Value = subject     ?? string.Empty },
-                    new("@body", SqlDbType.VarChar)         { Value = body        ?? string.Empty },
-                    new("@fromId", SqlDbType.VarChar)       { Value = fromId      ?? string.Empty },
-                    new("@toId", SqlDbType.VarChar)         { Value = toId        ?? string.Empty },
+                    new("@subject", SqlDbType.VarChar)      { Value = subject },
+                    new("@body", SqlDbType.VarChar)         { Value = body },
+                    new("@fromId", SqlDbType.VarChar)       { Value = fromId },
+                    new("@toId", SqlDbType.VarChar)         { Value = toId },
                     new("@recievedOn", SqlDbType.DateTime)  { Value = recievedOn },
                     new("@sendOn", SqlDbType.DateTime)      { Value = sendOn },
-                    new("@type", SqlDbType.VarChar)         { Value = type        ?? string.Empty },
-                    new("@status", SqlDbType.VarChar)       { Value = status      ?? string.Empty }
+                    new("@type", SqlDbType.VarChar)         { Value = type },
+                    new("@status", SqlDbType.VarChar)       { Value = status }
                 };
 
                 // object[] values = { subject, body, fromId ,toId ,recievedOn ,sendOn ,type ,status};
