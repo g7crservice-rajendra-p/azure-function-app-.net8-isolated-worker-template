@@ -480,7 +480,7 @@ namespace QidWorkerRole
             return ds;
         }
 
-        public bool addBookingFromMsg(string strMsg, int refNO, string strMessageFrom, out string msgType, string strFromID, string strStatus, string PIMAAddress, out string Errmsg)
+        public async Task<bool> addBookingFromMsg(string strMsg, int refNO, string strMessageFrom, out string msgType, string strFromID, string strStatus, string PIMAAddress, out string Errmsg)
         {
             bool flag = false, fltlevel = false;
             msgType = string.Empty;
@@ -942,8 +942,11 @@ namespace QidWorkerRole
                         {
                             CGOProcessor cgoMsgPrcsr = new CGOProcessor();
                             string cgoMessage = strMsg;
-                            float ActCapactiy = 0;
-                            flag = cgoMsgPrcsr.DecodeReceiveCGOMessage(cgoMessage, ref ActCapactiy);
+
+                            /*Removed ActCapactiy as it is not used*/
+                            //float ActCapactiy = 0;
+                            //flag = cgoMsgPrcsr.DecodeReceiveCGOMessage(cgoMessage, ref ActCapactiy);
+                            flag = await cgoMsgPrcsr.DecodeReceiveCGOMessage(cgoMessage);
                         }
                         else if (strMsg.Trim().StartsWith("UNB") && (strMsg.Trim().Contains("STS++74")) || (strMsg.Trim().Contains("STS++24")) || (strMsg.Trim().Contains("STS++21")) || (strMsg.Trim().Contains("STS++40")))
                         {

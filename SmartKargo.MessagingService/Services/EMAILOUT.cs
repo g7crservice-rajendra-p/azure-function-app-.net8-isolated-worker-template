@@ -6,6 +6,7 @@ using SendGrid.Helpers.Mail;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Data.DbConstants;
 using SmartKargo.MessagingService.Functions.Activities;
+using SmartKargo.MessagingService.Services;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -63,7 +64,7 @@ namespace QidWorkerRole
             bool sendEmail = false, ishtml = true, isMessageSent = true;
             string ccadd = string.Empty, subject = string.Empty, FileName = string.Empty, status = string.Empty, FileExtension = string.Empty, body = string.Empty, actualMsg = string.Empty, sentadd = string.Empty;
             //SQLServer _readWriteDao = new SQLServer();
-            //Cls_BL clsbl = new Cls_BL();
+            Cls_BL clsbl = new Cls_BL();
             #endregion
 
             SmtpClient smtp = new SmtpClient(OutgoingMailServer, outport);
@@ -344,7 +345,10 @@ namespace QidWorkerRole
             try
             {
                 if (OutgoingMailServer.Trim() == string.Empty)
-                    OutgoingMailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
+                {
+                    //OutgoingMailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
+                    OutgoingMailServer = ConfigCache.Get("msgService_EmailOutServer");
+                }
 
                 clsLog.WriteLogAzure("OutgoingMailServer : " + OutgoingMailServer);
                 MailMessage Mail = new MailMessage();

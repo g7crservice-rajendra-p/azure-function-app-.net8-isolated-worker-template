@@ -1,16 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole
 {
     public class CIMPMessageValidation
     {
+        private readonly ILogger<CIMPMessageValidation> _logger;
+        private readonly GenericFunction _genericFunction;
+
+        public CIMPMessageValidation(
+            ILogger<CIMPMessageValidation> logger, 
+            GenericFunction genericFunction)
+        {
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
         public bool ValidateFFR(string ffrMessage, int srno, out string errorMessage)
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
             errorMessage = string.Empty;
             try
             {
@@ -29,7 +35,7 @@ namespace QidWorkerRole
                     if (arrIdentifierDifference.Length > 0)
                     {
                         errorMessage = arrIdentifierDifference[0] + " line is missing";
-                        genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FFR", false, "", false);
+                        _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FFR", false, "", false);
                         return false;
                     }
                     #endregion Validate Mandatory Lines
@@ -37,14 +43,15 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ValidateFFR");
             }
             return true;
         }
 
         public bool ValidateFWB(string fwbMessage, int srno, out string errorMessage)
         {
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
             errorMessage = string.Empty;
             try
             {
@@ -63,7 +70,7 @@ namespace QidWorkerRole
                     if (arrIdentifierDifference.Length > 0)
                     {
                         errorMessage = arrIdentifierDifference[0] + " line is missing";
-                        genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FWB", false, "", false);
+                        _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FWB", false, "", false);
                         return false;
                     }
                     #endregion Validate Mandatory Lines
@@ -86,7 +93,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ValidateFWB");
             }
             return true;
         }

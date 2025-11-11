@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Text.RegularExpressions;
-using System.Globalization;
-using System.Text;
-using System.IO;
-using System.Reflection;
-using System.Data;
-using QID.DataAccess;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Configuration;
-using QidWorkerRole;
+using System.Data;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 namespace QidWorkerRole
 {
     /// <summary>
@@ -18,22 +13,31 @@ namespace QidWorkerRole
     /// </summary>
     public class cls_Encode_Decode
     {
-        SCMExceptionHandlingWorkRole scmexception = new SCMExceptionHandlingWorkRole();
+        //SCMExceptionHandlingWorkRole scmexception = new SCMExceptionHandlingWorkRole();
+        //string conStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
 
         #region Variables
         static string unloadingportsequence = "";
         static string uldsequencenum = "";
         static string awbref = "";
-        string conStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
         const string PAGE_NAME = "cls_Encode_Decode";
         #endregion
 
         #region Constructor
-        public cls_Encode_Decode()
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ISqlDataHelperDao _readOnlyDao;
+        private readonly ILogger<cls_Encode_Decode> _logger;
+        private readonly PSNMessageProcessor _pSNMessageProcessor;
+        public cls_Encode_Decode(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<cls_Encode_Decode> logger,
+            PSNMessageProcessor pSNMessageProcessor)
         {
-            //
-            // TODO: Add constructor logic here
-            //
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
+            _logger = logger;
+            _pSNMessageProcessor = pSNMessageProcessor;
         }
         #endregion
 
@@ -1312,285 +1316,286 @@ namespace QidWorkerRole
 
         //FBL
 
+        /*Not in use**/
         #region decode FBL
-        private bool decodereceiveFBL(string fblmsg, ref MessageData.fblinfo fbldata, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] dimensioinfo, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo othinfo, ref MessageData.consignmentorigininfo[] consorginfo, ref MessageData.consignmnetinfo[] consinfo)
-        {
-            bool flag = false;
-            const string FUN_NAME = "decodereceiveFBL";
-            try
-            {
-                string lastrec = "NA";
+        //private bool decodereceiveFBL(string fblmsg, ref MessageData.fblinfo fbldata, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] dimensioinfo, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo othinfo, ref MessageData.consignmentorigininfo[] consorginfo, ref MessageData.consignmnetinfo[] consinfo)
+        //{
+        //    bool flag = false;
+        //    const string FUN_NAME = "decodereceiveFBL";
+        //    try
+        //    {
+        //        string lastrec = "NA";
 
-                try
-                {
-                    if (fblmsg.StartsWith("FBL", StringComparison.OrdinalIgnoreCase))
-                    {
+        //        try
+        //        {
+        //            if (fblmsg.StartsWith("FBL", StringComparison.OrdinalIgnoreCase))
+        //            {
 
-                        string[] str = Regex.Split(fblmsg, "$");
-                        if (str.Length > 3)
-                        {
-                            for (int i = 0; i < str.Length; i++)
-                            {
+        //                string[] str = Regex.Split(fblmsg, "$");
+        //                if (str.Length > 3)
+        //                {
+        //                    for (int i = 0; i < str.Length; i++)
+        //                    {
 
-                                flag = true;
-                                #region Line 1
-                                if (str[i].StartsWith("FBL", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        fbldata.fblversion = msg[1];
-                                    }
-                                    catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                        flag = true;
+        //                        #region Line 1
+        //                        if (str[i].StartsWith("FBL", StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                fbldata.fblversion = msg[1];
+        //                            }
+        //                            catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region line 2 flight data
-                                if (i == 1)
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        if (msg.Length > 1)
-                                        {
-                                            fbldata.messagesequencenum = msg[0];
-                                            fbldata.carriercode = msg[1].Substring(0, 2);
-                                            fbldata.fltnum = msg[1].Substring(2);
-                                            fbldata.date = msg[2].Substring(0, 2);
-                                            fbldata.month = msg[2].Substring(2);
-                                            fbldata.fltairportcode = msg[3];
-                                            fbldata.aircraftregistration = msg[4];
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                        #region line 2 flight data
+        //                        if (i == 1)
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                if (msg.Length > 1)
+        //                                {
+        //                                    fbldata.messagesequencenum = msg[0];
+        //                                    fbldata.carriercode = msg[1].Substring(0, 2);
+        //                                    fbldata.fltnum = msg[1].Substring(2);
+        //                                    fbldata.date = msg[2].Substring(0, 2);
+        //                                    fbldata.month = msg[2].Substring(2);
+        //                                    fbldata.fltairportcode = msg[3];
+        //                                    fbldata.aircraftregistration = msg[4];
+        //                                }
+        //                            }
+        //                            catch (Exception ex)
+        //                            { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region line 3 point of unloading
-                                if (i >= 2)
-                                {
-                                    MessageData.unloadingport unloading = new MessageData.unloadingport("");
-                                    if (str[i].Contains('/'))
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        if (msg.Length == 2)
-                                        {
-                                            if (msg[0].Length > 0 && !msg[0].Equals("SSR", StringComparison.OrdinalIgnoreCase) && !msg[0].Equals("OSI", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                unloading.unloadingairport = msg[0];
-                                                unloading.nilcargocode = msg[1];
-                                                Array.Resize(ref unloadingport, unloadingport.Length + 1);
-                                                unloadingport[unloadingport.Length - 1] = unloading;
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (str[i].Trim().Length == 3)
-                                        {
-                                            unloading.unloadingairport = str[i];
-                                            Array.Resize(ref unloadingport, unloadingport.Length + 1);
-                                            unloadingport[unloadingport.Length - 1] = unloading;
-                                        }
-                                    }
-                                }
-                                #endregion
+        //                        #region line 3 point of unloading
+        //                        if (i >= 2)
+        //                        {
+        //                            MessageData.unloadingport unloading = new MessageData.unloadingport("");
+        //                            if (str[i].Contains('/'))
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                if (msg.Length == 2)
+        //                                {
+        //                                    if (msg[0].Length > 0 && !msg[0].Equals("SSR", StringComparison.OrdinalIgnoreCase) && !msg[0].Equals("OSI", StringComparison.OrdinalIgnoreCase))
+        //                                    {
+        //                                        unloading.unloadingairport = msg[0];
+        //                                        unloading.nilcargocode = msg[1];
+        //                                        Array.Resize(ref unloadingport, unloadingport.Length + 1);
+        //                                        unloadingport[unloadingport.Length - 1] = unloading;
+        //                                    }
+        //                                }
+        //                            }
+        //                            else
+        //                            {
+        //                                if (str[i].Trim().Length == 3)
+        //                                {
+        //                                    unloading.unloadingairport = str[i];
+        //                                    Array.Resize(ref unloadingport, unloadingport.Length + 1);
+        //                                    unloadingport[unloadingport.Length - 1] = unloading;
+        //                                }
+        //                            }
+        //                        }
+        //                        #endregion
 
-                                #region  line 4 onwards check consignment details
-                                if (i > 1)
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        //0th element
-                                        if (msg[0].Contains('-'))
-                                        {
-                                            decodeconsigmentdetails(str[i], ref consinfo);
-                                        }
+        //                        #region  line 4 onwards check consignment details
+        //                        if (i > 1)
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                //0th element
+        //                                if (msg[0].Contains('-'))
+        //                                {
+        //                                    decodeconsigmentdetails(str[i], ref consinfo);
+        //                                }
 
-                                    }
-                                    catch (Exception)
-                                    {
-                                        //clsLog.WriteLogAzure(ex);
-                                        continue;
-                                    }
-                                }
-                                #endregion
+        //                            }
+        //                            catch (Exception)
+        //                            {
+        //                                //clsLog.WriteLogAzure(ex);
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion
 
-                                #region Line 5 Dimendion info
-                                if (str[i].StartsWith("DIM", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        int total = msg.Length / 3;
-                                        Array.Resize(ref dimensioinfo, dimensioinfo.Length + total + 1);
-                                        for (int cnt = 0; cnt < total; cnt++)
-                                        {
-                                            int place = 3 * cnt;
-                                            MessageData.dimensionnfo dimension = new MessageData.dimensionnfo("");
-                                            dimension.weightcode = msg[place + 1].Substring(0, 1);
-                                            dimension.weight = msg[place + 1].Substring(1);
-                                            if (msg.Length > 0)
-                                            {
-                                                string[] dimstr = msg[place + 2].Split('-');
-                                                dimension.mesurunitcode = dimstr[0].Substring(0, 3);
-                                                dimension.length = dimstr[0].Substring(3);
-                                                dimension.weight = dimstr[1];
-                                                dimension.height = dimstr[2];
-                                            }
-                                            dimension.piecenum = msg[place + 3];
-                                            dimensioinfo[cnt] = dimension;
-                                        }
+        //                        #region Line 5 Dimendion info
+        //                        if (str[i].StartsWith("DIM", StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                int total = msg.Length / 3;
+        //                                Array.Resize(ref dimensioinfo, dimensioinfo.Length + total + 1);
+        //                                for (int cnt = 0; cnt < total; cnt++)
+        //                                {
+        //                                    int place = 3 * cnt;
+        //                                    MessageData.dimensionnfo dimension = new MessageData.dimensionnfo("");
+        //                                    dimension.weightcode = msg[place + 1].Substring(0, 1);
+        //                                    dimension.weight = msg[place + 1].Substring(1);
+        //                                    if (msg.Length > 0)
+        //                                    {
+        //                                        string[] dimstr = msg[place + 2].Split('-');
+        //                                        dimension.mesurunitcode = dimstr[0].Substring(0, 3);
+        //                                        dimension.length = dimstr[0].Substring(3);
+        //                                        dimension.weight = dimstr[1];
+        //                                        dimension.height = dimstr[2];
+        //                                    }
+        //                                    dimension.piecenum = msg[place + 3];
+        //                                    dimensioinfo[cnt] = dimension;
+        //                                }
 
-                                    }
-                                    catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                            }
+        //                            catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region Line 7 ULD Specification
-                                if (str[i].StartsWith("ULD", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    try
-                                    {
-                                        int uldnum = 0;
-                                        string[] msg = str[i].Split('/');
-                                        if (msg.Length > 1)
-                                        {
-                                            fbldata.noofuld = msg[1];
-                                            if (int.Parse(msg[1]) > 0)
-                                            {
-                                                Array.Resize(ref uld, uld.Length + 1 + int.Parse(msg[1]));
-                                                for (int k = 2; k < msg.Length; k += 2)
-                                                {
-                                                    MessageData.ULDinfo ulddata = new MessageData.ULDinfo("");
-                                                    string[] splitstr = msg[k].Split('-');
-                                                    ulddata.uldno = splitstr[0];
-                                                    ulddata.uldtype = splitstr[0].Substring(0, 3);
-                                                    ulddata.uldsrno = splitstr[0].Substring(3, splitstr[0].Length - 6);
-                                                    ulddata.uldowner = splitstr[0].Substring(splitstr[0].Length - 3, 3);
-                                                    ulddata.uldloadingindicator = splitstr[1];
-                                                    ulddata.uldweightcode = msg[k + 1].Substring(0, 1);
-                                                    ulddata.uldweight = msg[k + 1].Substring(1);
-                                                    uld[uldnum++] = ulddata;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                        #region Line 7 ULD Specification
+        //                        if (str[i].StartsWith("ULD", StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            try
+        //                            {
+        //                                int uldnum = 0;
+        //                                string[] msg = str[i].Split('/');
+        //                                if (msg.Length > 1)
+        //                                {
+        //                                    fbldata.noofuld = msg[1];
+        //                                    if (int.Parse(msg[1]) > 0)
+        //                                    {
+        //                                        Array.Resize(ref uld, uld.Length + 1 + int.Parse(msg[1]));
+        //                                        for (int k = 2; k < msg.Length; k += 2)
+        //                                        {
+        //                                            MessageData.ULDinfo ulddata = new MessageData.ULDinfo("");
+        //                                            string[] splitstr = msg[k].Split('-');
+        //                                            ulddata.uldno = splitstr[0];
+        //                                            ulddata.uldtype = splitstr[0].Substring(0, 3);
+        //                                            ulddata.uldsrno = splitstr[0].Substring(3, splitstr[0].Length - 6);
+        //                                            ulddata.uldowner = splitstr[0].Substring(splitstr[0].Length - 3, 3);
+        //                                            ulddata.uldloadingindicator = splitstr[1];
+        //                                            ulddata.uldweightcode = msg[k + 1].Substring(0, 1);
+        //                                            ulddata.uldweight = msg[k + 1].Substring(1);
+        //                                            uld[uldnum++] = ulddata;
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+        //                            catch (Exception ex)
+        //                            { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region Line 8 Special Service request
-                                if (str[i].StartsWith("SSR", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        lastrec = msg[0];
-                                        if (msg[1].Length > 0)
-                                        {
-                                            fbldata.specialservicereq1 = msg[1];
-                                        }
+        //                        #region Line 8 Special Service request
+        //                        if (str[i].StartsWith("SSR", StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                lastrec = msg[0];
+        //                                if (msg[1].Length > 0)
+        //                                {
+        //                                    fbldata.specialservicereq1 = msg[1];
+        //                                }
 
-                                    }
-                                    catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                            }
+        //                            catch (Exception ex)
+        //                            { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region Line 9 Other service info
-                                if (str[i].StartsWith("OSI", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    try
-                                    {
-                                        string[] msg = str[i].Split('/');
-                                        lastrec = msg[0];
-                                        if (msg[1].Length > 0)
-                                        {
-                                            othinfo.otherserviceinfo1 = msg[1];
-                                        }
-                                    }
-                                    catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
+        //                        #region Line 9 Other service info
+        //                        if (str[i].StartsWith("OSI", StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            try
+        //                            {
+        //                                string[] msg = str[i].Split('/');
+        //                                lastrec = msg[0];
+        //                                if (msg[1].Length > 0)
+        //                                {
+        //                                    othinfo.otherserviceinfo1 = msg[1];
+        //                                }
+        //                            }
+        //                            catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
 
-                                #region Last line
-                                if (i > str.Length - 2)
-                                {
-                                    if (str[i].Trim().Length == 4 || str[i].Trim().Equals("LAST", StringComparison.OrdinalIgnoreCase) || str[i].Trim().Equals("CONT", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        fbldata.endmesgcode = str[i].Trim();
-                                    }
+        //                        #region Last line
+        //                        if (i > str.Length - 2)
+        //                        {
+        //                            if (str[i].Trim().Length == 4 || str[i].Trim().Equals("LAST", StringComparison.OrdinalIgnoreCase) || str[i].Trim().Equals("CONT", StringComparison.OrdinalIgnoreCase))
+        //                            {
+        //                                fbldata.endmesgcode = str[i].Trim();
+        //                            }
 
-                                }
-                                #endregion
+        //                        }
+        //                        #endregion
 
-                                #region Other Info
-                                if (str[i].StartsWith("/"))
-                                {
-                                    string[] msg = str[i].Split('/');
-                                    try
-                                    {
-                                        #region line 6 consigment origin info
-                                        if (msg.Length > 0 && msg[0].Length == 0 && lastrec == "NA")
-                                        {
-                                            MessageData.consignmentorigininfo consorg = new MessageData.consignmentorigininfo();
-                                            try
-                                            {
-                                                consorg.abbrivatedname = msg[1];
-                                                consorg.carriercode = msg[2].Length > 0 ? msg[2].Substring(0, 2) : "";
-                                                consorg.flightnum = msg[2].Length > 0 ? msg[2].Substring(2) : "";
-                                                consorg.day = msg[3].Length > 0 ? msg[3].Substring(0, 2) : "";
-                                                consorg.month = msg[3].Length > 0 ? msg[3].Substring(2) : "";
-                                                consorg.airportcode = msg[4];
-                                                consorg.movementprioritycode = msg[5];
-                                            }
-                                            catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
-                                            Array.Resize(ref consorginfo, consorginfo.Length + 1);
-                                            consorginfo[consorginfo.Length - 1] = consorg;
-                                        }
-                                        #endregion
+        //                        #region Other Info
+        //                        if (str[i].StartsWith("/"))
+        //                        {
+        //                            string[] msg = str[i].Split('/');
+        //                            try
+        //                            {
+        //                                #region line 6 consigment origin info
+        //                                if (msg.Length > 0 && msg[0].Length == 0 && lastrec == "NA")
+        //                                {
+        //                                    MessageData.consignmentorigininfo consorg = new MessageData.consignmentorigininfo();
+        //                                    try
+        //                                    {
+        //                                        consorg.abbrivatedname = msg[1];
+        //                                        consorg.carriercode = msg[2].Length > 0 ? msg[2].Substring(0, 2) : "";
+        //                                        consorg.flightnum = msg[2].Length > 0 ? msg[2].Substring(2) : "";
+        //                                        consorg.day = msg[3].Length > 0 ? msg[3].Substring(0, 2) : "";
+        //                                        consorg.month = msg[3].Length > 0 ? msg[3].Substring(2) : "";
+        //                                        consorg.airportcode = msg[4];
+        //                                        consorg.movementprioritycode = msg[5];
+        //                                    }
+        //                                    catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+        //                                    Array.Resize(ref consorginfo, consorginfo.Length + 1);
+        //                                    consorginfo[consorginfo.Length - 1] = consorg;
+        //                                }
+        //                                #endregion
 
-                                        #region SSR 2
-                                        if (lastrec == "SSR")
-                                        {
-                                            fbldata.specialservicereq2 = msg[1].Length > 0 ? msg[1] : "";
-                                            lastrec = "NA";
-                                        }
-                                        #endregion
+        //                                #region SSR 2
+        //                                if (lastrec == "SSR")
+        //                                {
+        //                                    fbldata.specialservicereq2 = msg[1].Length > 0 ? msg[1] : "";
+        //                                    lastrec = "NA";
+        //                                }
+        //                                #endregion
 
-                                        #region OSI 2
-                                        if (lastrec == "OSI")
-                                        {
-                                            othinfo.otherserviceinfo2 = msg[1].Length > 0 ? msg[1] : "";
-                                            lastrec = "NA";
-                                        }
-                                        #endregion
-                                    }
-                                    catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
-                                }
-                                #endregion
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                    flag = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                flag = false;
-            }
-            return flag;
-        }
+        //                                #region OSI 2
+        //                                if (lastrec == "OSI")
+        //                                {
+        //                                    othinfo.otherserviceinfo2 = msg[1].Length > 0 ? msg[1] : "";
+        //                                    lastrec = "NA";
+        //                                }
+        //                                #endregion
+        //                            }
+        //                            catch (Exception ex)
+        //                            { clsLog.WriteLogAzure(ex.Message); }
+        //                        }
+        //                        #endregion
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+        //            flag = false;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+        //        flag = false;
+        //    }
+        //    return flag;
+        //}
         #endregion
 
         #region decode FBL
@@ -7281,12 +7286,12 @@ namespace QidWorkerRole
 
                         if (consinfo[i].splhandling.Length > 0 && consinfo[i].splhandling != null)
                         {
-                                splhandling = consinfo[i].splhandling.Replace(",", "/");
-                                if (splhandling.Length > 0)
-                                {
-                                    splhandling = "$" + "/" + splhandling;
-                                }
-                            
+                            splhandling = consinfo[i].splhandling.Replace(",", "/");
+                            if (splhandling.Length > 0)
+                            {
+                                splhandling = "$" + "/" + splhandling;
+                            }
+
                             //splhandling = consinfo[i].splhandling.Replace(",", "/");
                             //splhandling = "\r\n" + splhandling;
                         }
@@ -7746,7 +7751,7 @@ namespace QidWorkerRole
 
 
         #region Decode  Message
-        public bool DecodeCustomsMessage(string MessageBody, string strOriginalMessage, string strMessageFrom, out string msgType)
+        public async Task<bool> DecodeCustomsMessage(string MessageBody, string strOriginalMessage, string strMessageFrom, out string msgType)
         {
             msgType = "CUSTOME";
             try
@@ -7883,11 +7888,7 @@ namespace QidWorkerRole
                                     Message.WBLWeightIndicator = WBLInfo[3].Trim().Substring(0, 1);
                                     Message.WBLWeight = WBLInfo[3].Trim().Substring(1);
                                     Message.WBLCargoDescription = WBLInfo[4];
-
-
                                 }
-
-
                             }
 
                             //Getting Transfer(TRN) Details
@@ -8189,11 +8190,6 @@ namespace QidWorkerRole
                             {
                                 return false;
                             }
-
-
-
-
-
                         }
                         #endregion
 
@@ -8422,11 +8418,6 @@ namespace QidWorkerRole
                             {
                                 return false;
                             }
-
-
-
-
-
                         }
                         #endregion
 
@@ -8563,335 +8554,429 @@ namespace QidWorkerRole
                             //AuditLog log = new AuditLog();
                             //log.SaveLog(LogType.InMessage, string.Empty, string.Empty, inBox);
 
-                            if (DecodeCustomMessage(Message))
-                            { return true; }
+                            //if (await DecodeCustomMessage(Message))
+                            //{
+                            //    return true;
+                            //}
+
+                            return await DecodeCustomMessage(Message);
                         }
-
                     }
-
                     return false;
                 }
-
-
                 return false;
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
             }
-
-
-            { return false; }
+            return false;
         }
         #endregion
 
         #region Decoding Messages
-        public bool DecodeCustomMessage(MessageData.CustomMessage Message)
+        public async Task<bool> DecodeCustomMessage(MessageData.CustomMessage Message)
         {
             try
             {
+                #region commented sql params, data types and values
 
                 //Preparing Parameters to save the Message Details Against the AWB
-                string[] QueryNames = new string[86];
-                object[] QueryValues = new object[86];
-                SqlDbType[] QueryTypes = new SqlDbType[86];
+                //string[] QueryNames = new string[86];
+                //object[] QueryValues = new object[86];
+                //SqlDbType[] QueryTypes = new SqlDbType[86];
 
-                int i = 0;
-                QueryNames[i++] = "AWBPrefix";
-                QueryNames[i++] = "AWBNumber";
-                QueryNames[i++] = "MessageType";
-                QueryNames[i++] = "HAWBNumber";
-                QueryNames[i++] = "ConsolidationIdentifier";
-                QueryNames[i++] = "PackageTrackingIdentifier";
-                QueryNames[i++] = "AWBPartArrivalReference";
-                QueryNames[i++] = "ArrivalAirport";
-                QueryNames[i++] = "AirCarrier";
-                QueryNames[i++] = "Origin";
-                QueryNames[i++] = "DestinionCode";
-                QueryNames[i++] = "WBLNumberOfPieces";
-                QueryNames[i++] = "WBLWeightIndicator";
-                QueryNames[i++] = "WBLWeight";
-                QueryNames[i++] = "WBLCargoDescription";
-                QueryNames[i++] = "ArrivalDate";
-                QueryNames[i++] = "PartArrivalReference";
-                QueryNames[i++] = "BoardedQuantityIdentifier";
-                QueryNames[i++] = "BoardedPieceCount";
-                QueryNames[i++] = "BoardedWeight";
-                QueryNames[i++] = "ARRWeightCode";
-                QueryNames[i++] = "ImportingCarrier";
-                QueryNames[i++] = "FlightNumber";
-                QueryNames[i++] = "ARRPartArrivalReference";
-                QueryNames[i++] = "RequestType";
-                QueryNames[i++] = "RequestExplanation";
-                QueryNames[i++] = "EntryType";
-                QueryNames[i++] = "EntryNumber";
-                QueryNames[i++] = "AMSParticipantCode";
-                QueryNames[i++] = "ShipperName";
-                QueryNames[i++] = "ShipperAddress";
-                QueryNames[i++] = "ShipperCity";
-                QueryNames[i++] = "ShipperState";
-                QueryNames[i++] = "ShipperCountry";
-                QueryNames[i++] = "ShipperPostalCode";
-                QueryNames[i++] = "ConsigneeName";
-                QueryNames[i++] = "ConsigneeAddress";
-                QueryNames[i++] = "ConsigneeCity";
-                QueryNames[i++] = "ConsigneeState";
-                QueryNames[i++] = "ConsigneeCountry";
-                QueryNames[i++] = "ConsigneePostalCode";
-                QueryNames[i++] = "TransferDestAirport";
-                QueryNames[i++] = "DomesticIdentifier";
-                QueryNames[i++] = "BondedCarrierID";
-                QueryNames[i++] = "OnwardCarrier";
-                QueryNames[i++] = "BondedPremisesIdentifier";
-                QueryNames[i++] = "InBondControlNumber";
-                QueryNames[i++] = "OriginOfGoods";
-                QueryNames[i++] = "DeclaredValue";
-                QueryNames[i++] = "CurrencyCode";
-                QueryNames[i++] = "CommodityCode";
-                QueryNames[i++] = "LineIdentifier";
-                QueryNames[i++] = "AmendmentCode";
-                QueryNames[i++] = "AmendmentExplanation";
-                QueryNames[i++] = "DeptImportingCarrier";
-                QueryNames[i++] = "DeptFlightNumber";
-                QueryNames[i++] = "DeptScheduledArrivalDate";
-                QueryNames[i++] = "LiftoffDate";
-                QueryNames[i++] = "LiftoffTime";
-                QueryNames[i++] = "DeptActualImportingCarrier";
-                QueryNames[i++] = "DeptActualFlightNumber";
-                QueryNames[i++] = "ASNStatusCode";
-                QueryNames[i++] = "ASNActionExplanation";
-                QueryNames[i++] = "CSNActionCode";
-                QueryNames[i++] = "CSNPieces";
-                QueryNames[i++] = "TransactionDate";
-                QueryNames[i++] = "TransactionTime";
-                QueryNames[i++] = "CSNEntryType";
-                QueryNames[i++] = "CSNEntryNumber";
-                QueryNames[i++] = "CSNRemarks";
-                QueryNames[i++] = "ErrorCode";
-                QueryNames[i++] = "ErrorMessage";
-                QueryNames[i++] = "StatusRequestCode";
-                QueryNames[i++] = "StatusAnswerCode";
-                QueryNames[i++] = "Information";
-                QueryNames[i++] = "ERFImportingCarrier";
-                QueryNames[i++] = "ERFFlightNumber";
-                QueryNames[i++] = "ERFDate";
-                QueryNames[i++] = "Message";
-                QueryNames[i++] = "UpdatedOn";
-                QueryNames[i++] = "UpdatedBy";
-                QueryNames[i++] = "CreatedOn";
-                QueryNames[i++] = "CreatedBy";
-                QueryNames[i++] = "FlightNo";
-                QueryNames[i++] = "FlightDate";
-                QueryNames[i++] = "ControlLocation";
+                //int i = 0;
+                //QueryNames[i++] = "AWBPrefix";
+                //QueryNames[i++] = "AWBNumber";
+                //QueryNames[i++] = "MessageType";
+                //QueryNames[i++] = "HAWBNumber";
+                //QueryNames[i++] = "ConsolidationIdentifier";
+                //QueryNames[i++] = "PackageTrackingIdentifier";
+                //QueryNames[i++] = "AWBPartArrivalReference";
+                //QueryNames[i++] = "ArrivalAirport";
+                //QueryNames[i++] = "AirCarrier";
+                //QueryNames[i++] = "Origin";
+                //QueryNames[i++] = "DestinionCode";
+                //QueryNames[i++] = "WBLNumberOfPieces";
+                //QueryNames[i++] = "WBLWeightIndicator";
+                //QueryNames[i++] = "WBLWeight";
+                //QueryNames[i++] = "WBLCargoDescription";
+                //QueryNames[i++] = "ArrivalDate";
+                //QueryNames[i++] = "PartArrivalReference";
+                //QueryNames[i++] = "BoardedQuantityIdentifier";
+                //QueryNames[i++] = "BoardedPieceCount";
+                //QueryNames[i++] = "BoardedWeight";
+                //QueryNames[i++] = "ARRWeightCode";
+                //QueryNames[i++] = "ImportingCarrier";
+                //QueryNames[i++] = "FlightNumber";
+                //QueryNames[i++] = "ARRPartArrivalReference";
+                //QueryNames[i++] = "RequestType";
+                //QueryNames[i++] = "RequestExplanation";
+                //QueryNames[i++] = "EntryType";
+                //QueryNames[i++] = "EntryNumber";
+                //QueryNames[i++] = "AMSParticipantCode";
+                //QueryNames[i++] = "ShipperName";
+                //QueryNames[i++] = "ShipperAddress";
+                //QueryNames[i++] = "ShipperCity";
+                //QueryNames[i++] = "ShipperState";
+                //QueryNames[i++] = "ShipperCountry";
+                //QueryNames[i++] = "ShipperPostalCode";
+                //QueryNames[i++] = "ConsigneeName";
+                //QueryNames[i++] = "ConsigneeAddress";
+                //QueryNames[i++] = "ConsigneeCity";
+                //QueryNames[i++] = "ConsigneeState";
+                //QueryNames[i++] = "ConsigneeCountry";
+                //QueryNames[i++] = "ConsigneePostalCode";
+                //QueryNames[i++] = "TransferDestAirport";
+                //QueryNames[i++] = "DomesticIdentifier";
+                //QueryNames[i++] = "BondedCarrierID";
+                //QueryNames[i++] = "OnwardCarrier";
+                //QueryNames[i++] = "BondedPremisesIdentifier";
+                //QueryNames[i++] = "InBondControlNumber";
+                //QueryNames[i++] = "OriginOfGoods";
+                //QueryNames[i++] = "DeclaredValue";
+                //QueryNames[i++] = "CurrencyCode";
+                //QueryNames[i++] = "CommodityCode";
+                //QueryNames[i++] = "LineIdentifier";
+                //QueryNames[i++] = "AmendmentCode";
+                //QueryNames[i++] = "AmendmentExplanation";
+                //QueryNames[i++] = "DeptImportingCarrier";
+                //QueryNames[i++] = "DeptFlightNumber";
+                //QueryNames[i++] = "DeptScheduledArrivalDate";
+                //QueryNames[i++] = "LiftoffDate";
+                //QueryNames[i++] = "LiftoffTime";
+                //QueryNames[i++] = "DeptActualImportingCarrier";
+                //QueryNames[i++] = "DeptActualFlightNumber";
+                //QueryNames[i++] = "ASNStatusCode";
+                //QueryNames[i++] = "ASNActionExplanation";
+                //QueryNames[i++] = "CSNActionCode";
+                //QueryNames[i++] = "CSNPieces";
+                //QueryNames[i++] = "TransactionDate";
+                //QueryNames[i++] = "TransactionTime";
+                //QueryNames[i++] = "CSNEntryType";
+                //QueryNames[i++] = "CSNEntryNumber";
+                //QueryNames[i++] = "CSNRemarks";
+                //QueryNames[i++] = "ErrorCode";
+                //QueryNames[i++] = "ErrorMessage";
+                //QueryNames[i++] = "StatusRequestCode";
+                //QueryNames[i++] = "StatusAnswerCode";
+                //QueryNames[i++] = "Information";
+                //QueryNames[i++] = "ERFImportingCarrier";
+                //QueryNames[i++] = "ERFFlightNumber";
+                //QueryNames[i++] = "ERFDate";
+                //QueryNames[i++] = "Message";
+                //QueryNames[i++] = "UpdatedOn";
+                //QueryNames[i++] = "UpdatedBy";
+                //QueryNames[i++] = "CreatedOn";
+                //QueryNames[i++] = "CreatedBy";
+                //QueryNames[i++] = "FlightNo";
+                //QueryNames[i++] = "FlightDate";
+                //QueryNames[i++] = "ControlLocation";
 
 
-                int k = 0;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.Int;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.Decimal;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.Int;
-                QueryTypes[k++] = SqlDbType.Decimal;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.BigInt;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.DateTime;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.DateTime;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.VarChar;
-                QueryTypes[k++] = SqlDbType.DateTime;
-                QueryTypes[k++] = SqlDbType.VarChar;
+                //int k = 0;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.Int;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.Decimal;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.Int;
+                //QueryTypes[k++] = SqlDbType.Decimal;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.BigInt;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.DateTime;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.DateTime;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.VarChar;
+                //QueryTypes[k++] = SqlDbType.DateTime;
+                //QueryTypes[k++] = SqlDbType.VarChar;
 
-                int j = 0;
+                //int j = 0;
 
-                QueryValues[j++] = Message.AWBPrefix;
-                QueryValues[j++] = Message.AWBNumber;
-                QueryValues[j++] = Message.MessageType;
-                QueryValues[j++] = Message.HAWBNumber;
-                QueryValues[j++] = Message.ConsolidationIdentifier;
-                QueryValues[j++] = Message.PackageTrackingIdentifier;
-                QueryValues[j++] = Message.AWBPartArrivalReference;
-                QueryValues[j++] = Message.ArrivalAirport;
-                QueryValues[j++] = Message.AirCarrier;
-                QueryValues[j++] = Message.Origin;
-                QueryValues[j++] = Message.DestinionCode;
-                if (string.IsNullOrEmpty(Message.WBLNumberOfPieces))
-                { QueryValues[j++] = "0"; }
-                else
+                //QueryValues[j++] = Message.AWBPrefix;
+                //QueryValues[j++] = Message.AWBNumber;
+                //QueryValues[j++] = Message.MessageType;
+                //QueryValues[j++] = Message.HAWBNumber;
+                //QueryValues[j++] = Message.ConsolidationIdentifier;
+                //QueryValues[j++] = Message.PackageTrackingIdentifier;
+                //QueryValues[j++] = Message.AWBPartArrivalReference;
+                //QueryValues[j++] = Message.ArrivalAirport;
+                //QueryValues[j++] = Message.AirCarrier;
+                //QueryValues[j++] = Message.Origin;
+                //QueryValues[j++] = Message.DestinionCode;
+                //if (string.IsNullOrEmpty(Message.WBLNumberOfPieces))
+                //{ QueryValues[j++] = "0"; }
+                //else
+                //{
+                //    QueryValues[j++] = Message.WBLNumberOfPieces;
+                //}
+
+                //QueryValues[j++] = Message.WBLWeightIndicator;
+                //if (string.IsNullOrEmpty(Message.WBLWeight))
+                //{ QueryValues[j++] = "0"; }
+                //else
+                //{
+                //    QueryValues[j++] = Message.WBLWeight;
+                //}
+                //QueryValues[j++] = Message.WBLCargoDescription;
+                //QueryValues[j++] = Message.ArrivalDate;
+                //QueryValues[j++] = Message.PartArrivalReference;
+                //QueryValues[j++] = Message.BoardedQuantityIdentifier;
+                //if (string.IsNullOrEmpty(Message.BoardedPieceCount))
+                //{ QueryValues[j++] = "0"; }
+                //else
+                //{
+                //    QueryValues[j++] = Message.BoardedPieceCount;
+                //}
+                //if (string.IsNullOrEmpty(Message.BoardedWeight))
+                //{
+                //    QueryValues[j++] = "0";
+                //}
+                //else
+                //{
+                //    QueryValues[j++] = Message.BoardedWeight;
+                //}
+                //QueryValues[j++] = Message.ArrWeightCode;
+                //QueryValues[j++] = Message.ImportingCarrier;
+                //QueryValues[j++] = Message.FlightNumber;
+                //QueryValues[j++] = Message.ARRPartArrivalReference;
+                //QueryValues[j++] = Message.RequestType;
+                //QueryValues[j++] = Message.RequestExplanation;
+                //QueryValues[j++] = Message.EntryType;
+                //QueryValues[j++] = Message.EntryNumber;
+                //QueryValues[j++] = Message.AMSParticipantCode;
+                //QueryValues[j++] = Message.ShipperName;
+                //QueryValues[j++] = Message.ShipperAddress;
+                //QueryValues[j++] = Message.ShipperCity;
+                //QueryValues[j++] = Message.ShipperState;
+                //QueryValues[j++] = Message.ShipperCountry;
+                //QueryValues[j++] = Message.ShipperPostalCode;
+                //QueryValues[j++] = Message.ConsigneeName;
+                //QueryValues[j++] = Message.ConsigneeAddress;
+                //QueryValues[j++] = Message.ConsigneeCity;
+                //QueryValues[j++] = Message.ConsigneeState;
+                //QueryValues[j++] = Message.ConsigneeCountry;
+                //QueryValues[j++] = Message.ConsigneePostalCode;
+                //QueryValues[j++] = Message.TransferDestAirport;
+                //QueryValues[j++] = Message.DomesticIdentifier;
+                //QueryValues[j++] = Message.BondedCarrierID;
+                //QueryValues[j++] = Message.OnwardCarrier;
+                //QueryValues[j++] = Message.BondedPremisesIdentifier;
+                //QueryValues[j++] = Message.InBondControlNumber;
+                //QueryValues[j++] = Message.OriginOfGoods;
+                //if (string.IsNullOrEmpty(Message.DeclaredValue))
+                //{ QueryValues[j++] = "0"; }
+                //else
+                //{
+                //    QueryValues[j++] = Message.DeclaredValue;
+                //}
+                //QueryValues[j++] = Message.CurrencyCode;
+                //QueryValues[j++] = Message.CommodityCode;
+                //QueryValues[j++] = Message.LineIdentifier;
+                //QueryValues[j++] = Message.AmendmentCode;
+                //QueryValues[j++] = Message.AmendmentExplanation;
+                //QueryValues[j++] = Message.DeptImportingCarrier;
+                //QueryValues[j++] = Message.DeptFlightNumber;
+                //QueryValues[j++] = Message.DeptScheduledArrivalDate;
+                //QueryValues[j++] = Message.LiftoffDate;
+                //QueryValues[j++] = Message.LiftoffTime;
+                //QueryValues[j++] = Message.DeptActualImportingCarrier;
+                //QueryValues[j++] = Message.DeptActualFlightNumber;
+                //QueryValues[j++] = Message.ASNStatusCode;
+                //QueryValues[j++] = Message.ASNActionExplanation;
+                //QueryValues[j++] = Message.CSNActionCode;
+                //QueryValues[j++] = Message.CSNPieces;
+                //QueryValues[j++] = Message.TransactionDate;
+                //QueryValues[j++] = Message.TransactionTime;
+                //QueryValues[j++] = Message.CSNEntryType;
+                //QueryValues[j++] = Message.CSNEntryNumber;
+                //QueryValues[j++] = Message.CSNRemarks;
+                //QueryValues[j++] = Message.ErrorCode;
+                //QueryValues[j++] = Message.ErrorMessage;
+                //QueryValues[j++] = Message.StatusRequestCode;
+                //QueryValues[j++] = Message.StatusAnswerCode;
+                //QueryValues[j++] = Message.Information;
+                //QueryValues[j++] = Message.ERFImportingCarrier;
+                //QueryValues[j++] = Message.ERFFlightNumber;
+                //QueryValues[j++] = Message.ERFDate;
+                //QueryValues[j++] = Message.Message;
+                //QueryValues[j++] = DateTime.Now.ToString();
+                //QueryValues[j++] = "Air AMS";
+                //QueryValues[j++] = DateTime.Now.ToString();
+                //QueryValues[j++] = "Air AMS";
+                //QueryValues[j++] = Message.FlightNo;
+                //QueryValues[j++] = Message.FlightDate == DateTime.MinValue ? "01/01/1900" : Message.FlightDate.ToString();
+                //QueryValues[j++] = Message.ControlLocation;
+
+                //SQLServer db = new SQLServer();
+                //if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+
+                #endregion
+
+                SqlParameter[] parameters =
                 {
-                    QueryValues[j++] = Message.WBLNumberOfPieces;
-                }
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = Message.AWBPrefix },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = Message.AWBNumber },
+                    new SqlParameter("@MessageType", SqlDbType.VarChar) { Value = Message.MessageType },
+                    new SqlParameter("@HAWBNumber", SqlDbType.VarChar) { Value = Message.HAWBNumber },
+                    new SqlParameter("@ConsolidationIdentifier", SqlDbType.VarChar) { Value = Message.ConsolidationIdentifier },
+                    new SqlParameter("@PackageTrackingIdentifier", SqlDbType.VarChar) { Value = Message.PackageTrackingIdentifier },
+                    new SqlParameter("@AWBPartArrivalReference", SqlDbType.VarChar) { Value = Message.AWBPartArrivalReference },
+                    new SqlParameter("@ArrivalAirport", SqlDbType.VarChar) { Value = Message.ArrivalAirport },
+                    new SqlParameter("@AirCarrier", SqlDbType.VarChar) { Value = Message.AirCarrier },
+                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = Message.Origin },
+                    new SqlParameter("@DestinionCode", SqlDbType.VarChar) { Value = Message.DestinionCode },
+                    new SqlParameter("@WBLNumberOfPieces", SqlDbType.Int) { Value = string.IsNullOrEmpty(Message.WBLNumberOfPieces) ? "0" : Message.WBLNumberOfPieces },
+                    new SqlParameter("@WBLWeightIndicator", SqlDbType.VarChar) { Value = Message.WBLWeightIndicator },
+                    new SqlParameter("@WBLWeight", SqlDbType.Decimal) { Value = string.IsNullOrEmpty(Message.WBLWeight) ? "0" : Message.WBLWeight},
+                    new SqlParameter("@WBLCargoDescription", SqlDbType.VarChar) { Value = Message.WBLCargoDescription },
+                    new SqlParameter("@ArrivalDate", SqlDbType.VarChar) { Value = Message.ArrivalDate },
+                    new SqlParameter("@PartArrivalReference", SqlDbType.VarChar) { Value = Message.PartArrivalReference },
+                    new SqlParameter("@BoardedQuantityIdentifier", SqlDbType.VarChar) { Value = Message.BoardedQuantityIdentifier },
+                    new SqlParameter("@BoardedPieceCount", SqlDbType.Int) { Value = string.IsNullOrEmpty(Message.BoardedPieceCount) ? "0" : Message.BoardedPieceCount },
+                    new SqlParameter("@BoardedWeight", SqlDbType.Decimal) { Value = string.IsNullOrEmpty(Message.BoardedWeight) ? "0" : Message.BoardedWeight },
+                    new SqlParameter("@ARRWeightCode", SqlDbType.VarChar) { Value = Message.ArrWeightCode },
+                    new SqlParameter("@ImportingCarrier", SqlDbType.VarChar) { Value = Message.ImportingCarrier },
+                    new SqlParameter("@FlightNumber", SqlDbType.VarChar) { Value = Message.FlightNumber },
+                    new SqlParameter("@ARRPartArrivalReference", SqlDbType.VarChar) { Value = Message.ARRPartArrivalReference },
+                    new SqlParameter("@RequestType", SqlDbType.VarChar) { Value = Message.RequestType },
+                    new SqlParameter("@RequestExplanation", SqlDbType.VarChar) { Value = Message.RequestExplanation },
+                    new SqlParameter("@EntryType", SqlDbType.VarChar) { Value = Message.EntryType },
+                    new SqlParameter("@EntryNumber", SqlDbType.VarChar) { Value = Message.EntryNumber },
+                    new SqlParameter("@AMSParticipantCode", SqlDbType.VarChar) { Value = Message.AMSParticipantCode },
+                    new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = Message.ShipperName },
+                    new SqlParameter("@ShipperAddress", SqlDbType.VarChar) { Value = Message.ShipperAddress },
+                    new SqlParameter("@ShipperCity", SqlDbType.VarChar) { Value = Message.ShipperCity },
+                    new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = Message.ShipperState },
+                    new SqlParameter("@ShipperCountry", SqlDbType.VarChar) { Value = Message.ShipperCountry },
+                    new SqlParameter("@ShipperPostalCode", SqlDbType.VarChar) { Value = Message.ShipperPostalCode },
+                    new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = Message.ConsigneeName },
+                    new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = Message.ConsigneeAddress },
+                    new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = Message.ConsigneeCity },
+                    new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = Message.ConsigneeState },
+                    new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = Message.ConsigneeCountry },
+                    new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = Message.ConsigneePostalCode },
+                    new SqlParameter("@TransferDestAirport", SqlDbType.VarChar) { Value = Message.TransferDestAirport },
+                    new SqlParameter("@DomesticIdentifier", SqlDbType.VarChar) { Value = Message.DomesticIdentifier },
+                    new SqlParameter("@BondedCarrierID", SqlDbType.VarChar) { Value = Message.BondedCarrierID },
+                    new SqlParameter("@OnwardCarrier", SqlDbType.VarChar) { Value = Message.OnwardCarrier },
+                    new SqlParameter("@BondedPremisesIdentifier", SqlDbType.VarChar) { Value = Message.BondedPremisesIdentifier },
+                    new SqlParameter("@InBondControlNumber", SqlDbType.VarChar) { Value = Message.InBondControlNumber },
+                    new SqlParameter("@OriginOfGoods", SqlDbType.VarChar) { Value = Message.OriginOfGoods },
+                    new SqlParameter("@DeclaredValue", SqlDbType.Decimal) { Value = string.IsNullOrEmpty(Message.DeclaredValue) ? "0" : Message.DeclaredValue },
+                    new SqlParameter("@CurrencyCode", SqlDbType.VarChar) { Value = Message.CurrencyCode },
+                    new SqlParameter("@CommodityCode", SqlDbType.VarChar) { Value = Message.CommodityCode },
+                    new SqlParameter("@LineIdentifier", SqlDbType.VarChar) { Value = Message.LineIdentifier },
+                    new SqlParameter("@AmendmentCode", SqlDbType.VarChar) { Value = Message.AmendmentCode },
+                    new SqlParameter("@AmendmentExplanation", SqlDbType.VarChar) { Value = Message.AmendmentExplanation },
+                    new SqlParameter("@DeptImportingCarrier", SqlDbType.VarChar) { Value = Message.DeptImportingCarrier },
+                    new SqlParameter("@DeptFlightNumber", SqlDbType.VarChar) { Value = Message.DeptFlightNumber },
+                    new SqlParameter("@DeptScheduledArrivalDate", SqlDbType.VarChar) { Value = Message.DeptScheduledArrivalDate },
+                    new SqlParameter("@LiftoffDate", SqlDbType.VarChar) { Value = Message.LiftoffDate },
+                    new SqlParameter("@LiftoffTime", SqlDbType.VarChar) { Value = Message.LiftoffTime },
+                    new SqlParameter("@DeptActualImportingCarrier", SqlDbType.VarChar) { Value = Message.DeptActualImportingCarrier },
+                    new SqlParameter("@DeptActualFlightNumber", SqlDbType.VarChar) { Value = Message.DeptActualFlightNumber },
+                    new SqlParameter("@ASNStatusCode", SqlDbType.VarChar) { Value = Message.ASNStatusCode },
+                    new SqlParameter("@ASNActionExplanation", SqlDbType.VarChar) { Value = Message.ASNActionExplanation },
+                    new SqlParameter("@CSNActionCode", SqlDbType.VarChar) { Value = Message.CSNActionCode },
+                    new SqlParameter("@CSNPieces", SqlDbType.VarChar) { Value = Message.CSNPieces },
+                    new SqlParameter("@TransactionDate", SqlDbType.VarChar) { Value = Message.TransactionDate },
+                    new SqlParameter("@TransactionTime", SqlDbType.VarChar) { Value = Message.TransactionTime },
+                    new SqlParameter("@CSNEntryType", SqlDbType.VarChar) { Value = Message.CSNEntryType },
+                    new SqlParameter("@CSNEntryNumber", SqlDbType.VarChar) { Value = Message.CSNEntryNumber },
+                    new SqlParameter("@CSNRemarks", SqlDbType.VarChar) { Value = Message.CSNRemarks },
+                    new SqlParameter("@ErrorCode", SqlDbType.VarChar) { Value = Message.ErrorCode },
+                    new SqlParameter("@ErrorMessage", SqlDbType.VarChar) { Value = Message.ErrorMessage },
+                    new SqlParameter("@StatusRequestCode", SqlDbType.VarChar) { Value = Message.StatusRequestCode },
+                    new SqlParameter("@StatusAnswerCode", SqlDbType.VarChar) { Value = Message.StatusAnswerCode },
+                    new SqlParameter("@Information", SqlDbType.VarChar) { Value = Message.Information },
+                    new SqlParameter("@ERFImportingCarrier", SqlDbType.VarChar) { Value = Message.ERFImportingCarrier },
+                    new SqlParameter("@ERFFlightNumber", SqlDbType.VarChar) { Value = Message.ERFFlightNumber },
+                    new SqlParameter("@ERFDate", SqlDbType.VarChar) { Value = Message.ERFDate },
+                    new SqlParameter("@Message", SqlDbType.VarChar) { Value = Message.Message },
+                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.Now.ToString() },
+                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "Air AMS" },
+                    new SqlParameter("@CreatedOn", SqlDbType.DateTime) { Value = DateTime.Now.ToString() },
+                    new SqlParameter("@CreatedBy", SqlDbType.VarChar) { Value = "Air AMS" },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = Message.FlightNo },
+                    new SqlParameter("@FlightDate", SqlDbType.VarChar) { Value = Message.FlightDate == DateTime.MinValue ? "01/01/1900" : Message.FlightDate.ToString() },
+                    new SqlParameter("@ControlLocation", SqlDbType.VarChar) { Value = Message.ControlLocation }
+                };
 
-                QueryValues[j++] = Message.WBLWeightIndicator;
-                if (string.IsNullOrEmpty(Message.WBLWeight))
-                { QueryValues[j++] = "0"; }
-                else
-                {
-                    QueryValues[j++] = Message.WBLWeight;
-                }
-                QueryValues[j++] = Message.WBLCargoDescription;
-                QueryValues[j++] = Message.ArrivalDate;
-                QueryValues[j++] = Message.PartArrivalReference;
-                QueryValues[j++] = Message.BoardedQuantityIdentifier;
-                if (string.IsNullOrEmpty(Message.BoardedPieceCount))
-                { QueryValues[j++] = "0"; }
-                else
-                {
-                    QueryValues[j++] = Message.BoardedPieceCount;
-                }
-                if (string.IsNullOrEmpty(Message.BoardedWeight))
-                {
-                    QueryValues[j++] = "0";
-                }
-                else
-                {
-                    QueryValues[j++] = Message.BoardedWeight;
-                }
-                QueryValues[j++] = Message.ArrWeightCode;
-                QueryValues[j++] = Message.ImportingCarrier;
-                QueryValues[j++] = Message.FlightNumber;
-                QueryValues[j++] = Message.ARRPartArrivalReference;
-                QueryValues[j++] = Message.RequestType;
-                QueryValues[j++] = Message.RequestExplanation;
-                QueryValues[j++] = Message.EntryType;
-                QueryValues[j++] = Message.EntryNumber;
-                QueryValues[j++] = Message.AMSParticipantCode;
-                QueryValues[j++] = Message.ShipperName;
-                QueryValues[j++] = Message.ShipperAddress;
-                QueryValues[j++] = Message.ShipperCity;
-                QueryValues[j++] = Message.ShipperState;
-                QueryValues[j++] = Message.ShipperCountry;
-                QueryValues[j++] = Message.ShipperPostalCode;
-                QueryValues[j++] = Message.ConsigneeName;
-                QueryValues[j++] = Message.ConsigneeAddress;
-                QueryValues[j++] = Message.ConsigneeCity;
-                QueryValues[j++] = Message.ConsigneeState;
-                QueryValues[j++] = Message.ConsigneeCountry;
-                QueryValues[j++] = Message.ConsigneePostalCode;
-                QueryValues[j++] = Message.TransferDestAirport;
-                QueryValues[j++] = Message.DomesticIdentifier;
-                QueryValues[j++] = Message.BondedCarrierID;
-                QueryValues[j++] = Message.OnwardCarrier;
-                QueryValues[j++] = Message.BondedPremisesIdentifier;
-                QueryValues[j++] = Message.InBondControlNumber;
-                QueryValues[j++] = Message.OriginOfGoods;
-                if (string.IsNullOrEmpty(Message.DeclaredValue))
-                { QueryValues[j++] = "0"; }
-                else
-                {
-                    QueryValues[j++] = Message.DeclaredValue;
-                }
-                QueryValues[j++] = Message.CurrencyCode;
-                QueryValues[j++] = Message.CommodityCode;
-                QueryValues[j++] = Message.LineIdentifier;
-                QueryValues[j++] = Message.AmendmentCode;
-                QueryValues[j++] = Message.AmendmentExplanation;
-                QueryValues[j++] = Message.DeptImportingCarrier;
-                QueryValues[j++] = Message.DeptFlightNumber;
-                QueryValues[j++] = Message.DeptScheduledArrivalDate;
-                QueryValues[j++] = Message.LiftoffDate;
-                QueryValues[j++] = Message.LiftoffTime;
-                QueryValues[j++] = Message.DeptActualImportingCarrier;
-                QueryValues[j++] = Message.DeptActualFlightNumber;
-                QueryValues[j++] = Message.ASNStatusCode;
-                QueryValues[j++] = Message.ASNActionExplanation;
-                QueryValues[j++] = Message.CSNActionCode;
-                QueryValues[j++] = Message.CSNPieces;
-                QueryValues[j++] = Message.TransactionDate;
-                QueryValues[j++] = Message.TransactionTime;
-                QueryValues[j++] = Message.CSNEntryType;
-                QueryValues[j++] = Message.CSNEntryNumber;
-                QueryValues[j++] = Message.CSNRemarks;
-                QueryValues[j++] = Message.ErrorCode;
-                QueryValues[j++] = Message.ErrorMessage;
-                QueryValues[j++] = Message.StatusRequestCode;
-                QueryValues[j++] = Message.StatusAnswerCode;
-                QueryValues[j++] = Message.Information;
-                QueryValues[j++] = Message.ERFImportingCarrier;
-                QueryValues[j++] = Message.ERFFlightNumber;
-                QueryValues[j++] = Message.ERFDate;
-                QueryValues[j++] = Message.Message;
-                QueryValues[j++] = DateTime.Now.ToString();
-                QueryValues[j++] = "Air AMS";
-                QueryValues[j++] = DateTime.Now.ToString();
-                QueryValues[j++] = "Air AMS";
-                QueryValues[j++] = Message.FlightNo;
-                QueryValues[j++] = Message.FlightDate == DateTime.MinValue ? "01/01/1900" : Message.FlightDate.ToString();
-                QueryValues[j++] = Message.ControlLocation;
-
-                SQLServer db = new SQLServer();
-                if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("SP_UpdateInboxCustomsMessage", parameters);
+                if (dbRes)
                 {
                     clsLog.WriteLogAzure(Message.MessageType + " Sent Successfully");
 
@@ -8899,9 +8984,11 @@ namespace QidWorkerRole
                     {
                         try
                         {
-                            PSNMessageProcessor PSN = new PSNMessageProcessor();
+                            //PSNMessageProcessor PSN = new PSNMessageProcessor();
+                            //if (PSN.GeneratePSNMessage(Message.AWBPrefix + "-" + Message.AWBNumber, (String.IsNullOrEmpty(Message.HAWBNumber) == true ? string.Empty : Message.HAWBNumber)))
 
-                            if (PSN.GeneratePSNMessage(Message.AWBPrefix + "-" + Message.AWBNumber, (String.IsNullOrEmpty(Message.HAWBNumber) == true ? string.Empty : Message.HAWBNumber)))
+                            var genPsnMegRes = _pSNMessageProcessor.GeneratePSNMessage(Message.AWBPrefix + "-" + Message.AWBNumber, (String.IsNullOrEmpty(Message.HAWBNumber) == true ? string.Empty : Message.HAWBNumber));
+                            if (genPsnMegRes)
                             {
                                 clsLog.WriteLogAzure(Message.MessageType + "Auto PSN Outbound Successfully Sent for : " + Message.AWBPrefix + "-" + Message.AWBNumber + "-" + Message.HAWBNumber);
                             }
@@ -8914,11 +9001,11 @@ namespace QidWorkerRole
                     }
 
                     return true;
-
-
                 }
                 else
-                { return false; }
+                {
+                    return false;
+                }
 
             }
             catch (Exception ex)
@@ -9632,13 +9719,13 @@ namespace QidWorkerRole
         }
         #endregion
 
-        public string EncodeUWS(string DepartureAirport, string FlightNo, DateTime FlightDate, string MsgVer, string UWSConfig)
+        public async Task<string> EncodeUWS(string DepartureAirport, string FlightNo, DateTime FlightDate, string MsgVer, string UWSConfig)
         {
             string UWSMsg = "";
             try
             {
                 GenericFunction genericFunction = new GenericFunction();
-               
+
                 bool IsThreeDigitNo = Convert.ToBoolean(genericFunction.GetConfigurationValues("IsThreeDigitNo") == null ? "false" : genericFunction.GetConfigurationValues("IsThreeDigitNo"));
                 MessageData.UWSinfo objFFMInfo = new MessageData.UWSinfo();
                 MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
@@ -9654,7 +9741,7 @@ namespace QidWorkerRole
 
                 DataTable bulkinfo = new DataTable();
 
-                ds = getFFMUnloadingPort(DepartureAirport, FlightNo, FlightDate);
+                ds = await getFFMUnloadingPort(DepartureAirport, FlightNo, FlightDate);
 
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
@@ -9664,7 +9751,7 @@ namespace QidWorkerRole
                     objFFMInfo.fltairportcode = DepartureAirport;
                     bool checknilFlight = false;
 
-                    dsData = GetRecordforGenerateUWS(DepartureAirport, FlightNo, FlightDate, string.Empty);
+                    dsData = await GetRecordforGenerateUWS(DepartureAirport, FlightNo, FlightDate, string.Empty);
 
                     //start changes to filter ulds weight
                     if (dsData != null && dsData.Tables.Count > 0 && dsData.Tables[0].Rows.Count > 0)
@@ -9930,7 +10017,7 @@ namespace QidWorkerRole
                         }
                         try
                         {
-                            UWSMsg = EncodeUWSforsend(DepartureAirport, ref objFFMInfo, ref objUnloadingPort, ref objULDInfo, ref objConsInfo, MsgVer, SI, ref objConsInfoCart, UWSConfig,IsThreeDigitNo);
+                            UWSMsg = EncodeUWSforsend(DepartureAirport, ref objFFMInfo, ref objUnloadingPort, ref objULDInfo, ref objConsInfo, MsgVer, SI, ref objConsInfoCart, UWSConfig, IsThreeDigitNo);
                         }
                         catch (Exception ex)
                         {
@@ -9953,7 +10040,7 @@ namespace QidWorkerRole
             return UWSMsg;
         }
 
-        public static string EncodeUWSforsend(string pol, ref MessageData.UWSinfo UWSdata, ref MessageData.unloadingport[] unloadingport, ref MessageData.ULDinfo[] uld, ref MessageData.consignmnetinfo[] bulkinfo, string str, List<string> suppInfo, ref MessageData.consignmnetinfo[] Cartinfo, string UWSConfig,bool IsThreeDigitNo=false)
+        public static string EncodeUWSforsend(string pol, ref MessageData.UWSinfo UWSdata, ref MessageData.unloadingport[] unloadingport, ref MessageData.ULDinfo[] uld, ref MessageData.consignmnetinfo[] bulkinfo, string str, List<string> suppInfo, ref MessageData.consignmnetinfo[] Cartinfo, string UWSConfig, bool IsThreeDigitNo = false)
         {
             string UWS = null;
             //bool multidest = false;
@@ -10213,32 +10300,44 @@ namespace QidWorkerRole
             return (A.Equals(B));  // value type standard comparison
         }
 
-        public DataSet GetRecordforGenerateUWS(string DepartureAirport, string FlightNo, DateTime FlightDate, string FlightDestination)
+        public async Task<DataSet> GetRecordforGenerateUWS(string DepartureAirport, string FlightNo, DateTime FlightDate, string FlightDestination)
         {
-            DataSet dsData = new DataSet();
+            DataSet? dsData = new DataSet();
             try
             {
+                //SQLServer dtb = new SQLServer();
+
+                //string[] paramname = new string[] { "FltNo",
+                //                                "ManifestdateFrom",
+                //                                "ManifestdateTo",
+                //                                "DepartureAirport" ,
+                //                                "FlightDestination"};
+
+                //object[] paramvalue = new object[] { FlightNo,
+                //                                 newFlightDate,
+                //                                 "",
+                //                                 DepartureAirport,FlightDestination };
+
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar,
+                //                                      SqlDbType.DateTime,
+                //                                      SqlDbType.VarChar,
+                //                                      SqlDbType.VarChar,SqlDbType.VarChar};
+
+                //dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+
                 DateTime newFlightDate = FlightDate;
-                SQLServer dtb = new SQLServer();
                 string procedure = "GetFlightRecordforUWS_OpsDate";
 
-                string[] paramname = new string[] { "FltNo",
-                                                "ManifestdateFrom",
-                                                "ManifestdateTo",
-                                                "DepartureAirport" ,
-                                                "FlightDestination"};
+                SqlParameter[] parameters = new SqlParameter[]
+                {
+                    new SqlParameter("@FltNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@ManifestdateFrom", SqlDbType.DateTime) { Value = newFlightDate },
+                    new SqlParameter("@ManifestdateTo", SqlDbType.VarChar) { Value = "" },
+                    new SqlParameter("@DepartureAirport", SqlDbType.VarChar) { Value = DepartureAirport },
+                    new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = FlightDestination }
+                };
 
-                object[] paramvalue = new object[] { FlightNo,
-                                                 newFlightDate,
-                                                 "",
-                                                 DepartureAirport,FlightDestination };
-
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar,
-                                                      SqlDbType.DateTime,
-                                                      SqlDbType.VarChar,
-                                                      SqlDbType.VarChar,SqlDbType.VarChar};
-
-                dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+                dsData = await _readWriteDao.SelectRecords(procedure, parameters);
             }
             catch (Exception ex)
             {
@@ -10247,34 +10346,42 @@ namespace QidWorkerRole
             return dsData;
         }
 
-        public DataSet getFFMUnloadingPort(string DepartureAirport, string FlightNo, DateTime FlightDate)
+        public async Task<DataSet?> getFFMUnloadingPort(string DepartureAirport, string FlightNo, DateTime FlightDate)
         {
-            DataSet ds = new DataSet();
+            DataSet? ds = new DataSet();
             try
             {
+                //SQLServer dtb = new SQLServer();
+                //string[] pname = new string[3]
+                //{
+                //"FlightID",
+                //"Source",
+                //"FlightDate"
+                //};
+                //object[] pvalue = new object[3]
+                //{
+                //FlightNo,
+                //DepartureAirport,
+                //newFlightDate
+
+                //};
+                //SqlDbType[] ptype = new SqlDbType[3]
+                //{
+                //SqlDbType.VarChar,
+                //SqlDbType.VarChar,
+                //SqlDbType.DateTime
+                //};
+                //ds = dtb.SelectRecords("spExpManiGetAirlineSch1", pname, pvalue, ptype);
+
                 DateTime newFlightDate = FlightDate;
-                SQLServer dtb = new SQLServer();
-                string[] pname = new string[3]
+                SqlParameter[] parameters = new SqlParameter[]
                 {
-                "FlightID",
-                "Source",
-                "FlightDate"
+                    new SqlParameter("@FlightID", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@Source", SqlDbType.VarChar) { Value = DepartureAirport },
+                    new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = newFlightDate }
                 };
-                object[] pvalue = new object[3]
-                {
-                FlightNo,
-                DepartureAirport,
-                newFlightDate
 
-                };
-                SqlDbType[] ptype = new SqlDbType[3]
-                {
-                SqlDbType.VarChar,
-                SqlDbType.VarChar,
-                SqlDbType.DateTime
-                };
-                ds = dtb.SelectRecords("spExpManiGetAirlineSch1", pname, pvalue, ptype);
-
+                ds = await _readWriteDao.SelectRecords("spExpManiGetAirlineSch1", parameters);
             }
             catch (Exception ex)
             {
@@ -10283,7 +10390,7 @@ namespace QidWorkerRole
             return ds;
         }
 
-        public string EncodeNTM(string DepartureAirport, string FlightNo, DateTime FlightDate, string MsgVer, string aircraftregistrtionno)
+        public async Task<string> EncodeNTM(string DepartureAirport, string FlightNo, DateTime FlightDate, string MsgVer, string aircraftregistrtionno)
         {
             string NTMinfo = "";
             try
@@ -10301,7 +10408,7 @@ namespace QidWorkerRole
                 MessageData.NTMULDinfo[] DGRULDinfo = new MessageData.NTMULDinfo[0];
                 MessageData.NTMInfo[] ntmInfo = new MessageData.NTMInfo[0];
                 List<string> SI = new List<string>();
-                DataSet dsData = new DataSet();
+                DataSet? dsData = new DataSet();
                 DataSet ds = new DataSet();
                 GenericFunction genericFunction = new GenericFunction();
                 bool IsThreeDigitNo = Convert.ToBoolean(genericFunction.GetConfigurationValues("IsThreeDigitNo") == null ? "false" : genericFunction.GetConfigurationValues("IsThreeDigitNo"));
@@ -10310,7 +10417,7 @@ namespace QidWorkerRole
                 string NoSpecialCargo = "NIL";
                 DataTable bulkinfo = new DataTable();
 
-                ds = getFFMUnloadingPort(DepartureAirport, FlightNo, FlightDate);
+                ds = await getFFMUnloadingPort(DepartureAirport, FlightNo, FlightDate);
 
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
@@ -10324,7 +10431,7 @@ namespace QidWorkerRole
 
                     bool checknilFlight = false;
 
-                    dsData = GetRecordforGenerateNTM(DepartureAirport, FlightNo, FlightDate, string.Empty, "2", "Auto ExpToMan");
+                    dsData = await GetRecordforGenerateNTM(DepartureAirport, FlightNo, FlightDate, string.Empty, "2", "Auto ExpToMan");
 
                     //start changes to filter ulds weight
                     if (dsData != null && dsData.Tables.Count > 0 && dsData.Tables[0].Rows.Count > 0)
@@ -10644,7 +10751,7 @@ namespace QidWorkerRole
             return NTMinfo;
         }
 
-        public string EncodeNTMforsend(string pol, ref MessageData.UWSinfo UWSdata, ref MessageData.unloadingport[] unloadingport, List<string> SI, ref MessageData.NTMInfo[] ntmInfo, ref MessageData.NTMULDinfo[] ntmULDinfo, ref MessageData.NTMconsignmnetinfo[] objNTMConInfo, ref MessageData.NTMconsignmnetinfo[] objSpecialCargoInfo, ref MessageData.NTMconsignmnetinfo[] objBulkDGRSpecialinfo, ref MessageData.NTMconsignmnetinfo[] objDGRConInfo, string NoSpecialCargo, int spclcargorecords, int dgrrecords, int noOfSpecialULD, int noOfBulkRecords, ref MessageData.NTMULDinfo[] uldSpecialinfo, ref MessageData.NTMULDinfo[] DGRULDinfo,bool IsThreeDigitNo=false)
+        public string EncodeNTMforsend(string pol, ref MessageData.UWSinfo UWSdata, ref MessageData.unloadingport[] unloadingport, List<string> SI, ref MessageData.NTMInfo[] ntmInfo, ref MessageData.NTMULDinfo[] ntmULDinfo, ref MessageData.NTMconsignmnetinfo[] objNTMConInfo, ref MessageData.NTMconsignmnetinfo[] objSpecialCargoInfo, ref MessageData.NTMconsignmnetinfo[] objBulkDGRSpecialinfo, ref MessageData.NTMconsignmnetinfo[] objDGRConInfo, string NoSpecialCargo, int spclcargorecords, int dgrrecords, int noOfSpecialULD, int noOfBulkRecords, ref MessageData.NTMULDinfo[] uldSpecialinfo, ref MessageData.NTMULDinfo[] DGRULDinfo, bool IsThreeDigitNo = false)
         {
 
             string BUILDNTM = null;
@@ -10952,22 +11059,36 @@ namespace QidWorkerRole
             }
             return BUILDNTM.ToUpper();
         }
-        public DataSet GetRecordforGenerateNTM(string DepartureAirport, string FlightNo, DateTime FlightDate, string FlightDestination, string Flag, string UpdatedBy)
+        public async Task<DataSet?> GetRecordforGenerateNTM(string DepartureAirport, string FlightNo, DateTime FlightDate, string FlightDestination, string Flag, string UpdatedBy)
         {
-            DataSet dsData = new DataSet();
+            DataSet? dsData = new DataSet();
             try
             {
+                //SQLServer dtb = new SQLServer(true);
+
+                //string[] paramname = new string[] { "FlightNo", "FlightDt", "POL", "Flag", "UpdatedBy" };
+
+                //object[] paramvalue = new object[] { FlightNo, newFlightDate, DepartureAirport, Flag, UpdatedBy };
+
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+
+                //dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+
+
                 DateTime newFlightDate = FlightDate;
-                SQLServer dtb = new SQLServer(true);
                 string procedure = "uspGetNOTOCDetails";
 
-                string[] paramname = new string[] { "FlightNo", "FlightDt", "POL", "Flag", "UpdatedBy" };
+                SqlParameter[] parameters = new SqlParameter[]
+                {
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = newFlightDate },
+                    new SqlParameter("@POL", SqlDbType.VarChar) { Value = DepartureAirport },
+                    new SqlParameter("@Flag", SqlDbType.VarChar) { Value = Flag },
+                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = UpdatedBy }
+                };
 
-                object[] paramvalue = new object[] { FlightNo, newFlightDate, DepartureAirport, Flag, UpdatedBy };
+                dsData = await _readOnlyDao.SelectRecords(procedure, parameters);
 
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-
-                dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
             }
             catch (Exception ex)
             {
@@ -10981,7 +11102,7 @@ namespace QidWorkerRole
             try
             {
                 string lastrec = string.Empty;
-                csnMsg  = csnMsg.Replace("\r\n", "$");
+                csnMsg = csnMsg.Replace("\r\n", "$");
                 string[] arrCSNMsg = csnMsg.Split('$');
                 if (arrCSNMsg.Length >= 6)
                 {
@@ -11013,7 +11134,7 @@ namespace QidWorkerRole
                         if (arrCSNMsg[i].StartsWith("FLT", StringComparison.OrdinalIgnoreCase))
                         {
                             string[] msg = arrCSNMsg[i].Split('/');
-                            csnInfo.flightNumber = msg[1].Trim().Contains("XXX") ? "": msg[1].Trim();
+                            csnInfo.flightNumber = msg[1].Trim().Contains("XXX") ? "" : msg[1].Trim();
                             csnInfo.pol = msg[2].Trim().Contains("XXX") ? "" : msg[2].Trim().Substring(0, 3);
                             csnInfo.pou = msg[2].Trim().Contains("XXX") ? "" : msg[2].Trim().Substring(3, 3);
                             csnInfo.flightDay = msg[3].Trim().Contains("XXX") ? DateTime.Now.Day.ToString().PadLeft(2, '0') : msg[3].Trim().Substring(0, 2);
