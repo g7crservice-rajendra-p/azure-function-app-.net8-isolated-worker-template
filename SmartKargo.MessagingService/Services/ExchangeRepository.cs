@@ -1,7 +1,5 @@
-﻿using System;
+﻿using EAGetMail;
 using System.Globalization;
-using System.IO;
-using EAGetMail;
 
 namespace QidWorkerRole
 {
@@ -17,6 +15,7 @@ namespace QidWorkerRole
                 sequence);
         }
 
+        /*Not in use*/
         public void ReadMail()
         {
             try
