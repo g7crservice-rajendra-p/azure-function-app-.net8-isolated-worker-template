@@ -117,7 +117,8 @@ namespace QidWorkerRole
             {
                 //GenericFunction genericFunction = new GenericFunction();
 
-                clsLog.WriteLogAzure("In ReadFromSITADrive()");
+                // clsLog.WriteLogAzure("In ReadFromSITADrive()");
+                _logger.LogInformation("In ReadFromSITADrive()");
 
                 var storageAccountName = ConfigCache.Get("SHARE_DRIVE_STORAGE_ACCOUNT_NAME");
                 var storageAccountKey = ConfigCache.Get("SHARE_DRIVE_STORAGE_ACCOUNT_KEY");
@@ -211,7 +212,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,"Error on ReadFromSITADrive");
             }
         }
 
@@ -353,7 +355,8 @@ namespace QidWorkerRole
             catch (Exception objEx)
             {
                 // preserve original logging style/message
-                clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + objEx.Message.ToString());
+                // clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + objEx.Message.ToString());
+                _logger.LogError(objEx, "uploaded on Azure Share Drive successfully to: {Message}" , objEx.Message.ToString());
                 flag = false;
             }
             return flag;
@@ -522,7 +525,8 @@ namespace QidWorkerRole
                                 var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent",parameters);
                                 if (dbRes)
                                 {
-                                    clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dtMessagesToSend.Rows[0]["STATUS"].ToString());
+                                    // clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dtMessagesToSend.Rows[0]["STATUS"].ToString());
+                                    _logger.LogInformation("uploaded on Azure Share Drive successfully to: {status}" , dtMessagesToSend.Rows[0]["STATUS"].ToString());
                                 }
                             }
                         }
@@ -530,12 +534,14 @@ namespace QidWorkerRole
                 }
                 catch (Exception objEx)
                 {
-                    clsLog.WriteLogAzure("Failed to upload on Azure Share Drive for:" + objEx.Message.ToString());
+                    // clsLog.WriteLogAzure("Failed to upload on Azure Share Drive for:" + objEx.Message.ToString());
+                    _logger.LogError(objEx, "Failed to upload on Azure Share Drive for: {message}" , objEx.Message.ToString());
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error in DRIVEUpload");
             }
         }
     }

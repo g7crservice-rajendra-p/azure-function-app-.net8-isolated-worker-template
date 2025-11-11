@@ -9,10 +9,14 @@ using QidWorkerRole;
 
 namespace QidWorkerRole
 {
-    class PSNMessageProcessor
+    public class PSNMessageProcessor
     {
-        public PSN objPSN = null;
-        SQLServer db = new SQLServer();
+        public PSNMessageProcessor()
+        {
+            
+        }
+        //public PSN objPSN = null;
+        //SQLServer db = new SQLServer();
 
 
         #region PSN Class
