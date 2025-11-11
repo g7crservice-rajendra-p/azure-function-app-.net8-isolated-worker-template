@@ -8,7 +8,7 @@ using System.Xml;
 
 namespace QidWorkerRole
 {
-    class cls_SCMBL
+    public class cls_SCMBL
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<cls_SCMBL> _logger;
