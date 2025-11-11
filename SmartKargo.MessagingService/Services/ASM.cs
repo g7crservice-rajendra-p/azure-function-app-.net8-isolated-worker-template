@@ -1533,15 +1533,18 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ISqlDataHelperDao _readOnlyDao;
         private readonly GenericFunction _genericFunction;
+        private readonly FDMMessageProcessor _fDMMessageProcessor;
+
 
         #region Constructor
-        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger)
+        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction, FDMMessageProcessor fDMMessageProcessor )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
             _staticLogger = staticLogger;
             _logger = logger;
-
+            _genericFunction = genericFunction;
+            _fDMMessageProcessor = fDMMessageProcessor;
         }
         #endregion
         public String messageType = "MVT";
@@ -1678,8 +1681,9 @@ namespace QidWorkerRole
                     {
                         if (msgType == "MVT/AD")
                         {
-                            FDMMessageProcessor FDM = new FDMMessageProcessor();
-                            FDM.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
+                            //FDMMessageProcessor FDM = new FDMMessageProcessor();
+                            //FDM.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
+                            await _fDMMessageProcessor.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
                         }
                     }
                     catch (Exception ex)

@@ -1,19 +1,33 @@
-﻿using System;
-using System.Linq;
-using System.IO;
-using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using System.Text;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+//using QID.DataAccess;
 using QidWorkerRole;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System;
+using System.Configuration;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace QidWorkerRole
 {
-    class FDMMessageProcessor
+    //class FDMMessageProcessor
+    public class FDMMessageProcessor// made public as it's used in ASMcs service file
     {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FDMMessageProcessor> _logger;
+
+        #region Constructor
+        public FDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,ILogger<FDMMessageProcessor> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+        }
+        #endregion
         public FDM objFDM = null;
         DataSet ds;
-        SQLServer db = new SQLServer();
+        //SQLServer db = new SQLServer();
 
         #region FDM Class
         [Serializable]
@@ -794,200 +808,292 @@ namespace QidWorkerRole
         #endregion
 
         #region Updating Customs Messages
-        public bool UpdateCustomsMessages(object[] QueryValues, string MessageType)
+        public async Task<bool> UpdateCustomsMessages(object[] QueryValues, string MessageType)
         {
             try
             {
-                string[] QueryNames = new string[87];
-                SqlDbType[] QueryTypes = new SqlDbType[87];
-                int i = 0;
-                QueryNames[i++] = "AWBPrefix";
-                QueryNames[i++] = "AWBNumber";
-                QueryNames[i++] = "MessageType";
-                QueryNames[i++] = "HAWBNumber";
-                QueryNames[i++] = "ConsolidationIdentifier";
-                QueryNames[i++] = "PackageTrackingIdentifier";
-                QueryNames[i++] = "AWBPartArrivalReference";
-                QueryNames[i++] = "ArrivalAirport";
-                QueryNames[i++] = "AirCarrier";
-                QueryNames[i++] = "Origin";
-                QueryNames[i++] = "DestinionCode";
-                QueryNames[i++] = "WBLNumberOfPieces";
-                QueryNames[i++] = "WBLWeightIndicator";
-                QueryNames[i++] = "WBLWeight";
-                QueryNames[i++] = "WBLCargoDescription";
-                QueryNames[i++] = "ArrivalDate";
-                QueryNames[i++] = "PartArrivalReference";
-                QueryNames[i++] = "BoardedQuantityIdentifier";
-                QueryNames[i++] = "BoardedPieceCount";
-                QueryNames[i++] = "BoardedWeight";
-                QueryNames[i++] = "ARRWeightCode";
-                QueryNames[i++] = "ImportingCarrier";
-                QueryNames[i++] = "FlightNumber";
-                QueryNames[i++] = "ARRPartArrivalReference";
-                QueryNames[i++] = "RequestType";
-                QueryNames[i++] = "RequestExplanation";
-                QueryNames[i++] = "EntryType";
-                QueryNames[i++] = "EntryNumber";
-                QueryNames[i++] = "AMSParticipantCode";
-                QueryNames[i++] = "ShipperName";
-                QueryNames[i++] = "ShipperAddress";
-                QueryNames[i++] = "ShipperCity";
-                QueryNames[i++] = "ShipperState";
-                QueryNames[i++] = "ShipperCountry";
-                QueryNames[i++] = "ShipperPostalCode";
-                QueryNames[i++] = "ConsigneeName";
-                QueryNames[i++] = "ConsigneeAddress";
-                QueryNames[i++] = "ConsigneeCity";
-                QueryNames[i++] = "ConsigneeState";
-                QueryNames[i++] = "ConsigneeCountry";
-                QueryNames[i++] = "ConsigneePostalCode";
-                QueryNames[i++] = "TransferDestAirport";
-                QueryNames[i++] = "DomesticIdentifier";
-                QueryNames[i++] = "BondedCarrierID";
-                QueryNames[i++] = "OnwardCarrier";
-                QueryNames[i++] = "BondedPremisesIdentifier";
-                QueryNames[i++] = "InBondControlNumber";
-                QueryNames[i++] = "OriginOfGoods";
-                QueryNames[i++] = "DeclaredValue";
-                QueryNames[i++] = "CurrencyCode";
-                QueryNames[i++] = "CommodityCode";
-                QueryNames[i++] = "LineIdentifier";
-                QueryNames[i++] = "AmendmentCode";
-                QueryNames[i++] = "AmendmentExplanation";
-                QueryNames[i++] = "DeptImportingCarrier";
-                QueryNames[i++] = "DeptFlightNumber";
-                QueryNames[i++] = "DeptScheduledArrivalDate";
-                QueryNames[i++] = "LiftoffDate";
-                QueryNames[i++] = "LiftoffTime";
-                QueryNames[i++] = "DeptActualImportingCarrier";
-                QueryNames[i++] = "DeptActualFlightNumber";
-                QueryNames[i++] = "ASNStatusCode";
-                QueryNames[i++] = "ASNActionExplanation";
-                QueryNames[i++] = "CSNActionCode";
-                QueryNames[i++] = "CSNPieces";
-                QueryNames[i++] = "TransactionDate";
-                QueryNames[i++] = "TransactionTime";
-                QueryNames[i++] = "CSNEntryType";
-                QueryNames[i++] = "CSNEntryNumber";
-                QueryNames[i++] = "CSNRemarks";
-                QueryNames[i++] = "ErrorCode";
-                QueryNames[i++] = "ErrorMessage";
-                QueryNames[i++] = "StatusRequestCode";
-                QueryNames[i++] = "StatusAnswerCode";
-                QueryNames[i++] = "Information";
-                QueryNames[i++] = "ERFImportingCarrier";
-                QueryNames[i++] = "ERFFlightNumber";
-                QueryNames[i++] = "ERFDate";
-                QueryNames[i++] = "Message";
-                QueryNames[i++] = "UpdatedOn";
-                QueryNames[i++] = "UpdatedBy";
-                QueryNames[i++] = "CreatedOn";
-                QueryNames[i++] = "CreatedBy";
-                QueryNames[i++] = "FlightNo";
-                QueryNames[i++] = "FlightDate";
-                QueryNames[i++] = "ControlLocation";
-                QueryNames[i++] = "WBLArrivalDatePermitToProceed";
+                //string[] QueryNames = new string[87];
+                //SqlDbType[] QueryTypes = new SqlDbType[87];
+                //int i = 0;
+                //QueryNames[i++] = "AWBPrefix";
+                //QueryNames[i++] = "AWBNumber";
+                //QueryNames[i++] = "MessageType";
+                //QueryNames[i++] = "HAWBNumber";
+                //QueryNames[i++] = "ConsolidationIdentifier";
+                //QueryNames[i++] = "PackageTrackingIdentifier";
+                //QueryNames[i++] = "AWBPartArrivalReference";
+                //QueryNames[i++] = "ArrivalAirport";
+                //QueryNames[i++] = "AirCarrier";
+                //QueryNames[i++] = "Origin";
+                //QueryNames[i++] = "DestinionCode";
+                //QueryNames[i++] = "WBLNumberOfPieces";
+                //QueryNames[i++] = "WBLWeightIndicator";
+                //QueryNames[i++] = "WBLWeight";
+                //QueryNames[i++] = "WBLCargoDescription";
+                //QueryNames[i++] = "ArrivalDate";
+                //QueryNames[i++] = "PartArrivalReference";
+                //QueryNames[i++] = "BoardedQuantityIdentifier";
+                //QueryNames[i++] = "BoardedPieceCount";
+                //QueryNames[i++] = "BoardedWeight";
+                //QueryNames[i++] = "ARRWeightCode";
+                //QueryNames[i++] = "ImportingCarrier";
+                //QueryNames[i++] = "FlightNumber";
+                //QueryNames[i++] = "ARRPartArrivalReference";
+                //QueryNames[i++] = "RequestType";
+                //QueryNames[i++] = "RequestExplanation";
+                //QueryNames[i++] = "EntryType";
+                //QueryNames[i++] = "EntryNumber";
+                //QueryNames[i++] = "AMSParticipantCode";
+                //QueryNames[i++] = "ShipperName";
+                //QueryNames[i++] = "ShipperAddress";
+                //QueryNames[i++] = "ShipperCity";
+                //QueryNames[i++] = "ShipperState";
+                //QueryNames[i++] = "ShipperCountry";
+                //QueryNames[i++] = "ShipperPostalCode";
+                //QueryNames[i++] = "ConsigneeName";
+                //QueryNames[i++] = "ConsigneeAddress";
+                //QueryNames[i++] = "ConsigneeCity";
+                //QueryNames[i++] = "ConsigneeState";
+                //QueryNames[i++] = "ConsigneeCountry";
+                //QueryNames[i++] = "ConsigneePostalCode";
+                //QueryNames[i++] = "TransferDestAirport";
+                //QueryNames[i++] = "DomesticIdentifier";
+                //QueryNames[i++] = "BondedCarrierID";
+                //QueryNames[i++] = "OnwardCarrier";
+                //QueryNames[i++] = "BondedPremisesIdentifier";
+                //QueryNames[i++] = "InBondControlNumber";
+                //QueryNames[i++] = "OriginOfGoods";
+                //QueryNames[i++] = "DeclaredValue";
+                //QueryNames[i++] = "CurrencyCode";
+                //QueryNames[i++] = "CommodityCode";
+                //QueryNames[i++] = "LineIdentifier";
+                //QueryNames[i++] = "AmendmentCode";
+                //QueryNames[i++] = "AmendmentExplanation";
+                //QueryNames[i++] = "DeptImportingCarrier";
+                //QueryNames[i++] = "DeptFlightNumber";
+                //QueryNames[i++] = "DeptScheduledArrivalDate";
+                //QueryNames[i++] = "LiftoffDate";
+                //QueryNames[i++] = "LiftoffTime";
+                //QueryNames[i++] = "DeptActualImportingCarrier";
+                //QueryNames[i++] = "DeptActualFlightNumber";
+                //QueryNames[i++] = "ASNStatusCode";
+                //QueryNames[i++] = "ASNActionExplanation";
+                //QueryNames[i++] = "CSNActionCode";
+                //QueryNames[i++] = "CSNPieces";
+                //QueryNames[i++] = "TransactionDate";
+                //QueryNames[i++] = "TransactionTime";
+                //QueryNames[i++] = "CSNEntryType";
+                //QueryNames[i++] = "CSNEntryNumber";
+                //QueryNames[i++] = "CSNRemarks";
+                //QueryNames[i++] = "ErrorCode";
+                //QueryNames[i++] = "ErrorMessage";
+                //QueryNames[i++] = "StatusRequestCode";
+                //QueryNames[i++] = "StatusAnswerCode";
+                //QueryNames[i++] = "Information";
+                //QueryNames[i++] = "ERFImportingCarrier";
+                //QueryNames[i++] = "ERFFlightNumber";
+                //QueryNames[i++] = "ERFDate";
+                //QueryNames[i++] = "Message";
+                //QueryNames[i++] = "UpdatedOn";
+                //QueryNames[i++] = "UpdatedBy";
+                //QueryNames[i++] = "CreatedOn";
+                //QueryNames[i++] = "CreatedBy";
+                //QueryNames[i++] = "FlightNo";
+                //QueryNames[i++] = "FlightDate";
+                //QueryNames[i++] = "ControlLocation";
+                //QueryNames[i++] = "WBLArrivalDatePermitToProceed";
 
-                int j = 0;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Int;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Decimal;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Int;
-                QueryTypes[j++] = SqlDbType.Decimal;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.BigInt;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.DateTime;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.DateTime;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
+                //int j = 0;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Int;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Decimal;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Int;
+                //QueryTypes[j++] = SqlDbType.Decimal;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.BigInt;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.DateTime;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.DateTime;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                var parameters = new SqlParameter[]
+                {
+                    new("@AWBPrefix", SqlDbType.VarChar) { Value = QueryValues[0] },
+                    new("@AWBNumber", SqlDbType.VarChar) { Value = QueryValues[1] },
+                    new("@MessageType", SqlDbType.VarChar) { Value = QueryValues[2] },
+                    new("@HAWBNumber", SqlDbType.VarChar) { Value = QueryValues[3] },
+                    new("@ConsolidationIdentifier", SqlDbType.VarChar) { Value = QueryValues[4] },
+                    new("@PackageTrackingIdentifier", SqlDbType.VarChar) { Value = QueryValues[5] },
+                    new("@AWBPartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[6] },
+                    new("@ArrivalAirport", SqlDbType.VarChar) { Value = QueryValues[7] },
+                    new("@AirCarrier", SqlDbType.VarChar) { Value = QueryValues[8] },
+                    new("@Origin", SqlDbType.VarChar) { Value = QueryValues[9] },
+                    new("@DestinionCode", SqlDbType.VarChar) { Value = QueryValues[10] },
+                    new("@WBLNumberOfPieces", SqlDbType.Int) { Value = QueryValues[11] },
+                    new("@WBLWeightIndicator", SqlDbType.VarChar) { Value = QueryValues[12] },
+                    new("@WBLWeight", SqlDbType.Decimal) { Value = QueryValues[13] },
+                    new("@WBLCargoDescription", SqlDbType.VarChar) { Value = QueryValues[14] },
+                    new("@ArrivalDate", SqlDbType.VarChar) { Value = QueryValues[15] },
+                    new("@PartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[16] },
+                    new("@BoardedQuantityIdentifier", SqlDbType.VarChar) { Value = QueryValues[17] },
+                    new("@BoardedPieceCount", SqlDbType.Int) { Value = QueryValues[18] },
+                    new("@BoardedWeight", SqlDbType.Decimal) { Value = QueryValues[19] },
+                    new("@ARRWeightCode", SqlDbType.VarChar) { Value = QueryValues[20] },
+                    new("@ImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[21] },
+                    new("@FlightNumber", SqlDbType.VarChar) { Value = QueryValues[22] },
+                    new("@ARRPartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[23] },
+                    new("@RequestType", SqlDbType.VarChar) { Value = QueryValues[24] },
+                    new("@RequestExplanation", SqlDbType.VarChar) { Value = QueryValues[25] },
+                    new("@EntryType", SqlDbType.VarChar) { Value = QueryValues[26] },
+                    new("@EntryNumber", SqlDbType.VarChar) { Value = QueryValues[27] },
+                    new("@AMSParticipantCode", SqlDbType.VarChar) { Value = QueryValues[28] },
+                    new("@ShipperName", SqlDbType.VarChar) { Value = QueryValues[29] },
+                    new("@ShipperAddress", SqlDbType.VarChar) { Value = QueryValues[30] },
+                    new("@ShipperCity", SqlDbType.VarChar) { Value = QueryValues[31] },
+                    new("@ShipperState", SqlDbType.VarChar) { Value = QueryValues[32] },
+                    new("@ShipperCountry", SqlDbType.VarChar) { Value = QueryValues[33] },
+                    new("@ShipperPostalCode", SqlDbType.VarChar) { Value = QueryValues[34] },
+                    new("@ConsigneeName", SqlDbType.VarChar) { Value = QueryValues[35] },
+                    new("@ConsigneeAddress", SqlDbType.VarChar) { Value = QueryValues[36] },
+                    new("@ConsigneeCity", SqlDbType.VarChar) { Value = QueryValues[37] },
+                    new("@ConsigneeState", SqlDbType.VarChar) { Value = QueryValues[38] },
+                    new("@ConsigneeCountry", SqlDbType.VarChar) { Value = QueryValues[39] },
+                    new("@ConsigneePostalCode", SqlDbType.VarChar) { Value = QueryValues[40] },
+                    new("@TransferDestAirport", SqlDbType.VarChar) { Value = QueryValues[41] },
+                    new("@DomesticIdentifier", SqlDbType.VarChar) { Value = QueryValues[42] },
+                    new("@BondedCarrierID", SqlDbType.VarChar) { Value = QueryValues[43] },
+                    new("@OnwardCarrier", SqlDbType.VarChar) { Value = QueryValues[44] },
+                    new("@BondedPremisesIdentifier", SqlDbType.VarChar) { Value = QueryValues[45] },
+                    new("@InBondControlNumber", SqlDbType.VarChar) { Value = QueryValues[46] },
+                    new("@OriginOfGoods", SqlDbType.VarChar) { Value = QueryValues[47] },
+                    new("@DeclaredValue", SqlDbType.BigInt) { Value = QueryValues[48] },
+                    new("@CurrencyCode", SqlDbType.VarChar) { Value = QueryValues[49] },
+                    new("@CommodityCode", SqlDbType.VarChar) { Value = QueryValues[50] },
+                    new("@LineIdentifier", SqlDbType.VarChar) { Value = QueryValues[51] },
+                    new("@AmendmentCode", SqlDbType.VarChar) { Value = QueryValues[52] },
+                    new("@AmendmentExplanation", SqlDbType.VarChar) { Value = QueryValues[53] },
+                    new("@DeptImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[54] },
+                    new("@DeptFlightNumber", SqlDbType.VarChar) { Value = QueryValues[55] },
+                    new("@DeptScheduledArrivalDate", SqlDbType.VarChar) { Value = QueryValues[56] },
+                    new("@LiftoffDate", SqlDbType.VarChar) { Value = QueryValues[57] },
+                    new("@LiftoffTime", SqlDbType.VarChar) { Value = QueryValues[58] },
+                    new("@DeptActualImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[59] },
+                    new("@DeptActualFlightNumber", SqlDbType.VarChar) { Value = QueryValues[60] },
+                    new("@ASNStatusCode", SqlDbType.VarChar) { Value = QueryValues[61] },
+                    new("@ASNActionExplanation", SqlDbType.VarChar) { Value = QueryValues[62] },
+                    new("@CSNActionCode", SqlDbType.VarChar) { Value = QueryValues[63] },
+                    new("@CSNPieces", SqlDbType.Int) { Value = QueryValues[64] },
+                    new("@TransactionDate", SqlDbType.VarChar) { Value = QueryValues[65] },
+                    new("@TransactionTime", SqlDbType.VarChar) { Value = QueryValues[66] },
+                    new("@CSNEntryType", SqlDbType.VarChar) { Value = QueryValues[67] },
+                    new("@CSNEntryNumber", SqlDbType.VarChar) { Value = QueryValues[68] },
+                    new("@CSNRemarks", SqlDbType.VarChar) { Value = QueryValues[69] },
+                    new("@ErrorCode", SqlDbType.VarChar) { Value = QueryValues[70] },
+                    new("@ErrorMessage", SqlDbType.VarChar) { Value = QueryValues[71] },
+                    new("@StatusRequestCode", SqlDbType.VarChar) { Value = QueryValues[72] },
+                    new("@StatusAnswerCode", SqlDbType.VarChar) { Value = QueryValues[73] },
+                    new("@Information", SqlDbType.VarChar) { Value = QueryValues[74] },
+                    new("@ERFImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[75] },
+                    new("@ERFFlightNumber", SqlDbType.VarChar) { Value = QueryValues[76] },
+                    new("@ERFDate", SqlDbType.VarChar) { Value = QueryValues[77] },
+                    new("@Message", SqlDbType.NVarChar) { Value = QueryValues[78] },
+                    new("@UpdatedOn", SqlDbType.DateTime) { Value = QueryValues[79] },
+                    new("@UpdatedBy", SqlDbType.VarChar) { Value = QueryValues[80] },
+                    new("@CreatedOn", SqlDbType.DateTime) { Value = QueryValues[81] },
+                    new("@CreatedBy", SqlDbType.VarChar) { Value = QueryValues[82] },
+                    new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[83] },
+                    new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[84] },
+                    new("@ControlLocation", SqlDbType.VarChar) { Value = QueryValues[85] },
+                    new("@WBLArrivalDatePermitToProceed", SqlDbType.VarChar) { Value = QueryValues[86] },
+                };
 
                 if (MessageType == "FRI" || MessageType == "FXI" || MessageType == "FRC" || MessageType == "FXC" || MessageType == "FRX" || MessageType == "FXX" || MessageType == "FDM" || MessageType == "FER" || MessageType == "FSQ" || MessageType == "FSN" || MessageType == "PSN" || MessageType == "PER" || MessageType == "PRI")
                 {
-                    if (db.InsertData("SP_UpdateOutboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    //if (db.InsertData("SP_UpdateOutboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    if (await _readWriteDao.ExecuteNonQueryAsync("SP_UpdateOutboxCustomsMessage", parameters))
                     { return true; }
                     else
                     { return false; }
                 }
                 else
                 {
-                    if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    //if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    if (await _readWriteDao.ExecuteNonQueryAsync("SP_UpdateOutboxCustomsMessage", parameters))
                     { return true; }
                     else
                     { return false; }
@@ -1005,59 +1111,73 @@ namespace QidWorkerRole
         #region Encoding FDM Message
         public FDM EncodingFDMMessage(object[] QueryValues)
         {
-            SQLServer db = new SQLServer();
+            //SQLServer db = new SQLServer();
             DataSet Dset = new DataSet("Dset_CustomsImportsBAL_EncodingFDMMessage");
             try
             {
-                string[] QueryNames = { "AWBNumber", "FlightNo", "FlightDate", "FlightOrigin" };
-                SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
+                //string[] QueryNames = { "AWBNumber", "FlightNo", "FlightDate", "FlightOrigin" };
+                //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
 
-                Dset = db.SelectRecords("sp_GetFDMDataAutoMsg_HAWB", QueryNames, QueryValues, QueryTypes);
+                //Dset = db.SelectRecords("sp_GetFDMDataAutoMsg_HAWB", QueryNames, QueryValues, QueryTypes);
+
+                var parameters = new SqlParameter[]
+                {
+                 new("@AWBNumber", SqlDbType.VarChar) { Value = QueryValues[0] },
+                 new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[1] },
+                 new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[2] },
+                 new("@FlightOrigin", SqlDbType.VarChar) { Value = QueryValues[3] }
+                };
                 if (Dset != null && Dset.Tables.Count > 0)
                 {
                     FDM FDM = new FDM();
                     FDM = FDM.Encode(Dset);
-                    db = null;
+                    //db = null;
                     return FDM;
                 }
                 else
                 {
-                    db = null;
+                    //db = null;
                     return null;
                 }
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
-                db = null;
+                //db = null;
                 return null;
 
             }
-            finally
-            {
-                if (Dset != null)
-                    Dset.Dispose();
-            }
+            //finally
+            //{
+            //    if (Dset != null)
+            //        Dset.Dispose();
+            //}
         }
         #endregion
 
-        public DataSet CheckCustomsAWBAvailabilityFDM(object[] QueryValues)
+        public async Task<DataSet> CheckCustomsAWBAvailabilityFDM(object[] QueryValues)
         {
             try
             {
-                string[] QueryNames = new string[3];
-                SqlDbType[] QueryTypes = new SqlDbType[3];
+                //string[] QueryNames = new string[3];
+                //SqlDbType[] QueryTypes = new SqlDbType[3];
 
-                QueryNames[0] = "FlightNo";
-                QueryNames[1] = "FlightDate";
-                QueryNames[2] = "FlightOrigin";
+                //QueryNames[0] = "FlightNo";
+                //QueryNames[1] = "FlightDate";
+                //QueryNames[2] = "FlightOrigin";
 
-                QueryTypes[0] = SqlDbType.VarChar;
-                QueryTypes[1] = SqlDbType.DateTime;
-                QueryTypes[2] = SqlDbType.VarChar;
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[1] = SqlDbType.DateTime;
+                //QueryTypes[2] = SqlDbType.VarChar;
+                var parameters = new SqlParameter[]
+                {
+                 new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[0] },
+                 new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[1] },
+                 new("@FlightOrigin", SqlDbType.VarChar) { Value = QueryValues[2] },
+                };
 
-
-                ds = db.SelectRecords("sp_CheckCustomsApplicabilityFDM", QueryNames, QueryValues, QueryTypes);
+                //ds = db.SelectRecords("sp_CheckCustomsApplicabilityFDM", QueryNames, QueryValues, QueryTypes);
+                ds = await _readWriteDao.SelectRecords("sp_CheckCustomsApplicabilityFDM", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
 
@@ -1075,23 +1195,29 @@ namespace QidWorkerRole
                 return null;
             }
         }
-        public DateTime GettingLocalFlightDate(object[] QueryValues)
+        public async Task<DateTime> GettingLocalFlightDate(object[] QueryValues)
         {
             try
             {
-                string[] QueryNames = new string[3];
-                SqlDbType[] QueryTypes = new SqlDbType[3];
+                //string[] QueryNames = new string[3];
+                //SqlDbType[] QueryTypes = new SqlDbType[3];
 
-                QueryNames[0] = "FlightNo";
-                QueryNames[1] = "FlightDate";
-                QueryNames[2] = "FlightOrigin";
+                //QueryNames[0] = "FlightNo";
+                //QueryNames[1] = "FlightDate";
+                //QueryNames[2] = "FlightOrigin";
 
-                QueryTypes[0] = SqlDbType.VarChar;
-                QueryTypes[1] = SqlDbType.DateTime;
-                QueryTypes[2] = SqlDbType.VarChar;
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[1] = SqlDbType.DateTime;
+                //QueryTypes[2] = SqlDbType.VarChar;
+                var parameters = new SqlParameter[]
+                {
+                 new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[0] },
+                 new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[1] },
+                 new("@FlightOrigin", SqlDbType.VarChar) { Value = QueryValues[2] },
+                };
 
-
-                ds = db.SelectRecords("uspGetLocalFlightDate", QueryNames, QueryValues, QueryTypes);
+                //ds = db.SelectRecords("uspGetLocalFlightDate", QueryNames, QueryValues, QueryTypes);
+                ds = await _readWriteDao.SelectRecords("uspGetLocalFlightDate", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     return Convert.ToDateTime(ds.Tables[0].Rows[0]["FlightDate"].ToString());
@@ -1109,7 +1235,7 @@ namespace QidWorkerRole
         }
 
 
-        public bool GenerateFDMMessage(string FlightNo, DateTime FlightDate, string FlightOrigin)
+        public async Task<bool> GenerateFDMMessage(string FlightNo, DateTime FlightDate, string FlightOrigin)
         {
             try
             {
@@ -1123,11 +1249,11 @@ namespace QidWorkerRole
 
 
                 DataSet dCust = new DataSet("Customsimports_btnSendFDM_dCust");
-                FlightDate = GettingLocalFlightDate(QueryVals);
+                FlightDate = await GettingLocalFlightDate(QueryVals);
 
                 object[] QueryVal = { FlightNo, FlightDate, FlightOrigin };
 
-                dCust = CheckCustomsAWBAvailabilityFDM(QueryVal);
+                dCust = await CheckCustomsAWBAvailabilityFDM(QueryVal);
 
 
                 if (dCust.Tables[0].Rows.Count > 0 && dCust.Tables[0].Rows[0]["Validate"].ToString() == "True")
@@ -1139,7 +1265,7 @@ namespace QidWorkerRole
                     FDM sbFDM = EncodingFDMMessage(QueryValFDM);
 
                     readQueryValuesFDM(sbFDM, ref QueryValues, sbFDM.ToString(), string.Empty, string.Empty, FlightNo, FlightDate, "AutoGeneratedMessage", DateTime.UtcNow);
-                    if (sbFDM != null && UpdateCustomsMessages(QueryValues, sbFDM.StandardMessageIdentifier.StandardMessageIdentifier))
+                    if (sbFDM != null && await UpdateCustomsMessages(QueryValues, sbFDM.StandardMessageIdentifier.StandardMessageIdentifier))
                     {
                         if (sbFDM.ToString() != "")
                         {
