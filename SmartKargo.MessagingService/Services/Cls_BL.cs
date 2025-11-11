@@ -114,6 +114,8 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<Cls_BL> _logger;
+
+        private static ILogger<Cls_BL> _staticLogger;
         private readonly AppConfig _appConfig;
         private readonly FTP _ftp;
         private readonly AWBDetailsAPI _aWBDetailsAPI;
@@ -136,6 +138,7 @@ namespace QidWorkerRole
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _staticLogger ??= logger;
             _ftp = ftp;
             _aWBDetailsAPI = aWBDetailsAPI;
             _emailOut = emailOut;
@@ -200,7 +203,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -324,19 +328,23 @@ namespace QidWorkerRole
                             dtRec = DateTime.ParseExact(recievedDate, "dd MMM yyyy HH:mm:ss", null);
                             dtSend = dtRec;
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                        catch (Exception ex) {
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); }
 
                         // string status = "Active";
                         try
                         {
                             if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
                             {
-                                clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                // clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                _logger.LogInformation("Email saved From imap.gmail.com");
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ReadFromIMAPServer");
                         }
 
                         try
@@ -345,7 +353,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ReadFromIMAPServer");
                         }
                     }
                     catch (Exception ex)
@@ -362,7 +371,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception exp)
                         {
-                            clsLog.WriteLogAzure(exp);
+                            // clsLog.WriteLogAzure(exp);
+                            _logger.LogError(exp, "Error on ReadFromIMAPServer");
                         }
                         subject = obj.Subject;
                         if (ex.Message.Trim().ToUpper() == "COULD NOT FIND ANY RECOGNIZABLE DIGITS.")
@@ -378,10 +388,12 @@ namespace QidWorkerRole
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
                             if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
-                                clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                // clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                _logger.LogError("Email saved From imap.gmail.com");
                             ic.DeleteMessage(obj.Uid);
                         }
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ReadFromIMAPServer");
                     }
                 }
 
@@ -392,7 +404,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ReadFromIMAPServer");
             }
         }
 
@@ -512,18 +525,23 @@ namespace QidWorkerRole
                             dtRec = DateTime.ParseExact(recievedDate, "dd MMM yyyy HH:mm:ss", null);
                             dtSend = dtRec;
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                        catch (Exception ex) {
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                         }
 
                         try
                         {
                             if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "GMAIL"))
                             {
-                                clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                // clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                _logger.LogInformation("Email saved From imap.gmail.com");
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ReadFromIMAP");
                         }
 
                         try
@@ -532,7 +550,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,"Error on ReadFromIMAP");
                         }
                     }
                     catch (Exception ex)
@@ -549,7 +568,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception exp)
                         {
-                            clsLog.WriteLogAzure(exp);
+                            // clsLog.WriteLogAzure(exp);
+                            _logger.LogError(exp, "Error on ReadFromIMAP");
                         }
                         subject = obj.Subject;
                         if (ex.Message.Trim().ToUpper() == "COULD NOT FIND ANY RECOGNIZABLE DIGITS.")
@@ -565,10 +585,12 @@ namespace QidWorkerRole
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
                             if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
-                                clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                // clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                _logger.LogError("Email saved From imap.gmail.com");
                             ic.DeleteMessage(obj.Uid);
                         }
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on ReadFromIMAP");
                     }
                 }
 
@@ -579,7 +601,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ReadFromIMAP");
             }
         }
 
@@ -603,7 +626,8 @@ namespace QidWorkerRole
                 {
                     // reads response body
                     string responseText = reader.ReadToEnd();
-                    Console.WriteLine(responseText);
+                    // Console.WriteLine(responseText);
+                     _logger.LogInformation(responseText);
                     return responseText;
                 }
             }
@@ -614,12 +638,14 @@ namespace QidWorkerRole
                     var response = ex.Response as HttpWebResponse;
                     if (response != null)
                     {
-                        Console.WriteLine("HTTP: " + response.StatusCode);
+                        // Console.WriteLine("HTTP: " + response.StatusCode);
+                        _logger.LogError("HTTP: {0}" , response.StatusCode);
                         using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                         {
                             // reads response body
                             string responseText = reader.ReadToEnd();
-                            Console.WriteLine(responseText);
+                            // Console.WriteLine(responseText);
+                            _logger.LogError(responseText, "Error on PostString");
                         }
                     }
                 }
@@ -774,7 +800,10 @@ namespace QidWorkerRole
                             dtRec = DateTime.ParseExact(recievedDate, "dd MMM yyyy HH:mm:ss", null);
                             dtSend = dtRec;
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                        catch (Exception ex) {
+                            // clsLog.WriteLogAzure(ex); 
+                            _logger.LogError(ex, "Error on RetrieveOffice365EmailsUsingOAuth2");
+                            }
 
                         try
                         {
@@ -783,12 +812,14 @@ namespace QidWorkerRole
                                 //Mark email as read to prevent retrieving this email again.
                                 oClient.MarkAsRead(info, true);
                                 //oClient.Delete(info);
-                                clsLog.WriteLogAzure("Email saved From outlook.office365.com");
+                                // clsLog.WriteLogAzure("Email saved From outlook.office365.com");
+                                _logger.LogInformation("Email saved From outlook.office365.com");
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on RetrieveOffice365EmailsUsingOAuth2");
                         }
 
                     }
@@ -806,7 +837,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception exp)
                         {
-                            clsLog.WriteLogAzure(exp);
+                            // clsLog.WriteLogAzure(exp);
+                            _logger.LogError(exp, "Error on RetrieveOffice365EmailsUsingOAuth2");
                         }
                         subject = obj.Subject;
                         if (ex.Message.Trim().ToUpper() == "COULD NOT FIND ANY RECOGNIZABLE DIGITS.")
@@ -822,10 +854,12 @@ namespace QidWorkerRole
                             fromEmail = obj.From.Address;
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
                             if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
-                                clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                // clsLog.WriteLogAzure("Email saved From imap.gmail.com");
+                                _logger.LogError("Email saved From imap.gmail.com");
                             oClient.Delete(info);
                         }
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, "Error on RetrieveOffice365EmailsUsingOAuth2");
                     }
                 }
                 // Quit and expunge emails marked as deleted from server.
@@ -833,7 +867,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on RetrieveOffice365EmailsUsingOAuth2");
             }
         }
 
@@ -841,6 +876,7 @@ namespace QidWorkerRole
         public async Task<DataSet> DBCalls()
         {
             clsLog.WriteLogAzure("In DBCalls()");
+            _logger.LogInformation("In DBCalls()");
             DataSet dsUploadMasters = new();
             try
             {
@@ -893,7 +929,8 @@ namespace QidWorkerRole
                             {
                                 if (dsAutoDepartFlights.Tables[j].Rows[0]["Type"].ToString().ToUpper() == "AUTODEPARTFLIGHTS")
                                 {
-                                    clsLog.WriteLogAzure("There are " + dsAutoDepartFlights.Tables[0].Rows.Count.ToString() + " Flights to be departed");
+                                    // clsLog.WriteLogAzure("There are " + dsAutoDepartFlights.Tables[0].Rows.Count.ToString() + " Flights to be departed");
+                                    _logger.LogInformation("There are {FlightsCount} Flights to be departed", dsAutoDepartFlights.Tables[0].Rows.Count);
                                     cls_SCMBL cls_scmbl = new cls_SCMBL();
                                     for (int i = 0; i < dsAutoDepartFlights.Tables[j].Rows.Count; i++)
                                     {
@@ -928,7 +965,8 @@ namespace QidWorkerRole
                                         }
 
                                         ffmMessageBody = cls_scmbl.EncodeFFM(source, flightNumber, Convert.ToDateTime(flightDate), msgVersion);
-                                        clsLog.WriteLogAzure(ffmMessageBody);
+                                        // clsLog.WriteLogAzure(ffmMessageBody);
+                                        _logger.LogInformation(ffmMessageBody);
                                         if (ffmMessageBody.Length > 3)
                                         {
                                             if (SitaMessageHeader != "")
@@ -1096,7 +1134,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on DBCalls");
                 }
                 UnDepartedAWBListAlert unDepartedAWBListAlert = new UnDepartedAWBListAlert();
                 try
@@ -1105,7 +1144,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on DBCalls");
                 }
                 finally
                 {
@@ -1118,7 +1158,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error in DBCalls");
                 }
                 if (!string.IsNullOrEmpty(genericFunction.GetConfigurationValues("ExcelUploadBookingEmail")) && genericFunction.GetConfigurationValues("ExcelUploadBookingEmail").Contains("@"))
                 {
@@ -1133,7 +1174,10 @@ namespace QidWorkerRole
                         SendNotificationAlertBondExpiry();
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                catch (Exception ex) {
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on DBCalls");
+                     }
 
                 try
                 {
@@ -1150,7 +1194,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex,"Error on DBCalls");
                 }
                 //
                 try
@@ -1162,13 +1207,15 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on DBCalls");
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on DBCalls");
             }
             return dsUploadMasters;
         }
@@ -1262,7 +1309,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on SendExcelUploadNotification");
             }
         }
 
@@ -1295,7 +1343,8 @@ namespace QidWorkerRole
 
         private async Task SendManageCapacityFlightLoadPlan()
         {
-            clsLog.WriteLogAzure("AutoManageCapacityFLP: In SendManageCapacityFlightLoadPlan");
+            // clsLog.WriteLogAzure("AutoManageCapacityFLP: In SendManageCapacityFlightLoadPlan");
+            _logger.LogInformation("AutoManageCapacityFLP: In SendManageCapacityFlightLoadPlan");
             //SQLServer objSQL = new SQLServer();
             DataSet? dsFLPData = null;
             DataSet? dsEmail = null;
@@ -1314,7 +1363,8 @@ namespace QidWorkerRole
                 string fltDate = "", FlightDate;
 
 
-                clsLog.WriteLogAzure("AutoManageCapacityFLP: Before calling uspSendManageCapacityLoadPlan");
+                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Before calling uspSendManageCapacityLoadPlan");
+                _logger.LogInformation("AutoManageCapacityFLP: Before calling uspSendManageCapacityLoadPlan");
 
                 //dsFLPData = objSQL.SelectRecords("uspSendManageCapacityLoadPlan");
                 //dsEmail = objSQL.SelectRecords("usp_getTblConfigurationStatus", "MessageType", "AutoManageCapacityFLP", SqlDbType.VarChar);
@@ -1328,11 +1378,14 @@ namespace QidWorkerRole
 
                 dsEmail = await _readWriteDao.SelectRecords("usp_getTblConfigurationStatus", parameters);
 
-                clsLog.WriteLogAzure("AutoManageCapacityFLP: After called uspSendManageCapacityLoadPlan");
+                // clsLog.WriteLogAzure("AutoManageCapacityFLP: After called uspSendManageCapacityLoadPlan");
+                _logger.LogInformation("AutoManageCapacityFLP: After called uspSendManageCapacityLoadPlan");
 
                 if (dsFLPData != null && dsFLPData.Tables.Count > 0 && dsFLPData.Tables[0] != null && dsFLPData.Tables[0].Rows.Count > 0)
                 {
-                    clsLog.WriteLogAzure("AutoManageCapacityFLP: Data is available to send load plan");
+                    // clsLog.WriteLogAzure("AutoManageCapacityFLP: Data is available to send load plan");
+                    _logger.LogInformation("AutoManageCapacityFLP: Data is available to send load plan");
+                   
                     bool IsBatchLoad = false;
                     string BatchType = "";
 
@@ -1901,7 +1954,8 @@ namespace QidWorkerRole
 
                         if (dsFLPData.Tables[4].Rows.Count > 0)
                         {
-                            clsLog.WriteLogAzure("AutoManageCapacityFLP: Flights are available to send load plan");
+                            // clsLog.WriteLogAzure("AutoManageCapacityFLP: Flights are available to send load plan");
+                             _logger.LogInformation("AutoManageCapacityFLP: Flights are available to send load plan");
 
                             for (int i = 0; i < dsFLPData.Tables[4].Rows.Count; i++)
                             {
@@ -1916,10 +1970,14 @@ namespace QidWorkerRole
                                 flighttype = dsFLPData.Tables[4].Rows[i]["FlightType"].ToString();
                                 routetype = dsFLPData.Tables[4].Rows[i]["DOMINT"].ToString();
 
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: FltNo: " + FltNo);
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: fltDate: " + fltDate);
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: flightOrigin: " + flightOrigin);
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: flightDest: " + flightDest);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: FltNo: " + FltNo);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: fltDate: " + fltDate);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: flightOrigin: " + flightOrigin);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Flight details: flightDest: " + flightDest);
+                                _logger.LogInformation("AutoManageCapacityFLP: Flight details: FltNo: {0}" , FltNo);
+                                _logger.LogInformation("AutoManageCapacityFLP: Flight details: fltDate: {0}" , fltDate);
+                                _logger.LogInformation("AutoManageCapacityFLP: Flight details: flightOrigin: {0}" , flightOrigin);
+                                _logger.LogInformation("AutoManageCapacityFLP: Flight details: flightDest: {0}", flightDest);
 
                                 dsFLPData.Tables[0].DefaultView.RowFilter = "FlightNo = '" + FltNo + "'and FlightDate = '" + fltDate + "'";
                                 dtTable1 = dsFLPData.Tables[0].DefaultView.ToTable();
@@ -1942,7 +2000,8 @@ namespace QidWorkerRole
 
 
 
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: Choose html file:" + FltNo + fltDate);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: Choose html file:" + FltNo + fltDate);
+                                 _logger.LogInformation("AutoManageCapacityFLP: Choose html file: {0}" , FltNo + fltDate);
 
                                 if (dtTable1 != null && dtTable1.Rows.Count > 0)
                                 {
@@ -2066,11 +2125,13 @@ namespace QidWorkerRole
                                 dttable3.Columns.Add("IsOffload");
                                 dttable3.Columns.Add("SortFlag");
 
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: check data to create HTML:" + FltNo + fltDate);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: check data to create HTML:" + FltNo + fltDate);
+                                 _logger.LogInformation("AutoManageCapacityFLP: check data to create HTML:{0}" , FltNo + fltDate);
                                 sbULD.Append(FlightHeader.ToString());
                                 if (dtTable1 != null && dtTable1.Rows.Count > 0)
                                 {
-                                    clsLog.WriteLogAzure("AutoManageCapacityFLP: creating HTML:" + FltNo + fltDate);
+                                    // clsLog.WriteLogAzure("AutoManageCapacityFLP: creating HTML:" + FltNo + fltDate);
+                                    _logger.LogInformation("AutoManageCapacityFLP: creating HTML:{0}" , FltNo + fltDate);
 
                                     for (int Count = 0; Count < dtTable1.Rows.Count; Count++)
                                     {
@@ -2419,7 +2480,8 @@ namespace QidWorkerRole
                                 DataSet dsconfiguration = genericFunction.GetSitaAddressandMessageVersion(FltNo.Substring(0, 2), "AutoManageCapacityFLP", "AIR", flightOrigin, flightDest, "", string.Empty, string.Empty, false, aircrafttype, flighttype, routetype);
 
                                 string EmailID = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                                clsLog.WriteLogAzure("AutoManageCapacityFLP: ToID: " + EmailID);
+                                // clsLog.WriteLogAzure("AutoManageCapacityFLP: ToID: " + EmailID);
+                                 _logger.LogInformation("AutoManageCapacityFLP: ToID: {0}" , EmailID);
 
                                 //clsLog.WriteLogAzure("AutoManageCapacityFLP: sMailSubject: " + sMailSubject.Length.ToString()
                                 //    + ":: sMailBody: " + sMailBody.Length.ToString()
@@ -2449,8 +2511,10 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("DumpInterfaceInformation: Exception");
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure("DumpInterfaceInformation: Exception");
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError("DumpInterfaceInformation: Exception");
+                _logger.LogError(ex, "Error on SendManageCapacityFlightLoadPlan"); //(ex);
             }
             //finally
             //{
@@ -2864,7 +2928,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on SendFlightLoadPlan");
             }
             //finally
             //{
@@ -2878,12 +2943,15 @@ namespace QidWorkerRole
 
         public async Task UpdateULDStock()
         {
-            clsLog.WriteLogAzure("UpdateULDStock()");
+            // clsLog.WriteLogAzure("UpdateULDStock()");
+             _logger.LogInformation("UpdateULDStock()");
+
             try
             {
                 Task<IReadOnlyList<ServiceBusReceivedMessage>> myTask = ReceiveMessagesAsync();
 
-                clsLog.WriteLogAzure("Start Foreach loop");
+                // clsLog.WriteLogAzure("Start Foreach loop");
+                 _logger.LogInformation("Start Foreach loop");
                 foreach (ServiceBusReceivedMessage receivedMessage in myTask.Result)
                 {
                     GenericFunction generic = new GenericFunction();
@@ -2907,7 +2975,8 @@ namespace QidWorkerRole
                     dtULDDetails.Columns.Add("subUserName", typeof(string));
 
                     json = receivedMessage.Body.ToString();
-                    clsLog.WriteLogAzure("Json :" + json);
+                    // clsLog.WriteLogAzure("Json :" + json);
+                    _logger.LogInformation("Json : {json}" , json);
 
                     if (json.Trim() != string.Empty)
                     {
@@ -2963,28 +3032,33 @@ namespace QidWorkerRole
                                 {
                                     status = "Failed";
                                     uldIdentifier = "Incomplete Info";
-                                    clsLog.WriteLogAzure("Failed to update ULD Info : Incomplite Info");
+                                    // clsLog.WriteLogAzure("Failed to update ULD Info : Incomplite Info");
+                                    _logger.LogWarning("Failed to update ULD Info : Incomplite Info");
                                     dtULDDetails = null;
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure("Failed to update ULD Info " + ex.Message);
+                            // clsLog.WriteLogAzure("Failed to update ULD Info " + ex.Message);
+                           _logger.LogError("Failed to update ULD Info " + ex.Message);
                             status = "Failed";
                         }
                         generic.SaveIncomingMessageInDatabase(uldIdentifier, json, "Service Bus", "", DateTime.UtcNow, DateTime.UtcNow, "ULD Info", status, "AZSRV BUS");
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("No Json Data Found ");
+                        // clsLog.WriteLogAzure("No Json Data Found ");
+                        _logger.LogWarning("No Json Data Found ");
                     }
                 }
-                clsLog.WriteLogAzure("\r\n");
+                // clsLog.WriteLogAzure("\r\n");
+               _logger.LogInformation("\r\n");
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on UpdateULDStock");
             }
         }
 
@@ -2995,10 +3069,14 @@ namespace QidWorkerRole
             string Receive_Mode = ConfigurationManager.AppSettings["IsPeekLock"].ToString();
             try
             {
-                clsLog.WriteLogAzure("connectionString: " + connectionString);
-                clsLog.WriteLogAzure("queueName: " + queueName);
+                // clsLog.WriteLogAzure("connectionString: " + connectionString);
+                // clsLog.WriteLogAzure("queueName: " + queueName);
 
-                clsLog.WriteLogAzure("Initializing connection");
+                // clsLog.WriteLogAzure("Initializing connection");
+                 _staticLogger.LogInformation("connectionString: {0}" , connectionString);
+                 _staticLogger.LogInformation("queueName: {0}" , queueName);
+
+                 _staticLogger.LogInformation("Initializing connection");
                 var client = new ServiceBusClient(connectionString);
 
                 #region Send
@@ -3020,24 +3098,36 @@ namespace QidWorkerRole
 
                 #region Receive
                 // create a receiver that we can use to receive the message
-                clsLog.WriteLogAzure("Creating receiver");
+                // clsLog.WriteLogAzure("Creating receiver");
+                _staticLogger.LogInformation("Creating receiver");
                 ServiceBusReceiverOptions sbro = new ServiceBusReceiverOptions();
                 sbro.ReceiveMode = Receive_Mode.ToUpper() == "TRUE" ? ServiceBusReceiveMode.PeekLock : ServiceBusReceiveMode.ReceiveAndDelete;
                 //sbro.ReceiveMode = ServiceBusReceiveMode.PeekLock;
 
                 ServiceBusReceiver receiver = client.CreateReceiver(queueName, "", sbro);
-                clsLog.WriteLogAzure("Receiver created");
+                // clsLog.WriteLogAzure("Receiver created");
 
-                clsLog.WriteLogAzure("receiver.PrefetchCount: " + Convert.ToString(receiver.PrefetchCount));
-                clsLog.WriteLogAzure("receiver.IsClosed: " + Convert.ToString(receiver.IsClosed));
-                clsLog.WriteLogAzure("receiver.ReceiveMode: " + Convert.ToString(receiver.ReceiveMode));
-                clsLog.WriteLogAzure("receiver.EntityPath: " + Convert.ToString(receiver.EntityPath));
-                clsLog.WriteLogAzure("receiver.FullyQualifiedNamespace: " + Convert.ToString(receiver.FullyQualifiedNamespace));
+                // clsLog.WriteLogAzure("receiver.PrefetchCount: " + Convert.ToString(receiver.PrefetchCount));
+                // clsLog.WriteLogAzure("receiver.IsClosed: " + Convert.ToString(receiver.IsClosed));
+                // clsLog.WriteLogAzure("receiver.ReceiveMode: " + Convert.ToString(receiver.ReceiveMode));
+                // clsLog.WriteLogAzure("receiver.EntityPath: " + Convert.ToString(receiver.EntityPath));
+                // clsLog.WriteLogAzure("receiver.FullyQualifiedNamespace: " + Convert.ToString(receiver.FullyQualifiedNamespace));
+
+                // // the received message is a different type as it contains some service set properties
+                // clsLog.WriteLogAzure("Receive message");
+                _staticLogger.LogInformation("Receiver created");
+
+                _staticLogger.LogInformation("receiver.PrefetchCount: {0}" , (receiver.PrefetchCount));
+                _staticLogger.LogInformation("receiver.IsClosed: {0}" ,(receiver.IsClosed));
+                _staticLogger.LogInformation("receiver.ReceiveMode: {0}" ,(receiver.ReceiveMode));
+                _staticLogger.LogInformation("receiver.EntityPath: {0}" ,(receiver.EntityPath));
+                _staticLogger.LogInformation("receiver.FullyQualifiedNamespace: {0}",(receiver.FullyQualifiedNamespace));
 
                 // the received message is a different type as it contains some service set properties
-                clsLog.WriteLogAzure("Receive message");
+                _staticLogger.LogInformation("Receive message");
                 IReadOnlyList<ServiceBusReceivedMessage> receivedMessages = await receiver.ReceiveMessagesAsync(10, TimeSpan.FromSeconds(10));
-                clsLog.WriteLogAzure($"Received {receivedMessages.Count} from the queue {queueName} ");
+                // clsLog.WriteLogAzure($"Received {receivedMessages.Count} from the queue {queueName} ");
+                _staticLogger.LogInformation($"Received {receivedMessages.Count} from the queue {queueName} ");
 
                 #endregion Receive
 
@@ -3045,7 +3135,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _staticLogger.LogError(ex, "Error on ReceiveMessagesAsync");
                 return null;
             }
         }
@@ -3059,7 +3150,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -3126,7 +3218,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on FTPListener");
             }
         }
 
@@ -3139,7 +3232,8 @@ namespace QidWorkerRole
             GenericFunction genericFunction = new GenericFunction();
             try
             {
-                clsLog.WriteLogAzure("DB Log Snapshot For Performance Monitor ");
+                // clsLog.WriteLogAzure("DB Log Snapshot For Performance Monitor ");
+                _logger.LogInformation("DB Log Snapshot For Performance Monitor");
                 #region LOGDBSnapshot
                 try
                 {
@@ -3151,14 +3245,16 @@ namespace QidWorkerRole
                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("sp_WHO3Logging");
                         if (dbRes)
                         {
-                            clsLog.WriteLogAzure("DB Log Snapshot created for Performance Monitor @" + DateTime.Now.ToString());
+                            // clsLog.WriteLogAzure("DB Log Snapshot created for Performance Monitor @" + DateTime.Now.ToString());
+                             _logger.LogInformation($"DB Log Snapshot created for Performance Monitor @{DateTime.Now.ToString()}" );
                         }
                     }
 
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on LOGODBSnapshot");
                 }
                 //finally
                 //{
@@ -3170,7 +3266,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on LOGDBSnapshot");
             }
         }
 
@@ -3190,7 +3287,8 @@ namespace QidWorkerRole
 
                 catch (MailServerException ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, "Error on ReceiveMail_POP");
                     return;
                 }
 
@@ -3235,7 +3333,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                           _logger.LogError(ex, "Error on ReceiveMail_POP");
                         }
                         //Read Meassage Data and store in the string
                         try
@@ -3247,7 +3346,9 @@ namespace QidWorkerRole
                             }
                             else
                             {
-                                clsLog.WriteLogAzure("Mail body is blank.Mail came from " + EmailFrom);
+                                // clsLog.WriteLogAzure("Mail body is blank.Mail came from " + EmailFrom);
+                                 _logger.LogInformation("Mail body is blank.Mail came from {0}" , EmailFrom);
+
                                 ReceivedString = "Mail body is blank";
                                 popClient.Delete(message);
                                 continue;
@@ -3255,7 +3356,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ReceiveMail_POP");
                             ReceivedString = "Message not in Plain Text format.";
                             popClient.Delete(message);
                             continue;
@@ -3473,7 +3575,8 @@ namespace QidWorkerRole
 
                         if (await StoreIROPSEmail(EmailSubject, ReceivedString.ToUpper(), EmailFrom, EmailTo, DateTime.Now, DateTime.Now, FormatName == "" ? EmailSubject : FormatName, "ACTIVE", "EMAIL"))
                         {
-                            clsLog.WriteLogAzure("Email Saved");
+                            // clsLog.WriteLogAzure("Email Saved");
+                             _logger.LogInformation("Email Saved");
                         }
                         popClient.Delete(message);
 
@@ -3481,7 +3584,8 @@ namespace QidWorkerRole
                     }
                     catch (MailServerException ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                         _logger.LogError(ex, "Error on RecieveMail_Pop");
                     }
                 }
                 popClient.Disconnect();
@@ -3489,7 +3593,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 popClient.Disconnect();
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                 _logger.LogError(ex, "Error on RecieveMail_Pop");
             }
         }
 
@@ -3526,7 +3631,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on GetMessageBodyData");
             }
             return msg;
         }
@@ -3641,15 +3747,18 @@ namespace QidWorkerRole
             }
             catch (MailServerException ex)
             {
-                Console.WriteLine("Server Respond: {0}", ex.Message);
+                // Console.WriteLine("Server Respond: {0}", ex.Message);
+                _logger.LogError("Server Respond: {0}", ex.Message);
             }
             catch (System.Net.Sockets.SocketException ex)
             {
-                Console.WriteLine("Socket Error: {0}", ex.Message);
+                // Console.WriteLine("Socket Error: {0}", ex.Message);
+                _logger.LogError("Socket Error: {0}", ex.Message);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ReceiveMail_IMAP");
             }
         }
 
@@ -3769,19 +3878,24 @@ namespace QidWorkerRole
                             dtRec = DateTime.ParseExact(recievedDate, "dd MMM yyyy HH:mm:ss", null);
                             dtSend = dtRec;
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                        catch (Exception ex) {
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                         }
 
                         // string status = "Active";
                         try
                         {
                             if (await StoreIROPSEmail(Subject.ToUpper(), _receivedString.ToUpper(), fromEmail, toEmail, dtRec, dtSend, MessageType == "" ? Subject : MessageType, status, "EMAIL"))
                             {
-                                clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                // clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                _logger.LogInformation($"Email {i + 1}  Saved");
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
 
                         try
@@ -3790,7 +3904,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                     }
                     catch (Exception ex)
@@ -3807,7 +3922,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception exp)
                         {
-                            clsLog.WriteLogAzure(exp);
+                            // clsLog.WriteLogAzure(exp);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                         if (ex.Message.Trim().ToUpper() == "COULD NOT FIND ANY RECOGNIZABLE DIGITS.")
                         {
@@ -3824,16 +3940,19 @@ namespace QidWorkerRole
                             fromEmail = imap.GetFromByUid(arrUID[i]).ToString();
                             fromEmail = fromEmail.Replace("<", "").Replace(">", "");
                             if (await StoreIROPSEmail(subject, _receivedString.ToUpper().Substring(0, 2000), fromEmail, "", dtRec, dtSend, "Unsupported message", "Processed", "EMAIL"))
-                                clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                // clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                _logger.LogError($"Email {i + 1} Saved");
                             imap.Delete(arrUID[i]);
                         }
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -3842,7 +3961,8 @@ namespace QidWorkerRole
             bool flag = false;
             try
             {
-                clsLog.WriteLogAzure("StoreMail to Db: " + (subject.Trim().Length > 55 ? subject.Substring(0, 50) : subject.Trim()));
+                // clsLog.WriteLogAzure("StoreMail to Db: " + (subject.Trim().Length > 55 ? subject.Substring(0, 50) : subject.Trim()));
+                _logger.LogInformation("StoreMail to Db: {0}" , (subject.Trim().Length > 55 ? subject.Substring(0, 50) : subject.Trim()));
 
                 //SQLServer db = new SQLServer(); ;
                 //string[] param = { "subject", "body", "fromId", "toId", "recievedOn", "sendOn", "type", "status", "CommunicationType" };
@@ -3870,7 +3990,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on StoreIROPSEmail.");
                 flag = false;
             }
             return flag;
@@ -4030,7 +4151,8 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // Log exception (preserving original behavior)
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
 
                     // Fallback: Use full URL or original string as blob URI
                     BlobClient blobClient = containerClient.GetBlobClient(str);
@@ -4041,7 +4163,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -4059,7 +4182,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -4168,7 +4292,8 @@ namespace QidWorkerRole
 
         public async Task SendMail()
         {
-            clsLog.WriteLogAzure("In SendMail()");
+            // clsLog.WriteLogAzure("In SendMail()");
+            _logger.LogInformation("In SendMail()");
             try
             {
                 //GenericFunction genericFunction = new GenericFunction();
@@ -4193,13 +4318,15 @@ namespace QidWorkerRole
 
                     if (ds != null)
                     {
-                        clsLog.WriteLogAzure("ds != null");
+                        // clsLog.WriteLogAzure("ds != null");
+                        _logger.LogInformation("ds != null");
 
                         if (ds.Tables != null && ds.Tables.Count > 0)
                         {
                             if (ds.Tables[0].Rows.Count > 0)
                             {
-                                clsLog.WriteLogAzure("Outgoing Mail Row Count" + ds.Tables[0].Rows.Count.ToString());
+                                // clsLog.WriteLogAzure("Outgoing Mail Row Count" + ds.Tables[0].Rows.Count.ToString());
+                                _logger.LogInformation("Outgoing Mail Row Count {0}", ds.Tables[0].Rows.Count);
                                 isOn = true;
                                 bool isMessageSent = false;
                                 bool isFTPUploadSuccessfully = true;
@@ -4223,7 +4350,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
 
                                 string sentadd = dr[4].ToString().Trim(',');
@@ -4320,7 +4448,8 @@ namespace QidWorkerRole
                                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                             if (dbRes)
                                             {
-                                                clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                                // clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                                _logger.LogInformation("uploaded on ftp successfully to: {0}" + dr[0]);
                                             }
 
                                         }
@@ -4335,7 +4464,8 @@ namespace QidWorkerRole
                                 }
                                 #endregion
 
-                                clsLog.WriteLogAzure("msgCommType-" + msgCommType);
+                                // clsLog.WriteLogAzure("msgCommType-" + msgCommType);
+                                _logger.LogInformation("msgCommType- {0}", msgCommType);
 
                                 #region Email
                                 if ((msgCommType.ToUpper() == "EMAIL" || msgCommType.ToUpper() == "ALL") && (f_SendOutgoingMail == true))
@@ -4386,7 +4516,9 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure("Exception in sending SendEmailOutSendgrid" + ex); success = false;
+                                                // clsLog.WriteLogAzure("Exception in sending SendEmailOutSendgrid" + ex); 
+                                                _logger.LogError(ex, "Exception in sending SendEmailOutSendgrid");
+                                                success = false;
                                             }
                                             if (success)
                                             {
@@ -4407,7 +4539,8 @@ namespace QidWorkerRole
                                                 var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                 if (dbRes)
                                                 {
-                                                    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                    _logger.LogInformation("Email Sent successfully to: {0}", dr[0]);
                                                 }
                                             }
                                             else
@@ -4427,7 +4560,9 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure("Exception in sending SendEmailOutSendgrid" + ex); success = false;
+                                                // clsLog.WriteLogAzure("Exception in sending SendEmailOutSendgrid" + ex); 
+                                                _logger.LogError(ex, "Exception in sending SendEmailOutSendgrid");
+                                                success = false;
                                             }
                                             if (success)
                                             {
@@ -4448,7 +4583,8 @@ namespace QidWorkerRole
                                                 var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                 if (dbRes)
                                                 {
-                                                    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                    _logger.LogInformation("Email Sent successfully to: {0}", dr[0]);
                                                 }
                                             }
                                             else
@@ -4465,10 +4601,12 @@ namespace QidWorkerRole
                                                 if (ds.Tables[1].Rows[0][0].ToString().ToUpper() != "NA")
                                                 {
                                                     #region Mail with attachment
-                                                    clsLog.WriteLogAzure("Inside Table 1 for MessageID :" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("Inside Table 1 for MessageID :" + dr[0].ToString());
+                                                    _logger.LogInformation("Inside Table 1 for MessageID: {0}", dr[0].ToString());
                                                     if (ds.Tables[1].Rows.Count > 0)
                                                     {
-                                                        clsLog.WriteLogAzure("Inside Table 1 Rows for MessageID :" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("Inside Table 1 Rows for MessageID :" + dr[0].ToString());
+                                                        _logger.LogInformation("Inside Table 1 Rows for MessageID: {0}", dr[0].ToString());
                                                         MemoryStream[] Attachments = new MemoryStream[0];
                                                         string[] Extensions = new string[0];
                                                         string[] AttachmentName = new string[0];
@@ -4488,7 +4626,8 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception)
                                                             {
-                                                                clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                                // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                                _logger.LogError("Error in EmailOut for SRNO:: {0}", dr[0]);
                                                             }
 
                                                         }
@@ -4508,7 +4647,8 @@ namespace QidWorkerRole
                                                                 //    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
 
                                                                 isMessageSent = true;
-                                                                clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
+                                                                // clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
+                                                                _logger.LogInformation("After Sending Mail with Attachment for MessageID : {0}", dr[0]);
                                                                 SqlParameter[] parameters =
                                                                 {
                                                                     new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dr[0].ToString()) },
@@ -4517,13 +4657,15 @@ namespace QidWorkerRole
                                                                 var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                                 if (dbRes)
                                                                 {
-                                                                    clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                                    // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                                    _logger.LogInformation("Email Sent successfully to: {0}", dr[0]);
                                                                 }
                                                             }
                                                             else
                                                             {
                                                                 isMessageSent = false;
-                                                                clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                                // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                                _logger.LogWarning("Error in EmailOut for SRNO:: {0}", dr[0]);
 
                                                             }
                                                         }
@@ -4557,14 +4699,16 @@ namespace QidWorkerRole
                                                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                             if (dbRes)
                                                             {
-                                                                clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                                // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                                _logger.LogInformation("Email Sent successfully to: {0}", dr[0]);
                                                             }
 
                                                         }
                                                         else
                                                         {
                                                             isMessageSent = false;
-                                                            clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                            // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                            _logger.LogWarning("Error in EmailOut for SRNO:: {0}", dr[0]);
 
                                                         }
                                                     }
@@ -4597,13 +4741,15 @@ namespace QidWorkerRole
                                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                         if (dbRes)
                                                         {
-                                                            clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                            // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                            _logger.LogInformation("Email Sent successfully to: {0}", dr[0]);
                                                         }
                                                     }
                                                     else
                                                     {
                                                         isMessageSent = false;
-                                                        clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                        _logger.LogWarning("Error in EmailOut for SRNO:: {0}", dr[0]);
 
                                                     }
                                                 }
@@ -4704,7 +4850,8 @@ namespace QidWorkerRole
                                                 var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                 if (dbRes)
                                                 {
-                                                    clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                    _logger.LogInformation($"File uploaded on sftp successfully to:{dr[0]}");
                                                 }
                                             }
                                             else
@@ -4791,7 +4938,8 @@ namespace QidWorkerRole
                                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                             if (dbRes)
                                             {
-                                                clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                // clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+                                                _logger.LogInformation($"File uploaded on sftp successfully to:{dr[0]}");
                                             }
 
                                         }
@@ -4826,7 +4974,8 @@ namespace QidWorkerRole
                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                         if (dbRes)
                                         {
-                                            clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dr[0].ToString());
+                                            // clsLog.WriteLogAzure("uploaded on Azure Share Drive successfully to:" + dr[0].ToString());
+                                            _logger.LogInformation($"uploaded on Azure Share Drive successfully to:{dr[0]}");
                                         }
 
                                     }
@@ -4888,13 +5037,15 @@ namespace QidWorkerRole
                                                     var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                     if (dbRes)
                                                     {
-                                                        clsLog.WriteLogAzure("MQ Message Sent successfully to:" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("MQ Message Sent successfully to:" + dr[0].ToString());
+                                                        _logger.LogInformation($"MQ Message Sent successfully to:{dr[0]}");
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    clsLog.WriteLogAzure("Fail to send MQMessage : ErrorMessage :" + ErrorMessage);
-                                                    Console.WriteLine("Fail to send MQMessage : ErrorMessage :" + ErrorMessage);
+                                                    // clsLog.WriteLogAzure("Fail to send MQMessage : ErrorMessage :" + ErrorMessage);
+                                                    // Console.WriteLine("Fail to send MQMessage : ErrorMessage :" + ErrorMessage);
+                                                    _logger.LogWarning("Fail to send MQMessage : ErrorMessage : {0}", ErrorMessage);
                                                 }
                                                 //TO DO : below statement is to be removed
                                                 //Console.ReadLine();
@@ -4902,7 +5053,8 @@ namespace QidWorkerRole
                                             }
                                             else
                                             {
-                                                clsLog.WriteLogAzure("Info : In(SendMail() method):Insufficient MQ Message Configuration");
+                                                // clsLog.WriteLogAzure("Info : In(SendMail() method):Insufficient MQ Message Configuration");
+                                                _logger.LogWarning("Info : In(SendMail() method):Insufficient MQ Message Configuration");
                                             }
 
                                         }
@@ -4978,7 +5130,8 @@ namespace QidWorkerRole
                                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                             if (dbRes)
                                             {
-                                                clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                                // clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                                _logger.LogInformation($"uploaded on ftp successfully to:{dr[0].ToString()}");
                                             }
                                         }
                                         else
@@ -5031,7 +5184,8 @@ namespace QidWorkerRole
                                         }
 
                                         SaveMessage("DACCustoms", results, "WebService", "", DateTime.Now, DateTime.Now, messageType, "Active", "WebService", awbNumber, flightNo, flightDate);
-                                        clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
+                                        // clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
+                                        _logger.LogInformation($"Response message for {messageType}: {results}");
 
                                         //isMessageSent = true;
                                         //string[] pname = { "num", "Status" };
@@ -5049,13 +5203,15 @@ namespace QidWorkerRole
                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                         if (dbRes)
                                         {
-                                            clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                            // clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                            _logger.LogInformation($"Message Sent SuccessFully to:{dr[0].ToString()}");
                                         }
                                     }
                                     catch (Exception ex)
                                     {
                                         isMessageSent = false;
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -5099,7 +5255,8 @@ namespace QidWorkerRole
                                         }
 
                                         SaveMessage("DACCustoms", results, "WebService", "", DateTime.Now, DateTime.Now, messageType, "Active", "WebService", awbNumber, flightNo, flightDate);
-                                        clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
+                                        // clsLog.WriteLogAzure("Response message for " + messageType + ": " + results);
+                                        _logger.LogInformation($"Response message for {messageType}: {results}");
 
                                         //isMessageSent = true;
                                         //string[] pname = { "num", "Status" };
@@ -5117,13 +5274,15 @@ namespace QidWorkerRole
                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                         if (dbRes)
                                         {
-                                            clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                            // clsLog.WriteLogAzure("Message Sent SuccessFully to:" + dr[0].ToString());
+                                            _logger.LogInformation($"Message Sent SuccessFully to:{dr[0].ToString()}");
                                         }
                                     }
                                     catch (Exception ex)
                                     {
                                         isMessageSent = false;
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -5154,7 +5313,8 @@ namespace QidWorkerRole
                                     var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                     if (dbRes)
                                     {
-                                        clsLog.WriteLogAzure("Fail to sent email to:" + dr[0].ToString());
+                                        // clsLog.WriteLogAzure("Fail to sent email to:" + dr[0].ToString());
+                                        _logger.LogInformation($"Fail to sent email to:{dr[0]}");
                                     }
 
                                 }
@@ -5165,7 +5325,8 @@ namespace QidWorkerRole
                     {
                         isOn = false;
                     }
-                    clsLog.WriteLogAzure("SendMail While loop : " + isOn.ToString());
+                    // clsLog.WriteLogAzure("SendMail While loop : " + isOn.ToString());
+                    _logger.LogInformation($"SendMail While loop : {isOn}");
 
                 } while (isOn);
 
@@ -5174,9 +5335,11 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
-            clsLog.WriteLogAzure("End SendMail()");
+            // clsLog.WriteLogAzure("End SendMail()");
+            _logger.LogInformation("End SendMail()");
         }
 
 
@@ -5356,7 +5519,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -5415,7 +5579,8 @@ namespace QidWorkerRole
 
                 int filecount = 0;
 
-                clsLog.WriteLogAzure(" File count on FTP " + strFiles.Length);
+                // clsLog.WriteLogAzure(" File count on FTP " + strFiles.Length);
+                _logger.LogInformation(" File count on FTP " + strFiles.Length);
 
                 foreach (string filename in strFiles.OrderBy(x => x))
                 {
@@ -5451,18 +5616,21 @@ namespace QidWorkerRole
                             {
                                 if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                 {
-                                    clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                    // clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                    _logger.LogInformation("FILE Backup Created on FTP:{0}", filename.Replace('/', '-'));
                                 }
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                // clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                _logger.LogError("Error in Saving File:{0}-Error:{1}", filename.Replace('/', '-'), ex.Message);
                             }
 
 
                             if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                             {
-                                clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                // clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                _logger.LogInformation("File Deleted from FTP:{0}", filename);
                             }
                             continue;
                         }
@@ -5470,7 +5638,8 @@ namespace QidWorkerRole
                         {
                             if (!await StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
                             {
-                                clsLog.WriteLogAzure("FTP file not saved:" + filename);
+                                // clsLog.WriteLogAzure("FTP file not saved:" + filename);
+                                _logger.LogWarning("FTP file not saved:{0}", filename);
                             }
 
                             #region SAve the file before delete
@@ -5478,18 +5647,21 @@ namespace QidWorkerRole
                             {
                                 if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                 {
-                                    clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                    // clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                    _logger.LogInformation("FILE Backup Created on FTP:{0}", filename.Replace('/', '-'));
                                 }
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                // clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                _logger.LogError("Error in Saving File:{0}-Error:{1}", filename.Replace('/', '-'), ex.Message);
                             }
                             #endregion
 
                             if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                             {
-                                clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                // clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                _logger.LogInformation("File Deleted from FTP:{0}", filename);
                             }
                         }
                     }
@@ -5497,7 +5669,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -5551,7 +5724,8 @@ namespace QidWorkerRole
 
                     int filecount = 0;
 
-                    clsLog.WriteLogAzure(" File count on FTP " + strFiles.Length);
+                    // clsLog.WriteLogAzure(" File count on FTP " + strFiles.Length);
+                    _logger.LogInformation(" File count on FTP {0}", strFiles.Length);
 
                     foreach (string filename in strFiles.OrderBy(x => x))
                     {
@@ -5588,24 +5762,28 @@ namespace QidWorkerRole
                             {
                                 if (!await StoreIROPSEmail("MSG:" + filename, strData, "FTP", "", dtRec, dtSend, "SITA", status, "FTP"))
                                 {
-                                    clsLog.WriteLogAzure("FTP file not saved:" + filename.Replace('/', '-'));
+                                    // clsLog.WriteLogAzure("FTP file not saved:" + filename.Replace('/', '-'));
+                                    _logger.LogInformation("FTP file not saved:{0}", filename.Replace('/', '-'));
                                 }
                                 #region SAve the file before delete
                                 try
                                 {
                                     if (_ftp.SaveFTP(SIATFTP.Trim('/') + "/BackupMsgs", SITAUser, SITAPWD, filename.Replace('/', '-'), strData, "txt"))
                                     {
-                                        clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                        // clsLog.WriteLogAzure("FILE Backup Created on FTP:" + filename.Replace('/', '-'));
+                                        _logger.LogInformation("FILE Backup Created on FTP:{0}", filename.Replace('/', '-'));
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                    // clsLog.WriteLogAzure("Error in Saving File:" + filename.Replace('/', '-') + "-Error:" + ex.Message);
+                                    _logger.LogError(ex, "Error in Saving File:{0}-Error:{1}", filename.Replace('/', '-'), ex.Message);
                                 }
                                 #endregion
                                 if (_ftp.DeleteFTPFile(ftpFilePath, SITAUser, SITAPWD))
                                 {
-                                    clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                    // clsLog.WriteLogAzure("File Deleted from FTP:" + filename);
+                                    _logger.LogInformation("File Deleted from FTP:{0}", filename);
                                 }
                             }
                         }
@@ -5616,7 +5794,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
         }
@@ -5637,12 +5816,14 @@ namespace QidWorkerRole
                 // You need to select the inbox in order to view the your messages
                 imap.SelectInbox();
 
-                clsLog.WriteLogAzure("Server Connected..[" + DateTime.Now + "]");
+                // clsLog.WriteLogAzure("Server Connected..[" + DateTime.Now + "]");
+                _logger.LogInformation("Server Connected..[{0}]", DateTime.Now);
                 int Count = 0;
                 Count = imap.MailCount();
                 if (Count > 0)
                 {
-                    clsLog.WriteLogAzure("Message Count:" + Count);
+                    // clsLog.WriteLogAzure("Message Count:" + Count);
+                    _logger.LogInformation("Message Count:{0}", Count);
                     for (int i = 0; i < Count; i++)
                     {
                         //try
@@ -5672,18 +5853,21 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                         try
                         {
                             if (await StoreIROPSEmail(Subject, MailBody, fromEmail, toEmail, dtRec, dtSend, Subject, status, "EMAIL"))
                             {
-                                clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                // clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                                _logger.LogInformation("Email {0} Saved", (i + 1));
                             }
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
 
                     }
@@ -5694,15 +5878,18 @@ namespace QidWorkerRole
             catch (MailServerException ep)
             {
                 //Message contains the information returned by mail server
-                Console.WriteLine("Server Respond: {0}", ep.Message);
+                // Console.WriteLine("Server Respond: {0}", ep.Message);
+                _logger.LogError("Server Respond: {0}", ep.Message);
             }
             catch (System.Net.Sockets.SocketException ep)
             {
-                Console.WriteLine("Socket Error: {0}", ep.Message);
+                // Console.WriteLine("Socket Error: {0}", ep.Message);
+                _logger.LogError("Socket Error: {0}", ep.Message);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on RecieveMailfromIMAPServer");
             }
 
 
@@ -5723,7 +5910,8 @@ namespace QidWorkerRole
 
         public async Task ReadFromSFTP()
         {
-            clsLog.WriteLogAzure("In FTPListener() => ReadFromSFTP()");
+            // clsLog.WriteLogAzure("In FTPListener() => ReadFromSFTP()");
+             _logger.LogInformation("In FTPListener() => ReadFromSFTP()");
             try
             {
                 string FTPAddress = string.Empty, UserName = string.Empty, Password = string.Empty, remotePath = string.Empty, localPath = string.Empty
@@ -5766,10 +5954,14 @@ namespace QidWorkerRole
 
                             if (_ftp.SFTPDownload(FTPAddress, remotePath, Path.GetTempPath() + localPath, UserName, Password, fingerPrint, portNumber, ppkLocalFilePath, messageType, archivalPath))
                             {
-                                clsLog.WriteLogAzure("SFTP Downloaded successfully for SFTP Address: " + FTPAddress + " !! RemotePath : " + remotePath);
+                                // clsLog.WriteLogAzure("SFTP Downloaded successfully for SFTP Address: " + FTPAddress + " !! RemotePath : " + remotePath);
+                                 _logger.LogInformation($"SFTP Downloaded successfully for SFTP Address: {FTPAddress} !! RemotePath : {remotePath}");
                             }
                             else
-                            { clsLog.WriteLogAzure("SFTP Download failed for SFTP Address: " + FTPAddress + " !! RemotePath : " + remotePath); }
+                            {
+                                // clsLog.WriteLogAzure("SFTP Download failed for SFTP Address: " + FTPAddress + " !! RemotePath : " + remotePath);
+                                _logger.LogWarning("SFTP Download failed for SFTP Address: {0} !! RemotePath : {1}" , FTPAddress , remotePath);
+                            }
 
                         }
                     }
@@ -5777,7 +5969,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ReadFromSFTP");
             }
         }
 
@@ -5801,7 +5994,8 @@ namespace QidWorkerRole
                         DataSet dsSerialNumber = genericFunction.InsertMasterSummaryLog(0, file.Name, "SSIM", "", 0, 0,
                                                                                         0, "", "", 0, BlobName, containerName,
                                                                                         "", "", "", false);
-                        clsLog.WriteLogAzure(file.Name + " : File uploaded Successfully");
+                        // clsLog.WriteLogAzure(file.Name + " : File uploaded Successfully");
+                        _logger.LogInformation( $"{file.Name} : File uploaded Successfully");
                     }
                 }
                 #endregion
@@ -5835,7 +6029,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on SSIMFTPUpload");
             }
         }
 
@@ -6179,7 +6374,8 @@ namespace QidWorkerRole
 
                     if (!val)
                     {
-                        clsLog.WriteLogAzure("SSIM Updating failed!");
+                        // clsLog.WriteLogAzure("SSIM Updating failed!");
+                         _logger.LogInformation("SSIM Updating failed!");
                         return;
                     }
                 }
@@ -6192,26 +6388,36 @@ namespace QidWorkerRole
 
                 if (dbRes)
                 {
-                    clsLog.WriteLogAzure("Schedule Uploaded Successfully!");
+                    // clsLog.WriteLogAzure("Schedule Uploaded Successfully!");
+                     _logger.LogInformation("Schedule Uploaded Successfully!");
                 }
                 #endregion
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on GetSSIMData");
             }
 
         }
 
         public Stream GenerateStreamFromString(string s)
         {
-            MemoryStream stream = new MemoryStream();
-            StreamWriter writer = new StreamWriter(stream);
-            writer.Write(s);
-            writer.Flush();
-            stream.Position = 0;
-            return stream;
+            try
+            {
+                MemoryStream stream = new MemoryStream();
+                StreamWriter writer = new StreamWriter(stream);
+                writer.Write(s);
+                writer.Flush();
+                stream.Position = 0;
+                return stream;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -6269,14 +6475,16 @@ namespace QidWorkerRole
                                     }
                                     else
                                     {
-                                        clsLog.WriteLogAzure("Fail to save MQMessage : " + DateTime.Now);
+                                        // clsLog.WriteLogAzure("Fail to save MQMessage : " + DateTime.Now);
+                                         _logger.LogWarning("Fail to save MQMessage : {0}" , DateTime.Now);
                                     }
                                 }
                                 mqAdapter.DisposeQueue();
                             }
                             else
                             {
-                                clsLog.WriteLogAzure("Info : In(ReceiveMQMessage() method):Insufficient MQ Message Configuration");
+                                // clsLog.WriteLogAzure("Info : In(ReceiveMQMessage() method):Insufficient MQ Message Configuration");
+                                _logger.LogWarning("Info : In(ReceiveMQMessage() method):Insufficient MQ Message Configuration");
                             }
                         }
                     }
@@ -6286,7 +6494,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error on ReceiveMQMessage");
             }
         }
 
@@ -6334,21 +6543,30 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
         }
         public static string DecodeQuotedPrintables(string input)
         {
-            var occurences = new Regex(@"=[0-9A-H]{2}", RegexOptions.Multiline);
-            var matches = occurences.Matches(input);
-            foreach (Match match in matches)
-            {
-                char hexChar = (char)Convert.ToInt32(match.Groups[0].Value.Substring(1), 16);
-                input = input.Replace(match.Groups[0].Value, hexChar.ToString());
-            }
-            return input.Replace("=\r\n", "");
+           try
+           {
+             var occurences = new Regex(@"=[0-9A-H]{2}", RegexOptions.Multiline);
+             var matches = occurences.Matches(input);
+             foreach (Match match in matches)
+             {
+                 char hexChar = (char)Convert.ToInt32(match.Groups[0].Value.Substring(1), 16);
+                 input = input.Replace(match.Groups[0].Value, hexChar.ToString());
+             }
+             return input.Replace("=\r\n", "");
+           }
+           catch (System.Exception)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
 
@@ -6371,7 +6589,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
         #endregion
@@ -6416,7 +6635,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             MessageFrom = string.Empty;
                         }
 
@@ -6506,7 +6726,8 @@ namespace QidWorkerRole
                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spUpdateMessageStatus", parameters);
                         if (!dbRes)
                         {
-                            clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
+                            // clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
+                            _logger.LogInformation("Error Status Update: {0}" , ds.Tables[0].Rows[row][0]);
                         }
                     }
                 }
@@ -6516,7 +6737,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -6565,7 +6787,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     ishtml = false;
                                 }
 
@@ -6601,7 +6824,8 @@ namespace QidWorkerRole
                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                         if (dbRes)
                                         {
-                                            clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                            // clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dr[0].ToString());
+                                            _logger.LogInformation("uploaded on ftp successfully to: {0}" , dr[0]);
                                         }
                                     }
                                     catch (Exception)
@@ -6623,10 +6847,12 @@ namespace QidWorkerRole
                                             if (ds.Tables.Count > 1 && ds.Tables[1].Rows.Count > 0)
                                             {
                                                 #region Mail with attachment
-                                                clsLog.WriteLogAzure("Inside Table 1 for MessageID :" + dr[0].ToString());
+                                                // clsLog.WriteLogAzure("Inside Table 1 for MessageID :" + dr[0].ToString());
+                                                _logger.LogInformation("Inside Table 1 for MessageID : {0}" , dr[0]);
                                                 if (ds.Tables[1].Rows.Count > 0)
                                                 {
-                                                    clsLog.WriteLogAzure("Inside Table 1 Rows for MessageID :" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("Inside Table 1 Rows for MessageID :" + dr[0].ToString());
+                                                    _logger.LogInformation("Inside Table 1 Rows for MessageID : {0}" , dr[0]);
                                                     MemoryStream[] Attachments = new MemoryStream[0];
                                                     string[] Extensions = new string[0];
                                                     string[] AttachmentName = new string[0];
@@ -6644,13 +6870,15 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex)
                                                         {
-                                                            clsLog.WriteLogAzure(ex);
+                                                            // clsLog.WriteLogAzure(ex);
+                                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                         }
 
                                                     }
                                                     if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions))
                                                     {
-                                                        clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
+                                                        clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID : {0}" , dr[0]);
                                                         //string pname = "num";
                                                         //object pvalue = int.Parse(dr[0].ToString());
                                                         //SqlDbType ptype = SqlDbType.Int;
@@ -6667,12 +6895,14 @@ namespace QidWorkerRole
                                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                         if (dbRes)
                                                         {
-                                                            clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                            // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                           _logger.LogInformation("Email Sent successfully to: {0}" , dr[0]);
                                                         }
                                                     }
                                                     else
                                                     {
-                                                        clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                        _logger.LogWarning("Error in EmailOut for SRNO::{0}" , dr[0]);
 
                                                     }
 
@@ -6701,12 +6931,14 @@ namespace QidWorkerRole
                                                     var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                                     if (dbRes)
                                                     {
-                                                        clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                        // clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
+                                                        _logger.LogInformation("Email Sent successfully to: {0}" , dr[0]);
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                    // clsLog.WriteLogAzure("Error in EmailOut for SRNO::" + dr[0].ToString());
+                                                    _logger.LogWarning("Error in EmailOut for SRNO:: {0}" , dr[0]);
 
                                                 }
                                                 #endregion send email
@@ -6740,12 +6972,14 @@ namespace QidWorkerRole
                                         var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spMailSent", parameters);
                                         if (dbRes)
                                         {
-                                            clsLog.WriteLogAzure("Fail to sent Email to:" + dr[0].ToString());
+                                            // clsLog.WriteLogAzure("Fail to sent Email to:" + dr[0].ToString());
+                                            _logger.LogInformation("Fail to sent Email to:{0}" , dr[0]);
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 else
@@ -6769,7 +7003,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -6786,7 +7021,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return BlobKey;
         }
@@ -6803,7 +7039,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return BlobName;
         }
@@ -6849,7 +7086,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -6877,10 +7115,12 @@ namespace QidWorkerRole
                     };
                     dsFlightsDetail = await _readWriteDao.SelectRecords("Messaging.uspGetFlightsForFBL", sqlParameter);
 
-                    clsLog.WriteLogAzure("FBLTOSFTP BBB");
+                    // clsLog.WriteLogAzure("FBLTOSFTP BBB");
+                    _logger.LogInformation("FBLTOSFTP BBB");
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        // clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        _logger.LogInformation("Total flights for FBL: {0}" , dsFlightsDetail.Tables[0].Rows.Count);
                         FBLMessageProcessor fblMessageProcessor = new FBLMessageProcessor();
 
                         for (int i = 0; i < dsFlightsDetail.Tables[0].Rows.Count; i++)
@@ -6914,7 +7154,8 @@ namespace QidWorkerRole
 
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        // clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        _logger.LogInformation("Total flights for FBL: {0}" , dsFlightsDetail.Tables[0].Rows.Count);
                         FBLMessageProcessor fblMessageProcessor = new FBLMessageProcessor();
 
                         for (int i = 0; i < dsFlightsDetail.Tables[0].Rows.Count; i++)
@@ -6951,7 +7192,8 @@ namespace QidWorkerRole
 
                     if (dsFlightsDetail != null && dsFlightsDetail.Tables.Count > 0 && dsFlightsDetail.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        // clsLog.WriteLogAzure("Total flights for FBL: " + dsFlightsDetail.Tables[0].Rows.Count.ToString());
+                        _logger.LogInformation("Total flights for FBL: {0}" , dsFlightsDetail.Tables[0].Rows.Count);
                         FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
                         FHLMessageProcessor fhlMessageProcessor = new FHLMessageProcessor();
 
@@ -6981,7 +7223,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -7002,7 +7245,8 @@ namespace QidWorkerRole
                         if (dsXFSUData.Tables.Count > 0)
                         {
                             string Toid = "";
-                            clsLog.WriteLogAzure("XFSU Messages Count: " + dsXFSUData.Tables.Count.ToString());
+                            // clsLog.WriteLogAzure("XFSU Messages Count: " + dsXFSUData.Tables.Count.ToString());
+                            _logger.LogInformation("XFSU Messages Count: {0}" , dsXFSUData.Tables.Count);
                             if (dsXFSUData.Tables[0].Rows.Count > 0 && dsXFSUData.Tables[1].Rows.Count > 0)
                             {
                                 XFSUMessageProcessor fsuMessage = new XFSUMessageProcessor();
@@ -7039,21 +7283,25 @@ namespace QidWorkerRole
 
                                         if (SitaMessageHeader.Length > 0)
                                         {
-                                            clsLog.WriteLogAzure(" AutoSendXFSUMessages SitaMessageHeader send ");
+                                            // clsLog.WriteLogAzure(" AutoSendXFSUMessages SitaMessageHeader send ");
+                                            _logger.LogInformation(" AutoSendXFSUMessages SitaMessageHeader send ");
 
                                             flag = genericFunction.SaveMessageOutBox("xFSU/" + dsXFSUData.Tables[0].Rows[i]["MessageType"].ToString(), Convert.ToString(xfsuMessage), ""
                                                 , Convert.ToString(SitaMessageHeader.ToString()), "", "", "", "",
                                                       dsXFSUData.Tables[0].Rows[i]["AWBPrefix"].ToString() + "-" + dsXFSUData.Tables[0].Rows[i]["AWBNo"].ToString(), "Auto", dsXFSUData.Tables[0].Rows[i]["MessageType"].ToString());
-                                            clsLog.WriteLogAzure(" AutoSendXFSUMessages SitaMessageHeader send end ");
+                                            // clsLog.WriteLogAzure(" AutoSendXFSUMessages SitaMessageHeader send end ");
+                                            _logger.LogInformation(" AutoSendXFSUMessages SitaMessageHeader send end ");
                                         }
                                         if (strEmailid != "")
                                         {
-                                            clsLog.WriteLogAzure(" AutoSendXFSUMessages send " + strEmailid);
+                                            // clsLog.WriteLogAzure(" AutoSendXFSUMessages send " + strEmailid);
+                                            _logger.LogInformation(" AutoSendXFSUMessages send {0}" , strEmailid);
 
                                             flag = genericFunction.SaveMessageOutBox("xFSU/" + dsXFSUData.Tables[0].Rows[i]["MessageType"].ToString(), Convert.ToString(xfsuMessage), "", strEmailid, "", "", "", "",
                                                   dsXFSUData.Tables[0].Rows[i]["AWBPrefix"].ToString() + "-" + dsXFSUData.Tables[0].Rows[i]["AWBNo"].ToString(), "Auto", dsXFSUData.Tables[0].Rows[i]["MessageType"].ToString());
 
-                                            clsLog.WriteLogAzure(" AutoSendXFSUMessages send end " + strEmailid);
+                                            // clsLog.WriteLogAzure(" AutoSendXFSUMessages send end " + strEmailid);
+                                            _logger.LogInformation(" AutoSendXFSUMessages send end {0}" , strEmailid);
                                         }
                                         if (lblMsgCommType == "ServiceBus")
                                         {
@@ -7092,7 +7340,8 @@ namespace QidWorkerRole
                             }
                             else
                             {
-                                clsLog.WriteLogAzure(" AutoSendXFSUMessages No record ");
+                                // clsLog.WriteLogAzure(" AutoSendXFSUMessages No record ");
+                                _logger.LogWarning(" AutoSendXFSUMessages No record ");
                             }
                         }
                     }
@@ -7100,7 +7349,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -7142,21 +7392,29 @@ namespace QidWorkerRole
 
         private string RemoveBinaryData(string orgmsg)
         {
-            string msg = string.Empty;
-            if (orgmsg != null && orgmsg.Length > 0)
-            {
-                StringBuilder sb = new StringBuilder(orgmsg.Length);
-                foreach (char c in orgmsg)
-                {
-
-                    if (c < 128 && c > 9)
-                    {
-                        sb.Append(c);
-                    }
-                }
-                orgmsg = sb.ToString();
-            }
-            return msg = orgmsg;
+           try
+           {
+             string msg = string.Empty;
+             if (orgmsg != null && orgmsg.Length > 0)
+             {
+                 StringBuilder sb = new StringBuilder(orgmsg.Length);
+                 foreach (char c in orgmsg)
+                 {
+ 
+                     if (c < 128 && c > 9)
+                     {
+                         sb.Append(c);
+                     }
+                 }
+                 orgmsg = sb.ToString();
+             }
+             return msg = orgmsg;
+           }
+           catch (System.Exception)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
         private string RemoveSITAHeader(string msg)
@@ -7215,7 +7473,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 retstr = msg;
             }
             return retstr;
@@ -7226,26 +7485,34 @@ namespace QidWorkerRole
         /// </summary>
         private static string ExtractFromString(string text, string start, string end)
         {
-            List<string> Matched = new List<string>();
-            int index_start = 0, index_end = 0;
-            bool exit = false;
-            while (!exit)
+            try
             {
-                index_start = text.IndexOf(start);
-                if (end == "" && end.Length < 1)
-                    index_end = text.Length;//- index_start;
-                else
-                    index_end = text.IndexOf(end);
-
-                if (index_start != -1 && index_end != -1)
+                List<string> Matched = new List<string>();
+                int index_start = 0, index_end = 0;
+                bool exit = false;
+                while (!exit)
                 {
-                    Matched.Add(text.Substring(index_start + start.Length, index_end - index_start - start.Length));
-                    text = text.Substring(index_end + end.Length);
+                    index_start = text.IndexOf(start);
+                    if (end == "" && end.Length < 1)
+                        index_end = text.Length;//- index_start;
+                    else
+                        index_end = text.IndexOf(end);
+    
+                    if (index_start != -1 && index_end != -1)
+                    {
+                        Matched.Add(text.Substring(index_start + start.Length, index_end - index_start - start.Length));
+                        text = text.Substring(index_end + end.Length);
+                    }
+                    else
+                        exit = true;
                 }
-                else
-                    exit = true;
+                return start + Matched[0] + Environment.NewLine + end;
             }
-            return start + Matched[0] + Environment.NewLine + end;
+            catch (System.Exception)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
         }
 
         private static string ReplaceBlankSpaces(string Message)
@@ -7283,6 +7550,7 @@ namespace QidWorkerRole
             catch (Exception)
             {
                 Message = val;
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return Message;
         }
@@ -7303,7 +7571,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -7327,16 +7596,19 @@ namespace QidWorkerRole
                         AWBNo = dr[1].ToString();
                         Station = dr[2].ToString();
                         EmailID = dr[3].ToString();
-                        clsLog.WriteLogAzure("Inserting Into OutBox @ " + DateTime.Now);
+                        // clsLog.WriteLogAzure("Inserting Into OutBox @ " + DateTime.Now);
+                        _logger.LogInformation("Inserting Into OutBox @ {0}" , DateTime.Now);
                         flag = InsertIntoOutBox(AWBPrefix, AWBNo, Station, EmailID);
-                        clsLog.WriteLogAzure("Inserting Result: " + flag.ToString());
+                        // clsLog.WriteLogAzure("Inserting Result: " + flag.ToString());
+                        _logger.LogInformation("Inserting Result: {0}" , flag);
 
                     }
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -7359,7 +7631,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -7376,7 +7649,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -7445,7 +7719,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -7499,7 +7774,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -7566,7 +7842,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -7581,110 +7858,120 @@ namespace QidWorkerRole
         /// </summary>
         private async Task SendFlightControlListReport()
         {
-            DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
-            //SQLServer objSQL = new SQLServer();
-
-            DataSet? DsEmails = null;
-
             try
             {
-                //DsEmails = objSQL.SelectRecords("USPGetEmailIdsForFltCnt");
-                DsEmails = await _readWriteDao.SelectRecords("USPGetEmailIdsForFltCnt");
-
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            if (DsEmails != null)
-            {
-                if (DsEmails.Tables.Count > 0)
+                DateTime UTCDatetime = DateTime.UtcNow.AddHours(+8); //ARS time;
+                //SQLServer objSQL = new SQLServer();
+    
+                DataSet? DsEmails = null;
+    
+                try
                 {
-                    if (DsEmails.Tables[0] != null && DsEmails.Tables[0].Rows.Count > 0)
+                    //DsEmails = objSQL.SelectRecords("USPGetEmailIdsForFltCnt");
+                    DsEmails = await _readWriteDao.SelectRecords("USPGetEmailIdsForFltCnt");
+    
+                }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
+                if (DsEmails != null)
+                {
+                    if (DsEmails.Tables.Count > 0)
                     {
-                        int length = DsEmails.Tables[0].Rows.Count;
-
-                        for (int i = 0; i < length; i++)
+                        if (DsEmails.Tables[0] != null && DsEmails.Tables[0].Rows.Count > 0)
                         {
-
-                            try
+                            int length = DsEmails.Tables[0].Rows.Count;
+    
+                            for (int i = 0; i < length; i++)
                             {
-                                string Source = Convert.ToString(DsEmails.Tables[0].Rows[i]["Source"]);
-                                string Dest = Convert.ToString(DsEmails.Tables[0].Rows[i]["Dest"]);
-                                string FlightType = Convert.ToString(DsEmails.Tables[0].Rows[i]["IsFlighttype"]);
-
-                                short IsUpdate = 0;
-
-                                if (i == length - 1)
+    
+                                try
                                 {
-                                    IsUpdate = 1;
-                                }
-                                DataSet? ds = null;
-
-
-                                //SQLServer sqlServer = new SQLServer();
-                                //ds = sqlServer.SelectRecords("USPSendFlightControlData", sqlParameters);
-
-                                SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@Source", Source), new SqlParameter("@Dest", Dest), new SqlParameter("@IsUpdate", IsUpdate), new SqlParameter("@IsFlighttype", FlightType) };
-                                ds = await _readWriteDao.SelectRecords("USPSendFlightControlData", sqlParameters);
-
-                                if (ds != null)
-                                {
-                                    if (ds.Tables.Count > 0)
+                                    string Source = Convert.ToString(DsEmails.Tables[0].Rows[i]["Source"]);
+                                    string Dest = Convert.ToString(DsEmails.Tables[0].Rows[i]["Dest"]);
+                                    string FlightType = Convert.ToString(DsEmails.Tables[0].Rows[i]["IsFlighttype"]);
+    
+                                    short IsUpdate = 0;
+    
+                                    if (i == length - 1)
                                     {
-                                        if (ds.Tables[0] != null && ds.Tables[0].Rows.Count > 0)
+                                        IsUpdate = 1;
+                                    }
+                                    DataSet? ds = null;
+    
+    
+                                    //SQLServer sqlServer = new SQLServer();
+                                    //ds = sqlServer.SelectRecords("USPSendFlightControlData", sqlParameters);
+    
+                                    SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@Source", Source), new SqlParameter("@Dest", Dest), new SqlParameter("@IsUpdate", IsUpdate), new SqlParameter("@IsFlighttype", FlightType) };
+                                    ds = await _readWriteDao.SelectRecords("USPSendFlightControlData", sqlParameters);
+    
+                                    if (ds != null)
+                                    {
+                                        if (ds.Tables.Count > 0)
                                         {
-                                            string PartnerEmailIds = Convert.ToString(DsEmails.Tables[0].Rows[i]["PartnerEmailiD"]);
-                                            string subject = Convert.ToString(DsEmails.Tables[0].Rows[i]["Subject"]);
-                                            string message = Convert.ToString(DsEmails.Tables[0].Rows[i]["Message"]);
-
-                                            GenericFunction obj = new GenericFunction();
                                             if (ds.Tables[0] != null && ds.Tables[0].Rows.Count > 0)
                                             {
-                                                #region Code to Convert Data Table to Excel File
-
-
-                                                StringBuilder Excel = GetExcelFlightExportData(ds.Tables[0]);
-
-                                                string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
-                                                string pathhtml = Directory.GetParent(path).Parent.FullName;
-                                                StringReader htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/FlightControlDataForVJ.html"));
-                                                string htmlContent = htmlFile.ReadToEnd().ToString();
-
-                                                htmlContent = htmlContent.Replace("@message@", message);
-                                                htmlContent = htmlContent.Replace("@FlightControlData@", Excel.ToString());
-
-
-                                                addMsgToOutBox(subject, htmlContent, "", PartnerEmailIds, false, true, "FLTCNTDATA");
-
-                                                #endregion
-                                            }
-                                            else
-                                            {
-                                                obj.SaveMessageOutBox(subject, "There is no records found..!", "", PartnerEmailIds, "", "", "", null, "", "Auto", "FLTCNTDATA");
-
+                                                string PartnerEmailIds = Convert.ToString(DsEmails.Tables[0].Rows[i]["PartnerEmailiD"]);
+                                                string subject = Convert.ToString(DsEmails.Tables[0].Rows[i]["Subject"]);
+                                                string message = Convert.ToString(DsEmails.Tables[0].Rows[i]["Message"]);
+    
+                                                GenericFunction obj = new GenericFunction();
+                                                if (ds.Tables[0] != null && ds.Tables[0].Rows.Count > 0)
+                                                {
+                                                    #region Code to Convert Data Table to Excel File
+    
+    
+                                                    StringBuilder Excel = GetExcelFlightExportData(ds.Tables[0]);
+    
+                                                    string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
+                                                    string pathhtml = Directory.GetParent(path).Parent.FullName;
+                                                    StringReader htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/FlightControlDataForVJ.html"));
+                                                    string htmlContent = htmlFile.ReadToEnd().ToString();
+    
+                                                    htmlContent = htmlContent.Replace("@message@", message);
+                                                    htmlContent = htmlContent.Replace("@FlightControlData@", Excel.ToString());
+    
+    
+                                                    addMsgToOutBox(subject, htmlContent, "", PartnerEmailIds, false, true, "FLTCNTDATA");
+    
+                                                    #endregion
+                                                }
+                                                else
+                                                {
+                                                    obj.SaveMessageOutBox(subject, "There is no records found..!", "", PartnerEmailIds, "", "", "", null, "", "Auto", "FLTCNTDATA");
+    
+                                                }
                                             }
                                         }
+                                        ds = null;
+                                        Source = null;
+                                        Dest = null;
+                                        FlightType = null;
                                     }
-                                    ds = null;
-                                    Source = null;
-                                    Dest = null;
-                                    FlightType = null;
                                 }
+                                catch (Exception ex)
+                                {
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                }
+                                //finally
+                                //{
+                                //    objSQL = null;
+                                //    GC.Collect();
+    
+                                //}
                             }
-                            catch (Exception ex)
-                            {
-                                clsLog.WriteLogAzure(ex);
-                            }
-                            //finally
-                            //{
-                            //    objSQL = null;
-                            //    GC.Collect();
-
-                            //}
                         }
                     }
                 }
+            }
+            catch (System.Exception)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
 
         }
@@ -7804,10 +8091,14 @@ namespace QidWorkerRole
                                 }
                                 if (ds.Tables[0].Rows[i]["IsExportToManifest"].ToString() == "Y")
                                 {
-                                    clsLog.WriteLogAzure("Before sending UWS: "
-                                        + ds.Tables[0].Rows[i]["airlineCode"].ToString()
-                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
-                                        + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    // clsLog.WriteLogAzure("Before sending UWS: "
+                                    //     + ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                    //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
+                                    //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    _logger.LogInformation("Before sending UWS: {0} : {1}",
+                                         ds.Tables[0].Rows[i]["airlineCode"]
+                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                        , ds.Tables[0].Rows[i]["originDate"]);
 
                                     SendUWSMessage(ds.Tables[0].Rows[i]["airlineCode"].ToString() + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                         , ds.Tables[0].Rows[i]["originDate"].ToString()
@@ -7815,10 +8106,14 @@ namespace QidWorkerRole
                                         , ds.Tables[0].Rows[i]["arrivalAirportCode"].ToString()
                                         , true);
 
-                                    clsLog.WriteLogAzure("Before sending NTM: "
-                                        + ds.Tables[0].Rows[i]["airlineCode"].ToString()
-                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
-                                        + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    // clsLog.WriteLogAzure("Before sending NTM: "
+                                    //     + ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                    //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
+                                    //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    _logger.LogInformation("Before sending NTM: {0} : {1}",
+                                         ds.Tables[0].Rows[i]["airlineCode"]
+                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                        , ds.Tables[0].Rows[i]["originDate"]);
 
                                     SendNTMMessage(ds.Tables[0].Rows[i]["airlineCode"].ToString() + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                         , ds.Tables[0].Rows[i]["originDate"].ToString()
@@ -7826,10 +8121,14 @@ namespace QidWorkerRole
                                         , ds.Tables[0].Rows[i]["arrivalAirportCode"].ToString()
                                         , true);
 
-                                    clsLog.WriteLogAzure("After sent NTM: "
-                                        + ds.Tables[0].Rows[i]["airlineCode"].ToString()
-                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
-                                        + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    // clsLog.WriteLogAzure("After sent NTM: "
+                                    //     + ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                    //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
+                                    //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
+                                    _logger.LogInformation("After sent NTM: {0} : {1}",
+                                         ds.Tables[0].Rows[i]["airlineCode"]
+                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                        , ds.Tables[0].Rows[i]["originDate"]);
                                 }
                             }
                         }
@@ -7838,7 +8137,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -7887,7 +8187,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception exc)
                                 {
-                                    clsLog.WriteLogAzure(exc);
+                                    // clsLog.WriteLogAzure(exc);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
                             }
                         }
@@ -7896,7 +8197,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -7950,7 +8252,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -8045,7 +8348,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "";
             }
             return tokenKey;
@@ -8161,7 +8465,8 @@ namespace QidWorkerRole
             {
                 strResponce = ex.InnerException.Message;
                 errorDesc = ex.InnerException.Message;
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
             return errorDesc;
@@ -8184,7 +8489,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
             return dsResult;
@@ -8211,7 +8517,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
             return dsResult;
@@ -8220,72 +8527,88 @@ namespace QidWorkerRole
 
         private StringBuilder GetExcelFlightExportData(DataTable objDs)
         {
-            StringBuilder Excel = new StringBuilder();
-
-
-            Excel.Append("<table border='1' class='PageInsideTable ' Id='tblShipperBillingReport'>");
-            Excel.Append("<tr><td class='dataTableHeader'>Flight</td><td class='dataTableHeader'>Flight Date</td><td class='dataTableHeader'>Aircraft Type</td><td class='dataTableHeader'>Origin</td><td class='dataTableHeader'>Dest</td><td class='dataTableHeader'>Dep Time</td><td class='dataTableHeader'>Arr Time</td>");
-            Excel.Append("<td class='dataTableHeader'><span style='Color:Red;'><strong>ESTIMATED WEIGHT</strong></span> <br/> Confirmed Wt.</td>");
-
-            Excel.Append("</tr>");
-
-            // To Write Data in Excel Format (Tab)
-            foreach (DataRow dr in objDs.Rows)
-            {
-                Excel.Append("<tr>");
-                Excel.Append("<td>" + dr["FlightId"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["FlightDate"].ToString() + "</td>");
-                //Excel.Append("<td>" + dr["FlightType"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["AircraftType"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["Source"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["Dest"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["DepTime"].ToString() + "</td>");
-                Excel.Append("<td>" + dr["ArrTime"].ToString() + "</td>");
-
-                string ConfirmedWt = dr["ConfirmedWeight"].ToString() == "" ? "0.00" : dr["ConfirmedWeight"].ToString();
-                Excel.Append("<td style='mso-number-format:00.00;text-align:right;'>" + ConfirmedWt + "</td>");
-                Excel.Append("</tr>");
-            }
-
-            Excel.Append("</table>");
-
-            return Excel;
+           try
+           {
+             StringBuilder Excel = new StringBuilder();
+ 
+ 
+             Excel.Append("<table border='1' class='PageInsideTable ' Id='tblShipperBillingReport'>");
+             Excel.Append("<tr><td class='dataTableHeader'>Flight</td><td class='dataTableHeader'>Flight Date</td><td class='dataTableHeader'>Aircraft Type</td><td class='dataTableHeader'>Origin</td><td class='dataTableHeader'>Dest</td><td class='dataTableHeader'>Dep Time</td><td class='dataTableHeader'>Arr Time</td>");
+             Excel.Append("<td class='dataTableHeader'><span style='Color:Red;'><strong>ESTIMATED WEIGHT</strong></span> <br/> Confirmed Wt.</td>");
+ 
+             Excel.Append("</tr>");
+ 
+             // To Write Data in Excel Format (Tab)
+             foreach (DataRow dr in objDs.Rows)
+             {
+                 Excel.Append("<tr>");
+                 Excel.Append("<td>" + dr["FlightId"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["FlightDate"].ToString() + "</td>");
+                 //Excel.Append("<td>" + dr["FlightType"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["AircraftType"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["Source"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["Dest"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["DepTime"].ToString() + "</td>");
+                 Excel.Append("<td>" + dr["ArrTime"].ToString() + "</td>");
+ 
+                 string ConfirmedWt = dr["ConfirmedWeight"].ToString() == "" ? "0.00" : dr["ConfirmedWeight"].ToString();
+                 Excel.Append("<td style='mso-number-format:00.00;text-align:right;'>" + ConfirmedWt + "</td>");
+                 Excel.Append("</tr>");
+             }
+ 
+             Excel.Append("</table>");
+ 
+             return Excel;
+           }
+           catch (System.Exception)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
 
         private StringBuilder GetExcelDatafromDT(DataTable objDs)
         {
-            StringBuilder Excel = new StringBuilder();
-
-
-            int intColCount = 0;
-            foreach (DataColumn dc in objDs.Columns)
+            try
             {
-                if (intColCount == 0)
-                    Excel.Append(dc.ColumnName);
-                else
-                    Excel.Append("\t" + dc.ColumnName);
-                intColCount++;
-            }
-            Excel.Append("\n");
-
-            // To Write Data in Excel Format (Tab)
-            for (int intRow = 0; intRow < objDs.Rows.Count; intRow++)
-            {
-                for (int intCol = 0; intCol < objDs.Columns.Count; intCol++)
+                StringBuilder Excel = new StringBuilder();
+    
+    
+                int intColCount = 0;
+                foreach (DataColumn dc in objDs.Columns)
                 {
-                    if (intCol == 0)
-                        Excel.Append(objDs.Rows[intRow][intCol].ToString());
+                    if (intColCount == 0)
+                        Excel.Append(dc.ColumnName);
                     else
-                    {
-                        Excel.Append("\t" + objDs.Rows[intRow][intCol].ToString());
-                    }
-
+                        Excel.Append("\t" + dc.ColumnName);
+                    intColCount++;
                 }
                 Excel.Append("\n");
+    
+                // To Write Data in Excel Format (Tab)
+                for (int intRow = 0; intRow < objDs.Rows.Count; intRow++)
+                {
+                    for (int intCol = 0; intCol < objDs.Columns.Count; intCol++)
+                    {
+                        if (intCol == 0)
+                            Excel.Append(objDs.Rows[intRow][intCol].ToString());
+                        else
+                        {
+                            Excel.Append("\t" + objDs.Rows[intRow][intCol].ToString());
+                        }
+    
+                    }
+                    Excel.Append("\n");
+                }
+    
+                return Excel;
             }
-
-            return Excel;
+            catch (System.Exception)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
         }
         #endregion
 
@@ -8357,7 +8680,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "";
             }
             return tokenKey;
@@ -8380,7 +8704,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
             return dsResult;
@@ -8470,7 +8795,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -8539,7 +8865,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -8547,7 +8874,8 @@ namespace QidWorkerRole
         {
             try
             {
-                clsLog.WriteLogAzure("SendNTMMessage(): " + FlightNumber + " : " + fltDate + " : " + fltOrigin + " : " + fltDest);
+                // clsLog.WriteLogAzure("SendNTMMessage(): " + FlightNumber + " : " + fltDate + " : " + fltOrigin + " : " + fltDest);
+                _logger.LogInformation("SendNTMMessage(): {0} : {1} : {2} : {3}",  FlightNumber , fltDate , fltOrigin , fltDest);
 
                 string email = string.Empty, msgCommType = string.Empty, message = string.Empty, aircraftregistrtionno = "", updatedBy = "Auto ExpToMan";
 
@@ -8585,7 +8913,8 @@ namespace QidWorkerRole
                 {
                     if (message.Length > 0)
                     {
-                        clsLog.WriteLogAzure("NTM SFTP Header: " + SFTPMessageHeader + " : " + FlightNumber + " : " + fltDate);
+                        // clsLog.WriteLogAzure("NTM SFTP Header: " + SFTPMessageHeader + " : " + FlightNumber + " : " + fltDate);
+                        _logger.LogInformation("NTM SFTP Header: {0} : {1} : {2}" , SFTPMessageHeader ,FlightNumber , fltDate);
                         if (email.Length > 0)
                             _genericFunction.SaveMessageOutBox("NTM", message, "", email, fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
 
@@ -8595,7 +8924,8 @@ namespace QidWorkerRole
                         if (SFTPMessageHeader.Trim() == "WITHOUT SFTP HEADER")
                         {
                             _genericFunction.SaveMessageOutBox("SFTP:NTM", message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
-                            clsLog.WriteLogAzure("NTM Message sent: " + FlightNumber + " : " + fltDate);
+                            // clsLog.WriteLogAzure("NTM Message sent: " + FlightNumber + " : " + fltDate);
+                            _logger.LogInformation("NTM Message sent: {0} : {1}" , FlightNumber , fltDate);
                         }
                         else if (SFTPMessageHeader.Trim().Length > 0)
                             _genericFunction.SaveMessageOutBox("SFTP:NTM", SFTPMessageHeader + "\r\n" + message, "", "SFTP", fltOrigin, fltDest, FlightNumber, fltDate, "", updatedBy, "NTM");
@@ -8604,7 +8934,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -8635,7 +8966,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -8716,7 +9048,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "";
             }
         }
@@ -8806,7 +9139,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
             
@@ -8888,7 +9222,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 SerialNo = 0;
             }
 
@@ -8911,7 +9246,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -8934,7 +9270,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -8944,25 +9281,33 @@ namespace QidWorkerRole
         }
         public static Int32 Next(Int32 minValue, Int32 maxValue)
         {
-            if (minValue > maxValue)
-                throw new ArgumentOutOfRangeException("minValue");
-            if (minValue == maxValue) return minValue;
-            Int64 diff = maxValue - minValue;
-            while (true)
-            {
-                byte[] randomBytes = new byte[4];
-                RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-                rng.GetBytes(randomBytes);
-                int seed = BitConverter.ToInt32(randomBytes, 0);
-
-                Int64 max = (1 + (Int64)UInt32.MaxValue);
-                Int64 remainder = max % diff;
-                if (seed > 0 && seed < max - remainder)
-                {
-                    return (Int32)(minValue + (seed % diff));
-
-                }
-            }
+           try
+           {
+             if (minValue > maxValue)
+                 throw new ArgumentOutOfRangeException("minValue");
+             if (minValue == maxValue) return minValue;
+             Int64 diff = maxValue - minValue;
+             while (true)
+             {
+                 byte[] randomBytes = new byte[4];
+                 RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+                 rng.GetBytes(randomBytes);
+                 int seed = BitConverter.ToInt32(randomBytes, 0);
+ 
+                 Int64 max = (1 + (Int64)UInt32.MaxValue);
+                 Int64 remainder = max % diff;
+                 if (seed > 0 && seed < max - remainder)
+                 {
+                     return (Int32)(minValue + (seed % diff));
+ 
+                 }
+             }
+           }
+           catch (System.Exception)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
         private void SendDwellTimeInformation()
@@ -8977,7 +9322,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -8997,7 +9343,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //finally
             //{
@@ -9015,7 +9362,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
         public async Task GetPendingNotification()
@@ -9038,1263 +9386,1286 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
         public async Task GetAWBPrefix(string awbPrefix, string awbNumber, string Status, int SerialNumber)
         {
-            DataSet? dsAWBDeatils = new DataSet();
-
-            //StringBuilder[] sb = new StringBuilder[0];
-            //GenericFunction genericFunction = new GenericFunction();
-
-            string container = "eawb";
-
-            string specifier = string.Empty;
-            CultureInfo bz;
-            MemoryStream ms = new MemoryStream();
-
-            //SQLServer db = new SQLServer();
-            //string[] QueryNames = { "AWBprefix", "AWBNumber" };
-            //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-            //string[] QueryValues = { awbPrefix, awbNumber };
-
-            SqlParameter[] parameters =
-            [
-                new("@AWBprefix", SqlDbType.VarChar) { Value = awbPrefix },
-                new("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber }
-            ];
-            dsAWBDeatils = await _readWriteDao.SelectRecords("SP_GetAWBDetailsPrefix", parameters);
-
-            string AWBNumber = dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
-            string AWBPrefix = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim();
-            string FLTOrigin = dsAWBDeatils.Tables[3].Rows[0]["FltOrigin"].ToString().Trim();
-            string FLTDestination = dsAWBDeatils.Tables[3].Rows[0]["FltDestination"].ToString().Trim();
-            int Pices = 0;
-            Pices = Convert.ToInt32(dsAWBDeatils.Tables[3].Rows[0]["Pcs"].ToString().Trim());
-            decimal Weight = 0;
-            Weight = Convert.ToDecimal(dsAWBDeatils.Tables[3].Rows[0]["Wt"].ToString().Trim());
-            string Type = "BKDCNFNotification";
-            {
-                if (dsAWBDeatils != null && dsAWBDeatils.Tables.Count > 0 && dsAWBDeatils.Tables[0].Rows.Count > 0)
-                {
-
-                    try
-                    {
-                        DataSet dsBLOB = new DataSet();
-                        DataSet dsnotification = _genericFunction.GetFlightNotification(AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status);
-                        if (dsnotification != null && dsnotification.Tables.Count > 0 && dsnotification.Tables[0].Rows.Count > 0)
-                        {
-                            string Toid = dsnotification.Tables[0].Rows[0]["Toid"].ToString().Trim();
-                            string Subject = dsnotification.Tables[0].Rows[0]["Subject"].ToString().Trim();
-                            string body = dsnotification.Tables[0].Rows[0]["Body"].ToString().Trim();
-
-                            bool IsAgreed = false;
-                            string strAgentPreference = string.Empty;
-
-                            strAgentPreference = _genericFunction.GeteAWBPrintPrefence(dsAWBDeatils.Tables[0].Rows[0]["AgentCode"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim());
-
-                            if (strAgentPreference.Length < 1 || strAgentPreference == "")
-                                strAgentPreference = "IATA";
-
-                            if (strAgentPreference == "As Agreed" || Convert.ToBoolean(dsAWBDeatils.Tables[0].Rows[0]["Agreed"]) == true)
-                                IsAgreed = true;
-
-                            string DocType = dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim();
-                            string AWBprefix = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "|" + dsAWBDeatils.Tables[0].Rows[0]["OriginCode"].ToString().Trim() + "|" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
-                            string AirlinePrefix = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();
-                            string AWBno = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "-" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
-                            string AirLineCode = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();
-                            string Origin = dsAWBDeatils.Tables[0].Rows[0]["OriginCode"].ToString().Trim();
-                            string Dest = dsAWBDeatils.Tables[0].Rows[0]["DestinationCode"].ToString().Trim();
-                            string AgentCode = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
-                            string AgentName = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentName"].ToString().Trim();
-                            string AgentNameOnly = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentName"].ToString().Trim();
-                            string Serviceclass = dsAWBDeatils.Tables[0].Rows[0]["ServiceCargoClassId"].ToString().Trim();
-                            string Handlinginfo = dsAWBDeatils.Tables[0].Rows[0]["HandlingInfo"].ToString().Trim();
-                            string AccountInfo = dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
-                            string ProductType = string.Empty;
-
-                            ProductType = dsAWBDeatils.Tables[0].Rows[0]["ProductType"].ToString().Trim();
-                            string SHCDesc = string.Empty;
-                            bool SCHDesc = false;
-                            SCHDesc = Convert.ToBoolean(ConfigCache.Get("eAWBSHCDesc"));
-
-                            if (SCHDesc)
-                            {
-                                if (dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim() != "")
-                                {
-                                    SHCDesc = _genericFunction.GetSHCCodesandDesc(dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim());
-                                    SHCDesc = SHCDesc.Replace("&amp;", "&");
-                                }
-                            }
-                            else { SHCDesc = "SHC:" + dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim(); }
-
-                            if (Handlinginfo != "")
-                                Handlinginfo = Handlinginfo + " | " + SHCDesc;
-                            else
-                                Handlinginfo = SHCDesc;
-
-                            string CommCode = dsAWBDeatils.Tables[1].Rows[0]["CommodityCode"].ToString().Trim();
-                            string CommDesc = dsAWBDeatils.Tables[1].Rows[0]["CodeDescription"].ToString().Trim();
-
-                            string Pcs = "0";
-                            Pcs = dsAWBDeatils.Tables[0].Rows[0]["PiecesCount"].ToString().Trim();
-                            int TotalPcsU = 0;
-                            TotalPcsU = Convert.ToInt32(dsAWBDeatils.Tables[0].Rows[0]["PiecesCount"].ToString().Trim());
-                            string GrossWgt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["GrossWeight"].ToString().Trim()).ToString("0.00");
-                            decimal totalgwt = 0;
-                            totalgwt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["GrossWeight"].ToString().Trim());
-                            string Volume = "0";
-                            try
-                            {   //CEBV4-3456 issue added try catch
-                                Volume = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["VolumetricWeight"].ToString().Trim()).ToString("0.00");
-                            }
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
-                            string ChargeWgt = "0";
-                            ChargeWgt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["ChargedWeight"].ToString().Trim()).ToString("0.00");
-
-                            ///function added for total of iata mkt rate on 6 may 12
-                            DataSet dsResult = new DataSet("GHA_QuickBooking_30");
-                            dsResult = GetChargeSummury(dsAWBDeatils);
-                            string frateIATA = "0.0";
-                            string frateMKT = "0.0";
-                            double ValCharge = 0.0;
-                            string PayMode = "";
-
-                            try
-                            {
-                                if (dsAWBDeatils.Tables[0].Rows.Count > 0)
-                                {
-                                    frateIATA = Convert.ToDouble(dsAWBDeatils.Tables[0].Rows[0][0].ToString()).ToString("0.00");
-                                    frateMKT = Convert.ToDouble(dsAWBDeatils.Tables[0].Rows[0][0].ToString()).ToString("0.00");
-                                    ValCharge = 0;
-                                    PayMode = dsAWBDeatils.Tables[1].Rows[0]["PaymentMode"].ToString();
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                clsLog.WriteLogAzure(ex);
-                            }
-
-                            string OCDueCar = "";
-                            string OCDueAgent = "";
-
-                            OCDueCar = dsResult.Tables[0].Rows[0][2].ToString();
-                            OCDueAgent = dsResult.Tables[0].Rows[0][3].ToString();
-
-                            double SpotRate = 0;
-                            double DynaRate = 0;
-                            double SerTax = Convert.ToDouble(dsResult.Tables[0].Rows[0][4].ToString());
-                            double Total = Convert.ToDouble(dsResult.Tables[0].Rows[0][5].ToString());
-
-                            Math.Round(Total, 2);
-                            Math.Round((decimal)Total, 2);
-
-                            Math.Round(SpotRate, 2);
-                            Math.Round((decimal)SpotRate, 2);
-
-                            Math.Round(DynaRate, 2);
-                            Math.Round((decimal)DynaRate, 2);
-
-                            Math.Round(SerTax, 2);
-                            Math.Round((decimal)SerTax, 2);
-
-                            string FltOrg = dsResult.Tables[3].Rows[0]["FltOrigin"].ToString();
-                            string FltDest = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
-
-                            #region flt no as per configuration
-                            string FltNo = "";
-                            string FltDate = "";
-                            string SecondFltNo = "";
-                            string SecondFltDate = "";
-                            string TransitPoint = "";
-                            string SenderRefNo, MiscRefNo, BagTagNo, TicketNo;
-                            SenderRefNo = MiscRefNo = BagTagNo = TicketNo = string.Empty;
-                            bool fltresult = true;
-                            //string Systemdateformat ;
-
-                            try
-                            {
-                                fltresult = Convert.ToBoolean(ConfigCache.Get("FlightDescInEAWBPrint"));
-                            }
-                            catch (Exception ex)
-                            {
-                                fltresult = true;
-                                clsLog.WriteLogAzure(ex);
-
-                            }
-
-                            if (fltresult)
-                            {
-                                //DateTime.ParseExact(dsResult.Tables[3].Rows[0]["FltDate"].ToString().Trim(), ConfigCache.Get("SystemDateFormat"), null);
-                                for (int i = 0; i < dsResult.Tables[3].Rows.Count && i < 3; i++)
-                                {
-                                    FltNo = FltNo + dsResult.Tables[3].Rows[0]["FltNumber"].ToString() + ",";
-                                    FltDate = FltDate + Convert.ToDateTime(dsResult.Tables[3].Rows[0]["FltDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + ",";
-
-                                }
-
-                                if (FltNo != "")
-                                {
-                                    FltNo = FltNo.Remove(FltNo.Length - 1, 1);
-                                }
-
-                                if (FltDate != "")
-                                {
-                                    FltDate = FltDate.Remove(FltDate.Length - 1, 1);
-                                }
-                            }
-                            #endregion
-
-                            //For CBV FlightNo & FlightDate
-                            if (FltNo.IndexOf(',') > 0 && FltDate.IndexOf(',') > 0)
-                            {
-                                string fltNo = FltNo.Split(',')[0];
-                                string fltDate = FltDate.Split(',')[0];
-                                SecondFltNo = FltNo.Split(',')[1];
-                                SecondFltDate = FltDate.Split(',')[1];
-                                FltNo = fltNo;
-                                FltDate = fltDate;
-                            }
-
-                            string fstleg = "";
-                            string fstlegcarrier = "";
-                            string seconleg = "";
-                            string seconlegcarrier = "";
-                            string thirdleg = "";
-                            string thirdlegcarrier = "";
-                            for (int i = 0; i < dsResult.Tables[3].Rows.Count; i++)
-                            {
-                                switch (i.ToString())
-                                {
-                                    case "0":
-                                        fstleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
-                                        fstlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
-                                        break;
-                                    case "1":
-                                        seconleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
-                                        seconlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
-                                        break;
-                                    case "2":
-                                        thirdleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
-                                        thirdlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
-                                        break;
-                                }
-                            }
-
-                            #region handlininfo
-                            string HandlingInfo_Extra = "";
-                            bool handleres = false;
-                            string export = _genericFunction.checkexportValidation(Origin);
-                            if (export == "US")
-                            {
-                                if (ConfigCache.Get("Handlinginfo_EAWB") != string.Empty)
-                                    handleres = bool.Parse(ConfigCache.Get("Handlinginfo_EAWB"));
-                            }
-
-                            if (handleres)
-                                HandlingInfo_Extra = "These commodities,technology or software were exported from the U.S in accordance with Export Administration Regulations";
-                            else
-                                HandlingInfo_Extra = "";
-
-                            #endregion
-
-                            bool FFRChecked = false;
-
-                            DataTable DTExportSubDetails = new DataTable("GHA_QuickBooking_158");
-
-                            DTExportSubDetails.Columns.Add("OtherCharges");
-                            DTExportSubDetails.Columns.Add("Amount");
-                            DTExportSubDetails.Columns.Add("Type");
-
-                            string strOtherCharges = "";
-
-                            DataSet dsOtherDetails = new DataSet("GHA_QuickBooking_31");
-                            dsOtherDetails = dsAWBDeatils;
-
-                            if (dsOtherDetails != null && dsOtherDetails.Tables.Count > 0 && dsOtherDetails.Tables[0].Rows.Count > 0)
-                            {
-                                //int Intcount = 0;
-                                foreach (DataRow row in dsOtherDetails.Tables[5].Rows)
-                                {
-                                    try
-                                    {
-                                        if (row["ChargeType"].ToString() == "DC" || row["ChargeType"].ToString() == "DA")
-                                        {
-                                            string strChargeType = string.Empty;
-                                            string strChargeCode = row["ChargeHeadCode"].ToString().Trim();
-
-                                            if (strChargeCode.Trim().IndexOf('/') > 0)
-                                                strChargeCode = strChargeCode.Substring(0, strChargeCode.IndexOf("/"));
-                                            else
-                                                strChargeCode = strChargeCode.Trim();
-
-                                            if (row["ChargeType"].ToString().Trim() == "DC")
-                                                strChargeType = "Due Carrier";
-                                            else
-                                                strChargeType = "Due Agent";
-
-                                            if (IsAgreed)
-                                                DTExportSubDetails.Rows.Add(strChargeCode, "As agreed", strChargeType);
-                                            else
-                                                DTExportSubDetails.Rows.Add(strChargeCode, row["Charge"].ToString(), strChargeType);
-
-                                            if (dsOtherDetails.Tables[0].Columns["ChargeHead"] != null)
-                                            {
-                                                if (row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')).ToUpper() == "VLC" ||
-                                                    row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')).ToUpper().Equals("VL", StringComparison.OrdinalIgnoreCase))
-                                                    ValCharge = Convert.ToDouble(row["Charge"].ToString());
-                                                else
-                                                    strOtherCharges = strOtherCharges + row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')) + ":" + row["Charge"].ToString() + ", ";
-                                            }
-                                            else if (dsOtherDetails.Tables[0].Columns["ChargeHeadCode"] != null)
-                                            {
-
-                                                string strChargeCodeVLC = row["ChargeHeadCode"].ToString().Trim();
-
-                                                if (strChargeCodeVLC.Trim().IndexOf('/') > 0)
-                                                    strChargeCodeVLC = strChargeCode.Substring(0, strChargeCodeVLC.IndexOf("/"));
-                                                else
-                                                    strChargeCodeVLC = strChargeCodeVLC.Trim();
-
-                                                if (strChargeCodeVLC.ToUpper() == "VLC" || strChargeCodeVLC.ToUpper() == "VL")
-                                                    ValCharge = Convert.ToDouble(row["Charge"].ToString());
-
-                                                else
-                                                {
-                                                    string strCharge = row["ChargeHeadCode"].ToString().Trim();
-                                                    if (strCharge.Trim().IndexOf('/') > 0)
-                                                        strOtherCharges = strOtherCharges + row["ChargeHeadCode"].ToString().Substring(0, row["ChargeHeadCode"].ToString().IndexOf('/')) + ":" + row["Charge"].ToString() + ", ";
-                                                    else
-                                                        strOtherCharges = strOtherCharges.Trim();
-
-                                                    //AC-186 changes done
-                                                    if (strOtherCharges.Contains("MOA:0"))
-                                                        strOtherCharges = strOtherCharges.Replace("MOA:0", "");
-
-                                                    if (strOtherCharges.Contains("MOC:0"))
-                                                        strOtherCharges = strOtherCharges.Replace("MOC:0", "");
-                                                }
-                                            }
-                                        }
-                                        if (row[0].ToString().Contains('/'))
-                                        {
-                                            if (row[0].ToString().ToUpper() != "VAL")
-                                            {
-                                                strOtherCharges = strOtherCharges + row[0].ToString().Substring(0, row[0].ToString().IndexOf('/')) + ":" + row[1].ToString() + " , ";
-                                                DTExportSubDetails.Rows.Add(row[0].ToString().Substring(0, row[0].ToString().IndexOf('/')), row[1].ToString(), "Due Carriers");
-
-                                                strOtherCharges = strOtherCharges + row[1].ToString() + ":" + row[3].ToString() + " , ";
-
-                                                if (strOtherCharges.Contains("MOA:0,"))
-                                                    strOtherCharges = strOtherCharges.Replace("MOA:0,", "");
-                                                if (strOtherCharges.Contains("MOC:0,"))
-                                                    strOtherCharges = strOtherCharges.Replace("MOC:0,", "");
-                                            }
-                                            else
-                                                ValCharge = ValCharge + Convert.ToDouble(row[3].ToString());
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        clsLog.WriteLogAzure(ex);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                DTExportSubDetails.Rows.Add("-", "-", "-");
-                            }
-
-                            // string AccountInfo = "";
-                            string accountnumber = "";
-                            bool res = (dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALKIN") || dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALK-IN"));
-
-                            DataSet dsShipmentType = _genericFunction.GetShipmentTypeNew(Origin, Dest);
-                            string shipmentType = string.Empty;
-                            if (dsShipmentType != null && dsShipmentType.Tables.Count > 0 && dsShipmentType.Tables[0].Rows.Count > 0)
-                                shipmentType = Convert.ToString(dsShipmentType.Tables[0].Rows[0]["AWBShipmentType"]).Trim();
-
-                            bool res2 = (shipmentType.Equals("ID") || shipmentType.Equals("INT"));
-
-                            if (res == true || res2 == true)
-                            {
-                                AccountInfo = "";
-                                accountnumber = "";
-                            }
-                            else
-                            {
-                                AccountInfo = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
-                                accountnumber = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
-                            }
-
-                            if (AccountInfo.Length > 0)
-                            {
-                                if (dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim().Length > 0)
-                                    AccountInfo = AccountInfo + " - " + dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
-                            }
-                            else
-                                AccountInfo = dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
-
-
-                            string strDimension = "";
-                            string prepaid = "";
-                            string TotalPrepaid = "";
-                            string ExecDate = string.Empty, ExecBy = string.Empty, ExecAT = string.Empty;
-
-                            //// Get AWB Executed At, Executed By, and Execution Date
-                            DataSet dsExec = _genericFunction.GetAWBExecutionInfo(AWBPrefix, AWBNumber);
-
-                            if (dsExec != null && dsExec.Tables.Count > 0 && dsExec.Tables[0].Rows.Count > 0)
-                            {
-                                ExecDate = Convert.ToDateTime(dsExec.Tables[0].Rows[0]["ExecutionDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + " " + Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutionTime"]);
-                                ExecBy = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedBy"]);
-                                ExecAT = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedAt"]);
-                            }
-                            //else
-                            //{
-                            //    ExecDate = txtExecutionDate1.Value.ToString(Convert.ToString(Session["DateFormat"])) + " " + txtExecTime.Text;
-                            //    ExecBy = (Session["UpdtBy"] != null && Session["UpdtBy"].ToString() != string.Empty) ? Session["UpdtBy"].ToString() : txtExecutedBy.Text;
-                            //    ExecAT = txtExecutedAt.Text;
-                            //}
-
-                            // Shipper Name and Address
-                            string SAcNo = dsAWBDeatils.Tables[6].Rows[0]["ShipperAccCode"].ToString().Trim();
-                            string CAcNo = dsAWBDeatils.Tables[6].Rows[0]["ConsigAccCode"].ToString().Trim();
-
-                            if (SAcNo.Contains("WALKIN") || SAcNo.Contains("Walk-in"))
-                                SAcNo = "";
-
-                            if (CAcNo.Contains("WALKIN") || CAcNo.Contains("Walk-in"))
-                                CAcNo = "";
-
-                            string shipperState = string.Empty;
-                            string shipperCountry = string.Empty;
-                            string shipperCity = string.Empty;
-                            string ShprName = string.Empty, ShrpAddress1 = string.Empty, ShptAddress2 = string.Empty;
-
-                            ShprName = dsAWBDeatils.Tables[6].Rows[0]["ShipperName"].ToString().Trim();
-                            ShrpAddress1 = dsAWBDeatils.Tables[6].Rows[0]["ShipperAddress"].ToString().Trim();
-                            ShptAddress2 = dsAWBDeatils.Tables[6].Rows[0]["ShipperAdd2"].ToString().Trim();
-
-
-                            string ShipperName = ShprName + Environment.NewLine + ShrpAddress1;
-
-                            if (!string.IsNullOrEmpty(ShptAddress2))
-                                ShipperName += ", " + ShptAddress2;
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim()))
-                                shipperState = dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim()))
-                                shipperCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
-                                ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim() + ", ";
-                            else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
-                                ShipperName += Environment.NewLine;
-
-                            if (!string.IsNullOrEmpty(shipperState))
-                                ShipperName += shipperState;
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim()))
-                                ShipperName += " " + dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(shipperCountry))
-                                ShipperName += shipperCountry;
-                            string Clientname = string.Empty;
-                            DataSet dsClientName = new DataSet("dsClientName");
-                            dsClientName = _genericFunction.GetClientName();
-                            Clientname = Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]);
-                            if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
-                            {
-                                if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
-                                    ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim();
-                            }
-
-                            // Consignee name and address
-                            string consignerState = string.Empty;
-                            string consignerCountry = string.Empty;
-                            string consignerCity = string.Empty;
-
-                            string ConsName = string.Empty, ConsAddress1 = string.Empty, ConsAddress2 = string.Empty;
-
-                            ConsName = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeName"].ToString().Trim();
-                            ConsAddress1 = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeAddress"].ToString().Trim();
-                            ConsAddress2 = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeAddress2"].ToString().Trim();
-
-
-                            string Consigneename = ConsName + Environment.NewLine + ConsAddress1;
-
-                            if (!string.IsNullOrEmpty(ConsAddress2))
-                                Consigneename += ", " + ConsAddress2;
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim()))
-                                consignerState = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim()))
-                                consignerCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
-                                Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim() + ", ";
-                            else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
-                                Consigneename += Environment.NewLine;
-
-                            if (!string.IsNullOrEmpty(consignerState))
-                                Consigneename += consignerState;
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim()))
-                                Consigneename += " " + dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(consignerCountry))
-                                Consigneename += consignerCountry;
-
-                            if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
-                            {
-                                if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
-                                    Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim();
-                            }
-
-                            string ShipperTelephoneNo = dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim();
-                            string ConsigneeTelephoneNo = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim();
-                            string ShipperNameFor = dsAWBDeatils.Tables[6].Rows[0]["ShipperName"].ToString().Trim();
-
-                            string RatePerKg = dsAWBDeatils.Tables[1].Rows[0]["RatePerKg"].ToString().Trim();
-                            string SCI = dsAWBDeatils.Tables[0].Rows[0]["SCI"].ToString().Trim();
-                            DataTable DTExport = new DataTable("GHA_QuickBooking_159");
-
-                            DTExport.Columns.Add("DocType");
-                            DTExport.Columns.Add("AWBPrefix");
-                            DTExport.Columns.Add("AWBNo");
-                            DTExport.Columns.Add("AirLineCode");
-                            DTExport.Columns.Add("Origin");
-                            DTExport.Columns.Add("Dest");
-                            DTExport.Columns.Add("AgentCode");
-                            DTExport.Columns.Add("AgentName");
-                            DTExport.Columns.Add("Serviceclass");
-                            DTExport.Columns.Add("HandlingInfo");
-                            DTExport.Columns.Add("ProductType");
-                            DTExport.Columns.Add("CommCode");
-                            DTExport.Columns.Add("CommDesc");
-                            DTExport.Columns.Add("PCS");
-                            DTExport.Columns.Add("GrossWGT");
-                            DTExport.Columns.Add("Volume");
-                            DTExport.Columns.Add("ChargeWGT");
-
-                            DTExport.Columns.Add("frateIATA");
-                            DTExport.Columns.Add("frateMKT");
-                            DTExport.Columns.Add("ValCharge");
-                            DTExport.Columns.Add("PayMode");
-                            DTExport.Columns.Add("OCDueCar");
-                            DTExport.Columns.Add("OCDueAgent");
-                            DTExport.Columns.Add("SpotRate");
-                            DTExport.Columns.Add("DynaRate");
-                            DTExport.Columns.Add("SerTax");
-                            DTExport.Columns.Add("Total");
-
-                            DTExport.Columns.Add("FltOrg");
-                            DTExport.Columns.Add("FltDest");
-                            DTExport.Columns.Add("FltNo");
-                            DTExport.Columns.Add("FltDate");
-                            DTExport.Columns.Add("FFRChecked");
-                            DTExport.Columns.Add("ExecDate");
-                            DTExport.Columns.Add("ExecBy");
-                            DTExport.Columns.Add("ExecAT");
-
-                            DTExport.Columns.Add("ConsigneeName");
-                            DTExport.Columns.Add("Prepaid");
-                            DTExport.Columns.Add("TotalPrepaid");
-                            DTExport.Columns.Add("ShippersName");
-                            DTExport.Columns.Add("OtherCharges");
-                            DTExport.Columns.Add("Dimension");
-
-                            DTExport.Columns.Add("ShipperAccountNo");
-                            DTExport.Columns.Add("ConsigneeAcNo");
-                            DTExport.Columns.Add("IssuingCarrierName");
-                            DTExport.Columns.Add("AgentIataCode");
-                            DTExport.Columns.Add("AccountCode");
-                            DTExport.Columns.Add("AccountInformation");
-
-                            DTExport.Columns.Add("ChargesCode");
-                            DTExport.Columns.Add("WtVal");
-                            DTExport.Columns.Add("watvalother");
-                            DTExport.Columns.Add("DeclValCarr");
-                            DTExport.Columns.Add("DeclValcustoms");
-                            DTExport.Columns.Add("InsAmount");
-                            DTExport.Columns.Add("RateClassKG");
-
-                            DTExport.Columns.Add("RateClassN");
-                            DTExport.Columns.Add("CommodityItem");
-                            DTExport.Columns.Add("NatureOfgoods");
-                            DTExport.Columns.Add("Length");
-                            DTExport.Columns.Add("Width");
-                            DTExport.Columns.Add("Height");
-
-                            DTExport.Columns.Add("collectvalCharge");
-                            DTExport.Columns.Add("collecttax");
-                            DTExport.Columns.Add("collectDueAgent");
-                            DTExport.Columns.Add("CollectDueCarrier");
-                            DTExport.Columns.Add("collecttotal");
-                            DTExport.Columns.Add("CurrencyRate");
-
-                            DTExport.Columns.Add("CCDestCurrency");
-                            DTExport.Columns.Add("ForCarrOnlydest");
-                            DTExport.Columns.Add("chargeAtDest");
-                            DTExport.Columns.Add("AirlineAddress");
-
-                            DTExport.Columns.Add("AilinePrefix");
-                            DTExport.Columns.Add("RatePerKg");
-                            DTExport.Columns.Add("AccountInfo");
-                            DTExport.Columns.Add("DepartureCity");
-                            DTExport.Columns.Add("ArrivalCity");
-                            DTExport.Columns.Add("BarCode", System.Type.GetType("System.Byte[]"));
-                            DTExport.Columns.Add("CopyType");
-                            DTExport.Columns.Add("Logo", System.Type.GetType("System.Byte[]"));
-                            DTExport.Columns.Add("CustomerSupportInfo");
-
-                            //New Columns
-                            DTExport.Columns.Add("WTPPD");
-                            DTExport.Columns.Add("WTCOLL");
-                            DTExport.Columns.Add("OtherPPD");
-                            DTExport.Columns.Add("OtherCOLL");
-                            DTExport.Columns.Add("VLCCollect");
-                            DTExport.Columns.Add("PcsULDNo");
-                            //new added field
-                            DTExport.Columns.Add("SCI");
-                            DTExport.Columns.Add("HandlingInfo_Extra");
-
-                            //added columns for shipper and consigneee
-                            DTExport.Columns.Add("SAcNo");
-                            DTExport.Columns.Add("CAcNo");
-                            //added column for 3rd leg destination
-                            DTExport.Columns.Add("fstleg");//fstleg
-                            DTExport.Columns.Add("seconleg");
-                            DTExport.Columns.Add("thirdleg");
-                            //for carriercode
-                            DTExport.Columns.Add("fstlegcarrier");//fstleg
-                            DTExport.Columns.Add("seconlegcarrier");
-                            DTExport.Columns.Add("thirdlegcarrier");
-                            DTExport.Columns.Add("TotalPcsU");
-                            DTExport.Columns.Add("totalgwt");
-                            //totalRateUnit
-                            DTExport.Columns.Add("totalRateUnit");
-
-                            //tottal chargeable wt
-
-                            DTExport.Columns.Add("TotalChargeWt");
-                            //total rate perkg
-                            DTExport.Columns.Add("TotalRatePerKg");
-                            DTExport.Columns.Add("Dims");
-                            DTExport.Columns.Add("totalRateUnitCC");
-                            DTExport.Columns.Add("TotalFrtCharge");
-
-                            // New Fields added
-                            DTExport.Columns.Add("ShippersTel");
-                            DTExport.Columns.Add("ConsigneeTel");
-                            DTExport.Columns.Add("ShipperNameFor");
-                            DTExport.Columns.Add("SecondFltNo");
-                            DTExport.Columns.Add("SecondFltDate");
-                            DTExport.Columns.Add("TransitPoint");
-
-                            DTExport.Columns.Add("SenderRefNo");
-                            DTExport.Columns.Add("MiscRefNo");
-                            DTExport.Columns.Add("BagTagNo");
-                            DTExport.Columns.Add("TicketNo");
-                            DTExport.Columns.Add("PANNumber");
-                            DTExport.Columns.Add("STNumber");
-                            DTExport.Columns.Add("HSCodes");
-
-                            DTExport.Columns.Add("SHP");
-                            DTExport.Columns.Add("ConsId");
-
-                            string SHP_print = string.Empty;
-                            string ConsId = string.Empty;
-
-                            SHP_print = dsAWBDeatils.Tables[6].Rows[0]["ShipUSPassportNum"].ToString().Trim() + dsAWBDeatils.Tables[6].Rows[0]["ShipIDCode"].ToString().Trim();
-                            if (SHP_print == " ")
-                                SHP_print = "";
-                            else
-                                SHP_print = "ID: " + SHP_print;
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim()))
-                                ConsId = "ID: " + dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim();
-                            else
-                                ConsId = "";
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim()))
-                                ShipperName += Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim()))
-                                Consigneename = Consigneename + Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim()))
-                                Consigneename = Consigneename + Environment.NewLine + "Notify Name: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim();
-
-                            if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim()))
-                                Consigneename = Consigneename + Environment.NewLine + "Notify Phone: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim();
-
-                            DataTable dsDimesionAll = new DataTable("GHA_QuickBooking_32");
-                            //dsDimesionAll = GenerateAWBDimensions(txtAWBNo.Text.Trim(), Convert.ToInt32(Pcs), (DataSet)Session["dsDimesionAll"], Convert.ToDecimal(GrossWgt), false, txtAwbPrefix.Text.Trim(), 0, "", false);
-                            dsDimesionAll = dsAWBDeatils.Tables[2];
-                            DataTable DTvolume = new DataTable("GHA_QuickBooking_160");
-                            DTvolume.Columns.Add("CommDesc");
-                            DTvolume.Columns.Add("Length");
-                            DTvolume.Columns.Add("Width");
-                            DTvolume.Columns.Add("Height");
-                            DTvolume.Columns.Add("Volume");
-                            DTvolume.Columns.Add("PCSCount");
-
-                            float Length = 0; float Breadth = 0; float Height = 0;
-                            int dimPCS = 0;
-                            string Units = string.Empty;
-                            ArrayList arr1 = new ArrayList();
-                            if (dsDimesionAll != null && dsDimesionAll.Rows.Count > 0)
-                            {
-                                for (int i = 0; i < dsDimesionAll.Rows.Count; i++)
-                                {
-                                    dimPCS = 0;
-
-                                    Length = float.Parse(dsDimesionAll.Rows[i]["Length"].ToString());
-                                    Breadth = float.Parse(dsDimesionAll.Rows[i]["Breadth"].ToString());
-                                    Height = float.Parse(dsDimesionAll.Rows[i]["Height"].ToString());
-                                    dimPCS = int.Parse(dsDimesionAll.Rows[i]["PieceNo"].ToString());
-                                    Units = dsDimesionAll.Rows[0]["Units"].ToString();
-                                    arr1.Add(dsDimesionAll.Rows[i]["ULDNo"].ToString());
-                                    if (Length > 0 && Breadth > 0 && Height > 0)
-                                    {
-                                        Volume = ((Length * Breadth * Height) * dimPCS).ToString("0.00");
-                                        DTvolume.Rows.Add(CommDesc, Length, Breadth, Height, Volume, dimPCS);
-                                        strDimension = strDimension + "  DIMS: " + Length + " * " + Breadth + " * " + Height + " * " + dimPCS + "  " + Units + " ;    ";
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                Length = 0;
-                                Breadth = 0;
-                                Height = 0;
-
-                                DTvolume.Rows.Add(CommDesc, Length, Breadth, Height, Volume, dimPCS);
-                            }
-
-                            string ShipperAccountNo = "";
-                            string ConsigneeAcNo = "";
-                            string IssuingCarrierName = "";
-                            string AgentIataCode = "";
-                            string AccountCode = "";
-                            string AccountInformation = "";
-                            string ChargesCode = dsAWBDeatils.Tables[1].Rows[0]["PaymentMode"].ToString().Trim();
-                            string AirlineAddress = "";
-                            string PANNumber = "";
-                            string STNumber = "";
-
-                            string RateClause = dsAWBDeatils.Tables[7].Rows[0]["RateClass"].ToString().Trim();
-                            string OriginCity = "";
-                            string DestinationCity = "";
-                            string CopyType = string.Empty;
-                            string CustomerSupportInfo = "";
-
-                            string PscULDNo = "";
-
-
-                            //if (Session["PieceTypeULDNo_ArrayList"] != null)
-                            //    arr1 = (ArrayList)Session["PieceTypeULDNo_ArrayList"];
-
-                            if (arr1.Count > 0)
-                            {
-                                foreach (string li in arr1)
-                                {
-                                    PscULDNo += li.ToString() + ",";
-                                }
-
-                                PscULDNo = PscULDNo.Remove(PscULDNo.Length - 1);
-                            }
-
-                            string wtPPD = "", wtCOLL = "", OtherPPD = "", OtherCOLL = "", ClientName = "";
-                            if (ChargesCode == "PP" || ChargesCode == "PX")
-                                wtPPD = OtherPPD = "XX";
-                            if (ChargesCode == "CC")
-                                wtCOLL = OtherCOLL = "XX";
-
-                            //MasterBAL ObjMsBAl = new MasterBAL();
-                            DataSet dsMasterAirline = new DataSet("GHA_QuickBooking_33");
-                            //Added by swati
-                            dsMasterAirline = _genericFunction.GetAirlineDetails(Origin, Dest, AirlinePrefix);
-                            //ObjMsBAl = null;
-
-                            if (dsMasterAirline != null)
-                            {
-                                if (dsMasterAirline.Tables.Count > 0)
-                                {
-                                    if (dsMasterAirline.Tables[1].Rows.Count > 0)
-                                    {
-                                        OriginCity = _genericFunction.getorg(Origin);
-
-                                        if (dsMasterAirline.Tables[2].Rows.Count > 0)
-                                        {
-                                            DestinationCity = _genericFunction.getorg(Dest);
-                                            if (dsMasterAirline.Tables[0].Rows.Count > 0)
-                                                CustomerSupportInfo = dsMasterAirline.Tables[0].Rows[0]["CustomerSupportInfo"].ToString();
-                                        }
-                                    }
-                                }
-
-                                if (dsMasterAirline.Tables.Count > 0)
-                                {
-                                    if (dsMasterAirline.Tables[0].Rows.Count > 0)
-                                    {
-                                        AirlineAddress = dsMasterAirline.Tables[0].Rows[0][0].ToString() + ", " + dsMasterAirline.Tables[0].Rows[0][1].ToString();
-                                        PANNumber = dsMasterAirline.Tables[0].Rows[0]["PANNumber"].ToString();
-                                        STNumber = dsMasterAirline.Tables[0].Rows[0]["STNumber"].ToString();
-                                        ClientName = dsMasterAirline.Tables[0].Rows[0][0].ToString();
-                                    }
-                                }
-
-                                // Added to get the No. Of eAWB Copies
-                                if (dsMasterAirline.Tables.Count > 0)
-                                {
-                                    eAWBPrintArray = new string[dsMasterAirline.Tables[3].Rows.Count];
-
-                                    if (dsMasterAirline.Tables[3].Rows.Count > 0)
-                                    {
-                                        for (int i = 0; i < dsMasterAirline.Tables[3].Rows.Count; i++)
-                                        {
-                                            eAWBPrintArray[i] = dsMasterAirline.Tables[3].Rows[i]["eAWBPageName"].ToString();
-                                        }
-                                    }
-                                }
-                            }
-
-                            //CEBV4-3209
-                            string AWBStatus = _genericFunction.GetAWBStatus(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim());
-                            //Session["AWBStatus"] = AWBStatus;
-
-                            if (dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim() != null && dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim().Equals("B"))
-                            {
-                                if (!ClientName.Contains("AirAsia"))
-                                    CopyType = "Draft Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
-                            }
-                            else
-                            {
-                                CopyType = "Final Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
-                                CopyType = "Final Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
-                            }
-                            //Set dv for carriage and customs if blank or 0.
-                            float declaredValue = 0;
-                            string dvForCarriage = "NVD";
-                            if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim(), out declaredValue))
-                                declaredValue = 0;
-
-                            if (declaredValue > 0)
-                                dvForCarriage = dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim();
-                            else
-                                dvForCarriage = "NVD";
-
-                            declaredValue = 0;
-                            string dvForCustoms = "NCV";
-                            if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim(), out declaredValue))
-                                declaredValue = 0;
-                            if (declaredValue > 0)
-                                dvForCustoms = dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim();
-                            else
-                                dvForCustoms = "NCV";
-
-                            declaredValue = 0;
-                            string InsAmount = "XXX";
-                            if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["InsuranceAmount"].ToString().Trim(), out declaredValue))
-                                declaredValue = 0;
-                            if (declaredValue > 0)
-                                InsAmount = dsAWBDeatils.Tables[0].Rows[0]["InsuranceAmount"].ToString().Trim();
-                            else
-                                InsAmount = "XXX";
-
-                            // HA-373: Get multiple rate lines
-                            DataSet dsRateLog = _genericFunction.GetAWBRateLog(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), IsAgreed, dsAWBDeatils.Tables[0].Rows[0]["UpdatedBy"].ToString().Trim());
-                            string UOM = string.Empty;
-                            string totalRate = string.Empty;
-                            string dims = string.Empty;
-                            string totalFrtCharge = string.Empty;
-                            string totalTax = string.Empty;
-                            string totalAmount = string.Empty;
-                            //string Logo = "";
-
-                            //int  pcs1 = 0;
-                            //decimal  tgwt = 0;
-                            decimal chargewt = 0, TotalChargeWt = 0, TotalRatePerKg = 0, RateKg = 0;//, Totalrt = 0;
-                            string RateLogRatePref = "", IncludeOCDCInPrint = "TRUE", HSCodes = "";
-                            if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 0)
-                            {
-                                TotalPcsU = 0;
-                                totalgwt = 0;
-                                Pcs = string.Empty;
-                                GrossWgt = string.Empty;
-                                RateClause = string.Empty;
-                                CommCode = string.Empty;
-                                ChargeWgt = string.Empty;
-                                RatePerKg = string.Empty;
-
-                                foreach (DataRow dr in dsRateLog.Tables[0].Rows)
-                                {
-                                    Pcs += Convert.ToString(dr["Pieces"]) + Environment.NewLine + Environment.NewLine;
-
-                                    GrossWgt += Convert.ToDecimal(dr["GWeight"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
-
-                                    UOM += Convert.ToString(dr["UOM"]) + Environment.NewLine + Environment.NewLine;
-
-                                    RateClause += Convert.ToString(dr["MKTRateClass"]) + Environment.NewLine + Environment.NewLine;
-
-                                    CommCode += Convert.ToString(dr["CommCode"]) + Environment.NewLine + Environment.NewLine;
-
-                                    ChargeWgt += Convert.ToDecimal(dr["CWeight"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
-                                    chargewt = Convert.ToDecimal(dr["CWeight"]);
-                                    TotalChargeWt += chargewt;
-
-                                    if (!Convert.ToString(dr["RatePerKg"]).Equals("As Agreed", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        RatePerKg += Convert.ToDecimal(dr["RatePerKg"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
-                                        RateKg = Convert.ToDecimal(dr["RatePerKg"]);
-                                        TotalRatePerKg += RateKg;
-                                    }
-                                    else
-                                    {
-                                        RatePerKg += Convert.ToString(dr["RatePerKg"]) + Environment.NewLine + Environment.NewLine;
-                                    }
-
-                                    if (!Convert.ToString(dr["Total"]).Equals("As Agreed", StringComparison.OrdinalIgnoreCase))
-                                        totalRate += Convert.ToDecimal(dr["Total"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
-                                    else
-                                        totalRate += Convert.ToString(dr["Total"]) + Environment.NewLine + Environment.NewLine;
-
-                                    dims += Convert.ToString(dr["Dims"]).Replace("|", Environment.NewLine) + Environment.NewLine;
-                                }
-
-                                try
-                                {
-                                    Pcs = Pcs.Substring(0, Pcs.Length - 4);
-                                    GrossWgt = GrossWgt.Substring(0, GrossWgt.Length - 4);
-                                    UOM = UOM.Substring(0, UOM.Length - 4);
-                                    RateClause = RateClause.Substring(0, RateClause.Length - 4);
-                                    CommCode = CommCode.Substring(0, CommCode.Length - 4);
-                                    ChargeWgt = ChargeWgt.Substring(0, ChargeWgt.Length - 4);
-                                    RatePerKg = RatePerKg.Substring(0, RatePerKg.Length - 4);
-                                    totalRate = totalRate.Substring(0, totalRate.Length - 4);
-                                    dims = dims.Substring(0, dims.Length - 2);
-
-                                    totalFrtCharge = Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtCharge"]);
-                                    //totalTax = Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]);
-                                    totalTax = dsAWBDeatils.Tables[7].Rows[0]["ServTax"].ToString().Trim();
-                                    //totalAmount = Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
-                                    totalAmount = dsAWBDeatils.Tables[7].Rows[0]["Total"].ToString().Trim();
-
-                                    if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
-                                        Total = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
-
-                                    if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
-                                        SerTax = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["FrtTax"]);
-
-                                    // Show pcs and wt from rate log table
-                                    TotalPcsU = Convert.ToInt32(dsRateLog.Tables[2].Rows[0]["Pieces"]);
-                                    totalgwt = Convert.ToDecimal(dsRateLog.Tables[2].Rows[0]["GrossWeight"]);
-
-                                    //if (!totalTax.Equals("As Agreed"))
-                                    //    SerTax = Convert.ToDouble(totalTax);
-
-                                    //if (!totalAmount.Equals("As Agreed"))
-                                    //    Total = Convert.ToDouble(totalAmount);
-
-                                    RateLogRatePref = dsRateLog.Tables[1].Rows[0]["RatePreference"].ToString();
-                                    HSCodes = "";//dsRateLog.Tables[1].Rows[0]["HSCodes"].ToString();
-                                    AgentIataCode = dsRateLog.Tables[1].Rows[0]["AgentIATACode"].ToString();
-
-                                    if (RateLogRatePref.Trim().Equals("As Agreed"))
-                                        IsAgreed = true;
-
-                                    IncludeOCDCInPrint = dsRateLog.Tables[1].Rows[0]["IncludeOCChargesINSpot"].ToString();
-                                    try
-                                    {
-                                        if (Convert.ToString(dsRateLog.Tables[1].Rows[0]["AgentCity"]).Length > 0)
-                                            AgentName = AgentName + Environment.NewLine + dsRateLog.Tables[1].Rows[0]["AgentCity"].ToString();
-                                    }
-                                    catch (Exception x) { clsLog.WriteLogAzure(x); }
-                                }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex); }
-                            }
-                            System.IO.MemoryStream LogoClient = null;
-                            //try
-                            //{
-                            //    Logo = null;
-                            //}
-                            //catch (Exception ex)
-                            //{
-                            LogoClient = new System.IO.MemoryStream();
-                            //clsLog.WriteLogAzure(ex); ;
-                            //}
-                            string drpCurrency = " ";
-                            drpCurrency = dsAWBDeatils.Tables[7].Rows[0]["Currency"].ToString().Trim();
-                            if (IsAgreed == true)
-                            {
-                                if (ChargesCode == "PP" || ChargesCode == "PX" || ChargesCode == "PZ")
-                                {
-                                    DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
-                                                        CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
-                                                        "As Agreed", "As Agreed", "As Agreed", PayMode, "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
-                                                        "As Agreed", "As Agreed", ShipperName, "As Agreed", strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
-                                                        UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, "", "", "", "", "", "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, "As Agreed", AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
-                                                        CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, "", PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "As Agreed", TotalChargeWt, TotalRatePerKg, dims, "As Agreed", "As Agreed", ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
-                                }
-                                else
-                                {
-                                    DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
-                                                        CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
-                                                        "", "", "", PayMode, "", "", "", "", "", "", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
-                                                        "", "", ShipperName, "As Agreed", strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
-                                                        UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, "As Agreed", AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
-                                                        CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, "As Agreed", PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "As Agreed", TotalChargeWt, TotalRatePerKg, dims, "As Agreed", "As Agreed", ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
-                                }
-                            }
-                            else
-                            {
-                                string freight = frateIATA;
-                                if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 1)
-                                {
-                                    freight = totalRate;
-                                }
-                                else
-                                {
-                                    if (strAgentPreference == "IATA")
-                                        freight = frateIATA;
-                                    else if (strAgentPreference == "MKT" && RateLogRatePref.Equals("SPOT", StringComparison.OrdinalIgnoreCase))
-                                        freight = dsAWBDeatils.Tables[7].Rows[0]["SpotFreight"].ToString().Trim();
-                                    else if (strAgentPreference == "MKT")
-                                        freight = frateMKT;
-                                }
-
-                                try
-                                {
-                                    if (IncludeOCDCInPrint.Trim().ToUpper().Equals("TRUE"))
-                                    {
-                                        OCDueCar = (Convert.ToDecimal(OCDueCar) - Convert.ToDecimal(ValCharge)).ToString();
-                                        OCDueCar = OCDueCar != string.Empty ? Convert.ToDecimal(OCDueCar).ToString() : OCDueCar;
-
-                                        OCDueAgent = OCDueAgent != string.Empty ? Convert.ToDecimal(OCDueAgent).ToString() : OCDueAgent;
-                                    }
-                                    else
-                                    {
-                                        OCDueCar = "0";
-                                        ValCharge = Convert.ToDouble("0");
-                                        OCDueAgent = "0";
-                                        strOtherCharges = "";
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    clsLog.WriteLogAzure(ex);
-                                }
-
-
-                                bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
-                                specifier = ConfigCache.Get("AllowedDecimalNumber");
-
-
-                                string zeroValueFormat = Convert.ToDecimal(0).ToString(specifier, bz);
-
-
-                                if (ChargesCode == "PP" || ChargesCode == "PX" || ChargesCode == "PZ")
-                                {
-                                    DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
-                                                        CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt, freight, frateMKT, ValCharge.ToString(specifier, bz), PayMode, OCDueCar, OCDueAgent,
-                                        SpotRate.ToString(specifier, bz), DynaRate.ToString(specifier, bz), SerTax.ToString(specifier, bz), Total.ToString(specifier, bz), FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
-                                prepaid, TotalPrepaid, ShipperName, strOtherCharges, strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
-                                                        UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, zeroValueFormat, zeroValueFormat, zeroValueFormat, zeroValueFormat, zeroValueFormat, "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, RatePerKg, AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
-                                                    CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, zeroValueFormat, PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, totalFrtCharge, TotalChargeWt, TotalRatePerKg, dims, "", totalFrtCharge, ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
-                                }
-                                else
-                                {
-                                    DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
-                                                        CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
-                                "", "", "", PayMode, "", "", "", "", "", "", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
-                                prepaid, TotalPrepaid, ShipperName, strOtherCharges, strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
-                                                        UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, freight, SerTax.ToString(specifier, bz), OCDueAgent, OCDueCar, Total.ToString(specifier, bz), "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, RatePerKg, AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
-                                                    CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, ValCharge.ToString(specifier, bz), PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "", TotalChargeWt, TotalRatePerKg, dims, totalFrtCharge, totalFrtCharge, ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
-                                }
-                            }
-
-                            // HA-642: added by swati for signature field..
-                            DataSet dsSign = new DataSet("dsEAWBSignature");
-                            dsSign = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "AWBSignature");
-
-                            System.IO.MemoryStream signMemStream = null;
-
-                            if (dsSign != null && dsSign.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"]).Trim()))
-                            {
-                                byte[] sign = null;
-                                sign = _genericFunction.DownloadFromBlob(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
-                                signMemStream = (sign == null ? new System.IO.MemoryStream() : new System.IO.MemoryStream(sign));
-                            }
-
-                            DataColumn dcSign = new DataColumn("Signature", System.Type.GetType("System.Byte[]"));
-
-                            if (signMemStream != null)
-                                dcSign.DefaultValue = signMemStream.ToArray();
-
-                            DTExport.Columns.Add(dcSign);
-
-                            // Adding new columns for HTML PDF generator
-                            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
-                            string pathhtml = Directory.GetParent(path).Parent.FullName;
-                            string logo = "";
-                            logo = pathhtml + "//Reports//ClientLogoAK.png";
-
-                            //string logo = (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "//Reports//Client_Logo.png";
-                            DataColumn dcLogo = new DataColumn("HTMLLogo", System.Type.GetType("System.String"));
-                            dcLogo.DefaultValue = logo;
-
-                            //Added By Niranjan 24/09/2015
-                            // Adding new columns for HTML WaterMark -------------------------------------------------------
-                            string WaterMark = "";//(new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "//Images//WaterMark002.png";
-                            DataColumn dcWaterMark = new DataColumn("WaterMark", System.Type.GetType("System.String"));
-
-                            if (ConfigCache.Get("IsWaterMarkPrintEawb") == "true")
-                                dcWaterMark.DefaultValue = WaterMark;
-                            else
-                                dcWaterMark.DefaultValue = "";
-
-                            DTExport.Columns.Add(dcWaterMark);
-                            // End Of  Added By Niranjan 24/09/2015 --------------------------------------------------------
-
-                            string signUrl = string.Empty;
-                            string clientName = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();//Convert.ToString("AirlinePrefix");
-                            if (clientName.Trim().ToUpper() == "VJ" || clientName.Trim().ToUpper() == "VZ")
-                            {
-                                signUrl = AgentNameOnly;
-                            }
-                            else if (!string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim())))
-                            {
-                                string FileUrl = _genericFunction.GetSASBlobUrl(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
-                                signUrl = "<img src=\"" + FileUrl + "\" width=\"192px\" height=\"24px\" />";
-                            }
-                            DataColumn dcSignUrl = new DataColumn("HTMLSignature", System.Type.GetType("System.String"));
-                            dcSignUrl.DefaultValue = signUrl;
-
-
-                            // Barcode
-                            DataColumn dcBarCode = new DataColumn("HTMLBarCode", System.Type.GetType("System.String"));
-                            string barCodeUrl = string.Empty;
-
-                            DataSet dsBarCode = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "barcode");
-
-                            if (dsBarCode != null && dsBarCode.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsBarCode.Tables[0].Rows[0]["FileUrl"]).Trim()))
-                            {
-                                barCodeUrl = dsBarCode.Tables[0].Rows[0]["fileurl"].ToString().Trim();
-                                barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
-                            }
-                            else
-                            {
-                                ms.Seek(0, SeekOrigin.Begin);
-                                barCodeUrl = _genericFunction.UploadToBlob(ms, dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "_" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim() + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + ".png", "barcode");
-                                _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), barCodeUrl, "barcode");
-                                barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
-                            }
-
-                            if (ConfigCache.Get("ShowBarCodeInEAWBPrint") == "1")
-                                dcBarCode.DefaultValue = "<img src=\"" + barCodeUrl + "\"  width=\"192px\" height=\"24px\" />";
-                            else
-                                dcBarCode.DefaultValue = "";
-
-                            // WaterMark for collect shipment
-                            string waterMark = ""; //(new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/CollectWaterMark.png";
-                            DataColumn dcCCWaterMark = new DataColumn("CCWaterMark", System.Type.GetType("System.String"));
-                            DataColumn dcDraftCopy = new DataColumn("DraftCopy", System.Type.GetType("System.String"));
-                            int ddlServiceclass;
-                            ddlServiceclass = Convert.ToInt32(dsAWBDeatils.Tables[0].Rows[0]["ServiceCargoClassId"]);
-                            if (ChargesCode.Equals("CC") || ChargesCode.Equals("CZ") && ddlServiceclass != 0)
-                                dcCCWaterMark.DefaultValue = waterMark;
-                            else
-                                dcCCWaterMark.DefaultValue = "";
-
-                            if (ddlServiceclass == 0)
-                            {
-                                string VoidWaterMark = "";// (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/VoidWaterMark.png";
-                                dcCCWaterMark = new DataColumn("CCWaterMark", System.Type.GetType("System.String"));
-                                dcCCWaterMark.DefaultValue = VoidWaterMark;
-                                dcDraftCopy.DefaultValue = VoidWaterMark;
-                            }
-
-                            dcDraftCopy.DefaultValue = "";
-                            if (dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim() != null && dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim().Equals("B") && ddlServiceclass != 0)
-                            {
-                                string DraftWaterMark = "";// (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/cebudraft.png";
-                                dcDraftCopy.DefaultValue = DraftWaterMark;
-                            }
-
-                            DTExport.Columns.Add(dcLogo);
-                            DTExport.Columns.Add(dcSignUrl);
-                            DTExport.Columns.Add(dcBarCode);
-                            DTExport.Columns.Add(dcCCWaterMark);
-                            DTExport.Columns.Add(dcDraftCopy);
-
-                            string HTMLData = string.Empty;
-                            // Generate PDF from Html or RDLC based on config
-                            if (ConfigCache.Get("EAWBHTMLPrint") == "1")
-                                HTMLData = RenderReportHtml(DTExport, dsRateLog, dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim(), dsDimesionAll);
-
-                            HtmlToPdfConverter htmlToPdfConverter = null;
-                            //try
-                            //{
-                            htmlToPdfConverter = new HtmlToPdfConverter();
-                            var margins = new PageMargins();
-                            margins.Bottom = 0;
-                            margins.Top = 5; // Changed by Sainyam on 24JAN2018 for HA
-                            margins.Left = 6;
-                            margins.Right = 5;
-                            htmlToPdfConverter.Margins = margins;
-                            DateTime TimeStamp = DateTime.Now;
-                            var pdfBytes = htmlToPdfConverter.GeneratePdf(HTMLData);
-                            ms = new MemoryStream(pdfBytes);
-                            //string FileExcelURL = "";
-
-
-                            string fileUrl = _genericFunction.UploadToBlob(ms, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC.pdf", container);
-                            _genericFunction.CheckIfAWBOnBLOB(AWBPrefix + AWBNumber, fileUrl, container);
-                            await DumpInterfaceInformation(Subject, body, TimeStamp, "BKDCNFNotification", "", true, "", Toid, ms, ".pdf", fileUrl, "0", "Outbox", "", null, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC");
-                            await GetUpdateNotification(AWBPrefix, AWBNumber, SerialNumber);
-
-                            try
-                            {
-                                if (dsResult != null)
-                                    dsResult.Dispose();
-                                if (DTExport != null)
-                                    DTExport.Dispose();
-                                if (DTExportSubDetails != null)
-                                    DTExportSubDetails.Dispose();
-                                if (DTvolume != null)
-                                    DTvolume.Dispose();
-                                if (dsDimesionAll != null)
-                                    dsDimesionAll.Dispose();
-                                if (dsOtherDetails != null)
-                                    dsOtherDetails.Dispose();
-                            }
-                            catch (Exception ex)
-                            {
-
-                                dsResult = null;
-                                DTExport = null;
-                                DTExportSubDetails = null;
-                                DTvolume = null;
-                                dsDimesionAll = null;
-                                dsOtherDetails = null;
-                                clsLog.WriteLogAzure(ex);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        clsLog.WriteLogAzure(ex);
-                    }
-                }
-            }
+           try
+           {
+             DataSet? dsAWBDeatils = new DataSet();
+ 
+             //StringBuilder[] sb = new StringBuilder[0];
+             //GenericFunction genericFunction = new GenericFunction();
+ 
+             string container = "eawb";
+ 
+             string specifier = string.Empty;
+             CultureInfo bz;
+             MemoryStream ms = new MemoryStream();
+ 
+             //SQLServer db = new SQLServer();
+             //string[] QueryNames = { "AWBprefix", "AWBNumber" };
+             //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+             //string[] QueryValues = { awbPrefix, awbNumber };
+ 
+             SqlParameter[] parameters =
+             [
+                 new("@AWBprefix", SqlDbType.VarChar) { Value = awbPrefix },
+                 new("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber }
+             ];
+             dsAWBDeatils = await _readWriteDao.SelectRecords("SP_GetAWBDetailsPrefix", parameters);
+ 
+             string AWBNumber = dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
+             string AWBPrefix = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim();
+             string FLTOrigin = dsAWBDeatils.Tables[3].Rows[0]["FltOrigin"].ToString().Trim();
+             string FLTDestination = dsAWBDeatils.Tables[3].Rows[0]["FltDestination"].ToString().Trim();
+             int Pices = 0;
+             Pices = Convert.ToInt32(dsAWBDeatils.Tables[3].Rows[0]["Pcs"].ToString().Trim());
+             decimal Weight = 0;
+             Weight = Convert.ToDecimal(dsAWBDeatils.Tables[3].Rows[0]["Wt"].ToString().Trim());
+             string Type = "BKDCNFNotification";
+             {
+                 if (dsAWBDeatils != null && dsAWBDeatils.Tables.Count > 0 && dsAWBDeatils.Tables[0].Rows.Count > 0)
+                 {
+ 
+                     try
+                     {
+                         DataSet dsBLOB = new DataSet();
+                         DataSet dsnotification = _genericFunction.GetFlightNotification(AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status);
+                         if (dsnotification != null && dsnotification.Tables.Count > 0 && dsnotification.Tables[0].Rows.Count > 0)
+                         {
+                             string Toid = dsnotification.Tables[0].Rows[0]["Toid"].ToString().Trim();
+                             string Subject = dsnotification.Tables[0].Rows[0]["Subject"].ToString().Trim();
+                             string body = dsnotification.Tables[0].Rows[0]["Body"].ToString().Trim();
+ 
+                             bool IsAgreed = false;
+                             string strAgentPreference = string.Empty;
+ 
+                             strAgentPreference = _genericFunction.GeteAWBPrintPrefence(dsAWBDeatils.Tables[0].Rows[0]["AgentCode"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim());
+ 
+                             if (strAgentPreference.Length < 1 || strAgentPreference == "")
+                                 strAgentPreference = "IATA";
+ 
+                             if (strAgentPreference == "As Agreed" || Convert.ToBoolean(dsAWBDeatils.Tables[0].Rows[0]["Agreed"]) == true)
+                                 IsAgreed = true;
+ 
+                             string DocType = dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim();
+                             string AWBprefix = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "|" + dsAWBDeatils.Tables[0].Rows[0]["OriginCode"].ToString().Trim() + "|" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
+                             string AirlinePrefix = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();
+                             string AWBno = dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "-" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim();
+                             string AirLineCode = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();
+                             string Origin = dsAWBDeatils.Tables[0].Rows[0]["OriginCode"].ToString().Trim();
+                             string Dest = dsAWBDeatils.Tables[0].Rows[0]["DestinationCode"].ToString().Trim();
+                             string AgentCode = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
+                             string AgentName = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentName"].ToString().Trim();
+                             string AgentNameOnly = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentName"].ToString().Trim();
+                             string Serviceclass = dsAWBDeatils.Tables[0].Rows[0]["ServiceCargoClassId"].ToString().Trim();
+                             string Handlinginfo = dsAWBDeatils.Tables[0].Rows[0]["HandlingInfo"].ToString().Trim();
+                             string AccountInfo = dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
+                             string ProductType = string.Empty;
+ 
+                             ProductType = dsAWBDeatils.Tables[0].Rows[0]["ProductType"].ToString().Trim();
+                             string SHCDesc = string.Empty;
+                             bool SCHDesc = false;
+                             SCHDesc = Convert.ToBoolean(ConfigCache.Get("eAWBSHCDesc"));
+ 
+                             if (SCHDesc)
+                             {
+                                 if (dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim() != "")
+                                 {
+                                     SHCDesc = _genericFunction.GetSHCCodesandDesc(dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim());
+                                     SHCDesc = SHCDesc.Replace("&amp;", "&");
+                                 }
+                             }
+                             else { SHCDesc = "SHC:" + dsAWBDeatils.Tables[0].Rows[0]["SHCCodes"].ToString().Trim(); }
+ 
+                             if (Handlinginfo != "")
+                                 Handlinginfo = Handlinginfo + " | " + SHCDesc;
+                             else
+                                 Handlinginfo = SHCDesc;
+ 
+                             string CommCode = dsAWBDeatils.Tables[1].Rows[0]["CommodityCode"].ToString().Trim();
+                             string CommDesc = dsAWBDeatils.Tables[1].Rows[0]["CodeDescription"].ToString().Trim();
+ 
+                             string Pcs = "0";
+                             Pcs = dsAWBDeatils.Tables[0].Rows[0]["PiecesCount"].ToString().Trim();
+                             int TotalPcsU = 0;
+                             TotalPcsU = Convert.ToInt32(dsAWBDeatils.Tables[0].Rows[0]["PiecesCount"].ToString().Trim());
+                             string GrossWgt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["GrossWeight"].ToString().Trim()).ToString("0.00");
+                             decimal totalgwt = 0;
+                             totalgwt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["GrossWeight"].ToString().Trim());
+                             string Volume = "0";
+                             try
+                             {   //CEBV4-3456 issue added try catch
+                                 Volume = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["VolumetricWeight"].ToString().Trim()).ToString("0.00");
+                             }
+                             catch (Exception ex) {
+                                 // clsLog.WriteLogAzure(ex);
+                                 _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                              }
+                             string ChargeWgt = "0";
+                             ChargeWgt = Convert.ToDecimal(dsAWBDeatils.Tables[0].Rows[0]["ChargedWeight"].ToString().Trim()).ToString("0.00");
+ 
+                             ///function added for total of iata mkt rate on 6 may 12
+                             DataSet dsResult = new DataSet("GHA_QuickBooking_30");
+                             dsResult = GetChargeSummury(dsAWBDeatils);
+                             string frateIATA = "0.0";
+                             string frateMKT = "0.0";
+                             double ValCharge = 0.0;
+                             string PayMode = "";
+ 
+                             try
+                             {
+                                 if (dsAWBDeatils.Tables[0].Rows.Count > 0)
+                                 {
+                                     frateIATA = Convert.ToDouble(dsAWBDeatils.Tables[0].Rows[0][0].ToString()).ToString("0.00");
+                                     frateMKT = Convert.ToDouble(dsAWBDeatils.Tables[0].Rows[0][0].ToString()).ToString("0.00");
+                                     ValCharge = 0;
+                                     PayMode = dsAWBDeatils.Tables[1].Rows[0]["PaymentMode"].ToString();
+                                 }
+                             }
+                             catch (Exception ex)
+                             {
+                                 // clsLog.WriteLogAzure(ex);
+                                 _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
+ 
+                             string OCDueCar = "";
+                             string OCDueAgent = "";
+ 
+                             OCDueCar = dsResult.Tables[0].Rows[0][2].ToString();
+                             OCDueAgent = dsResult.Tables[0].Rows[0][3].ToString();
+ 
+                             double SpotRate = 0;
+                             double DynaRate = 0;
+                             double SerTax = Convert.ToDouble(dsResult.Tables[0].Rows[0][4].ToString());
+                             double Total = Convert.ToDouble(dsResult.Tables[0].Rows[0][5].ToString());
+ 
+                             Math.Round(Total, 2);
+                             Math.Round((decimal)Total, 2);
+ 
+                             Math.Round(SpotRate, 2);
+                             Math.Round((decimal)SpotRate, 2);
+ 
+                             Math.Round(DynaRate, 2);
+                             Math.Round((decimal)DynaRate, 2);
+ 
+                             Math.Round(SerTax, 2);
+                             Math.Round((decimal)SerTax, 2);
+ 
+                             string FltOrg = dsResult.Tables[3].Rows[0]["FltOrigin"].ToString();
+                             string FltDest = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
+ 
+                             #region flt no as per configuration
+                             string FltNo = "";
+                             string FltDate = "";
+                             string SecondFltNo = "";
+                             string SecondFltDate = "";
+                             string TransitPoint = "";
+                             string SenderRefNo, MiscRefNo, BagTagNo, TicketNo;
+                             SenderRefNo = MiscRefNo = BagTagNo = TicketNo = string.Empty;
+                             bool fltresult = true;
+                             //string Systemdateformat ;
+ 
+                             try
+                             {
+                                 fltresult = Convert.ToBoolean(ConfigCache.Get("FlightDescInEAWBPrint"));
+                             }
+                             catch (Exception ex)
+                             {
+                                 fltresult = true;
+                                 // clsLog.WriteLogAzure(ex);
+                                 _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
+ 
+                             if (fltresult)
+                             {
+                                 //DateTime.ParseExact(dsResult.Tables[3].Rows[0]["FltDate"].ToString().Trim(), ConfigCache.Get("SystemDateFormat"), null);
+                                 for (int i = 0; i < dsResult.Tables[3].Rows.Count && i < 3; i++)
+                                 {
+                                     FltNo = FltNo + dsResult.Tables[3].Rows[0]["FltNumber"].ToString() + ",";
+                                     FltDate = FltDate + Convert.ToDateTime(dsResult.Tables[3].Rows[0]["FltDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + ",";
+ 
+                                 }
+ 
+                                 if (FltNo != "")
+                                 {
+                                     FltNo = FltNo.Remove(FltNo.Length - 1, 1);
+                                 }
+ 
+                                 if (FltDate != "")
+                                 {
+                                     FltDate = FltDate.Remove(FltDate.Length - 1, 1);
+                                 }
+                             }
+                             #endregion
+ 
+                             //For CBV FlightNo & FlightDate
+                             if (FltNo.IndexOf(',') > 0 && FltDate.IndexOf(',') > 0)
+                             {
+                                 string fltNo = FltNo.Split(',')[0];
+                                 string fltDate = FltDate.Split(',')[0];
+                                 SecondFltNo = FltNo.Split(',')[1];
+                                 SecondFltDate = FltDate.Split(',')[1];
+                                 FltNo = fltNo;
+                                 FltDate = fltDate;
+                             }
+ 
+                             string fstleg = "";
+                             string fstlegcarrier = "";
+                             string seconleg = "";
+                             string seconlegcarrier = "";
+                             string thirdleg = "";
+                             string thirdlegcarrier = "";
+                             for (int i = 0; i < dsResult.Tables[3].Rows.Count; i++)
+                             {
+                                 switch (i.ToString())
+                                 {
+                                     case "0":
+                                         fstleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
+                                         fstlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
+                                         break;
+                                     case "1":
+                                         seconleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
+                                         seconlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
+                                         break;
+                                     case "2":
+                                         thirdleg = dsResult.Tables[3].Rows[0]["FltDestination"].ToString();
+                                         thirdlegcarrier = dsResult.Tables[3].Rows[0]["Carrier"].ToString();
+                                         break;
+                                 }
+                             }
+ 
+                             #region handlininfo
+                             string HandlingInfo_Extra = "";
+                             bool handleres = false;
+                             string export = _genericFunction.checkexportValidation(Origin);
+                             if (export == "US")
+                             {
+                                 if (ConfigCache.Get("Handlinginfo_EAWB") != string.Empty)
+                                     handleres = bool.Parse(ConfigCache.Get("Handlinginfo_EAWB"));
+                             }
+ 
+                             if (handleres)
+                                 HandlingInfo_Extra = "These commodities,technology or software were exported from the U.S in accordance with Export Administration Regulations";
+                             else
+                                 HandlingInfo_Extra = "";
+ 
+                             #endregion
+ 
+                             bool FFRChecked = false;
+ 
+                             DataTable DTExportSubDetails = new DataTable("GHA_QuickBooking_158");
+ 
+                             DTExportSubDetails.Columns.Add("OtherCharges");
+                             DTExportSubDetails.Columns.Add("Amount");
+                             DTExportSubDetails.Columns.Add("Type");
+ 
+                             string strOtherCharges = "";
+ 
+                             DataSet dsOtherDetails = new DataSet("GHA_QuickBooking_31");
+                             dsOtherDetails = dsAWBDeatils;
+ 
+                             if (dsOtherDetails != null && dsOtherDetails.Tables.Count > 0 && dsOtherDetails.Tables[0].Rows.Count > 0)
+                             {
+                                 //int Intcount = 0;
+                                 foreach (DataRow row in dsOtherDetails.Tables[5].Rows)
+                                 {
+                                     try
+                                     {
+                                         if (row["ChargeType"].ToString() == "DC" || row["ChargeType"].ToString() == "DA")
+                                         {
+                                             string strChargeType = string.Empty;
+                                             string strChargeCode = row["ChargeHeadCode"].ToString().Trim();
+ 
+                                             if (strChargeCode.Trim().IndexOf('/') > 0)
+                                                 strChargeCode = strChargeCode.Substring(0, strChargeCode.IndexOf("/"));
+                                             else
+                                                 strChargeCode = strChargeCode.Trim();
+ 
+                                             if (row["ChargeType"].ToString().Trim() == "DC")
+                                                 strChargeType = "Due Carrier";
+                                             else
+                                                 strChargeType = "Due Agent";
+ 
+                                             if (IsAgreed)
+                                                 DTExportSubDetails.Rows.Add(strChargeCode, "As agreed", strChargeType);
+                                             else
+                                                 DTExportSubDetails.Rows.Add(strChargeCode, row["Charge"].ToString(), strChargeType);
+ 
+                                             if (dsOtherDetails.Tables[0].Columns["ChargeHead"] != null)
+                                             {
+                                                 if (row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')).ToUpper() == "VLC" ||
+                                                     row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')).ToUpper().Equals("VL", StringComparison.OrdinalIgnoreCase))
+                                                     ValCharge = Convert.ToDouble(row["Charge"].ToString());
+                                                 else
+                                                     strOtherCharges = strOtherCharges + row["ChargeHead"].ToString().Substring(0, row["ChargeHead"].ToString().IndexOf('/')) + ":" + row["Charge"].ToString() + ", ";
+                                             }
+                                             else if (dsOtherDetails.Tables[0].Columns["ChargeHeadCode"] != null)
+                                             {
+ 
+                                                 string strChargeCodeVLC = row["ChargeHeadCode"].ToString().Trim();
+ 
+                                                 if (strChargeCodeVLC.Trim().IndexOf('/') > 0)
+                                                     strChargeCodeVLC = strChargeCode.Substring(0, strChargeCodeVLC.IndexOf("/"));
+                                                 else
+                                                     strChargeCodeVLC = strChargeCodeVLC.Trim();
+ 
+                                                 if (strChargeCodeVLC.ToUpper() == "VLC" || strChargeCodeVLC.ToUpper() == "VL")
+                                                     ValCharge = Convert.ToDouble(row["Charge"].ToString());
+ 
+                                                 else
+                                                 {
+                                                     string strCharge = row["ChargeHeadCode"].ToString().Trim();
+                                                     if (strCharge.Trim().IndexOf('/') > 0)
+                                                         strOtherCharges = strOtherCharges + row["ChargeHeadCode"].ToString().Substring(0, row["ChargeHeadCode"].ToString().IndexOf('/')) + ":" + row["Charge"].ToString() + ", ";
+                                                     else
+                                                         strOtherCharges = strOtherCharges.Trim();
+ 
+                                                     //AC-186 changes done
+                                                     if (strOtherCharges.Contains("MOA:0"))
+                                                         strOtherCharges = strOtherCharges.Replace("MOA:0", "");
+ 
+                                                     if (strOtherCharges.Contains("MOC:0"))
+                                                         strOtherCharges = strOtherCharges.Replace("MOC:0", "");
+                                                 }
+                                             }
+                                         }
+                                         if (row[0].ToString().Contains('/'))
+                                         {
+                                             if (row[0].ToString().ToUpper() != "VAL")
+                                             {
+                                                 strOtherCharges = strOtherCharges + row[0].ToString().Substring(0, row[0].ToString().IndexOf('/')) + ":" + row[1].ToString() + " , ";
+                                                 DTExportSubDetails.Rows.Add(row[0].ToString().Substring(0, row[0].ToString().IndexOf('/')), row[1].ToString(), "Due Carriers");
+ 
+                                                 strOtherCharges = strOtherCharges + row[1].ToString() + ":" + row[3].ToString() + " , ";
+ 
+                                                 if (strOtherCharges.Contains("MOA:0,"))
+                                                     strOtherCharges = strOtherCharges.Replace("MOA:0,", "");
+                                                 if (strOtherCharges.Contains("MOC:0,"))
+                                                     strOtherCharges = strOtherCharges.Replace("MOC:0,", "");
+                                             }
+                                             else
+                                                 ValCharge = ValCharge + Convert.ToDouble(row[3].ToString());
+                                         }
+                                     }
+                                     catch (Exception ex)
+                                     {
+                                         // clsLog.WriteLogAzure(ex);
+                                         _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                     }
+                                 }
+                             }
+                             else
+                             {
+                                 DTExportSubDetails.Rows.Add("-", "-", "-");
+                             }
+ 
+                             // string AccountInfo = "";
+                             string accountnumber = "";
+                             bool res = (dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALKIN") || dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim().Contains("WALK-IN"));
+ 
+                             DataSet dsShipmentType = _genericFunction.GetShipmentTypeNew(Origin, Dest);
+                             string shipmentType = string.Empty;
+                             if (dsShipmentType != null && dsShipmentType.Tables.Count > 0 && dsShipmentType.Tables[0].Rows.Count > 0)
+                                 shipmentType = Convert.ToString(dsShipmentType.Tables[0].Rows[0]["AWBShipmentType"]).Trim();
+ 
+                             bool res2 = (shipmentType.Equals("ID") || shipmentType.Equals("INT"));
+ 
+                             if (res == true || res2 == true)
+                             {
+                                 AccountInfo = "";
+                                 accountnumber = "";
+                             }
+                             else
+                             {
+                                 AccountInfo = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
+                                 accountnumber = dsAWBDeatils.Tables[0].Rows[0]["ShippingAgentCode"].ToString().Trim();
+                             }
+ 
+                             if (AccountInfo.Length > 0)
+                             {
+                                 if (dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim().Length > 0)
+                                     AccountInfo = AccountInfo + " - " + dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
+                             }
+                             else
+                                 AccountInfo = dsAWBDeatils.Tables[1].Rows[0]["AccountInfo"].ToString().Trim();
+ 
+ 
+                             string strDimension = "";
+                             string prepaid = "";
+                             string TotalPrepaid = "";
+                             string ExecDate = string.Empty, ExecBy = string.Empty, ExecAT = string.Empty;
+ 
+                             //// Get AWB Executed At, Executed By, and Execution Date
+                             DataSet dsExec = _genericFunction.GetAWBExecutionInfo(AWBPrefix, AWBNumber);
+ 
+                             if (dsExec != null && dsExec.Tables.Count > 0 && dsExec.Tables[0].Rows.Count > 0)
+                             {
+                                 ExecDate = Convert.ToDateTime(dsExec.Tables[0].Rows[0]["ExecutionDate"]).ToString(ConfigCache.Get("SystemDateFormat"), CultureInfo.InvariantCulture) + " " + Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutionTime"]);
+                                 ExecBy = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedBy"]);
+                                 ExecAT = Convert.ToString(dsExec.Tables[0].Rows[0]["ExecutedAt"]);
+                             }
+                             //else
+                             //{
+                             //    ExecDate = txtExecutionDate1.Value.ToString(Convert.ToString(Session["DateFormat"])) + " " + txtExecTime.Text;
+                             //    ExecBy = (Session["UpdtBy"] != null && Session["UpdtBy"].ToString() != string.Empty) ? Session["UpdtBy"].ToString() : txtExecutedBy.Text;
+                             //    ExecAT = txtExecutedAt.Text;
+                             //}
+ 
+                             // Shipper Name and Address
+                             string SAcNo = dsAWBDeatils.Tables[6].Rows[0]["ShipperAccCode"].ToString().Trim();
+                             string CAcNo = dsAWBDeatils.Tables[6].Rows[0]["ConsigAccCode"].ToString().Trim();
+ 
+                             if (SAcNo.Contains("WALKIN") || SAcNo.Contains("Walk-in"))
+                                 SAcNo = "";
+ 
+                             if (CAcNo.Contains("WALKIN") || CAcNo.Contains("Walk-in"))
+                                 CAcNo = "";
+ 
+                             string shipperState = string.Empty;
+                             string shipperCountry = string.Empty;
+                             string shipperCity = string.Empty;
+                             string ShprName = string.Empty, ShrpAddress1 = string.Empty, ShptAddress2 = string.Empty;
+ 
+                             ShprName = dsAWBDeatils.Tables[6].Rows[0]["ShipperName"].ToString().Trim();
+                             ShrpAddress1 = dsAWBDeatils.Tables[6].Rows[0]["ShipperAddress"].ToString().Trim();
+                             ShptAddress2 = dsAWBDeatils.Tables[6].Rows[0]["ShipperAdd2"].ToString().Trim();
+ 
+ 
+                             string ShipperName = ShprName + Environment.NewLine + ShrpAddress1;
+ 
+                             if (!string.IsNullOrEmpty(ShptAddress2))
+                                 ShipperName += ", " + ShptAddress2;
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim()))
+                                 shipperState = dsAWBDeatils.Tables[6].Rows[0]["ShipperState"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim()))
+                                 shipperCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCountry"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
+                                 ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim() + ", ";
+                             else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperCity"].ToString().Trim()))
+                                 ShipperName += Environment.NewLine;
+ 
+                             if (!string.IsNullOrEmpty(shipperState))
+                                 ShipperName += shipperState;
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim()))
+                                 ShipperName += " " + dsAWBDeatils.Tables[6].Rows[0]["ShipperPincode"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(shipperCountry))
+                                 ShipperName += shipperCountry;
+                             string Clientname = string.Empty;
+                             DataSet dsClientName = new DataSet("dsClientName");
+                             dsClientName = _genericFunction.GetClientName();
+                             Clientname = Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]);
+                             if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
+                             {
+                                 if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
+                                     ShipperName += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim();
+                             }
+ 
+                             // Consignee name and address
+                             string consignerState = string.Empty;
+                             string consignerCountry = string.Empty;
+                             string consignerCity = string.Empty;
+ 
+                             string ConsName = string.Empty, ConsAddress1 = string.Empty, ConsAddress2 = string.Empty;
+ 
+                             ConsName = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeName"].ToString().Trim();
+                             ConsAddress1 = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeAddress"].ToString().Trim();
+                             ConsAddress2 = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeAddress2"].ToString().Trim();
+ 
+ 
+                             string Consigneename = ConsName + Environment.NewLine + ConsAddress1;
+ 
+                             if (!string.IsNullOrEmpty(ConsAddress2))
+                                 Consigneename += ", " + ConsAddress2;
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim()))
+                                 consignerState = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeState"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim()))
+                                 consignerCountry = Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCountry"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
+                                 Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim() + ", ";
+                             else if (string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeCity"].ToString().Trim()))
+                                 Consigneename += Environment.NewLine;
+ 
+                             if (!string.IsNullOrEmpty(consignerState))
+                                 Consigneename += consignerState;
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim()))
+                                 Consigneename += " " + dsAWBDeatils.Tables[6].Rows[0]["ConsigneePincode"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(consignerCountry))
+                                 Consigneename += consignerCountry;
+ 
+                             if (!dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim().Equals("CBV"))
+                             {
+                                 if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim()) && !Clientname.Contains("VietJet"))
+                                     Consigneename += Environment.NewLine + dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim();
+                             }
+ 
+                             string ShipperTelephoneNo = dsAWBDeatils.Tables[6].Rows[0]["ShipperTelephone"].ToString().Trim();
+                             string ConsigneeTelephoneNo = dsAWBDeatils.Tables[6].Rows[0]["ConsigneeTelephone"].ToString().Trim();
+                             string ShipperNameFor = dsAWBDeatils.Tables[6].Rows[0]["ShipperName"].ToString().Trim();
+ 
+                             string RatePerKg = dsAWBDeatils.Tables[1].Rows[0]["RatePerKg"].ToString().Trim();
+                             string SCI = dsAWBDeatils.Tables[0].Rows[0]["SCI"].ToString().Trim();
+                             DataTable DTExport = new DataTable("GHA_QuickBooking_159");
+ 
+                             DTExport.Columns.Add("DocType");
+                             DTExport.Columns.Add("AWBPrefix");
+                             DTExport.Columns.Add("AWBNo");
+                             DTExport.Columns.Add("AirLineCode");
+                             DTExport.Columns.Add("Origin");
+                             DTExport.Columns.Add("Dest");
+                             DTExport.Columns.Add("AgentCode");
+                             DTExport.Columns.Add("AgentName");
+                             DTExport.Columns.Add("Serviceclass");
+                             DTExport.Columns.Add("HandlingInfo");
+                             DTExport.Columns.Add("ProductType");
+                             DTExport.Columns.Add("CommCode");
+                             DTExport.Columns.Add("CommDesc");
+                             DTExport.Columns.Add("PCS");
+                             DTExport.Columns.Add("GrossWGT");
+                             DTExport.Columns.Add("Volume");
+                             DTExport.Columns.Add("ChargeWGT");
+ 
+                             DTExport.Columns.Add("frateIATA");
+                             DTExport.Columns.Add("frateMKT");
+                             DTExport.Columns.Add("ValCharge");
+                             DTExport.Columns.Add("PayMode");
+                             DTExport.Columns.Add("OCDueCar");
+                             DTExport.Columns.Add("OCDueAgent");
+                             DTExport.Columns.Add("SpotRate");
+                             DTExport.Columns.Add("DynaRate");
+                             DTExport.Columns.Add("SerTax");
+                             DTExport.Columns.Add("Total");
+ 
+                             DTExport.Columns.Add("FltOrg");
+                             DTExport.Columns.Add("FltDest");
+                             DTExport.Columns.Add("FltNo");
+                             DTExport.Columns.Add("FltDate");
+                             DTExport.Columns.Add("FFRChecked");
+                             DTExport.Columns.Add("ExecDate");
+                             DTExport.Columns.Add("ExecBy");
+                             DTExport.Columns.Add("ExecAT");
+ 
+                             DTExport.Columns.Add("ConsigneeName");
+                             DTExport.Columns.Add("Prepaid");
+                             DTExport.Columns.Add("TotalPrepaid");
+                             DTExport.Columns.Add("ShippersName");
+                             DTExport.Columns.Add("OtherCharges");
+                             DTExport.Columns.Add("Dimension");
+ 
+                             DTExport.Columns.Add("ShipperAccountNo");
+                             DTExport.Columns.Add("ConsigneeAcNo");
+                             DTExport.Columns.Add("IssuingCarrierName");
+                             DTExport.Columns.Add("AgentIataCode");
+                             DTExport.Columns.Add("AccountCode");
+                             DTExport.Columns.Add("AccountInformation");
+ 
+                             DTExport.Columns.Add("ChargesCode");
+                             DTExport.Columns.Add("WtVal");
+                             DTExport.Columns.Add("watvalother");
+                             DTExport.Columns.Add("DeclValCarr");
+                             DTExport.Columns.Add("DeclValcustoms");
+                             DTExport.Columns.Add("InsAmount");
+                             DTExport.Columns.Add("RateClassKG");
+ 
+                             DTExport.Columns.Add("RateClassN");
+                             DTExport.Columns.Add("CommodityItem");
+                             DTExport.Columns.Add("NatureOfgoods");
+                             DTExport.Columns.Add("Length");
+                             DTExport.Columns.Add("Width");
+                             DTExport.Columns.Add("Height");
+ 
+                             DTExport.Columns.Add("collectvalCharge");
+                             DTExport.Columns.Add("collecttax");
+                             DTExport.Columns.Add("collectDueAgent");
+                             DTExport.Columns.Add("CollectDueCarrier");
+                             DTExport.Columns.Add("collecttotal");
+                             DTExport.Columns.Add("CurrencyRate");
+ 
+                             DTExport.Columns.Add("CCDestCurrency");
+                             DTExport.Columns.Add("ForCarrOnlydest");
+                             DTExport.Columns.Add("chargeAtDest");
+                             DTExport.Columns.Add("AirlineAddress");
+ 
+                             DTExport.Columns.Add("AilinePrefix");
+                             DTExport.Columns.Add("RatePerKg");
+                             DTExport.Columns.Add("AccountInfo");
+                             DTExport.Columns.Add("DepartureCity");
+                             DTExport.Columns.Add("ArrivalCity");
+                             DTExport.Columns.Add("BarCode", System.Type.GetType("System.Byte[]"));
+                             DTExport.Columns.Add("CopyType");
+                             DTExport.Columns.Add("Logo", System.Type.GetType("System.Byte[]"));
+                             DTExport.Columns.Add("CustomerSupportInfo");
+ 
+                             //New Columns
+                             DTExport.Columns.Add("WTPPD");
+                             DTExport.Columns.Add("WTCOLL");
+                             DTExport.Columns.Add("OtherPPD");
+                             DTExport.Columns.Add("OtherCOLL");
+                             DTExport.Columns.Add("VLCCollect");
+                             DTExport.Columns.Add("PcsULDNo");
+                             //new added field
+                             DTExport.Columns.Add("SCI");
+                             DTExport.Columns.Add("HandlingInfo_Extra");
+ 
+                             //added columns for shipper and consigneee
+                             DTExport.Columns.Add("SAcNo");
+                             DTExport.Columns.Add("CAcNo");
+                             //added column for 3rd leg destination
+                             DTExport.Columns.Add("fstleg");//fstleg
+                             DTExport.Columns.Add("seconleg");
+                             DTExport.Columns.Add("thirdleg");
+                             //for carriercode
+                             DTExport.Columns.Add("fstlegcarrier");//fstleg
+                             DTExport.Columns.Add("seconlegcarrier");
+                             DTExport.Columns.Add("thirdlegcarrier");
+                             DTExport.Columns.Add("TotalPcsU");
+                             DTExport.Columns.Add("totalgwt");
+                             //totalRateUnit
+                             DTExport.Columns.Add("totalRateUnit");
+ 
+                             //tottal chargeable wt
+ 
+                             DTExport.Columns.Add("TotalChargeWt");
+                             //total rate perkg
+                             DTExport.Columns.Add("TotalRatePerKg");
+                             DTExport.Columns.Add("Dims");
+                             DTExport.Columns.Add("totalRateUnitCC");
+                             DTExport.Columns.Add("TotalFrtCharge");
+ 
+                             // New Fields added
+                             DTExport.Columns.Add("ShippersTel");
+                             DTExport.Columns.Add("ConsigneeTel");
+                             DTExport.Columns.Add("ShipperNameFor");
+                             DTExport.Columns.Add("SecondFltNo");
+                             DTExport.Columns.Add("SecondFltDate");
+                             DTExport.Columns.Add("TransitPoint");
+ 
+                             DTExport.Columns.Add("SenderRefNo");
+                             DTExport.Columns.Add("MiscRefNo");
+                             DTExport.Columns.Add("BagTagNo");
+                             DTExport.Columns.Add("TicketNo");
+                             DTExport.Columns.Add("PANNumber");
+                             DTExport.Columns.Add("STNumber");
+                             DTExport.Columns.Add("HSCodes");
+ 
+                             DTExport.Columns.Add("SHP");
+                             DTExport.Columns.Add("ConsId");
+ 
+                             string SHP_print = string.Empty;
+                             string ConsId = string.Empty;
+ 
+                             SHP_print = dsAWBDeatils.Tables[6].Rows[0]["ShipUSPassportNum"].ToString().Trim() + dsAWBDeatils.Tables[6].Rows[0]["ShipIDCode"].ToString().Trim();
+                             if (SHP_print == " ")
+                                 SHP_print = "";
+                             else
+                                 SHP_print = "ID: " + SHP_print;
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim()))
+                                 ConsId = "ID: " + dsAWBDeatils.Tables[6].Rows[0]["ConsIDCode"].ToString().Trim();
+                             else
+                                 ConsId = "";
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim()))
+                                 ShipperName += Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ShipAEONum"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim()))
+                                 Consigneename = Consigneename + Environment.NewLine + "AEO: " + dsAWBDeatils.Tables[6].Rows[0]["ConsAEONum"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim()))
+                                 Consigneename = Consigneename + Environment.NewLine + "Notify Name: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyName"].ToString().Trim();
+ 
+                             if (!string.IsNullOrEmpty(dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim()))
+                                 Consigneename = Consigneename + Environment.NewLine + "Notify Phone: " + dsAWBDeatils.Tables[6].Rows[0]["NotifyTelephone"].ToString().Trim();
+ 
+                             DataTable dsDimesionAll = new DataTable("GHA_QuickBooking_32");
+                             //dsDimesionAll = GenerateAWBDimensions(txtAWBNo.Text.Trim(), Convert.ToInt32(Pcs), (DataSet)Session["dsDimesionAll"], Convert.ToDecimal(GrossWgt), false, txtAwbPrefix.Text.Trim(), 0, "", false);
+                             dsDimesionAll = dsAWBDeatils.Tables[2];
+                             DataTable DTvolume = new DataTable("GHA_QuickBooking_160");
+                             DTvolume.Columns.Add("CommDesc");
+                             DTvolume.Columns.Add("Length");
+                             DTvolume.Columns.Add("Width");
+                             DTvolume.Columns.Add("Height");
+                             DTvolume.Columns.Add("Volume");
+                             DTvolume.Columns.Add("PCSCount");
+ 
+                             float Length = 0; float Breadth = 0; float Height = 0;
+                             int dimPCS = 0;
+                             string Units = string.Empty;
+                             ArrayList arr1 = new ArrayList();
+                             if (dsDimesionAll != null && dsDimesionAll.Rows.Count > 0)
+                             {
+                                 for (int i = 0; i < dsDimesionAll.Rows.Count; i++)
+                                 {
+                                     dimPCS = 0;
+ 
+                                     Length = float.Parse(dsDimesionAll.Rows[i]["Length"].ToString());
+                                     Breadth = float.Parse(dsDimesionAll.Rows[i]["Breadth"].ToString());
+                                     Height = float.Parse(dsDimesionAll.Rows[i]["Height"].ToString());
+                                     dimPCS = int.Parse(dsDimesionAll.Rows[i]["PieceNo"].ToString());
+                                     Units = dsDimesionAll.Rows[0]["Units"].ToString();
+                                     arr1.Add(dsDimesionAll.Rows[i]["ULDNo"].ToString());
+                                     if (Length > 0 && Breadth > 0 && Height > 0)
+                                     {
+                                         Volume = ((Length * Breadth * Height) * dimPCS).ToString("0.00");
+                                         DTvolume.Rows.Add(CommDesc, Length, Breadth, Height, Volume, dimPCS);
+                                         strDimension = strDimension + "  DIMS: " + Length + " * " + Breadth + " * " + Height + " * " + dimPCS + "  " + Units + " ;    ";
+                                     }
+                                 }
+                             }
+                             else
+                             {
+                                 Length = 0;
+                                 Breadth = 0;
+                                 Height = 0;
+ 
+                                 DTvolume.Rows.Add(CommDesc, Length, Breadth, Height, Volume, dimPCS);
+                             }
+ 
+                             string ShipperAccountNo = "";
+                             string ConsigneeAcNo = "";
+                             string IssuingCarrierName = "";
+                             string AgentIataCode = "";
+                             string AccountCode = "";
+                             string AccountInformation = "";
+                             string ChargesCode = dsAWBDeatils.Tables[1].Rows[0]["PaymentMode"].ToString().Trim();
+                             string AirlineAddress = "";
+                             string PANNumber = "";
+                             string STNumber = "";
+ 
+                             string RateClause = dsAWBDeatils.Tables[7].Rows[0]["RateClass"].ToString().Trim();
+                             string OriginCity = "";
+                             string DestinationCity = "";
+                             string CopyType = string.Empty;
+                             string CustomerSupportInfo = "";
+ 
+                             string PscULDNo = "";
+ 
+ 
+                             //if (Session["PieceTypeULDNo_ArrayList"] != null)
+                             //    arr1 = (ArrayList)Session["PieceTypeULDNo_ArrayList"];
+ 
+                             if (arr1.Count > 0)
+                             {
+                                 foreach (string li in arr1)
+                                 {
+                                     PscULDNo += li.ToString() + ",";
+                                 }
+ 
+                                 PscULDNo = PscULDNo.Remove(PscULDNo.Length - 1);
+                             }
+ 
+                             string wtPPD = "", wtCOLL = "", OtherPPD = "", OtherCOLL = "", ClientName = "";
+                             if (ChargesCode == "PP" || ChargesCode == "PX")
+                                 wtPPD = OtherPPD = "XX";
+                             if (ChargesCode == "CC")
+                                 wtCOLL = OtherCOLL = "XX";
+ 
+                             //MasterBAL ObjMsBAl = new MasterBAL();
+                             DataSet dsMasterAirline = new DataSet("GHA_QuickBooking_33");
+                             //Added by swati
+                             dsMasterAirline = _genericFunction.GetAirlineDetails(Origin, Dest, AirlinePrefix);
+                             //ObjMsBAl = null;
+ 
+                             if (dsMasterAirline != null)
+                             {
+                                 if (dsMasterAirline.Tables.Count > 0)
+                                 {
+                                     if (dsMasterAirline.Tables[1].Rows.Count > 0)
+                                     {
+                                         OriginCity = _genericFunction.getorg(Origin);
+ 
+                                         if (dsMasterAirline.Tables[2].Rows.Count > 0)
+                                         {
+                                             DestinationCity = _genericFunction.getorg(Dest);
+                                             if (dsMasterAirline.Tables[0].Rows.Count > 0)
+                                                 CustomerSupportInfo = dsMasterAirline.Tables[0].Rows[0]["CustomerSupportInfo"].ToString();
+                                         }
+                                     }
+                                 }
+ 
+                                 if (dsMasterAirline.Tables.Count > 0)
+                                 {
+                                     if (dsMasterAirline.Tables[0].Rows.Count > 0)
+                                     {
+                                         AirlineAddress = dsMasterAirline.Tables[0].Rows[0][0].ToString() + ", " + dsMasterAirline.Tables[0].Rows[0][1].ToString();
+                                         PANNumber = dsMasterAirline.Tables[0].Rows[0]["PANNumber"].ToString();
+                                         STNumber = dsMasterAirline.Tables[0].Rows[0]["STNumber"].ToString();
+                                         ClientName = dsMasterAirline.Tables[0].Rows[0][0].ToString();
+                                     }
+                                 }
+ 
+                                 // Added to get the No. Of eAWB Copies
+                                 if (dsMasterAirline.Tables.Count > 0)
+                                 {
+                                     eAWBPrintArray = new string[dsMasterAirline.Tables[3].Rows.Count];
+ 
+                                     if (dsMasterAirline.Tables[3].Rows.Count > 0)
+                                     {
+                                         for (int i = 0; i < dsMasterAirline.Tables[3].Rows.Count; i++)
+                                         {
+                                             eAWBPrintArray[i] = dsMasterAirline.Tables[3].Rows[i]["eAWBPageName"].ToString();
+                                         }
+                                     }
+                                 }
+                             }
+ 
+                             //CEBV4-3209
+                             string AWBStatus = _genericFunction.GetAWBStatus(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim());
+                             //Session["AWBStatus"] = AWBStatus;
+ 
+                             if (dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim() != null && dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim().Equals("B"))
+                             {
+                                 if (!ClientName.Contains("AirAsia"))
+                                     CopyType = "Draft Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
+                             }
+                             else
+                             {
+                                 CopyType = "Final Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
+                                 CopyType = "Final Copy: Updated on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim()) + " Printed on " + Convert.ToDateTime(dsAWBDeatils.Tables[0].Rows[0]["UpdatedOn"].ToString().Trim());
+                             }
+                             //Set dv for carriage and customs if blank or 0.
+                             float declaredValue = 0;
+                             string dvForCarriage = "NVD";
+                             if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim(), out declaredValue))
+                                 declaredValue = 0;
+ 
+                             if (declaredValue > 0)
+                                 dvForCarriage = dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim();
+                             else
+                                 dvForCarriage = "NVD";
+ 
+                             declaredValue = 0;
+                             string dvForCustoms = "NCV";
+                             if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim(), out declaredValue))
+                                 declaredValue = 0;
+                             if (declaredValue > 0)
+                                 dvForCustoms = dsAWBDeatils.Tables[0].Rows[0]["DVCarriage"].ToString().Trim();
+                             else
+                                 dvForCustoms = "NCV";
+ 
+                             declaredValue = 0;
+                             string InsAmount = "XXX";
+                             if (!float.TryParse(dsAWBDeatils.Tables[0].Rows[0]["InsuranceAmount"].ToString().Trim(), out declaredValue))
+                                 declaredValue = 0;
+                             if (declaredValue > 0)
+                                 InsAmount = dsAWBDeatils.Tables[0].Rows[0]["InsuranceAmount"].ToString().Trim();
+                             else
+                                 InsAmount = "XXX";
+ 
+                             // HA-373: Get multiple rate lines
+                             DataSet dsRateLog = _genericFunction.GetAWBRateLog(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim(), dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), IsAgreed, dsAWBDeatils.Tables[0].Rows[0]["UpdatedBy"].ToString().Trim());
+                             string UOM = string.Empty;
+                             string totalRate = string.Empty;
+                             string dims = string.Empty;
+                             string totalFrtCharge = string.Empty;
+                             string totalTax = string.Empty;
+                             string totalAmount = string.Empty;
+                             //string Logo = "";
+ 
+                             //int  pcs1 = 0;
+                             //decimal  tgwt = 0;
+                             decimal chargewt = 0, TotalChargeWt = 0, TotalRatePerKg = 0, RateKg = 0;//, Totalrt = 0;
+                             string RateLogRatePref = "", IncludeOCDCInPrint = "TRUE", HSCodes = "";
+                             if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 0)
+                             {
+                                 TotalPcsU = 0;
+                                 totalgwt = 0;
+                                 Pcs = string.Empty;
+                                 GrossWgt = string.Empty;
+                                 RateClause = string.Empty;
+                                 CommCode = string.Empty;
+                                 ChargeWgt = string.Empty;
+                                 RatePerKg = string.Empty;
+ 
+                                 foreach (DataRow dr in dsRateLog.Tables[0].Rows)
+                                 {
+                                     Pcs += Convert.ToString(dr["Pieces"]) + Environment.NewLine + Environment.NewLine;
+ 
+                                     GrossWgt += Convert.ToDecimal(dr["GWeight"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
+ 
+                                     UOM += Convert.ToString(dr["UOM"]) + Environment.NewLine + Environment.NewLine;
+ 
+                                     RateClause += Convert.ToString(dr["MKTRateClass"]) + Environment.NewLine + Environment.NewLine;
+ 
+                                     CommCode += Convert.ToString(dr["CommCode"]) + Environment.NewLine + Environment.NewLine;
+ 
+                                     ChargeWgt += Convert.ToDecimal(dr["CWeight"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
+                                     chargewt = Convert.ToDecimal(dr["CWeight"]);
+                                     TotalChargeWt += chargewt;
+ 
+                                     if (!Convert.ToString(dr["RatePerKg"]).Equals("As Agreed", StringComparison.OrdinalIgnoreCase))
+                                     {
+                                         RatePerKg += Convert.ToDecimal(dr["RatePerKg"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
+                                         RateKg = Convert.ToDecimal(dr["RatePerKg"]);
+                                         TotalRatePerKg += RateKg;
+                                     }
+                                     else
+                                     {
+                                         RatePerKg += Convert.ToString(dr["RatePerKg"]) + Environment.NewLine + Environment.NewLine;
+                                     }
+ 
+                                     if (!Convert.ToString(dr["Total"]).Equals("As Agreed", StringComparison.OrdinalIgnoreCase))
+                                         totalRate += Convert.ToDecimal(dr["Total"]).ToString("0.00") + Environment.NewLine + Environment.NewLine;
+                                     else
+                                         totalRate += Convert.ToString(dr["Total"]) + Environment.NewLine + Environment.NewLine;
+ 
+                                     dims += Convert.ToString(dr["Dims"]).Replace("|", Environment.NewLine) + Environment.NewLine;
+                                 }
+ 
+                                 try
+                                 {
+                                     Pcs = Pcs.Substring(0, Pcs.Length - 4);
+                                     GrossWgt = GrossWgt.Substring(0, GrossWgt.Length - 4);
+                                     UOM = UOM.Substring(0, UOM.Length - 4);
+                                     RateClause = RateClause.Substring(0, RateClause.Length - 4);
+                                     CommCode = CommCode.Substring(0, CommCode.Length - 4);
+                                     ChargeWgt = ChargeWgt.Substring(0, ChargeWgt.Length - 4);
+                                     RatePerKg = RatePerKg.Substring(0, RatePerKg.Length - 4);
+                                     totalRate = totalRate.Substring(0, totalRate.Length - 4);
+                                     dims = dims.Substring(0, dims.Length - 2);
+ 
+                                     totalFrtCharge = Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtCharge"]);
+                                     //totalTax = Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]);
+                                     totalTax = dsAWBDeatils.Tables[7].Rows[0]["ServTax"].ToString().Trim();
+                                     //totalAmount = Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
+                                     totalAmount = dsAWBDeatils.Tables[7].Rows[0]["Total"].ToString().Trim();
+ 
+                                     if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["TotalAmount"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
+                                         Total = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["TotalAmount"]);
+ 
+                                     if (!string.Equals(Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtTax"]), "As Agreed", StringComparison.OrdinalIgnoreCase))
+                                         SerTax = Convert.ToDouble(dsRateLog.Tables[1].Rows[0]["FrtTax"]);
+ 
+                                     // Show pcs and wt from rate log table
+                                     TotalPcsU = Convert.ToInt32(dsRateLog.Tables[2].Rows[0]["Pieces"]);
+                                     totalgwt = Convert.ToDecimal(dsRateLog.Tables[2].Rows[0]["GrossWeight"]);
+ 
+                                     //if (!totalTax.Equals("As Agreed"))
+                                     //    SerTax = Convert.ToDouble(totalTax);
+ 
+                                     //if (!totalAmount.Equals("As Agreed"))
+                                     //    Total = Convert.ToDouble(totalAmount);
+ 
+                                     RateLogRatePref = dsRateLog.Tables[1].Rows[0]["RatePreference"].ToString();
+                                     HSCodes = "";//dsRateLog.Tables[1].Rows[0]["HSCodes"].ToString();
+                                     AgentIataCode = dsRateLog.Tables[1].Rows[0]["AgentIATACode"].ToString();
+ 
+                                     if (RateLogRatePref.Trim().Equals("As Agreed"))
+                                         IsAgreed = true;
+ 
+                                     IncludeOCDCInPrint = dsRateLog.Tables[1].Rows[0]["IncludeOCChargesINSpot"].ToString();
+                                     try
+                                     {
+                                         if (Convert.ToString(dsRateLog.Tables[1].Rows[0]["AgentCity"]).Length > 0)
+                                             AgentName = AgentName + Environment.NewLine + dsRateLog.Tables[1].Rows[0]["AgentCity"].ToString();
+                                     }
+                                     catch (Exception x) {
+                                         // clsLog.WriteLogAzure(x); 
+                                         _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                     }
+                                 }
+                                 catch (Exception ex) {
+                                     // clsLog.WriteLogAzure(ex); 
+                                     _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
+                             }
+                             System.IO.MemoryStream LogoClient = null;
+                             //try
+                             //{
+                             //    Logo = null;
+                             //}
+                             //catch (Exception ex)
+                             //{
+                             LogoClient = new System.IO.MemoryStream();
+                             //clsLog.WriteLogAzure(ex); ;
+                             //}
+                             string drpCurrency = " ";
+                             drpCurrency = dsAWBDeatils.Tables[7].Rows[0]["Currency"].ToString().Trim();
+                             if (IsAgreed == true)
+                             {
+                                 if (ChargesCode == "PP" || ChargesCode == "PX" || ChargesCode == "PZ")
+                                 {
+                                     DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
+                                                         CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
+                                                         "As Agreed", "As Agreed", "As Agreed", PayMode, "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
+                                                         "As Agreed", "As Agreed", ShipperName, "As Agreed", strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
+                                                         UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, "", "", "", "", "", "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, "As Agreed", AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
+                                                         CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, "", PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "As Agreed", TotalChargeWt, TotalRatePerKg, dims, "As Agreed", "As Agreed", ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
+                                 }
+                                 else
+                                 {
+                                     DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
+                                                         CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
+                                                         "", "", "", PayMode, "", "", "", "", "", "", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
+                                                         "", "", ShipperName, "As Agreed", strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
+                                                         UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, "As Agreed", "As Agreed", "As Agreed", "As Agreed", "As Agreed", "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, "As Agreed", AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
+                                                         CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, "As Agreed", PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "As Agreed", TotalChargeWt, TotalRatePerKg, dims, "As Agreed", "As Agreed", ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
+                                 }
+                             }
+                             else
+                             {
+                                 string freight = frateIATA;
+                                 if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 1)
+                                 {
+                                     freight = totalRate;
+                                 }
+                                 else
+                                 {
+                                     if (strAgentPreference == "IATA")
+                                         freight = frateIATA;
+                                     else if (strAgentPreference == "MKT" && RateLogRatePref.Equals("SPOT", StringComparison.OrdinalIgnoreCase))
+                                         freight = dsAWBDeatils.Tables[7].Rows[0]["SpotFreight"].ToString().Trim();
+                                     else if (strAgentPreference == "MKT")
+                                         freight = frateMKT;
+                                 }
+ 
+                                 try
+                                 {
+                                     if (IncludeOCDCInPrint.Trim().ToUpper().Equals("TRUE"))
+                                     {
+                                         OCDueCar = (Convert.ToDecimal(OCDueCar) - Convert.ToDecimal(ValCharge)).ToString();
+                                         OCDueCar = OCDueCar != string.Empty ? Convert.ToDecimal(OCDueCar).ToString() : OCDueCar;
+ 
+                                         OCDueAgent = OCDueAgent != string.Empty ? Convert.ToDecimal(OCDueAgent).ToString() : OCDueAgent;
+                                     }
+                                     else
+                                     {
+                                         OCDueCar = "0";
+                                         ValCharge = Convert.ToDouble("0");
+                                         OCDueAgent = "0";
+                                         strOtherCharges = "";
+                                     }
+                                 }
+                                 catch (Exception ex)
+                                 {
+                                     // clsLog.WriteLogAzure(ex);
+                                     _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
+ 
+ 
+                                 bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
+                                 specifier = ConfigCache.Get("AllowedDecimalNumber");
+ 
+ 
+                                 string zeroValueFormat = Convert.ToDecimal(0).ToString(specifier, bz);
+ 
+ 
+                                 if (ChargesCode == "PP" || ChargesCode == "PX" || ChargesCode == "PZ")
+                                 {
+                                     DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
+                                                         CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt, freight, frateMKT, ValCharge.ToString(specifier, bz), PayMode, OCDueCar, OCDueAgent,
+                                         SpotRate.ToString(specifier, bz), DynaRate.ToString(specifier, bz), SerTax.ToString(specifier, bz), Total.ToString(specifier, bz), FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
+                                 prepaid, TotalPrepaid, ShipperName, strOtherCharges, strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
+                                                         UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, zeroValueFormat, zeroValueFormat, zeroValueFormat, zeroValueFormat, zeroValueFormat, "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, RatePerKg, AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
+                                                     CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, zeroValueFormat, PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, totalFrtCharge, TotalChargeWt, TotalRatePerKg, dims, "", totalFrtCharge, ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
+                                 }
+                                 else
+                                 {
+                                     DTExport.Rows.Add(DocType, AWBprefix, AWBno, AirLineCode, Origin, FltDest, AgentCode, AgentName, Serviceclass, Handlinginfo, ProductType,
+                                                         CommCode, CommDesc, Pcs, GrossWgt, Volume, ChargeWgt,
+                                 "", "", "", PayMode, "", "", "", "", "", "", FltOrg, Dest, FltNo, FltDate, FFRChecked, ExecDate, ExecBy, ExecAT, Consigneename,
+                                 prepaid, TotalPrepaid, ShipperName, strOtherCharges, strDimension, ShipperAccountNo, ConsigneeAcNo, IssuingCarrierName, AgentIataCode, AccountCode, AccountInformation, ChargesCode, "P", "P", dvForCarriage, dvForCustoms, InsAmount,
+                                                         UOM, RateClause, CommCode, CommDesc, Length, Breadth, Height, freight, SerTax.ToString(specifier, bz), OCDueAgent, OCDueCar, Total.ToString(specifier, bz), "", drpCurrency, "", "", AirlineAddress, AirlinePrefix, RatePerKg, AccountInfo, OriginCity, DestinationCity, ms.ToArray(), CopyType, LogoClient.ToArray(),
+                                                     CustomerSupportInfo, wtPPD, wtCOLL, OtherPPD, OtherCOLL, ValCharge.ToString(specifier, bz), PscULDNo, SCI, HandlingInfo_Extra, SAcNo, CAcNo, fstleg, seconleg, thirdleg, fstlegcarrier, seconlegcarrier, thirdlegcarrier, TotalPcsU, totalgwt, "", TotalChargeWt, TotalRatePerKg, dims, totalFrtCharge, totalFrtCharge, ShipperTelephoneNo, ConsigneeTelephoneNo, ShipperNameFor, SecondFltNo, SecondFltDate, TransitPoint, SenderRefNo, MiscRefNo, BagTagNo, TicketNo, PANNumber, STNumber, HSCodes, SHP_print, ConsId);
+                                 }
+                             }
+ 
+                             // HA-642: added by swati for signature field..
+                             DataSet dsSign = new DataSet("dsEAWBSignature");
+                             dsSign = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "AWBSignature");
+ 
+                             System.IO.MemoryStream signMemStream = null;
+ 
+                             if (dsSign != null && dsSign.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"]).Trim()))
+                             {
+                                 byte[] sign = null;
+                                 sign = _genericFunction.DownloadFromBlob(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
+                                 signMemStream = (sign == null ? new System.IO.MemoryStream() : new System.IO.MemoryStream(sign));
+                             }
+ 
+                             DataColumn dcSign = new DataColumn("Signature", System.Type.GetType("System.Byte[]"));
+ 
+                             if (signMemStream != null)
+                                 dcSign.DefaultValue = signMemStream.ToArray();
+ 
+                             DTExport.Columns.Add(dcSign);
+ 
+                             // Adding new columns for HTML PDF generator
+                             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
+                             string pathhtml = Directory.GetParent(path).Parent.FullName;
+                             string logo = "";
+                             logo = pathhtml + "//Reports//ClientLogoAK.png";
+ 
+                             //string logo = (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "//Reports//Client_Logo.png";
+                             DataColumn dcLogo = new DataColumn("HTMLLogo", System.Type.GetType("System.String"));
+                             dcLogo.DefaultValue = logo;
+ 
+                             //Added By Niranjan 24/09/2015
+                             // Adding new columns for HTML WaterMark -------------------------------------------------------
+                             string WaterMark = "";//(new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "//Images//WaterMark002.png";
+                             DataColumn dcWaterMark = new DataColumn("WaterMark", System.Type.GetType("System.String"));
+ 
+                             if (ConfigCache.Get("IsWaterMarkPrintEawb") == "true")
+                                 dcWaterMark.DefaultValue = WaterMark;
+                             else
+                                 dcWaterMark.DefaultValue = "";
+ 
+                             DTExport.Columns.Add(dcWaterMark);
+                             // End Of  Added By Niranjan 24/09/2015 --------------------------------------------------------
+ 
+                             string signUrl = string.Empty;
+                             string clientName = dsAWBDeatils.Tables[0].Rows[0]["DesigCode"].ToString().Trim();//Convert.ToString("AirlinePrefix");
+                             if (clientName.Trim().ToUpper() == "VJ" || clientName.Trim().ToUpper() == "VZ")
+                             {
+                                 signUrl = AgentNameOnly;
+                             }
+                             else if (!string.IsNullOrEmpty(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim())))
+                             {
+                                 string FileUrl = _genericFunction.GetSASBlobUrl(Convert.ToString(dsSign.Tables[0].Rows[0]["FileUrl"].ToString().Trim()));
+                                 signUrl = "<img src=\"" + FileUrl + "\" width=\"192px\" height=\"24px\" />";
+                             }
+                             DataColumn dcSignUrl = new DataColumn("HTMLSignature", System.Type.GetType("System.String"));
+                             dcSignUrl.DefaultValue = signUrl;
+ 
+ 
+                             // Barcode
+                             DataColumn dcBarCode = new DataColumn("HTMLBarCode", System.Type.GetType("System.String"));
+                             string barCodeUrl = string.Empty;
+ 
+                             DataSet dsBarCode = _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), "", "barcode");
+ 
+                             if (dsBarCode != null && dsBarCode.Tables.Count > 0 && !string.IsNullOrEmpty(Convert.ToString(dsBarCode.Tables[0].Rows[0]["FileUrl"]).Trim()))
+                             {
+                                 barCodeUrl = dsBarCode.Tables[0].Rows[0]["fileurl"].ToString().Trim();
+                                 barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
+                             }
+                             else
+                             {
+                                 ms.Seek(0, SeekOrigin.Begin);
+                                 barCodeUrl = _genericFunction.UploadToBlob(ms, dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + "_" + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim() + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + ".png", "barcode");
+                                 _genericFunction.CheckIfAWBOnBLOB(dsAWBDeatils.Tables[0].Rows[0]["AWBPrefix"].ToString().Trim() + dsAWBDeatils.Tables[0].Rows[0]["AWBNumber"].ToString().Trim(), barCodeUrl, "barcode");
+                                 barCodeUrl = _genericFunction.GetSASBlobUrl(barCodeUrl);
+                             }
+ 
+                             if (ConfigCache.Get("ShowBarCodeInEAWBPrint") == "1")
+                                 dcBarCode.DefaultValue = "<img src=\"" + barCodeUrl + "\"  width=\"192px\" height=\"24px\" />";
+                             else
+                                 dcBarCode.DefaultValue = "";
+ 
+                             // WaterMark for collect shipment
+                             string waterMark = ""; //(new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/CollectWaterMark.png";
+                             DataColumn dcCCWaterMark = new DataColumn("CCWaterMark", System.Type.GetType("System.String"));
+                             DataColumn dcDraftCopy = new DataColumn("DraftCopy", System.Type.GetType("System.String"));
+                             int ddlServiceclass;
+                             ddlServiceclass = Convert.ToInt32(dsAWBDeatils.Tables[0].Rows[0]["ServiceCargoClassId"]);
+                             if (ChargesCode.Equals("CC") || ChargesCode.Equals("CZ") && ddlServiceclass != 0)
+                                 dcCCWaterMark.DefaultValue = waterMark;
+                             else
+                                 dcCCWaterMark.DefaultValue = "";
+ 
+                             if (ddlServiceclass == 0)
+                             {
+                                 string VoidWaterMark = "";// (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/VoidWaterMark.png";
+                                 dcCCWaterMark = new DataColumn("CCWaterMark", System.Type.GetType("System.String"));
+                                 dcCCWaterMark.DefaultValue = VoidWaterMark;
+                                 dcDraftCopy.DefaultValue = VoidWaterMark;
+                             }
+ 
+                             dcDraftCopy.DefaultValue = "";
+                             if (dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim() != null && dsAWBDeatils.Tables[0].Rows[0]["AWBStatus"].ToString().Trim().Equals("B") && ddlServiceclass != 0)
+                             {
+                                 string DraftWaterMark = "";// (new Uri(HttpContext.Current.Request.Url.AbsoluteUri)).GetLeftPart(UriPartial.Authority) + "/Images/cebudraft.png";
+                                 dcDraftCopy.DefaultValue = DraftWaterMark;
+                             }
+ 
+                             DTExport.Columns.Add(dcLogo);
+                             DTExport.Columns.Add(dcSignUrl);
+                             DTExport.Columns.Add(dcBarCode);
+                             DTExport.Columns.Add(dcCCWaterMark);
+                             DTExport.Columns.Add(dcDraftCopy);
+ 
+                             string HTMLData = string.Empty;
+                             // Generate PDF from Html or RDLC based on config
+                             if (ConfigCache.Get("EAWBHTMLPrint") == "1")
+                                 HTMLData = RenderReportHtml(DTExport, dsRateLog, dsAWBDeatils.Tables[0].Rows[0]["DocumentType"].ToString().Trim(), dsDimesionAll);
+ 
+                             HtmlToPdfConverter htmlToPdfConverter = null;
+                             //try
+                             //{
+                             htmlToPdfConverter = new HtmlToPdfConverter();
+                             var margins = new PageMargins();
+                             margins.Bottom = 0;
+                             margins.Top = 5; // Changed by Sainyam on 24JAN2018 for HA
+                             margins.Left = 6;
+                             margins.Right = 5;
+                             htmlToPdfConverter.Margins = margins;
+                             DateTime TimeStamp = DateTime.Now;
+                             var pdfBytes = htmlToPdfConverter.GeneratePdf(HTMLData);
+                             ms = new MemoryStream(pdfBytes);
+                             //string FileExcelURL = "";
+ 
+ 
+                             string fileUrl = _genericFunction.UploadToBlob(ms, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC.pdf", container);
+                             _genericFunction.CheckIfAWBOnBLOB(AWBPrefix + AWBNumber, fileUrl, container);
+                             await DumpInterfaceInformation(Subject, body, TimeStamp, "BKDCNFNotification", "", true, "", Toid, ms, ".pdf", fileUrl, "0", "Outbox", "", null, AWBPrefix + "_" + AWBNumber + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + "_DFC");
+                             await GetUpdateNotification(AWBPrefix, AWBNumber, SerialNumber);
+ 
+                             try
+                             {
+                                 if (dsResult != null)
+                                     dsResult.Dispose();
+                                 if (DTExport != null)
+                                     DTExport.Dispose();
+                                 if (DTExportSubDetails != null)
+                                     DTExportSubDetails.Dispose();
+                                 if (DTvolume != null)
+                                     DTvolume.Dispose();
+                                 if (dsDimesionAll != null)
+                                     dsDimesionAll.Dispose();
+                                 if (dsOtherDetails != null)
+                                     dsOtherDetails.Dispose();
+                             }
+                             catch (Exception ex)
+                             {
+ 
+                                 dsResult = null;
+                                 DTExport = null;
+                                 DTExportSubDetails = null;
+                                 DTvolume = null;
+                                 dsDimesionAll = null;
+                                 dsOtherDetails = null;
+                                 // clsLog.WriteLogAzure(ex);
+                                 _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
+                         }
+                     }
+                     catch (Exception ex)
+                     {
+                         // clsLog.WriteLogAzure(ex);
+                         _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                     }
+                 }
+             }
+           }
+           catch (System.Exception)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
         public DataSet GetChargeSummury(DataSet dsAWBDeatils)
@@ -10381,357 +10752,371 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 dsAWBDeatils = null;
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
 
         private string RenderReportHtml(DataTable dtTable, DataSet dsRateLog, string documentType, DataTable dsDimesionAll)
         {
-            string AWBNo = dtTable.Rows[0][2].ToString();
-            string[] AWBPrefix = AWBNo.Split('-');
-            string rateInfo = string.Empty;
-            int maxCommDescLen = 0;
-
-            GenericFunction genericFunction = new GenericFunction();
-
-            string specifier = string.Empty;
-            CultureInfo bz;
-            bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
-            specifier = ConfigCache.Get("AllowedDecimalNumber");
-            // Read HTML in string
-            StringReader htmlFile = new StringReader("");
-
-            bool IsAgreed = false;
-            string strAgentPreference = string.Empty;
-
-            strAgentPreference = genericFunction.GeteAWBPrintPrefence(dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AWBno"].ToString(), dtTable.Rows[0]["AWBPrefix"].ToString());
-
-            if (strAgentPreference.Length < 1 || strAgentPreference == "")
-                strAgentPreference = "IATA";
-
-
-            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
-            string pathhtml = Directory.GetParent(path).Parent.FullName;
-            htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/EAWB.html"));
-            //htmlFile = new StringReader(File.ReadAllText(Server.MapPath("~/Reports/EAWB.html")));
-            //}
-
-            string htmlContent = string.Format(htmlFile.ReadToEnd());
-
-
-            //-------- SQF Number Added by Nitin for CEBU
-
-            string SQFName = "";
-            SQFName = ConfigCache.Get("QSFPrintEAWB");
-            if (!string.IsNullOrEmpty(SQFName))
-            {
-                string[] strArray = SQFName.Split('|');
-                htmlContent = htmlContent.Replace("@QSF1@", strArray[0].ToString());
-                htmlContent = htmlContent.Replace("@QSF2@", strArray[1].ToString());
-                htmlContent = htmlContent.Replace("@QSF3@", strArray[2].ToString());
-            }
-            else
-            {
-                htmlContent = htmlContent.Replace("@QSF1@", string.Empty);
-                htmlContent = htmlContent.Replace("@QSF2@", string.Empty);
-                htmlContent = htmlContent.Replace("@QSF3@", string.Empty);
-            }
-            //-----------Nitin End----
-            // Change Shipper/Consignee
-            dtTable.Rows[0]["ShippersName"] = Convert.ToString(dtTable.Rows[0]["ShippersName"]).Replace(Environment.NewLine, "<br />");
-            dtTable.Rows[0]["ConsigneeName"] = Convert.ToString(dtTable.Rows[0]["ConsigneeName"]).Replace(Environment.NewLine, "<br />");
-
-            #region  Replace 0.00 values to null for JetAirways requirement added by manoj on 17-10-2015
             try
             {
-                string[] Item_list = new string[] { "collecttotal", "totalRateUnitcc", "vlccollect", "collectduecarrier", "collectdueagent", "collecttax" };
-                for (int i = 0; i < Item_list.Length; i++)
+                string AWBNo = dtTable.Rows[0][2].ToString();
+                string[] AWBPrefix = AWBNo.Split('-');
+                string rateInfo = string.Empty;
+                int maxCommDescLen = 0;
+    
+                GenericFunction genericFunction = new GenericFunction();
+    
+                string specifier = string.Empty;
+                CultureInfo bz;
+                bz = new CultureInfo(ConfigCache.Get("ShowCurrencyFormat"));
+                specifier = ConfigCache.Get("AllowedDecimalNumber");
+                // Read HTML in string
+                StringReader htmlFile = new StringReader("");
+    
+                bool IsAgreed = false;
+                string strAgentPreference = string.Empty;
+    
+                strAgentPreference = genericFunction.GeteAWBPrintPrefence(dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AWBno"].ToString(), dtTable.Rows[0]["AWBPrefix"].ToString());
+    
+                if (strAgentPreference.Length < 1 || strAgentPreference == "")
+                    strAgentPreference = "IATA";
+    
+    
+                string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
+                string pathhtml = Directory.GetParent(path).Parent.FullName;
+                htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/EAWB.html"));
+                //htmlFile = new StringReader(File.ReadAllText(Server.MapPath("~/Reports/EAWB.html")));
+                //}
+    
+                string htmlContent = string.Format(htmlFile.ReadToEnd());
+    
+    
+                //-------- SQF Number Added by Nitin for CEBU
+    
+                string SQFName = "";
+                SQFName = ConfigCache.Get("QSFPrintEAWB");
+                if (!string.IsNullOrEmpty(SQFName))
                 {
-                    string item_val = Item_list[i].ToString();
-                    decimal OutResult;
-                    if (dtTable.Rows[0][item_val].ToString() != "" && dtTable.Rows[0][item_val].ToString() != null && decimal.TryParse(dtTable.Rows[0][item_val].ToString(), out OutResult))
+                    string[] strArray = SQFName.Split('|');
+                    htmlContent = htmlContent.Replace("@QSF1@", strArray[0].ToString());
+                    htmlContent = htmlContent.Replace("@QSF2@", strArray[1].ToString());
+                    htmlContent = htmlContent.Replace("@QSF3@", strArray[2].ToString());
+                }
+                else
+                {
+                    htmlContent = htmlContent.Replace("@QSF1@", string.Empty);
+                    htmlContent = htmlContent.Replace("@QSF2@", string.Empty);
+                    htmlContent = htmlContent.Replace("@QSF3@", string.Empty);
+                }
+                //-----------Nitin End----
+                // Change Shipper/Consignee
+                dtTable.Rows[0]["ShippersName"] = Convert.ToString(dtTable.Rows[0]["ShippersName"]).Replace(Environment.NewLine, "<br />");
+                dtTable.Rows[0]["ConsigneeName"] = Convert.ToString(dtTable.Rows[0]["ConsigneeName"]).Replace(Environment.NewLine, "<br />");
+    
+                #region  Replace 0.00 values to null for JetAirways requirement added by manoj on 17-10-2015
+                try
+                {
+                    string[] Item_list = new string[] { "collecttotal", "totalRateUnitcc", "vlccollect", "collectduecarrier", "collectdueagent", "collecttax" };
+                    for (int i = 0; i < Item_list.Length; i++)
                     {
-                        if (Convert.ToDouble(dtTable.Rows[0][item_val]) == 0.00 || Convert.ToDouble(dtTable.Rows[0][item_val]) <= 0 || dtTable.Rows[0][item_val].ToString().Equals("0.00", StringComparison.OrdinalIgnoreCase))
+                        string item_val = Item_list[i].ToString();
+                        decimal OutResult;
+                        if (dtTable.Rows[0][item_val].ToString() != "" && dtTable.Rows[0][item_val].ToString() != null && decimal.TryParse(dtTable.Rows[0][item_val].ToString(), out OutResult))
                         {
-                            dtTable.Rows[0][item_val] = "";
-                            dtTable.AcceptChanges();
+                            if (Convert.ToDouble(dtTable.Rows[0][item_val]) == 0.00 || Convert.ToDouble(dtTable.Rows[0][item_val]) <= 0 || dtTable.Rows[0][item_val].ToString().Equals("0.00", StringComparison.OrdinalIgnoreCase))
+                            {
+                                dtTable.Rows[0][item_val] = "";
+                                dtTable.AcceptChanges();
+                            }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                // ShowMessage(ref lblStatus, skResourceManager.GetString("msgErrorPrintingeAWB", skCultureInfo), MessageType.ErrorMessage);
-                clsLog.WriteLogAzure(ex);
-            }
-            #endregion
-
-            htmlContent = htmlContent.Replace("@IATAAgentCode@", dtTable.Rows[0]["AgentCode"].ToString());
-
-            // Map data in HTML
-            foreach (DataColumn dc in dtTable.Columns)
-                htmlContent = htmlContent.Replace("@" + dc.ColumnName + "@", Convert.ToString(dtTable.Rows[0][dc.ColumnName]));
-
-            DataSet dsClientName = new DataSet("dsClientName");
-            dsClientName = genericFunction.GetClientName();
-            int maxDimsRowsOnAWBPrint = 0;
-            Int32.TryParse(ConfigCache.Get("MaxDimsRowsOnAWBPrint"), out maxDimsRowsOnAWBPrint);
-            string DimsData = string.Empty;
-
-            decimal dcTotalVal = 0;
-            // Map rate details
-            if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 0)
-            {
-                for (int rowCount = 0; rowCount < dsRateLog.Tables[0].Rows.Count; rowCount++)
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        string ProductType = "";
-                        decimal num = 0;
-                        if (Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]) == "As Agreed")
-                            num = 0;
-                        else
-                            num = Convert.ToDecimal(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
-
-                        ProductType = dtTable.Rows[0]["ProductType"].ToString();
-
-                        string Val = genericFunction.GetRoundoffvalueSingle(dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), "SCM_FREIGHT", num.ToString(), dtTable.Rows[0]["AgentCode"].ToString(),
-                           dtTable.Rows[0]["ShippersName"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), ProductType, dtTable.Rows[0]["CCDestCurrency"].ToString(), dtTable.Rows[0]["AgentCode"].ToString());//Currency Added By kalyani on 17 Mar 2017.Jira SC-1010 For IATA Currency Rounding;
-                        if (Decimal.TryParse(Val, out num))
-                            dcTotalVal = Convert.ToDecimal(Val);
-
-                        //objProcessRate = null;
-                    }
-                    catch (Exception ex)
-                    { clsLog.WriteLogAzure(ex); }
-
-                    string tmpTotalVal = string.Empty, tmpRatePerKG = string.Empty;
-                    if (IsAgreed)
-                    {
-                        tmpRatePerKG = "0.00";
-                        tmpTotalVal = "0.00";
-                    }
-                    else
-                    {
-                        tmpRatePerKG = Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["RatePerKg"]);
-                        tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
-                    }
-
-                    if (documentType.Equals("CBV"))
-                    {
-                        rateInfo += "<tr>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Pieces"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["GWeight"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["UOM"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">0</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CWeight"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpRatePerKG + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dtTable.Rows[0]["CCDestCurrency"]) + "</td>";
-                        //string tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpTotalVal + "</td>";
-                        if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia") &&
-                            maxDimsRowsOnAWBPrint > 0 &&
-                            Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
-                        {
-                            rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
-                            DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]);
-                        }
-                        else if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("VietJet"))
-                        {
-                            if (maxDimsRowsOnAWBPrint > 0 && Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
-                            {
-                                rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
-                                DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>");
-                            }
-                            else
-                            {
-                                rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>") + "</td>";
-                            }
-                        }
-                        else
-                            rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]) + "</td>";
-                        rateInfo += "</tr>";
-                    }
-                    else
-                    {
-                        rateInfo += "<tr>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Pieces"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["GWeight"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["UOM"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["MKTRateClass"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CommCode"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CWeight"]) + "</td>";
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpRatePerKG + "</td>";
-                        //string tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
-                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpTotalVal + "</td>";
-                        if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia") &&
-                            maxDimsRowsOnAWBPrint > 0 &&
-                            Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
-                        {
-                            rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
-                            DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace(Environment.NewLine, "<br/>");
-                        }
-                        else if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("VietJet"))
-                        {
-                            if (maxDimsRowsOnAWBPrint > 0 && Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
-                            {
-                                rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
-                                DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>");
-                            }
-                            else
-                            {
-                                rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>") + "</td>";
-                            }
-                        }
-                        else
-                            rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>") + "</td>";
-                        rateInfo += "</tr>";
-                    }
-
-                    if (maxCommDescLen < Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Length)
-                        maxCommDescLen = Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Length;
+                    // ShowMessage(ref lblStatus, skResourceManager.GetString("msgErrorPrintingeAWB", skCultureInfo), MessageType.ErrorMessage);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 }
-                #region SLACULDDetails 
-                // Added to show SLACULDDetails on the report without rate calculation
-                //DataSet dsAwbDimensions = new DataSet();
-                if (!string.IsNullOrEmpty(dtTable.Rows[0]["AWBNo"].ToString()) && !string.IsNullOrEmpty(dtTable.Rows[0]["AWBPrefix"].ToString()))
+                #endregion
+    
+                htmlContent = htmlContent.Replace("@IATAAgentCode@", dtTable.Rows[0]["AgentCode"].ToString());
+    
+                // Map data in HTML
+                foreach (DataColumn dc in dtTable.Columns)
+                    htmlContent = htmlContent.Replace("@" + dc.ColumnName + "@", Convert.ToString(dtTable.Rows[0][dc.ColumnName]));
+    
+                DataSet dsClientName = new DataSet("dsClientName");
+                dsClientName = genericFunction.GetClientName();
+                int maxDimsRowsOnAWBPrint = 0;
+                Int32.TryParse(ConfigCache.Get("MaxDimsRowsOnAWBPrint"), out maxDimsRowsOnAWBPrint);
+                string DimsData = string.Empty;
+    
+                decimal dcTotalVal = 0;
+                // Map rate details
+                if (dsRateLog != null && dsRateLog.Tables.Count > 0 && dsRateLog.Tables[0].Rows.Count > 0)
                 {
-                    //DataTable dtDimensions = new DataTable("dtAWBDimensions");
-                    try
+                    for (int rowCount = 0; rowCount < dsRateLog.Tables[0].Rows.Count; rowCount++)
                     {
-                        //dsAwbDimensions = genericFunction.GetAWBDimensions(dtTable.Rows[0]["AWBNo"].ToString(), dtTable.Rows[0]["AWBPrefix"].ToString());
-                        if (dsDimesionAll != null && dsDimesionAll.Rows.Count > 0)
+                        try
                         {
-                            //dtDimensions = (DataTable)dsAwbDimensions.Tables[0];
-                            var dr = dsDimesionAll.AsEnumerable().Where(r => r.Field<string>("PieceType").Trim() == "SLAC");
-                            if (dr != null && dr.ToList().Count > 0)
+                            string ProductType = "";
+                            decimal num = 0;
+                            if (Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]) == "As Agreed")
+                                num = 0;
+                            else
+                                num = Convert.ToDecimal(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
+    
+                            ProductType = dtTable.Rows[0]["ProductType"].ToString();
+    
+                            string Val = genericFunction.GetRoundoffvalueSingle(dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), "SCM_FREIGHT", num.ToString(), dtTable.Rows[0]["AgentCode"].ToString(),
+                               dtTable.Rows[0]["ShippersName"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), dtTable.Rows[0]["AgentCode"].ToString(), ProductType, dtTable.Rows[0]["CCDestCurrency"].ToString(), dtTable.Rows[0]["AgentCode"].ToString());//Currency Added By kalyani on 17 Mar 2017.Jira SC-1010 For IATA Currency Rounding;
+                            if (Decimal.TryParse(Val, out num))
+                                dcTotalVal = Convert.ToDecimal(Val);
+    
+                            //objProcessRate = null;
+                        }
+                        catch (Exception ex)
+                        { 
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                        }
+    
+                        string tmpTotalVal = string.Empty, tmpRatePerKG = string.Empty;
+                        if (IsAgreed)
+                        {
+                            tmpRatePerKG = "0.00";
+                            tmpTotalVal = "0.00";
+                        }
+                        else
+                        {
+                            tmpRatePerKG = Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["RatePerKg"]);
+                            tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
+                        }
+    
+                        if (documentType.Equals("CBV"))
+                        {
+                            rateInfo += "<tr>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Pieces"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["GWeight"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["UOM"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">0</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CWeight"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpRatePerKG + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dtTable.Rows[0]["CCDestCurrency"]) + "</td>";
+                            //string tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpTotalVal + "</td>";
+                            if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia") &&
+                                maxDimsRowsOnAWBPrint > 0 &&
+                                Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
                             {
-                                foreach (DataRow row in dr)
+                                rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
+                                DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]);
+                            }
+                            else if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("VietJet"))
+                            {
+                                if (maxDimsRowsOnAWBPrint > 0 && Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
                                 {
-                                    rateInfo += "<tr>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
-                                    rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
-                                    string strSLACULDPcsWt = Convert.ToString(row["ULDNo"]) + "|" + Convert.ToString(row["PcsCount"]) + "|" + Convert.ToString(row["GrossWt"]);
-                                    rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + strSLACULDPcsWt + "</td>";
-                                    rateInfo += "</tr>";
+                                    rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
+                                    DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>");
+                                }
+                                else
+                                {
+                                    rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>") + "</td>";
+                                }
+                            }
+                            else
+                                rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]) + "</td>";
+                            rateInfo += "</tr>";
+                        }
+                        else
+                        {
+                            rateInfo += "<tr>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Pieces"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["GWeight"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["UOM"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["MKTRateClass"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CommCode"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["CWeight"]) + "</td>";
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpRatePerKG + "</td>";
+                            //string tmpTotalVal = dcTotalVal > 0 ? dcTotalVal.ToString(specifier, bz) : Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Total"]);
+                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + tmpTotalVal + "</td>";
+                            if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia") &&
+                                maxDimsRowsOnAWBPrint > 0 &&
+                                Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
+                            {
+                                rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
+                                DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace(Environment.NewLine, "<br/>");
+                            }
+                            else if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("VietJet"))
+                            {
+                                if (maxDimsRowsOnAWBPrint > 0 && Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Split(';').Length - 1 > maxDimsRowsOnAWBPrint)
+                                {
+                                    rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; height: 100px; word-break:break-all;\">Refer to next page for dimension details</td>";
+                                    DimsData += Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>");
+                                }
+                                else
+                                {
+                                    rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>").Replace(";", "<br/>") + "</td>";
+                                }
+                            }
+                            else
+                                rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Replace("|", "<br/>") + "</td>";
+                            rateInfo += "</tr>";
+                        }
+    
+                        if (maxCommDescLen < Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Length)
+                            maxCommDescLen = Convert.ToString(dsRateLog.Tables[0].Rows[rowCount]["Dims"]).Length;
+                    }
+                    #region SLACULDDetails 
+                    // Added to show SLACULDDetails on the report without rate calculation
+                    //DataSet dsAwbDimensions = new DataSet();
+                    if (!string.IsNullOrEmpty(dtTable.Rows[0]["AWBNo"].ToString()) && !string.IsNullOrEmpty(dtTable.Rows[0]["AWBPrefix"].ToString()))
+                    {
+                        //DataTable dtDimensions = new DataTable("dtAWBDimensions");
+                        try
+                        {
+                            //dsAwbDimensions = genericFunction.GetAWBDimensions(dtTable.Rows[0]["AWBNo"].ToString(), dtTable.Rows[0]["AWBPrefix"].ToString());
+                            if (dsDimesionAll != null && dsDimesionAll.Rows.Count > 0)
+                            {
+                                //dtDimensions = (DataTable)dsAwbDimensions.Tables[0];
+                                var dr = dsDimesionAll.AsEnumerable().Where(r => r.Field<string>("PieceType").Trim() == "SLAC");
+                                if (dr != null && dr.ToList().Count > 0)
+                                {
+                                    foreach (DataRow row in dr)
+                                    {
+                                        rateInfo += "<tr>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
+                                        rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">" + "</td>";
+                                        string strSLACULDPcsWt = Convert.ToString(row["ULDNo"]) + "|" + Convert.ToString(row["PcsCount"]) + "|" + Convert.ToString(row["GrossWt"]);
+                                        rateInfo += "<td  valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px; width:200px; word-break:break-all;\">" + strSLACULDPcsWt + "</td>";
+                                        rateInfo += "</tr>";
+                                    }
                                 }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        clsLog.WriteLogAzure(ex);
-                    }
-                    finally
-                    {
-                        if (dsDimesionAll != null)
-                            dsDimesionAll.Dispose();
-                    }
-                }
-                #endregion SLACULDDetails
-
-                if (!documentType.Equals("CBV"))
-                {
-                    if (maxCommDescLen <= 200)
-                    {
-                        int j = 5;
-                        if (maxCommDescLen >= 145)
+                        catch (Exception ex)
                         {
-                            j = 3;
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
-                        for (int rowCount = 0; rowCount < (j - dsRateLog.Tables[0].Rows.Count); rowCount++)
+                        finally
                         {
-                            rateInfo += "<tr>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">&nbsp;</td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\"></td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\"></td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
-                            rateInfo += "</tr>";
+                            if (dsDimesionAll != null)
+                                dsDimesionAll.Dispose();
                         }
                     }
-                }
-            }
-
-            htmlContent = htmlContent.Replace("@RateDetails@", rateInfo);
-            htmlContent = htmlContent.Replace("@AccountInfoNew@", "");
-            if (dsRateLog != null)
-            {
-                // Map total values
-                htmlContent = htmlContent.Replace("@TotalPieces@", Convert.ToString(dsRateLog.Tables[2].Rows[0]["Pieces"]));   //'dsRateLog' is null on at least one execution path.
-                htmlContent = htmlContent.Replace("@TotalGrossWeight@", Convert.ToString(dsRateLog.Tables[2].Rows[0]["GrossWeight"]));
-                htmlContent = htmlContent.Replace("@TotalFrtCharge@", Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtCharge"]));
-
-
-                // Added By Niranjan 23-9-2015
-                if (Convert.ToString(dsRateLog.Tables[1].Rows[0]["AccountInfo"]) != "")
-                    htmlContent = htmlContent.Replace("@AccountInfoNew@", " - " + Convert.ToString(dsRateLog.Tables[1].Rows[0]["AccountInfo"]));
-            }
-
-            //Code to Create Multiple AWB Copies with Dynamic Data
-            string HTMLData = string.Empty;
-            string DimsHTMLData = string.Empty;
-
-            if (!string.IsNullOrEmpty(DimsData))
-            {
-                DimsHTMLData += "<table width=\"99%\" align=\"center\" border=\"0\" style=\"border-top:1px solid #000000; border-bottom:1px solid #000000\" cellspacing=\"0\" cellpadding=\"1\">";
-                DimsHTMLData += "<tr><td valign=\"top\" style=\"border:1px solid #000000; border-top:0px;\"><strong>Nature and Quantity of Goods<br />(incl. Dimensions or Volume)</strong><br/></td></tr>";
-                DimsHTMLData += "<tr><td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; word-break:break-all;\">" + DimsData + "</td></tr>";
-                DimsHTMLData += "</table>";
-            }
-
-            if (eAWBPrintArray != null)
-            {
-                for (int i = 0; i < eAWBPrintArray.Length; i++)
-                {
-                    HTMLData = HTMLData + htmlContent;
-                    HTMLData = HTMLData.Replace("@CopyPageName@", eAWBPrintArray[i].ToString());
-
-                    if (i != eAWBPrintArray.Length - 1)
-                        HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
-
-                    if (!string.IsNullOrEmpty(DimsData))
+                    #endregion SLACULDDetails
+    
+                    if (!documentType.Equals("CBV"))
                     {
-                        if (i == eAWBPrintArray.Length - 1)
-                            HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
-                        HTMLData = HTMLData + DimsHTMLData;
-                        if (i != eAWBPrintArray.Length - 1)
-                            HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
+                        if (maxCommDescLen <= 200)
+                        {
+                            int j = 5;
+                            if (maxCommDescLen >= 145)
+                            {
+                                j = 3;
+                            }
+                            for (int rowCount = 0; rowCount < (j - dsRateLog.Tables[0].Rows.Count); rowCount++)
+                            {
+                                rateInfo += "<tr>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000;\">&nbsp;</td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\" border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:5%; border-left: 0px;\"></td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; width:10%; border-left: 0px;\"></td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "<td align=\"center\" valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "<td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; border-left: 0px;\">&nbsp;</td>";
+                                rateInfo += "</tr>";
+                            }
+                        }
                     }
                 }
-
-                if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia"))
+    
+                htmlContent = htmlContent.Replace("@RateDetails@", rateInfo);
+                htmlContent = htmlContent.Replace("@AccountInfoNew@", "");
+                if (dsRateLog != null)
                 {
-                    //htmlFile = new StringReader(File.ReadAllText(Server.MapPath("~/Reports/eAWBRule.html")));
-                    htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/eAWBRule.html"));
-                    htmlContent = string.Format(htmlFile.ReadToEnd());
-                    HTMLData = HTMLData + htmlContent;
+                    // Map total values
+                    htmlContent = htmlContent.Replace("@TotalPieces@", Convert.ToString(dsRateLog.Tables[2].Rows[0]["Pieces"]));   //'dsRateLog' is null on at least one execution path.
+                    htmlContent = htmlContent.Replace("@TotalGrossWeight@", Convert.ToString(dsRateLog.Tables[2].Rows[0]["GrossWeight"]));
+                    htmlContent = htmlContent.Replace("@TotalFrtCharge@", Convert.ToString(dsRateLog.Tables[1].Rows[0]["FrtCharge"]));
+    
+    
+                    // Added By Niranjan 23-9-2015
+                    if (Convert.ToString(dsRateLog.Tables[1].Rows[0]["AccountInfo"]) != "")
+                        htmlContent = htmlContent.Replace("@AccountInfoNew@", " - " + Convert.ToString(dsRateLog.Tables[1].Rows[0]["AccountInfo"]));
                 }
-                dsClientName = null;
-            }
-            else
-            {
-                HTMLData = htmlContent;
-
+    
+                //Code to Create Multiple AWB Copies with Dynamic Data
+                string HTMLData = string.Empty;
+                string DimsHTMLData = string.Empty;
+    
                 if (!string.IsNullOrEmpty(DimsData))
                 {
-                    HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
-                    HTMLData = HTMLData + DimsHTMLData;
+                    DimsHTMLData += "<table width=\"99%\" align=\"center\" border=\"0\" style=\"border-top:1px solid #000000; border-bottom:1px solid #000000\" cellspacing=\"0\" cellpadding=\"1\">";
+                    DimsHTMLData += "<tr><td valign=\"top\" style=\"border:1px solid #000000; border-top:0px;\"><strong>Nature and Quantity of Goods<br />(incl. Dimensions or Volume)</strong><br/></td></tr>";
+                    DimsHTMLData += "<tr><td valign=\"top\" style=\"border-right:1px solid #000000; border-left:1px solid #000000; word-break:break-all;\">" + DimsData + "</td></tr>";
+                    DimsHTMLData += "</table>";
                 }
+    
+                if (eAWBPrintArray != null)
+                {
+                    for (int i = 0; i < eAWBPrintArray.Length; i++)
+                    {
+                        HTMLData = HTMLData + htmlContent;
+                        HTMLData = HTMLData.Replace("@CopyPageName@", eAWBPrintArray[i].ToString());
+    
+                        if (i != eAWBPrintArray.Length - 1)
+                            HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
+    
+                        if (!string.IsNullOrEmpty(DimsData))
+                        {
+                            if (i == eAWBPrintArray.Length - 1)
+                                HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
+                            HTMLData = HTMLData + DimsHTMLData;
+                            if (i != eAWBPrintArray.Length - 1)
+                                HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
+                        }
+                    }
+    
+                    if (Convert.ToString(dsClientName.Tables[0].Rows[0]["ClientName"]).Contains("AirAsia"))
+                    {
+                        //htmlFile = new StringReader(File.ReadAllText(Server.MapPath("~/Reports/eAWBRule.html")));
+                        htmlFile = new StringReader(File.ReadAllText(pathhtml + "/Reports/eAWBRule.html"));
+                        htmlContent = string.Format(htmlFile.ReadToEnd());
+                        HTMLData = HTMLData + htmlContent;
+                    }
+                    dsClientName = null;
+                }
+                else
+                {
+                    HTMLData = htmlContent;
+    
+                    if (!string.IsNullOrEmpty(DimsData))
+                    {
+                        HTMLData = HTMLData + "<div style=\"page-break-after:always\"></div>";
+                        HTMLData = HTMLData + DimsHTMLData;
+                    }
+                }
+                return HTMLData;
+    
             }
-            return HTMLData;
-
+            catch (System.Exception)
+            {
+                
+                throw;
+            }
         }
 
         public async Task GetUpdateNotification(string awbPrefix, string awbNumber, int SerialNumber)
@@ -10755,7 +11140,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -10779,7 +11165,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
 
             }
@@ -10898,11 +11285,13 @@ namespace QidWorkerRole
             }
             catch (WebException webex)
             {
-                clsLog.WriteLogAzure("WEBSERVICE Error" + webex.Response.ToString());
+                // clsLog.WriteLogAzure("WEBSERVICE Error" + webex.Response.ToString());
+                _logger.LogError("WEBSERVICE Error {0}" , webex.Response);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
     }
