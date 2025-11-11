@@ -19,6 +19,8 @@ namespace QidWorkerRole
         private readonly CGOProcessor _cGOProcessor;
         private readonly MVT _mVT;
         private readonly ASM _aSm;
+        private readonly FBLMessageProcessor _fBLMessageProcessor;
+        private readonly CustomsMessageProcessor _customsMessageProcessor;
         public cls_SCMBL(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<cls_SCMBL> logger,
@@ -28,7 +30,9 @@ namespace QidWorkerRole
             CarditResiditManagement carditResiditManagement,
             CGOProcessor cGOProcessor,
             MVT mVT,
-            ASM aSM
+            ASM aSM,
+            FBLMessageProcessor fBLMessageProcessor,
+            CustomsMessageProcessor customsMessageProcessor
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -40,6 +44,8 @@ namespace QidWorkerRole
             _cGOProcessor = cGOProcessor;
             _mVT = mVT;
             _aSm = aSM;
+            _fBLMessageProcessor = fBLMessageProcessor;
+            _customsMessageProcessor = customsMessageProcessor;
         }
 
 
@@ -1002,11 +1008,19 @@ namespace QidWorkerRole
                             MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
                             MessageData.consignmentorigininfo[] consigmnentOrigin = new MessageData.consignmentorigininfo[0];
                             MessageData.movementinfo[] movementinfo = new MessageData.movementinfo[0];
-                            FBLMessageProcessor fblProcessor = new FBLMessageProcessor();
-                            flag = fblProcessor.DecodeReceiveFBLMessage(strMsg, ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, ref othinfoarray);
+
+                            //FBLMessageProcessor fblProcessor = new FBLMessageProcessor();
+
+                            flag = _fBLMessageProcessor.DecodeReceiveFBLMessage(strMsg, ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, ref othinfoarray);
+
 
                             if (flag == true)
-                                flag = fblProcessor.SaveandUpdagteFBLMessageinDatabase(ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                            {
+                                //flag = fblProcessor.SaveandUpdagteFBLMessageinDatabase(ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                (flag, fbldata, unloadingport, dimensioinfo, uld, othinfoarray, consigmnentOrigin, consinfo, ErrorMsg)
+                                = await _fBLMessageProcessor.SaveandUpdagteFBLMessageinDatabase(fbldata, unloadingport, dimensioinfo, uld, othinfoarray, consigmnentOrigin, consinfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg);
+
+                            }
 
                             if (!flag)
                             {
