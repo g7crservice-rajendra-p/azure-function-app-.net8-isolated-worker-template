@@ -65,8 +65,9 @@ namespace QidWorkerRole
                 originalMessage = strMessage.Replace("$", "\r\n"); ;
                 if (arrLine.Length < 3)
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
                     return;
                 }
                 messageType = arrLine[0];
@@ -108,7 +109,7 @@ namespace QidWorkerRole
                 }
                 else
                 {
-
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
                     _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
                     return;
                 }
@@ -147,8 +148,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -584,8 +586,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -735,8 +738,9 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
                 }
             }
             catch (Exception ex)
@@ -770,8 +774,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
                     return;
                 }
 
@@ -891,8 +896,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
                     return;
                 }
 
@@ -1526,6 +1532,7 @@ namespace QidWorkerRole
         private readonly ILogger<ASM> _logger;//instance logger
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ISqlDataHelperDao _readOnlyDao;
+        private readonly GenericFunction _genericFunction;
 
         #region Constructor
         public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger)
@@ -2050,8 +2057,9 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
+                    _genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
                 }
                 try
                 {
