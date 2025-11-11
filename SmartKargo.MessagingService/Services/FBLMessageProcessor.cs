@@ -36,18 +36,15 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FBLMessageProcessor> _logger;
         private readonly GenericFunction _genericFunction;
-        private readonly Cls_BL _cls_BL;
 
         public FBLMessageProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<FBLMessageProcessor> logger,
-            GenericFunction genericFunction,
-            Cls_BL cls_BL)
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _genericFunction = genericFunction;
-            this._cls_BL = cls_BL;
         }
         #endregion
 
