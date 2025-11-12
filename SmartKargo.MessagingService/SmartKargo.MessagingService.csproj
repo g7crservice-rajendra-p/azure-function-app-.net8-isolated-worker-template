@@ -13,6 +13,9 @@
     <PackageReference Include="AE.Net.Mail" Version="1.7.10" />
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="EAGetMail" Version="5.2.5.8" />
+    <PackageReference Include="IBMMQDotnetClient" Version="9.4.4" />
+    <PackageReference Include="Ionic.Zip" Version="1.9.1.8" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
@@ -22,6 +25,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="MimeKit" Version="4.14.0" />
     <PackageReference Include="NReco.PdfGenerator" Version="1.1.6" />
     <PackageReference Include="OpenPop" Version="2.0.6.2" />
     <PackageReference Include="Pop3" Version="1.0.0.1" />
@@ -33,6 +37,7 @@
     <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageReference Include="Serilog.Sinks.AzureBlobStorage" Version="4.0.5" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="WinSCP" Version="6.5.4" />
   </ItemGroup>
 
   <ItemGroup>
