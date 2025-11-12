@@ -1,15 +1,30 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+//using QID.DataAccess;//Not in used
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
+using System;
 using System.Data;
-using QID.DataAccess;
 using System.Text;
 namespace QidWorkerRole
 {
     public class FNAMessageProcessor
     {
-        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FNAMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
 
-        public FNAMessageProcessor()
-        { }
+        #region Constructor
+        public FNAMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FNAMessageProcessor> logger,
+            GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
+        #endregion
+        //SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();//not in used
 
         /// <summary>
         /// Used to decode FNAMessage
@@ -112,17 +127,30 @@ namespace QidWorkerRole
         /// <param name="refno"></param>
         /// <param name="fnadata"></param>
         /// <returns>bool</returns>
-        public bool SaveAndValidateFNAMessage(int refno, MessageData.FNA fnadata)
+        public async Task<bool> SaveAndValidateFNAMessage(int refno, MessageData.FNA fnadata)
         {
 
             bool flag = true;
             try
             {
-                SQLServer dtb = new SQLServer();
-                string[] pnames = new string[] { "Acknowledgement", "OrignlMsg", "MsgId", "AWBnumber", "AWBPrefix", "Origin", "Destination", "UpdatedOn", "MessageType" };
-                SqlDbType[] ptypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
-                object[] pvalues = new object[] { fnadata.AckInfo, fnadata.originalmessage, refno, fnadata.AWBnumber, fnadata.AWBPrefix, fnadata.Origin, fnadata.Destination, System.DateTime.Now, fnadata.MessageType };
-                if (!dtb.UpdateData("spUpdateFNAMessageError", pnames, ptypes, pvalues))
+                //SQLServer dtb = new SQLServer();
+                //string[] pnames = new string[] { "Acknowledgement", "OrignlMsg", "MsgId", "AWBnumber", "AWBPrefix", "Origin", "Destination", "UpdatedOn", "MessageType" };
+                //SqlDbType[] ptypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
+                //object[] pvalues = new object[] { fnadata.AckInfo, fnadata.originalmessage, refno, fnadata.AWBnumber, fnadata.AWBPrefix, fnadata.Origin, fnadata.Destination, System.DateTime.Now, fnadata.MessageType };
+                var parameters = new SqlParameter[]
+                {
+                 new("@Acknowledgement", SqlDbType.VarChar) { Value = fnadata.AckInfo },
+                 new("@OrignlMsg", SqlDbType.VarChar) { Value = fnadata.originalmessage },
+                 new("@MsgId", SqlDbType.Int) { Value = refno },
+                 new("@AWBnumber", SqlDbType.VarChar) { Value = fnadata.AWBnumber },
+                 new("@AWBPrefix", SqlDbType.VarChar) { Value = fnadata.AWBPrefix },
+                 new("@Origin", SqlDbType.VarChar) { Value = fnadata.Origin },
+                 new("@Destination", SqlDbType.VarChar) { Value = fnadata.Destination },
+                 new("@UpdatedOn", SqlDbType.DateTime) { Value = System.DateTime.Now },
+                 new("@MessageType", SqlDbType.VarChar) { Value = fnadata.MessageType },
+                };
+                //if (!dtb.UpdateData("spUpdateFNAMessageError", pnames, ptypes, pvalues))
+                if (!await _readWriteDao.ExecuteNonQueryAsync("spUpdateFNAMessageError", parameters))
                     flag = false;
             }
             catch (Exception ex)
@@ -140,9 +168,12 @@ namespace QidWorkerRole
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-                bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress"));
-                bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress"));
+                //GenericFunction genericFunction = new GenericFunction();
+                //bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress"));
+                bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPIMAAddress"));
+                
+                //bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress"));
+                bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPrimaryAddress"));
 
                 if ((relayFMAFNAWithPIMAAddress && PIMAAddress.Trim().Length > 0) || relayFMAFNAWithPrimaryAddress)
                 {
@@ -151,7 +182,8 @@ namespace QidWorkerRole
                     strMessage = strMessage.Replace("$", "\n");
                     strMessage = strMessage.Replace("$$", "\r\n");
 
-                    DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    //DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -172,10 +204,12 @@ namespace QidWorkerRole
                         if ((strMessageFrom.Trim().Length > 0 && !strMessageFrom.Trim().Contains("@")) || dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
                         {
                             string patnerSitaID = strMessageFrom + "," + dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString();
-                            SitaMessageHeader = genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            //SitaMessageHeader = genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                         }
                         if (dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                            SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            //SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                     }
 
                     if (strMessageFrom.Trim().Contains("@"))
@@ -185,11 +219,13 @@ namespace QidWorkerRole
 
                     if (SitaMessageHeader == string.Empty && (commType.ToUpper() == "SITAFTP"))
                     {
-                        SitaMessageHeader = genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                        //SitaMessageHeader = genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                     }
 
                     
-                        genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
+                        //genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
+                        _genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
                   
 
                 }
@@ -208,9 +244,11 @@ namespace QidWorkerRole
             try
             {
                 string SFTPHeaderSITAddress = string.Empty, ToEmailAddress = string.Empty;
-                GenericFunction genericFunction = new GenericFunction();
-                bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress"));
-                bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress"));
+                //GenericFunction genericFunction = new GenericFunction();
+                //bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress"));
+                bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPIMAAddress"));
+                //bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress"));
+                bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPrimaryAddress"));
 
                 PIMAAddress = !relayFMAFNAWithPIMAAddress ? string.Empty : PIMAAddress;
                 if ((relayFMAFNAWithPIMAAddress && PIMAAddress.Trim().Length > 0) || relayFMAFNAWithPrimaryAddress)
@@ -226,7 +264,8 @@ namespace QidWorkerRole
                     strFMAMessage.Append(strSuccessMessage.Trim().ToUpper().Replace("/", " ").Replace(",", "") + "\r\n");
                     strFMAMessage.Append(strMessage);
 
-                    DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    //DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -237,15 +276,18 @@ namespace QidWorkerRole
                         if ((strMessageFrom.Trim().Length > 0 && !strMessageFrom.Trim().Contains("@")) || dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Trim().Length > 0)
                         {
                             string patnerSitaID = strMessageFrom + "," + dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString();
-                            SitaMessageHeader = genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), messageid, dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            //SitaMessageHeader = genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), messageid, dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(patnerSitaID.Trim(','), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), messageid, dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                         }
                     }
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Trim().Length > 0)
-                        SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                        //SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                     if (strMessageFrom.Trim().Contains("@") || Emailaddress.Trim().Length > 0)
                         ToEmailAddress = (strMessageFrom == string.Empty ? Emailaddress : strMessageFrom + "," + Emailaddress);
 
-                    genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
+                    //genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
+                    _genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
                 }
             }
             catch (Exception ex)
