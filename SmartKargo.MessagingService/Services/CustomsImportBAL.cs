@@ -38,7 +38,7 @@ namespace BAL
         //SQLServer db = new SQLServer();
 
 
-        DataSet ds;
+        //DataSet ds;
         /*
          Not in use
          */

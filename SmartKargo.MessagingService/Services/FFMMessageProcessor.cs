@@ -34,13 +34,30 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FFMMessageProcessor> _logger;
+        private readonly FNAMessageProcessor _fNAMessageProcessor;
+        private readonly FHLMessageProcessor _fHLMessageProcessor;
+        private readonly cls_SCMBL _cls_SCMBL;
+        private readonly CustomsMessageProcessor _customsMessageProcessor;
+        private readonly FWBMessageProcessor _fWBMessageProcessor;
 
         #region Constructor
-        public FFMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FFMMessageProcessor> logger)
+        public FFMMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FFMMessageProcessor> logger,
+            FNAMessageProcessor fNAMessageProcessor,
+            FHLMessageProcessor fHLMessageProcessor,
+            cls_SCMBL cls_SCMBL,
+            CustomsMessageProcessor customsMessageProcessor,
+            FWBMessageProcessor fWBMessageProcessor
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _fNAMessageProcessor = fNAMessageProcessor;
+            _fHLMessageProcessor = fHLMessageProcessor;
+            _cls_SCMBL = cls_SCMBL;
+            _customsMessageProcessor = customsMessageProcessor;
+            _fWBMessageProcessor = fWBMessageProcessor;
         }
         #endregion
 
@@ -684,7 +701,9 @@ namespace QidWorkerRole
             bool flag = true;
             DateTime flightdate = new DateTime();
             GenericFunction genericFunction = new GenericFunction();
-            FNAMessageProcessor FNA = new FNAMessageProcessor();
+
+            //FNAMessageProcessor FNA = new FNAMessageProcessor();
+
             MessageData.consignmnetinfo[] auditconsinfo = new MessageData.consignmnetinfo[0];
             List<string> lstDeliveredAWB = new List<string>();
             List<string> lstOrgDstMissmatchAWB = new List<string>();
@@ -1144,7 +1163,7 @@ namespace QidWorkerRole
                                                         genericFunction.UpdateErrorMessageToInbox(REFNo, awbPrefix + "-" + AWBNum + " has origin mismatch");
                                                         lstDeliveredAWB.Add(AWBNum);
                                                         lstOrgDstMissmatchAWB.Add(AWBNum);
-                                                        FNA.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has origin mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
+                                                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has origin mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
 
                                                     }
                                                     else if (destinationCode != auditconsinfo[i].dest)
@@ -1153,7 +1172,7 @@ namespace QidWorkerRole
                                                         isDestinationMismatch = true;
                                                         lstDeliveredAWB.Add(AWBNum);
                                                         lstOrgDstMissmatchAWB.Add(AWBNum);
-                                                        FNA.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has destination mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
+                                                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has destination mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
 
 
                                                     }
@@ -2365,12 +2384,13 @@ namespace QidWorkerRole
                         {
                             if (awbNumbers.Trim() != string.Empty && awbNumbers.Trim().Length >= 8)
                             {
-                                FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
-                                fwbMessageProcessor.GenerateFWB(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
+                                //FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
+                                
+                                await _fWBMessageProcessor.GenerateFWB(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
 
-                                FHLMessageProcessor fhlMessageProcessor = new FHLMessageProcessor();
-                                fhlMessageProcessor.GenerateFHL(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
-
+                                //FHLMessageProcessor fhlMessageProcessor = new FHLMessageProcessor();
+                                
+                                await _fHLMessageProcessor.GenerateFHL(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
                             }
                         }
                     }
@@ -2383,9 +2403,9 @@ namespace QidWorkerRole
                         {
                             if (awbNumbers.Trim() != string.Empty && awbNumbers.Trim().Length >= 8)
                             {
-                                GenerateXFWB(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow);
+                                await GenerateXFWB(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow);
 
-                                GenerateXFZBMessage(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
+                                await GenerateXFZBMessage(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow, awbNumbers);
                             }
                             GenerateXFFM(carriercode, source, dest, flightnum, flightdate, "FFM", DateTime.UtcNow);
 
@@ -2400,7 +2420,9 @@ namespace QidWorkerRole
                         {
                             clsLog.WriteLog("IsAutoGenerateCustomMessage: " + genericFunction.GetConfigurationValues("IsAutoGenerateCustomMessage"));
                             GenericFunction generalFunction = new GenericFunction();
-                            CustomsMessageProcessor customsMessageProcessor = new CustomsMessageProcessor();
+                            
+                            //CustomsMessageProcessor customsMessageProcessor = new CustomsMessageProcessor();
+                            
                             string PartnerCodeOri = generalFunction.GetCountryCode(source);
                             string PartnerCodeDest = generalFunction.GetCountryCode(dest);
 
@@ -2408,7 +2430,7 @@ namespace QidWorkerRole
 
                             if (PartnerCodeOri != "PH" && PartnerCodeDest == "PH")
                             {
-                                customsMessageProcessor.GenerateCustomMessageXML(flightnum, flightdate, source, dest, "False", "", awbNumbers, "FFM", DateTime.UtcNow, PartnerCodeDest);
+                                await _customsMessageProcessor.GenerateCustomMessageXML(flightnum, flightdate, source, dest, "False", "", awbNumbers, "FFM", DateTime.UtcNow, PartnerCodeDest);
                             }
                             else
                             {
@@ -2425,7 +2447,7 @@ namespace QidWorkerRole
                                     {
                                         string ExpImp = OrgCountry == "OM" ? "1" : DestCountry == "OM" ? "0" : OrgCountry == "BD" ? "1" : "0";
 
-                                        customsMessageProcessor.GenerateCustomMessageXML(flightnum, flightdate, origin, dest, ExpImp, "", awbNumbers, "FFM", DateTime.UtcNow, PartnerCodeOri);
+                                        await _customsMessageProcessor.GenerateCustomMessageXML(flightnum, flightdate, origin, dest, ExpImp, "", awbNumbers, "FFM", DateTime.UtcNow, PartnerCodeOri);
                                     }
                                 }
                             }
@@ -3836,19 +3858,19 @@ namespace QidWorkerRole
         }
 
 
-        public void GenerateXFWB(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate)
+        public async Task GenerateXFWB(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate)
         {
             string FlightDestination = string.Empty, customsName = string.Empty;
             GenericFunction genericFunction = new GenericFunction();
-            cls_SCMBL _SCMBL = new cls_SCMBL();
+            //cls_SCMBL _SCMBL = new cls_SCMBL();
             string MessageVersion = "8", SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, xfwbMessage = string.Empty, SFTPMessageHeader = string.Empty, messagetype = string.Empty;
             DataSet dsData = new DataSet();
             XFWBMessageProcessor xfwbMessageProcessor = new XFWBMessageProcessor();
             GenericFunction generalfunction = new GenericFunction();
             DataSet ds = new DataSet();
-            DataSet dsdata1 = new DataSet();
+            DataSet? dsdata1 = new DataSet();
             // DataSet dsData = new DataSet();
-            dsdata1 = _SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+            dsdata1 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
             if (dsdata1 != null && dsdata1.Tables.Count > 1 && dsdata1.Tables[1].Rows.Count > 0)
             {
                 customsName = dsdata1.Tables[1].Rows[0]["CustomsName"].ToString();
@@ -3887,7 +3909,7 @@ namespace QidWorkerRole
                     foreach (DataRow drdestination in dsdata1.Tables[0].Rows)
                     {
                         MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                        dsData = _SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                        dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
                         if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
                             dt.Merge(dsData.Tables[3]);
                     }
@@ -3945,11 +3967,11 @@ namespace QidWorkerRole
                 }
             }
         }
-        public void GenerateXFZBMessage(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
+        public async Task GenerateXFZBMessage(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
             string FlightDestination = string.Empty;
             string hawbNumber = string.Empty;
-            cls_SCMBL _SCMBL = new cls_SCMBL();
+            //cls_SCMBL _SCMBL = new cls_SCMBL();
             XFZBMessageProcessor xfhlMessageProcessor = new XFZBMessageProcessor();
             string xfzbMessage = string.Empty, partnerCode = string.Empty, flightorigin = string.Empty, flightDestination = string.Empty, messageHeader = string.Empty, SFTPMessageHeader = string.Empty;
             GenericFunction genericFunction = new GenericFunction();
@@ -3957,9 +3979,9 @@ namespace QidWorkerRole
             DataSet dsdata2 = new DataSet();
             DataSet dsData = new DataSet();
             DataTable dt = new DataTable();
-            DataSet dthwb = new DataSet();
-            DataSet ds = new DataSet();
-            dsdata2 = _SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+            DataSet? dthwb = new DataSet();
+            DataSet? ds = new DataSet();
+            dsdata2 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
             if (DepartureAirport == "DAC" || ArrivalAirport == "DAC")
             {
                 if (dsdata2 != null && dsdata2.Tables[0].Rows.Count > 0)
@@ -3967,7 +3989,7 @@ namespace QidWorkerRole
                     foreach (DataRow drdestination in dsdata2.Tables[0].Rows)
                     {
                         MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                        dsData = _SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                        dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
                         if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
                             dt.Merge(dsData.Tables[3]);
                     }
@@ -3981,7 +4003,7 @@ namespace QidWorkerRole
                     {
                         if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
                         {
-                            dthwb = _SCMBL.GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
+                            dthwb = await _cls_SCMBL.GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
                            FlightDate, true, "", IsXFZB);
 
                             if (dthwb != null && dthwb.Tables[0].Rows.Count > 0)
