@@ -1,37 +1,65 @@
-﻿using DurableTask.Core.Settings;
-using Microsoft.AspNetCore.Builder;
+﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using QidWorkerRole.UploadMasters;
+using QueueManager;
+using SmartKargo.MessagingService.Configurations;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System.Configuration;
 using System.Data;
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
 using System.Text;
-using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
-//using DbEntity = QidWorkerRole.SIS.DAL;
-//using ModelClass = QidWorkerRole.SIS.Model;
-//using Zipfile = Ionic.Zip.ZipFile;
+using WinSCP;
+using DbEntity = QidWorkerRole.SIS.DAL;
+using ModelClass = QidWorkerRole.SIS.Model;
+using Zipfile = Ionic.Zip.ZipFile;
 
 
-namespace SmartKargo.MessagingService.Services
+namespace QidWorkerRole
 {
     public class FTP
     {
-        private static ILogger<FTP>? _staticLogger;  // static shared logger
-        private readonly ILogger<FTP> _logger;       // instance logger
-
-        #region Constructor
-        public FTP(ILogger<FTP> logger)
-        {
-            _logger = logger;
-            _staticLogger = logger; // initialize static reference once
-        }
-        #endregion Constructor
-
         //SCMExceptionHandlingWorkRole scmeception = new SCMExceptionHandlingWorkRole();
         //SIS.SISBAL objSISBAL = new SIS.SISBAL();
 
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private static ILogger<FTP>? _staticLogger;  // static shared logger
+        private readonly ILogger<FTP> _logger;       // instance logger
+        private readonly EMAILOUT _emailOut;
+        private readonly GenericFunction _genericFunction;
+        private readonly cls_SCMBL _cls_SCMBL;
+        private readonly AppConfig _appConfig;
+        private readonly SIS.SISBAL _sISBAL;
+
+        #region Constructor
+        public FTP(
+            ILogger<FTP> logger,
+            EMAILOUT emailOut,
+            GenericFunction genericFunction,
+            cls_SCMBL cls_SCMBL,
+            AppConfig appConfig,
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            SIS.SISBAL sISBAL
+            )
+        {
+            _logger = logger;
+            _staticLogger = logger; // initialize static reference once
+            _emailOut = emailOut;
+            _genericFunction = genericFunction;
+            _cls_SCMBL = cls_SCMBL;
+            _appConfig = appConfig;
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _sISBAL = sISBAL;
+        }
+        #endregion Constructor
+
         #region Save Saveon72FTP
+        /*Not in use*/
         /// <summary>
         /// Saves FTP message 
         /// </summary>
@@ -73,7 +101,7 @@ namespace SmartKargo.MessagingService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error on FTP upload");
+                clsLog.WriteLogAzure("Error on FTP upload:", ex);
                 FTPConnectionAlert();
                 return (false);
 
@@ -120,9 +148,8 @@ namespace SmartKargo.MessagingService.Services
                 myFtpWebResponse.Close();
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error on SaveFTP(string FTPPath, string UserName, string Password, string Message, string FileName)");
                 FTPConnectionAlert();
                 return (false);
             }
@@ -161,14 +188,18 @@ namespace SmartKargo.MessagingService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error on SaveFTP(string FTPPath, string UserName, string Password, string Message, string FileName, string fileextension)");
+                clsLog.WriteLogAzure("save ON FTP:" + ex.ToString() + FileName);
                 FTPConnectionAlert();
                 return (false);
             }
             return (true);
         }
 
+
+
+
         #endregion Save FTP
+
 
         #region FTP Folders List
         public static void FTPFoldersList(string ftpurl,
@@ -196,13 +227,10 @@ namespace SmartKargo.MessagingService.Services
                 reader.Close();
                 response.Close();
             }
-            catch (WebException ex)
+            catch (WebException e)
             {
-                _staticLogger?.LogError(ex, "WebException Error on FTPFoldersList");
-            }
-            catch (Exception ex)
-            {
-                _staticLogger?.LogError(ex, "Error on FTPFoldersList");
+
+                Console.WriteLine(e.ToString());
             }
         }
         #endregion FTP Short List
@@ -245,7 +273,7 @@ namespace SmartKargo.MessagingService.Services
             }
             catch (WebException ex)
             {
-                _logger.LogError(ex, "Error on FTPFilesList");
+                clsLog.WriteLogAzure(ex);
                 arrayfilesList = null;
                 FTPConnectionAlert();
             }
@@ -264,26 +292,27 @@ namespace SmartKargo.MessagingService.Services
                 //string fromEmailId = genericFunction.ReadValueFromDb("msgService_OutEmailId");
                 //string toEmailId = genericFunction.ReadValueFromDb("msgService_FTPAlertEmailID");
                 //string password = genericFunction.ReadValueFromDb("msgService_OutEmailPassword");
-
                 string fromEmailId = ConfigCache.Get("msgService_OutEmailId");
-                string toEmailId= ConfigCache.Get("msgService_FTPAlertEmailID");
-                string password= ConfigCache.Get("msgService_OutEmailPassword");
+                string toEmailId = ConfigCache.Get("msgService_FTPAlertEmailID");
+                string password = ConfigCache.Get("msgService_OutEmailPassword");
 
                 string subject = "FTP Connection Status";
                 string body = "FTP folder of SITA is not accessible.";
                 bool isBodyHTML = false;
+                //int outmailport = Convert.ToInt32(genericFunction.ReadValueFromDb("msgService_OutgoingMessagePort"));
                 int outmailport = Convert.ToInt32(ConfigCache.Get("msgService_OutgoingMessagePort"));
+
                 string CCEmailID = string.Empty;
 
                 if (fromEmailId != "" && password != "" && toEmailId != "")
                 {
-                    EMAILOUT emailOut = new EMAILOUT();
-                    emailOut.sendMail(fromEmailId, toEmailId, password, subject, body, isBodyHTML, outmailport, CCEmailID, "");
+                    //EMAILOUT emailOut = new EMAILOUT();
+                    _emailOut.sendMail(fromEmailId, toEmailId, password, subject, body, isBodyHTML, outmailport, CCEmailID, "");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error on FTPConnectionAlert");
+                clsLog.WriteLogAzure(ex);
             }
         }
         #endregion FTP Files List
@@ -373,58 +402,60 @@ namespace SmartKargo.MessagingService.Services
         #endregion Read FTP File
 
         #region SFTP Upload
-        public bool SaveSFTPUpload(string SFTPPath, string UserName, string Password, string FingerPrint, string Message, string FileName)
-        {
-            try
-            {
-                // Setup session options
-                SessionOptions sessionOptions = new SessionOptions
-                {
-                    Protocol = Protocol.Sftp,
-                    HostName = SFTPPath,
-                    UserName = UserName,
-                    Password = Password,
-                    SshHostKeyFingerprint = FingerPrint
 
-                };
+        /**Commented this as this method no reference*/
+        //public bool SaveSFTPUpload(string SFTPPath, string UserName, string Password, string FingerPrint, string Message, string FileName)
+        //{
+        //    try
+        //    {
+        //        // Setup session options
+        //        SessionOptions sessionOptions = new SessionOptions
+        //        {
+        //            Protocol = Protocol.Sftp,
+        //            HostName = SFTPPath,
+        //            UserName = UserName,
+        //            Password = Password,
+        //            SshHostKeyFingerprint = FingerPrint
 
-                using (Session session = new Session())
-                {
-                    // Connect
-                    session.DisableVersionCheck = true;
-                    session.ExecutablePath = null;// @"E:\D Drive\swapnil\QID\Dot Net\SCM\VS 2015 - Message Service Rework\AzureCloudServiceWorkerRole_25JUN2015\QidWorkerRole\bin\Release";
+        //        };
 
-                    session.Open(sessionOptions);
+        //        using (Session session = new Session())
+        //        {
+        //            // Connect
+        //            session.DisableVersionCheck = true;
+        //            session.ExecutablePath = null;// @"E:\D Drive\swapnil\QID\Dot Net\SCM\VS 2015 - Message Service Rework\AzureCloudServiceWorkerRole_25JUN2015\QidWorkerRole\bin\Release";
 
-                    // Upload files
-                    TransferOptions transferOptions = new TransferOptions();
-                    transferOptions.TransferMode = TransferMode.Binary;
-                    transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
+        //            session.Open(sessionOptions);
 
-                    TransferOperationResult transferResult;
+        //            // Upload files
+        //            TransferOptions transferOptions = new TransferOptions();
+        //            transferOptions.TransferMode = TransferMode.Binary;
+        //            transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
 
-                    string fileName;
+        //            TransferOperationResult transferResult;
 
-                    fileName = FileName;
-                    fileName = Path.ChangeExtension(fileName, ".txt");
-                    fileName = Path.Combine(Path.GetTempPath(), fileName);
+        //            string fileName;
 
-                    File.WriteAllText(fileName, Message);
-                    transferResult = session.PutFiles(fileName, "/Upload/", false, transferOptions);
-                    File.Delete(fileName);
-                    // Throw on any error
-                    transferResult.Check();
+        //            fileName = FileName;
+        //            fileName = Path.ChangeExtension(fileName, ".txt");
+        //            fileName = Path.Combine(Path.GetTempPath(), fileName);
 
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure("SFTP File: " + FileName + " Error on UPload . Error: " + ex.Message);
-                return false;
-            }
+        //            File.WriteAllText(fileName, Message);
+        //            transferResult = session.PutFiles(fileName, "/Upload/", false, transferOptions);
+        //            File.Delete(fileName);
+        //            // Throw on any error
+        //            transferResult.Check();
 
-        }
+        //        }
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure("SFTP File: " + FileName + " Error on UPload . Error: " + ex.Message);
+        //        return false;
+        //    }
+
+        //}
 
         public bool SaveSFTPUpload(string SFTPAddress, string UserName, string Password, string FingerPrint, string Message, string FileName, string FileExtension, string RemotePath, int portNumber, string ppkLocalFilePath, string GHAOutFolderPath = "")
         {
@@ -432,32 +463,45 @@ namespace SmartKargo.MessagingService.Services
             string fileName = string.Empty;
             try
             {
-                SessionOptions sessionOptions;
-                if (ppkLocalFilePath != string.Empty)
+
+                //SessionOptions sessionOptions;
+                //if (ppkLocalFilePath != string.Empty)
+                //{
+                //    sessionOptions = new SessionOptions
+                //    {
+                //        Protocol = Protocol.Sftp,
+                //        HostName = SFTPAddress,
+                //        UserName = UserName,
+                //        SshPrivateKeyPath = ppkLocalFilePath,
+                //        PortNumber = portNumber,
+                //        SshHostKeyFingerprint = FingerPrint
+                //    };
+                //}
+                //else
+                //{
+                //    sessionOptions = new SessionOptions
+                //    {
+                //        Protocol = Protocol.Sftp,
+                //        HostName = SFTPAddress,
+                //        UserName = UserName,
+                //        Password = Password,
+                //        PortNumber = portNumber,
+                //        SshHostKeyFingerprint = FingerPrint
+                //    };
+                //}
+
+                WinSCP.SessionOptions sessionOptions = new WinSCP.SessionOptions
                 {
-                    sessionOptions = new SessionOptions
-                    {
-                        Protocol = Protocol.Sftp,
-                        HostName = SFTPAddress,
-                        UserName = UserName,
-                        SshPrivateKeyPath = ppkLocalFilePath,
-                        PortNumber = portNumber,
-                        SshHostKeyFingerprint = FingerPrint
-                    };
-                }
-                else
-                {
-                    sessionOptions = new SessionOptions
-                    {
-                        Protocol = Protocol.Sftp,
-                        HostName = SFTPAddress,
-                        UserName = UserName,
-                        Password = Password,
-                        PortNumber = portNumber,
-                        SshHostKeyFingerprint = FingerPrint
-                    };
-                }
-                using (Session session = new Session())
+                    Protocol = WinSCP.Protocol.Sftp,
+                    HostName = SFTPAddress,
+                    UserName = UserName,
+                    PortNumber = portNumber,
+                    SshHostKeyFingerprint = FingerPrint,
+                    SshPrivateKeyPath = !string.IsNullOrEmpty(ppkLocalFilePath) ? ppkLocalFilePath : null,
+                    Password = string.IsNullOrEmpty(ppkLocalFilePath) ? Password : null
+                };
+
+                using (WinSCP.Session session = new WinSCP.Session())
                 {
                     session.DisableVersionCheck = true;
                     session.Open(sessionOptions);
@@ -475,8 +519,12 @@ namespace SmartKargo.MessagingService.Services
                     if (RemotePath.Length < 1 || RemotePath == "")
                         RemotePath = "/";
 
-                    GenericFunction genericFunction = new GenericFunction();
-                    if (genericFunction.ReadValueFromDb("MSServiceType") != string.Empty && genericFunction.ReadValueFromDb("MSServiceType").ToUpper() == "WINDOWSSERVICE")
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //if (genericFunction.ReadValueFromDb("MSServiceType") != string.Empty && genericFunction.ReadValueFromDb("MSServiceType").ToUpper() == "WINDOWSSERVICE")
+
+                    var mSServiceType = ConfigCache.Get("MSServiceType");
+                    if (mSServiceType != string.Empty && mSServiceType.ToUpper() == "WINDOWSSERVICE")
+
                     {
                         fileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
                         File.WriteAllText(fileName, Message);
@@ -491,16 +539,22 @@ namespace SmartKargo.MessagingService.Services
                         transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
                     }
 
-                    if (genericFunction.ReadValueFromDb("UploadManifestToBlob") != string.Empty && Convert.ToBoolean(genericFunction.ReadValueFromDb("UploadManifestToBlob")))
+                    var uploadManifestToBlob = ConfigCache.Get("UploadManifestToBlob");
+                    var m_AMF_REQ_Container = ConfigCache.Get("M_AMF_REQ_Container");
+                    var h_AMF_REQ_Container = ConfigCache.Get("H_AMF_REQ_Container");
+
+                    //if (genericFunction.ReadValueFromDb("UploadManifestToBlob") != string.Empty && Convert.ToBoolean(genericFunction.ReadValueFromDb("UploadManifestToBlob")))
+                    if (uploadManifestToBlob != string.Empty && Convert.ToBoolean(uploadManifestToBlob))
+
                     {
                         Stream messageStream = GenerateStreamFromString(Message);
                         if (Message.ToUpper().Contains("MASTERMANIFESTREQUEST"))
                         {
-                            genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), genericFunction.ReadValueFromDb("M_AMF_REQ_Container"));
+                            _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), m_AMF_REQ_Container);
                         }
                         else if (Message.ToUpper().Contains("HOUSEMANIFESTREQUEST"))
                         {
-                            genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), genericFunction.ReadValueFromDb("H_AMF_REQ_Container"));
+                            _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), h_AMF_REQ_Container);
                         }
                     }
                     clsLog.WriteLogAzure("fileName1:- " + fileName + "RemotePath:- " + RemotePath);
@@ -522,37 +576,49 @@ namespace SmartKargo.MessagingService.Services
         #endregion
 
         #region SFTP Download
-        public bool SFTPDownload(string SFTPPath, string RemotePath, string LocalPath, string UserName, string Password, string FingerPrint, int portNumber, string ppkLocalFilePath, string messageType, string archivalPath)
+        public async Task<bool> SFTPDownload(string SFTPPath, string RemotePath, string LocalPath, string UserName, string Password, string FingerPrint, int portNumber, string ppkLocalFilePath, string messageType, string archivalPath)
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
-                SessionOptions sessionOptions;
-                if (ppkLocalFilePath != string.Empty)
+                //GenericFunction genericFunction = new GenericFunction();
+                //SessionOptions sessionOptions;
+
+                WinSCP.SessionOptions sessionOptions = new WinSCP.SessionOptions
                 {
-                    sessionOptions = new SessionOptions
-                    {
-                        Protocol = Protocol.Sftp,
-                        HostName = SFTPPath,
-                        UserName = UserName,
-                        SshPrivateKeyPath = ppkLocalFilePath,
-                        PortNumber = portNumber,
-                        SshHostKeyFingerprint = FingerPrint
-                    };
-                }
-                else
-                {
-                    sessionOptions = new SessionOptions
-                    {
-                        Protocol = Protocol.Sftp,
-                        HostName = SFTPPath,
-                        UserName = UserName,
-                        Password = Password,
-                        SshHostKeyFingerprint = FingerPrint,
-                        PortNumber = portNumber
-                    };
-                }
-                using (Session session = new Session())
+                    Protocol = WinSCP.Protocol.Sftp,
+                    HostName = SFTPPath,
+                    UserName = UserName,
+                    PortNumber = portNumber,
+                    SshHostKeyFingerprint = FingerPrint,
+                    SshPrivateKeyPath = !string.IsNullOrEmpty(ppkLocalFilePath) ? ppkLocalFilePath : null,
+                    Password = string.IsNullOrEmpty(ppkLocalFilePath) ? Password : null
+                };
+
+                //if (ppkLocalFilePath != string.Empty)
+                //{
+                //    sessionOptions = new SessionOptions
+                //    {
+                //        Protocol = Protocol.Sftp,
+                //        HostName = SFTPPath,
+                //        UserName = UserName,
+                //        PortNumber = portNumber,
+                //        SshHostKeyFingerprint = FingerPrint,
+                //        SshPrivateKeyPath = ppkLocalFilePath,
+                //    };
+                //}
+                //else
+                //{
+                //    sessionOptions = new SessionOptions
+                //    {
+                //        Protocol = Protocol.Sftp,
+                //        HostName = SFTPPath,
+                //        UserName = UserName,
+                //        PortNumber = portNumber,
+                //        SshHostKeyFingerprint = FingerPrint,
+                //        Password = Password,
+                //    };
+                //}
+                using (WinSCP.Session session = new WinSCP.Session())
                 {
                     session.Open(sessionOptions);
                     session.GetFileInfo(RemotePath);
@@ -689,7 +755,7 @@ namespace SmartKargo.MessagingService.Services
 
                                             clsLog.WriteLogAzure("File Name- " + item1.FileName + "  " + i + "  loop message body length is : " + Msg_Body.Length);
 
-                                            if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                            if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                             {
                                                 Msg_Body = "";
                                                 loopcount = j;
@@ -730,7 +796,7 @@ namespace SmartKargo.MessagingService.Services
                                         clsLog.WriteLogAzure("File Name - " + item1.FileName + " - Remaining No. of Records in SSM File : " + Convert.ToString(Total - loopcount));
                                         clsLog.WriteLogAzure("File Name - " + item1.FileName + " - Last loop message body length is : " + Msg_Body.Length);
 
-                                        if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                        if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                         {
                                             Msg_Body = "";
                                             clsLog.WriteLogAzure(messageType + " Messages Saved to Inbox: " + item1.FileName + " " + file.LastWriteTime.ToString());
@@ -747,7 +813,7 @@ namespace SmartKargo.MessagingService.Services
                                         clsLog.WriteLogAzure("File Name :- " + item1.FileName + " - Total No Of Records is : " + Total);
                                         clsLog.WriteLogAzure("File Name - " + item1.FileName + " - Total body Length is : " + msgBody.Length);
 
-                                        if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                        if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                         {
                                             Msg_Body = "";
                                             clsLog.WriteLogAzure(messageType + " Messages Saved to Inbox: " + item1.FileName + " " + file.LastWriteTime.ToString());
@@ -782,12 +848,14 @@ namespace SmartKargo.MessagingService.Services
                                     string SSM_FailedAlertEmailID = "";
                                     string fileName = string.Empty;
 
-                                    SSM_FailedAlertEmailID = genericFunction.ReadValueFromDb("SSMAlert");
+                                    //SSM_FailedAlertEmailID = genericFunction.ReadValueFromDb("SSMAlert");
+                                    SSM_FailedAlertEmailID = ConfigCache.Get("SSMAlert");
+
                                     fileName = item1.FileName;
 
                                     if (SSM_FailedAlertEmailID != "")
                                     {
-                                        genericFunction.SaveMessageOutBox("SSM Failed alert", "Hi,\r\n\r\n" + "Below SSM file are getting failed during processing. " + "\r\n" + "File Name :- " + fileName + "\r\n\r\nThanks.", "", SSM_FailedAlertEmailID, "", 0);
+                                        _genericFunction.SaveMessageOutBox("SSM Failed alert", "Hi,\r\n\r\n" + "Below SSM file are getting failed during processing. " + "\r\n" + "File Name :- " + fileName + "\r\n\r\nThanks.", "", SSM_FailedAlertEmailID, "", 0);
                                     }
 
                                     #endregion SSM Failed alert
@@ -798,7 +866,7 @@ namespace SmartKargo.MessagingService.Services
                             else
                             {
 
-                                if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                 {
                                     if (archivalPath.Trim() != string.Empty && archivalPath.Contains("/"))
                                     {
@@ -834,12 +902,24 @@ namespace SmartKargo.MessagingService.Services
                         transferResult = session.GetFiles(RemotePath, "/", false, transferOptions);
                     transferResult.Check();/// Throw on any error
                     int x = 0;
+                    //genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup");
+                    //genericFunction.GetConfigurationValues("SISFileAutomation")
+                    //genericFunction.ReadValueFromDb("UploadManifestToBlob")
+                    //genericFunction.ReadValueFromDb("M_AMF_RES_Container")
+                    //genericFunction.ReadValueFromDb("H_AMF_RES_Container")
+
+                    var keepSITAFTPMessageBackup = ConfigCache.Get("KeepSITAFTPMessageBackup");
+                    var sISFileAutomation = ConfigCache.Get("SISFileAutomation");
+                    var uploadManifestToBlob = ConfigCache.Get("UploadManifestToBlob");
+                    var m_AMF_RES_Container = ConfigCache.Get("M_AMF_RES_Container");
+                    var h_AMF_RES_Container = ConfigCache.Get("H_AMF_RES_Container");
+
                     foreach (TransferEventArgs trn in transferResult.Transfers)
                     {
                         x++;
                         string strMessage = string.Empty;
 
-                        if (!string.IsNullOrEmpty(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")))
+                        if (!string.IsNullOrEmpty(_genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(keepSITAFTPMessageBackup))
                         {
                             session.PutFiles(trn.Destination, "/" + RemotePath + "/Backup/", false, null);
                         }
@@ -855,7 +935,7 @@ namespace SmartKargo.MessagingService.Services
                                 ProcessFile(x, trn.Destination, trn.FileName);
                                 string FlNamewithoutExt = Path.GetFileNameWithoutExtension(trn.FileName);
                                 Stream messageStream = GenerateStreamFromString(strMessage);
-                                string url = genericFunction.UploadToBlob(messageStream, (FlNamewithoutExt + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + extension), "DimensionFiles"); //change file name and append utc time to file name
+                                string url = _genericFunction.UploadToBlob(messageStream, (FlNamewithoutExt + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + extension), "DimensionFiles"); //change file name and append utc time to file name
                                 clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                                 session.RemoveFiles(trn.FileName);
                                 continue;
@@ -878,8 +958,8 @@ namespace SmartKargo.MessagingService.Services
                                 byte[] bytes = System.IO.File.ReadAllBytes(trn.Destination);
                                 System.IO.MemoryStream ms = new System.IO.MemoryStream(bytes, 0, bytes.Length);
                                 byte[] byteValue = ms.ToArray();
-                                String FileUrl = genericFunction.UploadToBlob(ms, awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8) + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + fileExtention, strContainer);
-                                flag = genericFunction.UploadDocumentsOnEpouch(awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8), DocumentName, "", "1", extension, new byte[0], Documentfilename, FileUrl);
+                                String FileUrl = _genericFunction.UploadToBlob(ms, awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8) + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + fileExtention, strContainer);
+                                flag = _genericFunction.UploadDocumentsOnEpouch(awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8), DocumentName, "", "1", extension, new byte[0], Documentfilename, FileUrl);
                                 clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                                 session.RemoveFiles(trn.FileName);
                                 continue;
@@ -959,13 +1039,13 @@ namespace SmartKargo.MessagingService.Services
                         }
                         else if (messageType.ToUpper() == MessageData.MessageTypeName.CARGOLOADXML.ToString().ToUpper())
                         {
-                            cls_SCMBL cls_scmbl = new cls_SCMBL();
-                            cls_scmbl.StoreXMLMessage(strMessage, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1));
+                            //cls_SCMBL cls_scmbl = new cls_SCMBL();
+                            await _cls_SCMBL.StoreXMLMessage(strMessage, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1));
 
                             clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                             session.RemoveFiles(trn.FileName);
                         }
-                        else if (messageType == MessageData.MessageTypeName.SISFILES && genericFunction.GetConfigurationValues("SISFileAutomation").Equals("True", StringComparison.OrdinalIgnoreCase))
+                        else if (messageType == MessageData.MessageTypeName.SISFILES && sISFileAutomation.Equals("True", StringComparison.OrdinalIgnoreCase))
                         {
                             streamReader.Close();
                             if (extension.Equals(".ZIP", StringComparison.OrdinalIgnoreCase))
@@ -979,7 +1059,7 @@ namespace SmartKargo.MessagingService.Services
                                 else
                                 {
                                     FileStream fileStream = new FileStream(trn.Destination, FileMode.Open);
-                                    string FileBlobPath = genericFunction.UploadToBlob(fileStream, FileName, "SIS");
+                                    string FileBlobPath = _genericFunction.UploadToBlob(fileStream, FileName, "SIS");
                                     if (!string.IsNullOrEmpty(FileBlobPath))
                                     {
                                         bool IsUpdatedInSK = UpdateSISFileInSK(FileName, FileBlobPath);
@@ -1027,19 +1107,20 @@ namespace SmartKargo.MessagingService.Services
                         }
                         else
                         {
-                            if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                            if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                             {
                                 clsLog.WriteLogAzure("Files Successfully Save in  Inbox for : " + trn.FileName);
-                                if (genericFunction.ReadValueFromDb("UploadManifestToBlob") != string.Empty && Convert.ToBoolean(genericFunction.ReadValueFromDb("UploadManifestToBlob")))
+                                //if (_genericFunction.ReadValueFromDb("UploadManifestToBlob") != string.Empty && Convert.ToBoolean(genericFunction.ReadValueFromDb("UploadManifestToBlob")))
+                                if (uploadManifestToBlob != string.Empty && Convert.ToBoolean(uploadManifestToBlob))
                                 {
                                     Stream messageStream = GenerateStreamFromString(strMessage);
                                     if (strMessage.ToUpper().Contains("MASTERMANIFESTRESPONSE"))
                                     {
-                                        genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(trn.FileName), genericFunction.ReadValueFromDb("M_AMF_RES_Container"));
+                                        _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(trn.FileName), m_AMF_RES_Container);
                                     }
                                     else if (strMessage.ToUpper().Contains("HOUSEMANIFESTRESPONSE"))
                                     {
-                                        genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(trn.FileName), genericFunction.ReadValueFromDb("H_AMF_RES_Container"));
+                                        _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(trn.FileName), h_AMF_RES_Container);
                                     }
                                 }
                                 clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
@@ -1070,7 +1151,9 @@ namespace SmartKargo.MessagingService.Services
             {
                 int SleepSecond = 0; int count = 0;
 
-                SleepSecond = Convert.ToInt32(ConfigurationManager.AppSettings["SleepSecond"]);
+                //SleepSecond = Convert.ToInt32(ConfigurationManager.AppSettings["SleepSecond"]);
+                SleepSecond = Convert.ToInt32(_appConfig.Polling.SleepSeconds);
+
 
                 string fileName = string.Empty;
                 fileName = ZipFileName;
@@ -1094,11 +1177,14 @@ namespace SmartKargo.MessagingService.Services
                         }
                         else
                         {
-                            string dataDumpAlertEmailID = "";
-                            dataDumpAlertEmailID = Convert.ToString(ConfigurationManager.AppSettings["DataDumpAlertEmailID"]);
-                            GenericFunction genericFunction = new GenericFunction();
+                            //string dataDumpAlertEmailID = "";
+                            //dataDumpAlertEmailID = Convert.ToString(ConfigurationManager.AppSettings["DataDumpAlertEmailID"]);
+                            string dataDumpAlertEmailID = dataDumpAlertEmailID = _appConfig.Alert.DataDumpAlertEmailID;
 
-                            genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nError: Failed to upload the data dump file to SFTP after 3 attempts.\r\n\r\nThanks."
+
+                            //GenericFunction _genericFunction = new GenericFunction();
+
+                            _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nError: Failed to upload the data dump file to SFTP after 3 attempts.\r\n\r\nThanks."
                             , "", dataDumpAlertEmailID, "", 0);
                         }
 
@@ -1127,8 +1213,13 @@ namespace SmartKargo.MessagingService.Services
                 string Station = string.Empty;
                 string Status = "Process will start shortly";
                 UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-                GenericFunction genericFunction = new GenericFunction();
-                string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+
+                //GenericFunction genericFunction = new GenericFunction();
+
+                //string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+
+                string BlobName = ConfigCache.Get("BlobStorageName");
+
                 IsProcessed = ErrorMessage.Trim() == string.Empty ? false : true;
 
                 if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
@@ -1146,7 +1237,7 @@ namespace SmartKargo.MessagingService.Services
                 }
 
                 Stream messageStream = GenerateStreamFromString(strMessage);
-                url = genericFunction.UploadToBlob(messageStream, FileName, ContainerName, filePathToUpload);
+                url = _genericFunction.UploadToBlob(messageStream, FileName, ContainerName, filePathToUpload);
             }
             catch (Exception ex)
             {
@@ -1155,13 +1246,12 @@ namespace SmartKargo.MessagingService.Services
             return url;
         }
 
-        public bool ProcessFile(int x, string filepath, string filename)
+        public async Task<bool> ProcessFile(int x, string filepath, string filename)
         {
             DataTable dataTableCubiScanExcelData = new DataTable("dataTableCubiScanExcelData");
             UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-            SQLServer dtb = new SQLServer();
 
-
+            //SQLServer dtb = new SQLServer();
             try
             {
                 // filename = "apa_20160217_100948.csv";
@@ -1220,12 +1310,26 @@ namespace SmartKargo.MessagingService.Services
                 DataTable dt = readCSVFile(filepath, AWDDIMSData, onlyFileName);
                 //Pass this datatable to SP
                 bool flag = true;
-                string[] PName = new string[] { "CubiScanDataTypeData" };
-                object[] PValues = new object[] { dt };
-                SqlDbType[] PType = new SqlDbType[] { SqlDbType.Structured };
-                flag = dtb.InsertData("spInsertAWBDIMSData", PName, PType, PValues);
+
+                //string[] PName = new string[] { "CubiScanDataTypeData" };
+                //object[] PValues = new object[] { dt };
+                //SqlDbType[] PType = new SqlDbType[] { SqlDbType.Structured };
+
+                SqlParameter[] sqlParameters =
+                [
+                    new SqlParameter("@CubiScanDataTypeData", SqlDbType.Structured)
+                    {
+                        Value = dt
+                    }
+                ];
+
+                //flag = dtb.InsertData("spInsertAWBDIMSData", PName, PType, PValues);
+
+                flag = await _readWriteDao.ExecuteNonQueryAsync("spInsertAWBDIMSData", sqlParameters);
                 if (!flag)
+                {
                     clsLog.WriteLogAzure("Error in Updating DIMs Data Update:");
+                }
 
                 //loop to upload files on blob and tblepouch
             }
@@ -1536,7 +1640,7 @@ namespace SmartKargo.MessagingService.Services
                                                 //objSISBAL.SaveInterlineBillingInterfaceDataI243(receivablesFileID, 1, "Qidadmin",DateTime.Now);
 
                                                 string strMsgKey = string.Empty;
-                                                objSISBAL.CreateInterlineAuditLog("UploadISValidationReport", Convert.ToString(receivablesFileID), "Qidadmin", DateTime.Now, strMsgKey);
+                                                _sISBAL.CreateInterlineAuditLog("UploadISValidationReport", Convert.ToString(receivablesFileID), "Qidadmin", DateTime.Now, strMsgKey);
                                                 break;
                                             case 2:
                                                 //ShowMessage(ref lblStatus, skResourceManager.GetString("msgReportFileR1NotFound", skCultureInfo) + " " + zipFileName + ".", MessageType.ErrorMessage);
@@ -1635,6 +1739,7 @@ namespace SmartKargo.MessagingService.Services
                 return destinationDirectory;
             }
         }
+
 
         public void DeleteContentsOfDirectory(string directoryPath)
         {
@@ -1789,27 +1894,50 @@ namespace SmartKargo.MessagingService.Services
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
                 string containerName = "";
                 string str = filenameOrUrl;
-                string StorageName = genericFunction.GetStorageName();
-                string StorageKey = genericFunction.GetStorageKey();
+                string StorageName = _genericFunction.GetStorageName();
+                string StorageKey = _genericFunction.GetStorageKey();
                 if (filenameOrUrl.Contains('/'))
                 {
                     //filenameOrUrl = filenameOrUrl.ToLower();
                     containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
                     filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
                 }
+
+                //Stream downloadStream = null;
+                //containerName = containerName.ToLower();
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(StorageName, StorageKey);
+                //System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //string sas = GetSASUrl(containerName, storageAccount);
+                //StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
+                //CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
+                //new StorageCredentialsSharedAccessSignature(sas));
+                //CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+
                 Stream downloadStream = null;
                 containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(StorageName, StorageKey);
-                System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                string sas = GetSASUrl(containerName, storageAccount);
-                StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
-                CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
-                new StorageCredentialsSharedAccessSignature(sas));
-                CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+
+                // Enforce TLS 1.2
+                System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+                // Create BlobServiceClient using account name + key
+                string accountUrl = $"https://{StorageName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new Azure.Storage.StorageSharedKeyCredential(StorageName, StorageKey));
+
+                // Generate SAS token using your existing GetSASUrl (updated overload)
+                string sas = GetSASUrl(containerName, blobServiceClient);  // Updated method
+
+                // Construct full SAS URI for the blob
+                string blobSasUriString = $"{accountUrl}/{containerName}/{filenameOrUrl}?{sas}";
+                Uri blobSasUri = new Uri(blobSasUriString);
+
+                // Create BlobClient using SAS URI
+                BlobClient blob = new BlobClient(blobSasUri);
 
                 //CloudBlobContainer container = sasBlobClient.GetContainerReference(containerName);
                 //CloudBlockBlob cloudBlockBlob = container.GetBlockBlobReference(filenameOrUrl);
@@ -1841,7 +1969,7 @@ namespace SmartKargo.MessagingService.Services
         {
             clsLog.WriteLogAzure("Step-1: In SITASFTPDownloadFile()");
             bool status = false;
-            GenericFunction genericFunction = new GenericFunction();
+            //GenericFunction genericFunction = new GenericFunction();
             string ppkLocalFilePath = string.Empty;
 
             try
@@ -1864,14 +1992,23 @@ namespace SmartKargo.MessagingService.Services
                 //}
                 #endregion Process local RCV files
 
-                string SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                string SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                string SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                string ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
-                string SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                string StpCIMPINFolerParth = genericFunction.ReadValueFromDb("msgService_IN_FolderPath");
-                string StpGHAMCTINFolerParth = genericFunction.ReadValueFromDb("msgService_INGHAMCT_FolderPath");
-                string SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
+                //string SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
+                //string SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
+                //string SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
+                //string ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
+                //string SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
+                //string StpCIMPINFolerParth = genericFunction.ReadValueFromDb("msgService_IN_FolderPath");
+                //string StpGHAMCTINFolerParth = genericFunction.ReadValueFromDb("msgService_INGHAMCT_FolderPath");
+                //string SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
+
+                string SFTPAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                string SFTPUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                string SFTPPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                string ppkFileName = ConfigCache.Get("PPKFileName");
+                string SFTPFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                string StpCIMPINFolerParth = ConfigCache.Get("msgService_IN_FolderPath");
+                string StpGHAMCTINFolerParth = ConfigCache.Get("msgService_INGHAMCT_FolderPath");
+                string SFTPPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
 
                 clsLog.WriteLogAzure("Step-2: Get Configuations");
 
@@ -1883,39 +2020,50 @@ namespace SmartKargo.MessagingService.Services
 
                     if (ppkFileName != string.Empty)
                     {
-                        ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                        ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                     }
                     // Setup session options
 
-                    SessionOptions sessionOptions;
-                    if (ppkLocalFilePath.Trim() != string.Empty)
+                    //SessionOptions sessionOptions;
+                    //if (ppkLocalFilePath.Trim() != string.Empty)
+                    //{
+                    //    sessionOptions = new SessionOptions
+                    //    {
+                    //        Protocol = Protocol.Sftp,
+                    //        HostName = SFTPAddress,
+                    //        UserName = SFTPUserName,
+                    //        SshPrivateKeyPath = ppkLocalFilePath,
+                    //        PortNumber = portNumber,
+                    //        SshHostKeyFingerprint = SFTPFingerPrint
+                    //    };
+                    //}
+                    //else
+                    //{
+                    //    sessionOptions = new SessionOptions
+                    //    {
+                    //        Protocol = Protocol.Sftp,
+                    //        HostName = SFTPAddress,
+                    //        UserName = SFTPUserName,
+                    //        Password = SFTPPassWord,
+                    //        PortNumber = portNumber,
+                    //        SshHostKeyFingerprint = SFTPFingerPrint
+                    //    };
+                    //}
+
+                    WinSCP.SessionOptions sessionOptions = new WinSCP.SessionOptions
                     {
-                        sessionOptions = new SessionOptions
-                        {
-                            Protocol = Protocol.Sftp,
-                            HostName = SFTPAddress,
-                            UserName = SFTPUserName,
-                            SshPrivateKeyPath = ppkLocalFilePath,
-                            PortNumber = portNumber,
-                            SshHostKeyFingerprint = SFTPFingerPrint
-                        };
-                    }
-                    else
-                    {
-                        sessionOptions = new SessionOptions
-                        {
-                            Protocol = Protocol.Sftp,
-                            HostName = SFTPAddress,
-                            UserName = SFTPUserName,
-                            Password = SFTPPassWord,
-                            PortNumber = portNumber,
-                            SshHostKeyFingerprint = SFTPFingerPrint
-                        };
-                    }
+                        Protocol = WinSCP.Protocol.Sftp,
+                        HostName = SFTPAddress,
+                        UserName = SFTPUserName,
+                        PortNumber = portNumber,
+                        SshHostKeyFingerprint = SFTPFingerPrint,
+                        SshPrivateKeyPath = !string.IsNullOrEmpty(ppkLocalFilePath) ? ppkLocalFilePath : null,
+                        Password = string.IsNullOrEmpty(ppkLocalFilePath) ? SFTPPassWord : null
+                    };
 
                     clsLog.WriteLogAzure("Step-3: Created Session Object");
 
-                    using (Session session = new Session())
+                    using (WinSCP.Session session = new WinSCP.Session())
                     {
                         // Connect
                         session.Open(sessionOptions);
@@ -1939,6 +2087,8 @@ namespace SmartKargo.MessagingService.Services
                             transferResult.Check();
 
                             bool isFilesAvailable = false;
+                            //genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")
+                            var keepSITAFTPMessageBackup = ConfigCache.Get("KeepSITAFTPMessageBackup");
 
                             foreach (TransferEventArgs trn in transferResult.Transfers)
                             {
@@ -1949,14 +2099,17 @@ namespace SmartKargo.MessagingService.Services
 
                                 string strMessage = string.Empty;
 
-                                if (!string.IsNullOrEmpty(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")))
+
+                                //if (!string.IsNullOrEmpty(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")))
+                                if (!string.IsNullOrEmpty(keepSITAFTPMessageBackup) && Convert.ToBoolean(keepSITAFTPMessageBackup))
+
                                 {
                                     session.PutFiles(trn.Destination, "/" + StpCIMPINFolerParth.Replace("/", string.Empty) + "Backup/", false, null);
                                 }
                                 var streamReader = new StreamReader(trn.Destination, Encoding.UTF8);
                                 strMessage = streamReader.ReadToEnd();
 
-                                if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
+                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
                                 {
                                     session.RemoveFiles(trn.FileName);
                                     clsLog.WriteLogAzure("Step-6: Files Successfully Save in  Inbox for : " + trn.FileName);
@@ -1983,11 +2136,16 @@ namespace SmartKargo.MessagingService.Services
                             transferGHAMCtResult = session.GetFiles(StpGHAMCTINFolerParth, "/", false, transferGhaMCTOptions);
                             transferGHAMCtResult.Check();
 
+                            //genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")
+                            var keepSITAFTPMessageBackup = ConfigCache.Get("KeepSITAFTPMessageBackup");
+
                             foreach (TransferEventArgs trnGHAMCTIN in transferGHAMCtResult.Transfers)
                             {
                                 string strMessage = string.Empty;
 
-                                if (!string.IsNullOrEmpty(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")))
+                                //if (!string.IsNullOrEmpty(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")) && Convert.ToBoolean(genericFunction.ReadValueFromDb("KeepSITAFTPMessageBackup")))
+                                if (!string.IsNullOrEmpty(keepSITAFTPMessageBackup) && Convert.ToBoolean(keepSITAFTPMessageBackup))
+
                                 {
                                     session.PutFiles(trnGHAMCTIN.Destination, "/" + StpGHAMCTINFolerParth.Replace("/", string.Empty) + "Backup/", false, null);
                                 }
@@ -1995,7 +2153,7 @@ namespace SmartKargo.MessagingService.Services
                                 var streamReader = new StreamReader(trnGHAMCTIN.Destination, Encoding.UTF8);
                                 strMessage = streamReader.ReadToEnd();
 
-                                if (genericFunction.SaveIncomingMessageInDatabase("MSG:" + trnGHAMCTIN.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
+                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trnGHAMCTIN.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
                                 {
                                     session.RemoveFiles(trnGHAMCTIN.FileName);
                                     clsLog.WriteLogAzure("Files Successfully Save in tblInbox for : " + trnGHAMCTIN.FileName);
@@ -2033,7 +2191,7 @@ namespace SmartKargo.MessagingService.Services
             bool status = false;
             try
             {
-                GenericFunction gf = new GenericFunction();
+                //GenericFunction gf = new GenericFunction();
                 //fileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
                 string tempFileName = string.Empty;
                 if (fileExtension.Trim().ToUpper() == "TXT")
@@ -2165,7 +2323,7 @@ namespace SmartKargo.MessagingService.Services
             }
             return status;
         }
-        public static Stream DownloadFromBlob(string filenameOrUrl)
+        public Stream DownloadFromBlob(string filenameOrUrl)
         {
             try
             {
@@ -2180,16 +2338,39 @@ namespace SmartKargo.MessagingService.Services
                     containerName = filenameOrUrl.Substring(filenameOrUrl.IndexOf("windows.net") + ("windows.net".Length) + 1, filenameOrUrl.LastIndexOf('/') - filenameOrUrl.IndexOf("windows.net") - ("windows.net".Length) - 1);
                     filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
                 }
+                //Stream downloadStream = null;
+                //containerName = containerName.ToLower();
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(StorageName, StorageKey);
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //string sas = GetSASUrl(containerName, storageAccount);
+                //StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
+                //CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
+                //new StorageCredentialsSharedAccessSignature(sas));
+                //CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+
                 Stream downloadStream = null;
                 containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(StorageName, StorageKey);
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                string sas = GetSASUrl(containerName, storageAccount);
-                StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
-                CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
-                new StorageCredentialsSharedAccessSignature(sas));
-                CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+
+                // Enforce TLS 1.2
+                System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+                // Create BlobServiceClient using account name + key
+                string accountUrl = $"https://{StorageName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new Azure.Storage.StorageSharedKeyCredential(StorageName, StorageKey));
+
+                // Generate SAS token using your existing GetSASUrl (updated overload)
+                string sas = GetSASUrl(containerName, blobServiceClient);  // Updated method
+
+                // Construct full SAS URI for the blob
+                string blobSasUriString = $"{accountUrl}/{containerName}/{filenameOrUrl}?{sas}";
+                Uri blobSasUri = new Uri(blobSasUriString);
+
+                // Create BlobClient using SAS URI
+                BlobClient blob = new BlobClient(blobSasUri);
+
                 try
                 {
                     downloadStream = blob.OpenRead();
@@ -2209,281 +2390,341 @@ namespace SmartKargo.MessagingService.Services
             }
 
         }
-        public static string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+
+        //public static string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+        //{
+        //    GenericFunction genericFunction = new GenericFunction();
+        //    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+        //    CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+        //    container.CreateIfNotExist();
+
+        //    BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+
+        //    string sasactivetime = genericFunction.GetConfigurationValues("BlobStorageactiveSASTime");
+        //    double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+        //    containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+        //    {
+        //        SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
+        //        SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
+        //        Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
+        //    });
+
+        //    string IsBlobPrivate = genericFunction.GetConfigurationValues("IsBlobPrivate");
+        //    IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
+        //    if (IsBlobPrivate == "1")
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+        //    }
+        //    else
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+        //    }
+        //    container.SetPermissions(containerPermissions);
+        //    string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
+        //    return sas;
+        //}
+
+        public string GetSASUrl(string containerName, BlobServiceClient blobServiceClient)
         {
-            GenericFunction genericFunction = new GenericFunction();
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExist();
-
-            BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
-
-            string sasactivetime = genericFunction.GetConfigurationValues("BlobStorageactiveSASTime");
-            double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
-
-            containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+            try
             {
-                SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
-                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
-                Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
-            });
+                // 1. Get (or create) the container
+                BlobContainerClient container = blobServiceClient.GetBlobContainerClient(containerName);
+                container.CreateIfNotExists();               // same as container.CreateIfNotExist()
 
-            string IsBlobPrivate = genericFunction.GetConfigurationValues("IsBlobPrivate");
-            IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
-            if (IsBlobPrivate == "1")
-            {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+                // 2. Read configuration values
+                string sasactivetime = ConfigCache.Get("BlobStorageactiveSASTime");
+                double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+                string isBlobPrivate = ConfigCache.Get("IsBlobPrivate");
+                isBlobPrivate = string.IsNullOrWhiteSpace(isBlobPrivate) ? "NA" : isBlobPrivate.Trim();
+
+                // 3. Build the shared-access-policy
+                var policy = new BlobSignedIdentifier
+                {
+                    Id = "defaultpolicy",
+                    AccessPolicy = new BlobAccessPolicy
+                    {
+                        StartsOn = DateTimeOffset.UtcNow.AddMinutes(-1),
+                        ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(_SaSactiveTime),
+                        Permissions = "rwl" // CORRECT: string with r=read, w=write, l=list
+                    }
+                };
+
+                // 4. Apply public-access setting
+                PublicAccessType publicAccess = (isBlobPrivate == "1")
+                    ? PublicAccessType.None
+                    : PublicAccessType.BlobContainer;   // Container = full public read
+
+                // 5. Set permissions + policy in ONE call
+                container.SetAccessPolicy(
+                    permissions: new[] { policy },
+                    accessType: publicAccess);
+
+                // 6. Generate the SAS token for the *container* using the stored policy
+                BlobSasBuilder sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    Resource = "c",                     // container-level SAS
+                    Identifier = "defaultpolicy"        // use the stored policy
+                };
+
+                // The SDK adds the leading '?' – we strip it to match the old behaviour
+                string sas = container.GenerateSasUri(sasBuilder).Query.TrimStart('?');
+                return sas;
             }
-            else
+            catch (Exception ex)
             {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
-            container.SetPermissions(containerPermissions);
-            string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
-            return sas;
+
         }
 
         #endregion
 
-        public bool QuickSFTPUpload()
-        {
-            string SFTPAddress = string.Empty, UserName = string.Empty, Password = string.Empty, FingerPrint = string.Empty, Message = string.Empty, FileName = string.Empty, FileExtension = string.Empty, RemotePath = string.Empty, ppkLocalFilePath = string.Empty, GHAOutFolderPath = string.Empty;
-            int portNumber;
-            bool status = false;
-            string msgStatus = string.Empty;
-            string fileName = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
-            SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-            UserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-            Password = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-            FingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-            portNumber = Convert.ToInt32(genericFunction.ReadValueFromDb("msgService_IN_SITAPort"));
-            try
-            {
-                SessionOptions sessionOptions;
+        /*Not in use*/
+        //public bool QuickSFTPUpload()
+        //{
+        //    string SFTPAddress = string.Empty, UserName = string.Empty, Password = string.Empty, FingerPrint = string.Empty, Message = string.Empty, FileName = string.Empty, FileExtension = string.Empty, RemotePath = string.Empty, ppkLocalFilePath = string.Empty, GHAOutFolderPath = string.Empty;
+        //    int portNumber;
+        //    bool status = false;
+        //    string msgStatus = string.Empty;
+        //    string fileName = string.Empty;
+        //    GenericFunction genericFunction = new GenericFunction();
+        //    SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
+        //    UserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
+        //    Password = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
+        //    FingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
+        //    portNumber = Convert.ToInt32(genericFunction.ReadValueFromDb("msgService_IN_SITAPort"));
+        //    try
+        //    {
+        //        SessionOptions sessionOptions;
 
-                sessionOptions = new SessionOptions
-                {
-                    Protocol = Protocol.Sftp,
-                    HostName = SFTPAddress,
-                    UserName = UserName,
-                    Password = Password,
-                    PortNumber = portNumber,
-                    SshHostKeyFingerprint = FingerPrint
-                };
+        //        sessionOptions = new SessionOptions
+        //        {
+        //            Protocol = Protocol.Sftp,
+        //            HostName = SFTPAddress,
+        //            UserName = UserName,
+        //            Password = Password,
+        //            PortNumber = portNumber,
+        //            SshHostKeyFingerprint = FingerPrint
+        //        };
 
-                using (Session session = new Session())
-                {
-                    session.DisableVersionCheck = true;
-                    session.Open(sessionOptions);
+        //        using (Session session = new Session())
+        //        {
+        //            session.DisableVersionCheck = true;
+        //            session.Open(sessionOptions);
 
-                    // Upload files
-                    TransferOptions transferOptions = new TransferOptions();
-                    transferOptions.TransferMode = TransferMode.Binary;
-                    transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
+        //            // Upload files
+        //            TransferOptions transferOptions = new TransferOptions();
+        //            transferOptions.TransferMode = TransferMode.Binary;
+        //            transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
 
-                    TransferOperationResult transferResult;
-                    TransferOperationResult transferResultGHA;
+        //            TransferOperationResult transferResult;
+        //            TransferOperationResult transferResultGHA;
 
-                    ///////////*****/////////////////
-                    bool isOn = false;
-                    SQLServer objsql = new SQLServer();
-                    do
-                    {
-                        //string ftpUrl = string.Empty, ftpUserName = string.Empty, ftpPassword = string.Empty, ccadd = string.Empty, msgCommType = string.Empty;
-                        string ccadd = string.Empty, msgCommType = string.Empty;
-                        isOn = false;
-                        if (session.Opened)
-                        {
-                            DataSet ds = null;
-                            ds = objsql.SelectRecords("spMailtoSend");
-                            if (ds != null)
-                            {
-                                if (ds.Tables.Count > 0)
-                                {
-                                    if (ds.Tables[0].Rows.Count > 0)
-                                    {
-                                        isOn = true;
-                                        bool isMessageSent = false;
-                                        DataRow dr = ds.Tables[0].Rows[0];
-                                        string subject = dr[1].ToString();
-                                        msgCommType = "EMAIL";
-                                        DataRow drMsg = null;
-                                        FileName = dr["Subject"].ToString();
-                                        Message = dr[2].ToString();
-                                        string sentadd = dr[4].ToString().Trim(',');
-                                        if (dr[3].ToString().Length > 3)
-                                            ccadd = dr[3].ToString().Trim(',');
-                                        bool ishtml = bool.Parse(dr["ishtml"].ToString() == "" ? "False" : dr["ishtml"].ToString());
+        //            ///////////*****/////////////////
+        //            bool isOn = false;
+        //            SQLServer objsql = new SQLServer();
+        //            do
+        //            {
+        //                //string ftpUrl = string.Empty, ftpUserName = string.Empty, ftpPassword = string.Empty, ccadd = string.Empty, msgCommType = string.Empty;
+        //                string ccadd = string.Empty, msgCommType = string.Empty;
+        //                isOn = false;
+        //                if (session.Opened)
+        //                {
+        //                    DataSet ds = null;
+        //                    ds = objsql.SelectRecords("spMailtoSend");
+        //                    if (ds != null)
+        //                    {
+        //                        if (ds.Tables.Count > 0)
+        //                        {
+        //                            if (ds.Tables[0].Rows.Count > 0)
+        //                            {
+        //                                isOn = true;
+        //                                bool isMessageSent = false;
+        //                                DataRow dr = ds.Tables[0].Rows[0];
+        //                                string subject = dr[1].ToString();
+        //                                msgCommType = "EMAIL";
+        //                                DataRow drMsg = null;
+        //                                FileName = dr["Subject"].ToString();
+        //                                Message = dr[2].ToString();
+        //                                string sentadd = dr[4].ToString().Trim(',');
+        //                                if (dr[3].ToString().Length > 3)
+        //                                    ccadd = dr[3].ToString().Trim(',');
+        //                                bool ishtml = bool.Parse(dr["ishtml"].ToString() == "" ? "False" : dr["ishtml"].ToString());
 
-                                        if (ds.Tables[2].Rows.Count > 0)
-                                        {
-                                            drMsg = ds.Tables[2].Rows[0];
-                                            msgCommType = drMsg["MsgCommType"].ToString().ToUpper().Trim();
-                                            FileExtension = drMsg["FileExtension"].ToString().ToUpper().Trim();
-                                        }
+        //                                if (ds.Tables[2].Rows.Count > 0)
+        //                                {
+        //                                    drMsg = ds.Tables[2].Rows[0];
+        //                                    msgCommType = drMsg["MsgCommType"].ToString().ToUpper().Trim();
+        //                                    FileExtension = drMsg["FileExtension"].ToString().ToUpper().Trim();
+        //                                }
 
-                                        if (ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Failed", StringComparison.OrdinalIgnoreCase) || ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Active", StringComparison.OrdinalIgnoreCase) || ds.Tables[0].Rows[0]["STATUS"].ToString().Length < 1)
-                                            msgStatus = "Processed";
-                                        if (ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
-                                            msgStatus = "Re-Processed";
+        //                                if (ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Failed", StringComparison.OrdinalIgnoreCase) || ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Active", StringComparison.OrdinalIgnoreCase) || ds.Tables[0].Rows[0]["STATUS"].ToString().Length < 1)
+        //                                    msgStatus = "Processed";
+        //                                if (ds.Tables[0].Rows[0]["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
+        //                                    msgStatus = "Re-Processed";
 
-                                        #region SFTP Upload
-                                        if (msgCommType.ToUpper() == "SFTP" || msgCommType.ToUpper() == "ALL" || msgCommType.Equals("SFTP", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            if (drMsg != null && drMsg.ItemArray.Length > 0 && drMsg["FTPID"].ToString() != "" && drMsg["FTPUserName"].ToString() != "" && (drMsg["FTPPassword"].ToString() != "" || drMsg["PPKFileName"].ToString() != ""))
-                                            {
-                                                RemotePath = drMsg["RemotePath"].ToString();
-                                                //GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
-                                            }
-                                            if (FileName.ToUpper().Contains(".TXT"))
-                                            {
-                                                int fileIndex = FileName.IndexOf(".");
-                                                if (fileIndex > 0)
-                                                    FileName = FileName.Substring(0, fileIndex);
+        //                                #region SFTP Upload
+        //                                if (msgCommType.ToUpper() == "SFTP" || msgCommType.ToUpper() == "ALL" || msgCommType.Equals("SFTP", StringComparison.OrdinalIgnoreCase))
+        //                                {
+        //                                    if (drMsg != null && drMsg.ItemArray.Length > 0 && drMsg["FTPID"].ToString() != "" && drMsg["FTPUserName"].ToString() != "" && (drMsg["FTPPassword"].ToString() != "" || drMsg["PPKFileName"].ToString() != ""))
+        //                                    {
+        //                                        RemotePath = drMsg["RemotePath"].ToString();
+        //                                        //GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+        //                                    }
+        //                                    if (FileName.ToUpper().Contains(".TXT"))
+        //                                    {
+        //                                        int fileIndex = FileName.IndexOf(".");
+        //                                        if (fileIndex > 0)
+        //                                            FileName = FileName.Substring(0, fileIndex);
 
-                                            }
-                                            else if (FileName.ToUpper().Contains(".XML"))
-                                            {
-                                                int fileIndex = FileName.IndexOf(".");
-                                                if (fileIndex > 0)
-                                                {
-                                                    FileName = FileName.Substring(0, fileIndex);
-                                                    FileExtension = "XML";
-                                                }
-                                            }
-                                            else
-                                                FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
-
-
-                                            fileName = FileName;
-                                            fileName = Path.ChangeExtension(fileName, FileExtension);
-                                            if (RemotePath.Length < 1 || RemotePath == "")
-                                                RemotePath = "/";
-                                            File.WriteAllText(fileName, Message);
-                                            transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
-                                            if (GHAOutFolderPath.Trim() != string.Empty)
-                                            {
-                                                transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
-                                            }
-                                            File.Delete(fileName);
-                                            // Throw on any error
-                                            transferResult.Check();
-                                            isMessageSent = true;
-
-                                        }
-                                        #endregion
-
-                                        #region SITA Upload
-                                        if (msgCommType.ToUpper() == "SITA" || msgCommType.ToUpper() == "SITAFTP"
-                                            || msgCommType.ToUpper() == "ALL"
-                                            || msgCommType.Equals("SITA", StringComparison.OrdinalIgnoreCase)
-                                            || msgCommType.Equals("SITAFTP", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            FTP objFtp = new FTP();
-                                            string SFTPFingerPrint = string.Empty, StpFolerParth = string.Empty, SFTPPortNumber = string.Empty;
-                                            GHAOutFolderPath = string.Empty;
-
-                                            StpFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
-
-                                            if (FileName.ToUpper().Contains(".TXT"))
-                                            {
-                                                int fileIndex = FileName.IndexOf(".");
-                                                if (fileIndex > 0)
-                                                    FileName = FileName.Substring(0, fileIndex);
-
-                                            }
-                                            else if (FileName.ToUpper().Contains(".XML"))
-                                            {
-                                                int fileIndex = FileName.IndexOf(".");
-                                                if (fileIndex > 0)
-                                                {
-                                                    FileName = FileName.Substring(0, fileIndex);
-                                                    FileExtension = "XML";
-                                                }
-                                            }
-                                            else
-                                                FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
+        //                                    }
+        //                                    else if (FileName.ToUpper().Contains(".XML"))
+        //                                    {
+        //                                        int fileIndex = FileName.IndexOf(".");
+        //                                        if (fileIndex > 0)
+        //                                        {
+        //                                            FileName = FileName.Substring(0, fileIndex);
+        //                                            FileExtension = "XML";
+        //                                        }
+        //                                    }
+        //                                    else
+        //                                        FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
 
 
-                                            fileName = FileName;
-                                            fileName = Path.ChangeExtension(fileName, FileExtension);
-                                            if (RemotePath.Length < 1 || RemotePath == "")
-                                                RemotePath = "/";
-                                            File.WriteAllText(fileName, Message);
-                                            transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
-                                            if (GHAOutFolderPath.Trim() != string.Empty)
-                                            {
-                                                transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
-                                            }
-                                            File.Delete(fileName);
-                                            // Throw on any error
-                                            transferResult.Check();
-                                            isMessageSent = true;
+        //                                    fileName = FileName;
+        //                                    fileName = Path.ChangeExtension(fileName, FileExtension);
+        //                                    if (RemotePath.Length < 1 || RemotePath == "")
+        //                                        RemotePath = "/";
+        //                                    File.WriteAllText(fileName, Message);
+        //                                    transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
+        //                                    if (GHAOutFolderPath.Trim() != string.Empty)
+        //                                    {
+        //                                        transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
+        //                                    }
+        //                                    File.Delete(fileName);
+        //                                    // Throw on any error
+        //                                    transferResult.Check();
+        //                                    isMessageSent = true;
 
-                                        }
-                                        #endregion
+        //                                }
+        //                                #endregion
 
-                                        if (isMessageSent)
-                                        {
-                                            string[] pname = { "num", "Status" };
-                                            object[] pvalue = { int.Parse(dr[0].ToString()), msgStatus };
-                                            SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                            if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
-                                                clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                                isOn = false;
-                        }
+        //                                #region SITA Upload
+        //                                if (msgCommType.ToUpper() == "SITA" || msgCommType.ToUpper() == "SITAFTP"
+        //                                    || msgCommType.ToUpper() == "ALL"
+        //                                    || msgCommType.Equals("SITA", StringComparison.OrdinalIgnoreCase)
+        //                                    || msgCommType.Equals("SITAFTP", StringComparison.OrdinalIgnoreCase))
+        //                                {
+        //                                    FTP objFtp = new FTP();
+        //                                    string SFTPFingerPrint = string.Empty, StpFolerParth = string.Empty, SFTPPortNumber = string.Empty;
+        //                                    GHAOutFolderPath = string.Empty;
 
-                    } while (isOn);
-                    ///////////*****/////////////////
+        //                                    StpFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
 
-                    //fileName = FileName;
-                    //fileName = Path.ChangeExtension(fileName, FileExtension);
-                    ////fileName = Path.Combine(Path.GetTempPath(), fileName);
-                    //if (RemotePath.Length < 1 || RemotePath == "")
-                    //    RemotePath = "/";
-                    //File.WriteAllText(fileName, Message);
-                    //transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
-                    //if (GHAOutFolderPath.Trim() != string.Empty)
-                    //{
-                    //    transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
-                    //}
-                    //File.Delete(fileName);
-                    //// Throw on any error
-                    //transferResult.Check();
+        //                                    if (FileName.ToUpper().Contains(".TXT"))
+        //                                    {
+        //                                        int fileIndex = FileName.IndexOf(".");
+        //                                        if (fileIndex > 0)
+        //                                            FileName = FileName.Substring(0, fileIndex);
 
-                    session.Close();
-                }
-                status = true;
-                clsLog.WriteLogAzure("Files Successfully Save in  Inbox for : " + FileName);
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure("Error on Files  uploading on SFTP for : " + ex.ToString());
-                status = false;
-            }
-            return status;
-        }
+        //                                    }
+        //                                    else if (FileName.ToUpper().Contains(".XML"))
+        //                                    {
+        //                                        int fileIndex = FileName.IndexOf(".");
+        //                                        if (fileIndex > 0)
+        //                                        {
+        //                                            FileName = FileName.Substring(0, fileIndex);
+        //                                            FileExtension = "XML";
+        //                                        }
+        //                                    }
+        //                                    else
+        //                                        FileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
+
+
+        //                                    fileName = FileName;
+        //                                    fileName = Path.ChangeExtension(fileName, FileExtension);
+        //                                    if (RemotePath.Length < 1 || RemotePath == "")
+        //                                        RemotePath = "/";
+        //                                    File.WriteAllText(fileName, Message);
+        //                                    transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
+        //                                    if (GHAOutFolderPath.Trim() != string.Empty)
+        //                                    {
+        //                                        transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
+        //                                    }
+        //                                    File.Delete(fileName);
+        //                                    // Throw on any error
+        //                                    transferResult.Check();
+        //                                    isMessageSent = true;
+
+        //                                }
+        //                                #endregion
+
+        //                                if (isMessageSent)
+        //                                {
+        //                                    string[] pname = { "num", "Status" };
+        //                                    object[] pvalue = { int.Parse(dr[0].ToString()), msgStatus };
+        //                                    SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+        //                                    if (objsql.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+        //                                        clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dr[0].ToString());
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                    else
+        //                        isOn = false;
+        //                }
+
+        //            } while (isOn);
+        //            ///////////*****/////////////////
+
+        //            //fileName = FileName;
+        //            //fileName = Path.ChangeExtension(fileName, FileExtension);
+        //            ////fileName = Path.Combine(Path.GetTempPath(), fileName);
+        //            //if (RemotePath.Length < 1 || RemotePath == "")
+        //            //    RemotePath = "/";
+        //            //File.WriteAllText(fileName, Message);
+        //            //transferResult = session.PutFiles(fileName, RemotePath + "/", false, transferOptions);
+        //            //if (GHAOutFolderPath.Trim() != string.Empty)
+        //            //{
+        //            //    transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
+        //            //}
+        //            //File.Delete(fileName);
+        //            //// Throw on any error
+        //            //transferResult.Check();
+
+        //            session.Close();
+        //        }
+        //        status = true;
+        //        clsLog.WriteLogAzure("Files Successfully Save in  Inbox for : " + FileName);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure("Error on Files  uploading on SFTP for : " + ex.ToString());
+        //        status = false;
+        //    }
+        //    return status;
+        //}
 
         /// <summary>
         /// Method to Upload All SITA messages to the SITA server
         /// </summary>
-        public void SITAUpload(DataTable dtSITAMessages, string SITAAddress, string SITAUserName, string SITAPassWord, string SITAFingerPrint, string SITAFolerParth, int portNumber, string GHAOutFolderPath, string ppkLocalFilePath)
+        public async Task SITAUpload(DataTable dtSITAMessages, string SITAAddress, string SITAUserName, string SITAPassWord, string SITAFingerPrint, string SITAFolerParth, int portNumber, string GHAOutFolderPath, string ppkLocalFilePath)
         {
             string fileName = string.Empty, fileExtension = string.Empty, messageBody = string.Empty, status = string.Empty;
             try
             {
-                SessionOptions sessionOptions;
+                WinSCP.SessionOptions sessionOptions;
                 if (ppkLocalFilePath != string.Empty)
                 {
-                    sessionOptions = new SessionOptions
+                    sessionOptions = new WinSCP.SessionOptions
                     {
-                        Protocol = Protocol.Sftp,
+                        Protocol = WinSCP.Protocol.Sftp,
                         HostName = SITAAddress,
                         UserName = SITAUserName,
                         SshPrivateKeyPath = ppkLocalFilePath,
@@ -2493,9 +2734,9 @@ namespace SmartKargo.MessagingService.Services
                 }
                 else
                 {
-                    sessionOptions = new SessionOptions
+                    sessionOptions = new WinSCP.SessionOptions
                     {
-                        Protocol = Protocol.Sftp,
+                        Protocol = WinSCP.Protocol.Sftp,
                         HostName = SITAAddress,
                         UserName = SITAUserName,
                         Password = SITAPassWord,
@@ -2503,7 +2744,7 @@ namespace SmartKargo.MessagingService.Services
                         SshHostKeyFingerprint = SITAFingerPrint
                     };
                 }
-                using (Session session = new Session())
+                using (WinSCP.Session session = new WinSCP.Session())
                 {
                     session.DisableVersionCheck = true;
                     session.Open(sessionOptions);
@@ -2561,11 +2802,21 @@ namespace SmartKargo.MessagingService.Services
                             status = "Processed";
                         if (drSITAMessage["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
                             status = "Re-Processed";
-                        string[] pname = { "num", "Status" };
-                        object[] pvalue = { int.Parse(drSITAMessage["SrNo"].ToString()), status };
-                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                        SQLServer sqlServer = new SQLServer();
-                        if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                        //string[] pname = { "num", "Status" };
+                        //object[] pvalue = { int.Parse(drSITAMessage["SrNo"].ToString()), status };
+                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+
+                        SqlParameter[] sqlParameters = [
+                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(drSITAMessage["SrNo"].ToString()) },
+                            new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                        ];
+
+
+                        //SQLServer sqlServer = new SQLServer();
+                        //if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                        if (await _readWriteDao.ExecuteNonQueryAsync("spMailSent", sqlParameters))
                             clsLog.WriteLogAzure("File uploaded successfully to SITA server: " + drSITAMessage["SrNo"].ToString());
                         #endregion Update message status
 
@@ -2587,17 +2838,17 @@ namespace SmartKargo.MessagingService.Services
             }
         }
 
-        public void SFTPUpload(DataTable dtSFTPMessages, string SITAAddress, string SITAUserName, string SITAPassWord, string SITAFingerPrint, string SITAFolerParth, int portNumber, string GHAOutFolderPath, string ppkLocalFilePath)
+        public async Task SFTPUpload(DataTable dtSFTPMessages, string SITAAddress, string SITAUserName, string SITAPassWord, string SITAFingerPrint, string SITAFolerParth, int portNumber, string GHAOutFolderPath, string ppkLocalFilePath)
         {
             string fileName = string.Empty, fileExtension = string.Empty, messageBody = string.Empty, status = string.Empty;
             try
             {
-                SessionOptions sessionOptions;
+                WinSCP.SessionOptions sessionOptions;
                 if (ppkLocalFilePath != string.Empty)
                 {
-                    sessionOptions = new SessionOptions
+                    sessionOptions = new WinSCP.SessionOptions
                     {
-                        Protocol = Protocol.Sftp,
+                        Protocol = WinSCP.Protocol.Sftp,
                         HostName = SITAAddress,
                         UserName = SITAUserName,
                         SshPrivateKeyPath = ppkLocalFilePath,
@@ -2607,9 +2858,9 @@ namespace SmartKargo.MessagingService.Services
                 }
                 else
                 {
-                    sessionOptions = new SessionOptions
+                    sessionOptions = new WinSCP.SessionOptions
                     {
-                        Protocol = Protocol.Sftp,
+                        Protocol = WinSCP.Protocol.Sftp,
                         HostName = SITAAddress,
                         UserName = SITAUserName,
                         Password = SITAPassWord,
@@ -2617,7 +2868,7 @@ namespace SmartKargo.MessagingService.Services
                         SshHostKeyFingerprint = SITAFingerPrint
                     };
                 }
-                using (Session session = new Session())
+                using (WinSCP.Session session = new WinSCP.Session())
                 {
                     session.DisableVersionCheck = true;
                     session.Open(sessionOptions);
@@ -2675,11 +2926,20 @@ namespace SmartKargo.MessagingService.Services
                             status = "Processed";
                         if (drSITAMessage["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
                             status = "Re-Processed";
-                        string[] pname = { "num", "Status" };
-                        object[] pvalue = { int.Parse(drSITAMessage["SrNo"].ToString()), status };
-                        SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                        SQLServer sqlServer = new SQLServer();
-                        if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                        //string[] pname = { "num", "Status" };
+                        //object[] pvalue = { int.Parse(drSITAMessage["SrNo"].ToString()), status };
+                        //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+
+                        SqlParameter[] sqlParameters = [
+                            new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(drSITAMessage["SrNo"].ToString()) },
+                            new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                        ];
+
+
+                        ///SQLServer sqlServer = new SQLServer();
+                        //if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                        if (await _readWriteDao.ExecuteNonQueryAsync("spMailSent", sqlParameters))
                             clsLog.WriteLogAzure("File uploaded successfully to SITA server: " + drSITAMessage["SrNo"].ToString());
                         #endregion Update message status
 
@@ -2701,11 +2961,11 @@ namespace SmartKargo.MessagingService.Services
             }
         }
 
-        public void SFTPUpload(DataTable dtMessagesToSend)
+        public async Task SFTPUpload(DataTable dtMessagesToSend)
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
                 string SFTPAddress = string.Empty, SFTPUserName = string.Empty, SFTPPassWord = string.Empty, SFTPFingerPrint = string.Empty, SFTPFolerParth = string.Empty, SFTPPortNumber = string.Empty, GHAOutFolderPath = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty;
 
                 if (dtMessagesToSend.Rows.Count > 0)
@@ -2721,33 +2981,44 @@ namespace SmartKargo.MessagingService.Services
                         SFTPFingerPrint = drMsg["FingerPrint"].ToString();
                         SFTPFolerParth = drMsg["RemotePath"].ToString();
                         SFTPPortNumber = drMsg["PortNumber"].ToString();
-                        GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                        //GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                        GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
+
                     }
                     else
                     {
-                        SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                        SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                        SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                        ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
-                        SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                        SFTPFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
-                        SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
-                        GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+                        //SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
+                        //SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
+                        //SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
+                        //ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
+                        //SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
+                        //SFTPFolerParth = genericFunction.ReadValueFromDb("msgService_OUT_FolderPath");
+                        //SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
+                        //GHAOutFolderPath = genericFunction.ReadValueFromDb("msgService_OUTGHAMCT_FolderPath");
+
+                        SFTPAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                        SFTPUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                        SFTPPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                        ppkFileName = ConfigCache.Get("PPKFileName");
+                        SFTPFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                        SFTPFolerParth = ConfigCache.Get("msgService_OUT_FolderPath");
+                        SFTPPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
+                        GHAOutFolderPath = ConfigCache.Get("msgService_OUTGHAMCT_FolderPath");
                     }
 
                     if (ppkFileName != string.Empty)
                     {
-                        ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                        ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                     }
                     if (SFTPAddress != "" && SFTPUserName != "" && (SFTPPassWord != "" || ppkFileName != string.Empty) && SFTPFingerPrint != "" && SFTPFolerParth != "" && SFTPPortNumber.Trim() != string.Empty)
                     {
                         int portNumber = Convert.ToInt32(SFTPPortNumber.Trim());
-                        SessionOptions sessionOptions;
+                        WinSCP.SessionOptions sessionOptions;
                         if (ppkLocalFilePath != string.Empty)
                         {
-                            sessionOptions = new SessionOptions
+                            sessionOptions = new WinSCP.SessionOptions
                             {
-                                Protocol = Protocol.Sftp,
+                                Protocol = WinSCP.Protocol.Sftp,
                                 HostName = SFTPAddress,
                                 UserName = SFTPUserName,
                                 SshPrivateKeyPath = ppkLocalFilePath,
@@ -2757,9 +3028,9 @@ namespace SmartKargo.MessagingService.Services
                         }
                         else
                         {
-                            sessionOptions = new SessionOptions
+                            sessionOptions = new WinSCP.SessionOptions
                             {
-                                Protocol = Protocol.Sftp,
+                                Protocol = WinSCP.Protocol.Sftp,
                                 HostName = SFTPAddress,
                                 UserName = SFTPUserName,
                                 Password = SFTPPassWord,
@@ -2767,7 +3038,7 @@ namespace SmartKargo.MessagingService.Services
                                 SshHostKeyFingerprint = SFTPFingerPrint
                             };
                         }
-                        using (Session session = new Session())
+                        using (WinSCP.Session session = new WinSCP.Session())
                         {
                             session.DisableVersionCheck = true;
                             session.Open(sessionOptions);
@@ -2783,6 +3054,12 @@ namespace SmartKargo.MessagingService.Services
                                 SFTPFolerParth = "/";
 
                             string fileName, fileExtension, messageBody, status = string.Empty;
+
+                            //genericFunction.ReadValueFromDb("MSServiceType")
+                            //genericFunction.ReadValueFromDb("UploadManifestToBlob")
+
+                            var mSServiceType = ConfigCache.Get("MSServiceType");
+                            var uploadManifestToBlob = ConfigCache.Get("UploadManifestToBlob");
                             for (int i = 0; i < dtMessagesToSend.Rows.Count; i++)
                             {
                                 fileName = string.Empty;
@@ -2813,7 +3090,8 @@ namespace SmartKargo.MessagingService.Services
 
                                 fileName = Path.ChangeExtension(fileName, fileExtension);
 
-                                if (genericFunction.ReadValueFromDb("MSServiceType") != string.Empty && genericFunction.ReadValueFromDb("MSServiceType").ToUpper() == "WINDOWSSERVICE")
+                                //if (genericFunction.ReadValueFromDb("MSServiceType") != string.Empty && genericFunction.ReadValueFromDb("MSServiceType").ToUpper() == "WINDOWSSERVICE")
+                                if (mSServiceType != string.Empty && mSServiceType.ToUpper() == "WINDOWSSERVICE")
                                 {
                                     fileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
                                     File.WriteAllText(fileName, messageBody);
@@ -2828,16 +3106,16 @@ namespace SmartKargo.MessagingService.Services
                                     transferResultGHA = session.PutFiles(fileName, GHAOutFolderPath + "/", false, transferOptions);
                                 }
 
-                                if (genericFunction.ReadValueFromDb("UploadManifestToBlob") != string.Empty && Convert.ToBoolean(genericFunction.ReadValueFromDb("UploadManifestToBlob")))
+                                if (uploadManifestToBlob != string.Empty && Convert.ToBoolean(uploadManifestToBlob))
                                 {
                                     Stream messageStream = GenerateStreamFromString(messageBody);
                                     if (messageBody.ToUpper().Contains("MASTERMANIFESTREQUEST"))
                                     {
-                                        genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), genericFunction.ReadValueFromDb("M_AMF_REQ_Container"));
+                                        _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), ConfigCache.Get("M_AMF_REQ_Container"));
                                     }
                                     else if (messageBody.ToUpper().Contains("HOUSEMANIFESTREQUEST"))
                                     {
-                                        genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), genericFunction.ReadValueFromDb("H_AMF_REQ_Container"));
+                                        _genericFunction.UploadToBlob(messageStream, System.IO.Path.GetFileName(fileName), ConfigCache.Get("H_AMF_REQ_Container"));
                                     }
                                 }
                                 clsLog.WriteLogAzure("fileName1:- " + fileName + "RemotePath:- " + SFTPFolerParth);
@@ -2849,11 +3127,20 @@ namespace SmartKargo.MessagingService.Services
                                     status = "Processed";
                                 if (dtMessagesToSend.Rows[i]["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
                                     status = "Re-Processed";
-                                string[] pname = { "num", "Status" };
-                                object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
-                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                SQLServer sqlServer = new SQLServer();
-                                if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                //string[] pname = { "num", "Status" };
+                                //object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
+                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+
+                                SqlParameter[] sqlParameters = [
+                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()) },
+                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                ];
+
+                                //SQLServer sqlServer = new SQLServer();
+                                //if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                if (await _readWriteDao.ExecuteNonQueryAsync("spMailSent", sqlParameters))
                                     clsLog.WriteLogAzure("File uploaded on sftp successfully to:" + dtMessagesToSend.Rows[i]["Srno"].ToString());
                             }
                             session.Close();
@@ -2873,29 +3160,36 @@ namespace SmartKargo.MessagingService.Services
             bool isSuccess = true;
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
                 string SFTPAddress = string.Empty, SFTPUserName = string.Empty, SFTPPassWord = string.Empty, SFTPFingerPrint = string.Empty, SFTPPortNumber = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty;
 
-                SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
-                SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
-                SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
-                ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
-                SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
-                SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
+                //SFTPAddress = genericFunction.ReadValueFromDb("msgService_IN_SITAFTP");
+                //SFTPUserName = genericFunction.ReadValueFromDb("msgService_IN_SITAUser");
+                //SFTPPassWord = genericFunction.ReadValueFromDb("msgService_IN_SITAPWD");
+                //ppkFileName = genericFunction.ReadValueFromDb("PPKFileName");
+                //SFTPFingerPrint = genericFunction.ReadValueFromDb("msgService_IN_SFTPFingerPrint");
+                //SFTPPortNumber = genericFunction.ReadValueFromDb("msgService_IN_SITAPort");
+
+                SFTPAddress = ConfigCache.Get("msgService_IN_SITAFTP");
+                SFTPUserName = ConfigCache.Get("msgService_IN_SITAUser");
+                SFTPPassWord = ConfigCache.Get("msgService_IN_SITAPWD");
+                ppkFileName = ConfigCache.Get("PPKFileName");
+                SFTPFingerPrint = ConfigCache.Get("msgService_IN_SFTPFingerPrint");
+                SFTPPortNumber = ConfigCache.Get("msgService_IN_SITAPort");
 
                 if (ppkFileName != string.Empty)
                 {
-                    ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                    ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                 }
                 if (SFTPAddress != "" && SFTPUserName != "" && (SFTPPassWord != "" || ppkFileName != string.Empty) && SFTPFingerPrint != "" && SFTPPortNumber.Trim() != string.Empty)
                 {
                     int portNumber = Convert.ToInt32(SFTPPortNumber.Trim());
-                    SessionOptions sessionOptions;
+                   WinSCP.SessionOptions sessionOptions;
                     if (ppkLocalFilePath != string.Empty)
                     {
-                        sessionOptions = new SessionOptions
+                        sessionOptions = new WinSCP.SessionOptions
                         {
-                            Protocol = Protocol.Sftp,
+                            Protocol = WinSCP.Protocol.Sftp,
                             HostName = SFTPAddress,
                             UserName = SFTPUserName,
                             SshPrivateKeyPath = ppkLocalFilePath,
@@ -2905,9 +3199,9 @@ namespace SmartKargo.MessagingService.Services
                     }
                     else
                     {
-                        sessionOptions = new SessionOptions
+                        sessionOptions = new WinSCP.SessionOptions
                         {
-                            Protocol = Protocol.Sftp,
+                            Protocol = WinSCP.Protocol.Sftp,
                             HostName = SFTPAddress,
                             UserName = SFTPUserName,
                             Password = SFTPPassWord,
@@ -2916,7 +3210,7 @@ namespace SmartKargo.MessagingService.Services
                         };
                     }
                     clsLog.WriteLogAzure("Connecting to DataDump Folder");
-                    using (Session session = new Session())
+                    using (WinSCP.Session session = new WinSCP.Session())
                     {
                         session.DisableVersionCheck = true;
                         session.Open(sessionOptions);
@@ -2947,7 +3241,7 @@ namespace SmartKargo.MessagingService.Services
                     fileName = ZipFileName;
 
                     if (dataDumpAlertEmailID != "")
-                        genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nData dump file uploaded successfully.\r\n\r\nThanks."
+                        _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nData dump file uploaded successfully.\r\n\r\nThanks."
                             , "", dataDumpAlertEmailID, "", 0);
                     #endregion Data dump success alert
                 }
@@ -2970,20 +3264,24 @@ namespace SmartKargo.MessagingService.Services
             return stream;
         }
 
-        public void FTPUpload(DataTable dtMessagesToSend)
+        public async Task FTPUpload(DataTable dtMessagesToSend)
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
                 string ftpUrl = string.Empty, ftpUserName = string.Empty, ftpPassword = string.Empty, messageBody = string.Empty, status = string.Empty;
                 ftpUrl = dtMessagesToSend.Rows[0]["FTPID"].ToString();
                 ftpUserName = dtMessagesToSend.Rows[0]["FTPUserName"].ToString();
                 ftpPassword = dtMessagesToSend.Rows[0]["FTPPassword"].ToString();
                 if (ftpUrl == string.Empty || ftpUserName == string.Empty || ftpPassword == string.Empty)
                 {
-                    ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
-                    ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
-                    ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+                    //ftpUrl = genericFunction.ReadValueFromDb("FTPURLofFileUpload");
+                    //ftpUserName = genericFunction.ReadValueFromDb("FTPUserofFileUpload");
+                    //ftpPassword = genericFunction.ReadValueFromDb("FTPPasswordofFileUpload");
+
+                    ftpUrl = ConfigCache.Get("FTPURLofFileUpload");
+                    ftpUserName = ConfigCache.Get("FTPUserofFileUpload");
+                    ftpPassword = ConfigCache.Get("FTPPasswordofFileUpload");
                 }
                 ///Upload the file on OutFolder
                 FtpWebRequest myFtpWebRequest;
@@ -3056,11 +3354,18 @@ namespace SmartKargo.MessagingService.Services
                     if (status.Equals("Processed", StringComparison.OrdinalIgnoreCase))
                         status = "Re-Processed";
 
-                    string[] pname = { "num", "Status" };
-                    object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
-                    SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                    SQLServer sqlServer = new SQLServer();
-                    if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                    //string[] pname = { "num", "Status" };
+                    //object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
+                    //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+
+                    SqlParameter[] sqlParameters = [
+                        new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()) },
+                        new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                    ];
+
+                    //SQLServer sqlServer = new SQLServer();
+                    //if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                    if (await _readWriteDao.ExecuteNonQueryAsync("spMailSent", sqlParameters))
                     {
                         clsLog.WriteLogAzure("uploaded on ftp successfully to:" + dtMessagesToSend.Rows[i]["Srno"].ToString());
                     }
@@ -3072,7 +3377,7 @@ namespace SmartKargo.MessagingService.Services
             }
         }
 
-        public void SendMQMessage(DataTable dtMessagesToSend)
+        public async Task SendMQMessage(DataTable dtMessagesToSend)
         {
             try
             {
@@ -3106,11 +3411,19 @@ namespace SmartKargo.MessagingService.Services
                                 if (dtMessagesToSend.Rows[i]["STATUS"].ToString().Equals("Processed", StringComparison.OrdinalIgnoreCase))
                                     status = "Re-Processed";
 
-                                string[] pname = { "num", "Status" };
-                                object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
-                                SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
-                                SQLServer sqlServer = new SQLServer();
-                                if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+                                //string[] pname = { "num", "Status" };
+                                //object[] pvalue = { int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()), status };
+                                //SqlDbType[] ptype = { SqlDbType.Int, SqlDbType.VarChar };
+
+                                SqlParameter[] sqlParameters = [
+                                    new SqlParameter("@num", SqlDbType.Int) { Value = int.Parse(dtMessagesToSend.Rows[i]["Srno"].ToString()) },
+                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status }
+                                ];
+
+                                //SQLServer sqlServer = new SQLServer();
+                                //if (sqlServer.ExecuteProcedure("spMailSent", pname, ptype, pvalue))
+
+                                if (await _readWriteDao.ExecuteNonQueryAsync("spMailSent", sqlParameters))
                                     clsLog.WriteLogAzure("MQ Message Sent successfully to:" + dtMessagesToSend.Rows[i]["Srno"].ToString());
                             }
                             else
@@ -3235,12 +3548,12 @@ namespace SmartKargo.MessagingService.Services
                         ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
                     }
 
-                    SessionOptions sessionOptions;
+                    WinSCP.SessionOptions sessionOptions;
                     if (ppkLocalFilePath != string.Empty)
                     {
-                        sessionOptions = new SessionOptions
+                        sessionOptions = new WinSCP.SessionOptions
                         {
-                            Protocol = Protocol.Sftp,
+                            Protocol = WinSCP.Protocol.Sftp,
                             HostName = SFTPAddress,
                             UserName = SFTPUserName,
                             SshPrivateKeyPath = ppkLocalFilePath,
@@ -3250,9 +3563,9 @@ namespace SmartKargo.MessagingService.Services
                     }
                     else if (msgCommType.Equals("FTPS"))
                     {
-                        sessionOptions = new SessionOptions
+                        sessionOptions = new WinSCP.SessionOptions
                         {
-                            Protocol = Protocol.Ftp,
+                            Protocol = WinSCP.Protocol.Ftp,
                             HostName = SFTPAddress,
                             UserName = SFTPUserName,
                             Password = SFTPPassWord,
@@ -3263,9 +3576,9 @@ namespace SmartKargo.MessagingService.Services
                     }
                     else
                     {
-                        sessionOptions = new SessionOptions
+                        sessionOptions = new WinSCP.SessionOptions
                         {
-                            Protocol = Protocol.Sftp,
+                            Protocol = WinSCP.Protocol.Sftp,
                             HostName = SFTPAddress,
                             UserName = SFTPUserName,
                             Password = SFTPPassWord,
@@ -3273,7 +3586,7 @@ namespace SmartKargo.MessagingService.Services
                             SshHostKeyFingerprint = SFTPFingerPrint
                         };
                     }
-                    using (Session session = new Session())
+                    using (WinSCP.Session session = new WinSCP.Session())
                     {
                         session.DisableVersionCheck = true;
                         session.Open(sessionOptions);

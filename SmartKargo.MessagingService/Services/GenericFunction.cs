@@ -28,6 +28,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.Data.SqlClient;
 using QidWorkerRole.UploadMasters;
 using System.Net;
+using SmartKargo.MessagingService.Services;
 
 
 //using Azure.Identity;
@@ -644,14 +645,14 @@ namespace QidWorkerRole
         }
 
 
-        public DataSet GetSitaAddressandMessageVersion(string PartnerCode = "", string sitaMessage = "", string PartnerType = "", string Origin = "", string Destination = "", string FlightNumber = "", string AgentCode = "", string AWBPrefix = "", bool isAutoSendOnTriggerTime = false, string aircrafttype="",string flighttype="",string routetype="")
+        public DataSet GetSitaAddressandMessageVersion(string PartnerCode = "", string sitaMessage = "", string PartnerType = "", string Origin = "", string Destination = "", string FlightNumber = "", string AgentCode = "", string AWBPrefix = "", bool isAutoSendOnTriggerTime = false, string aircrafttype = "", string flighttype = "", string routetype = "")
         {
             DataSet dssitaMessage = new DataSet();
             try
             {
                 SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "PartnerCode", "MessageType", "PartnerType", "Origin", "Destination", "FlightNumber", "AgentCode", "AWBPrefix", "IsAutoSendOnTriggerTime","FlightType", "AircraftType", "RouteType" };
-                object[] paramvalue = new object[] { PartnerCode, sitaMessage, PartnerType, Origin, Destination, FlightNumber, AgentCode, AWBPrefix, isAutoSendOnTriggerTime,flighttype,aircrafttype,routetype };
+                string[] paramname = new string[] { "PartnerCode", "MessageType", "PartnerType", "Origin", "Destination", "FlightNumber", "AgentCode", "AWBPrefix", "IsAutoSendOnTriggerTime", "FlightType", "AircraftType", "RouteType" };
+                object[] paramvalue = new object[] { PartnerCode, sitaMessage, PartnerType, Origin, Destination, FlightNumber, AgentCode, AWBPrefix, isAutoSendOnTriggerTime, flighttype, aircrafttype, routetype };
                 SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
                 dssitaMessage = da.SelectRecords("SpGetRecordofSitaAddressandSitaMessageVersion", paramname, paramvalue, paramtype);
             }
@@ -718,7 +719,7 @@ namespace QidWorkerRole
                     msg = Regex.Replace(msg, @"&amp;", String.Empty);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 clsLog.WriteLogAzure("Error :", ex);
             }
@@ -988,7 +989,9 @@ namespace QidWorkerRole
 
             if (string.IsNullOrEmpty(BlobKey))
             {
-                BlobKey = ReadValueFromDb("BlobStorageKey");
+                //BlobKey = ReadValueFromDb("BlobStorageKey");
+                BlobKey = ConfigCache.Get("BlobStorageKey");
+
             }
 
             return BlobKey;
@@ -999,7 +1002,8 @@ namespace QidWorkerRole
 
             if (string.IsNullOrEmpty(BlobName))
             {
-                BlobName = ReadValueFromDb("BlobStorageName");
+                //BlobName = ReadValueFromDb("BlobStorageName");
+                BlobName = ConfigCache.Get("BlobStorageName");
             }
 
             return BlobName;
@@ -1791,7 +1795,7 @@ namespace QidWorkerRole
                 SQLServer dtb = new SQLServer();
                 DataSet dsExchangeRate = new DataSet();
 
-                string[] paramname = new string[] {"UTCTime"};
+                string[] paramname = new string[] { "UTCTime" };
                 object[] paramvalue = new object[] { CurrentUTCDatetime };
                 SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.DateTime };
 
@@ -1824,7 +1828,7 @@ namespace QidWorkerRole
             }
         }
 
-        public bool SaveForexAPILog(string InterfaceId, string Request, string Response,string ConversionSnapshotId, string Error)
+        public bool SaveForexAPILog(string InterfaceId, string Request, string Response, string ConversionSnapshotId, string Error)
         {
             try
             {
@@ -1834,9 +1838,9 @@ namespace QidWorkerRole
                 string CreatedBy = "API";
                 DateTime CreatedOn = DateTime.UtcNow.AddHours(+8);
 
-                string[] paramname = new string[] { "InterfaceId", "Request", "Response", "ConversionSnapshotId", "Createdby", "CreatedOn", "Error"};
+                string[] paramname = new string[] { "InterfaceId", "Request", "Response", "ConversionSnapshotId", "Createdby", "CreatedOn", "Error" };
                 object[] paramvalue = new object[] { InterfaceId, Request, Response, ConversionSnapshotId, CreatedBy, CreatedOn, Error };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.NVarChar, SqlDbType.NVarChar, SqlDbType.VarChar, SqlDbType.NVarChar, SqlDbType.VarChar,SqlDbType.DateTime, SqlDbType.VarChar };
+                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.NVarChar, SqlDbType.NVarChar, SqlDbType.VarChar, SqlDbType.NVarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
 
                 return dtb.ExecuteProcedure(procedure, paramname, paramtype, paramvalue);
             }
@@ -1867,7 +1871,7 @@ namespace QidWorkerRole
             }
         }
 
-        public DataSet NoShowCalculation (string Procedure, DateTime CurrentUTCDatetime)
+        public DataSet NoShowCalculation(string Procedure, DateTime CurrentUTCDatetime)
         {
             try
             {
@@ -2345,7 +2349,7 @@ namespace QidWorkerRole
             return val;
         }
 
-        public  byte[] DownloadFromBlob(string filenameOrUrl)
+        public byte[] DownloadFromBlob(string filenameOrUrl)
         {
             try
             {
@@ -2392,7 +2396,7 @@ namespace QidWorkerRole
             DataSet ds;
 
             string[] pName = new string[] { "AWBPrefix", "AWBNumber", "Type", "Pices", "Weight", "FLTOrigin", "FLTDestination", "Status" };
-            object[] pValue = new object[] { AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin , FLTDestination, Status };
+            object[] pValue = new object[] { AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status };
             SqlDbType[] pType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
 
             try

@@ -17,12 +17,14 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FDMMessageProcessor> _logger;
+        private static ILogger<FDMMessageProcessor> _staticLogger;
 
         #region Constructor
         public FDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,ILogger<FDMMessageProcessor> logger)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _staticLogger = logger;
         }
         #endregion
         public FDM objFDM = null;
@@ -80,7 +82,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     return string.Empty;
                 }
             }
@@ -127,7 +130,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     return null;
                 }
             }
@@ -801,7 +805,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             //return null;
         }
@@ -1102,7 +1107,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return false;
             }
         }
@@ -1142,7 +1148,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 //db = null;
                 return null;
 
@@ -1191,7 +1198,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -1229,7 +1237,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return Convert.ToDateTime(QueryValues[1]);
             }
         }
@@ -1298,23 +1307,27 @@ namespace QidWorkerRole
                             if (SitaMessageHeader != "")
                             {
                                 GF.SaveMessageOutBox("FDM", SitaMessageHeader + "\r\n" + sbFDM.ToString().ToUpper(), "SITAFTP", "SITAFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
-                                clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
+                                // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox SitaMessageHeader {0}" , DateTime.Now);
                             }
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
                             {
                                 GF.SaveMessageOutBox("FDM", SFTPHeaderSITAddress + "\r\n" + sbFDM.ToString().ToUpper(), "SFTP", "SFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
-                                clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
+                                // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox SFTPHeaderSITAddress {0}" , DateTime.Now);
                             }
                             if (Emailaddress.Trim().Length > 0)
                             {
                                 GF.SaveMessageOutBox("FDM", sbFDM.ToString().ToUpper(), string.Empty, Emailaddress, FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
-                                clsLog.WriteLogAzure("FDM message in SaveMessageOutBox Email" + DateTime.Now);
+                                // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox Email" + DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox Email {0}" , DateTime.Now);
                             }
 
                             #endregion
                         }
 
-                        clsLog.WriteLogAzure("FDM Message generated successfully:" + FlightNo + "-" + FlightDate.ToString());
+                        // clsLog.WriteLogAzure("FDM Message generated successfully:" + FlightNo + "-" + FlightDate.ToString());
+                        _logger.LogInformation("FDM Message generated successfully: {0} - {1}" , FlightNo , FlightDate);
                         return true;
                     }
                     else
@@ -1323,7 +1336,8 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("FDM cannot be sent as the flight is not applicable for customs:" + FlightNo + "-" + FlightDate.ToString());
+                    // clsLog.WriteLogAzure("FDM cannot be sent as the flight is not applicable for customs:" + FlightNo + "-" + FlightDate.ToString());
+                    _logger.LogInformation("FDM cannot be sent as the flight is not applicable for customs: {0} - {1}" , FlightNo , FlightDate.ToString());
                     return false;
                 }
 
@@ -1332,7 +1346,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return false;
             }
         }

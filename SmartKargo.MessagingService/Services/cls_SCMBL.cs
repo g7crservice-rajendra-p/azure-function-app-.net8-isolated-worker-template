@@ -5325,112 +5325,129 @@ namespace QidWorkerRole
 
         #endregion Public Methods
 
-        /*Not in use*/
-
         //internal void StoreXMLMessage(string strMessage, string fileName)
-        //{
-        //    try
-        //    {
-        //        DataSet dsFlightXMLData = new DataSet();
-        //        var xmlText = new StringReader(strMessage);
-        //        dsFlightXMLData.ReadXml(xmlText);
-        //        if (dsFlightXMLData != null && dsFlightXMLData.Tables.Count > 0)
-        //        {
-        //            if (dsFlightXMLData.Tables.Contains("FLIGHT"))
-        //            {
-        //                string flightNumber = string.Empty, flightAirlineCode = string.Empty, fltDay = string.Empty, fltMonth = string.Empty, fltYear = string.Empty, registrationNumber = string.Empty, origin = string.Empty, destination = string.Empty, payload = string.Empty, cargoCapacity = string.Empty;
-        //                DateTime flightDate = new DateTime(2001, 1, 1);
-        //                int flight_id = 0;
-        //                for (int i = 0; i < dsFlightXMLData.Tables["FLIGHT"].Rows.Count; i++)
-        //                {
-        //                    flight_id = Convert.ToInt32(dsFlightXMLData.Tables["FLIGHT"].Rows[i]["FLIGHT_id"].ToString());
-        //                    if (dsFlightXMLData.Tables.Contains("FltNum") && dsFlightXMLData.Tables.Contains("FltAlc"))
-        //                    {
-        //                        flightNumber = dsFlightXMLData.Tables["FltNum"].Select("FLIGHT_id=" + flight_id)[0]["FltNum_Text"].ToString();
-        //                        flightAirlineCode = dsFlightXMLData.Tables["FltAlc"].Select("FLIGHT_id=" + flight_id)[0]["FltAlc_Text"].ToString();
-        //                    }
-        //                    if (dsFlightXMLData.Tables.Contains("FltDay") && dsFlightXMLData.Tables.Contains("FltMonth") && dsFlightXMLData.Tables.Contains("FltYear"))
-        //                    {
-        //                        fltDay = dsFlightXMLData.Tables["FltDay"].Select("FLIGHT_id=" + flight_id)[0]["FltDay_Text"].ToString();
-        //                        fltMonth = dsFlightXMLData.Tables["FltMonth"].Select("FLIGHT_id=" + flight_id)[0]["FltMonth_Text"].ToString();
-        //                        fltYear = dsFlightXMLData.Tables["FltYear"].Select("FLIGHT_id=" + flight_id)[0]["FltYear_Text"].ToString();
-        //                        flightDate = new DateTime(Convert.ToInt32(fltYear), Convert.ToInt32(fltMonth), Convert.ToInt32(fltDay));
-        //                    }
-        //                    if (dsFlightXMLData.Tables.Contains("OrigIata"))
-        //                    {
-        //                        origin = dsFlightXMLData.Tables["OrigIata"].Select("FLIGHT_id=" + flight_id)[0]["OrigIata_Text"].ToString();
-        //                    }
-        //                    if (dsFlightXMLData.Tables.Contains("DestIata"))
-        //                    {
-        //                        destination = dsFlightXMLData.Tables["DestIata"].Select("FLIGHT_id=" + flight_id)[0]["DestIata_Text"].ToString();
-        //                    }
-        //                    if (dsFlightXMLData.Tables.Contains("RegistNum"))
-        //                    {
-        //                        registrationNumber = dsFlightXMLData.Tables["RegistNum"].Select("FLIGHT_id=" + flight_id)[0]["RegistNum_Text"].ToString();
-        //                    }
+        internal async Task StoreXMLMessage(string strMessage, string fileName)
+        {
+            try
+            {
+                DataSet dsFlightXMLData = new DataSet();
+                var xmlText = new StringReader(strMessage);
+                dsFlightXMLData.ReadXml(xmlText);
+                if (dsFlightXMLData != null && dsFlightXMLData.Tables.Count > 0)
+                {
+                    if (dsFlightXMLData.Tables.Contains("FLIGHT"))
+                    {
+                        string flightNumber = string.Empty, flightAirlineCode = string.Empty, fltDay = string.Empty, fltMonth = string.Empty, fltYear = string.Empty, registrationNumber = string.Empty, origin = string.Empty, destination = string.Empty, payload = string.Empty, cargoCapacity = string.Empty;
+                        DateTime flightDate = new DateTime(2001, 1, 1);
+                        int flight_id = 0;
+                        for (int i = 0; i < dsFlightXMLData.Tables["FLIGHT"].Rows.Count; i++)
+                        {
+                            flight_id = Convert.ToInt32(dsFlightXMLData.Tables["FLIGHT"].Rows[i]["FLIGHT_id"].ToString());
+                            if (dsFlightXMLData.Tables.Contains("FltNum") && dsFlightXMLData.Tables.Contains("FltAlc"))
+                            {
+                                flightNumber = dsFlightXMLData.Tables["FltNum"].Select("FLIGHT_id=" + flight_id)[0]["FltNum_Text"].ToString();
+                                flightAirlineCode = dsFlightXMLData.Tables["FltAlc"].Select("FLIGHT_id=" + flight_id)[0]["FltAlc_Text"].ToString();
+                            }
+                            if (dsFlightXMLData.Tables.Contains("FltDay") && dsFlightXMLData.Tables.Contains("FltMonth") && dsFlightXMLData.Tables.Contains("FltYear"))
+                            {
+                                fltDay = dsFlightXMLData.Tables["FltDay"].Select("FLIGHT_id=" + flight_id)[0]["FltDay_Text"].ToString();
+                                fltMonth = dsFlightXMLData.Tables["FltMonth"].Select("FLIGHT_id=" + flight_id)[0]["FltMonth_Text"].ToString();
+                                fltYear = dsFlightXMLData.Tables["FltYear"].Select("FLIGHT_id=" + flight_id)[0]["FltYear_Text"].ToString();
+                                flightDate = new DateTime(Convert.ToInt32(fltYear), Convert.ToInt32(fltMonth), Convert.ToInt32(fltDay));
+                            }
+                            if (dsFlightXMLData.Tables.Contains("OrigIata"))
+                            {
+                                origin = dsFlightXMLData.Tables["OrigIata"].Select("FLIGHT_id=" + flight_id)[0]["OrigIata_Text"].ToString();
+                            }
+                            if (dsFlightXMLData.Tables.Contains("DestIata"))
+                            {
+                                destination = dsFlightXMLData.Tables["DestIata"].Select("FLIGHT_id=" + flight_id)[0]["DestIata_Text"].ToString();
+                            }
+                            if (dsFlightXMLData.Tables.Contains("RegistNum"))
+                            {
+                                registrationNumber = dsFlightXMLData.Tables["RegistNum"].Select("FLIGHT_id=" + flight_id)[0]["RegistNum_Text"].ToString();
+                            }
 
-        //                    if (dsFlightXMLData.Tables.Contains("Cargo"))
-        //                    {
-        //                        cargoCapacity = dsFlightXMLData.Tables["Cargo"].Select("FLIGHT_id=" + flight_id)[0]["Cargo_Text"].ToString();
-        //                    }
+                            if (dsFlightXMLData.Tables.Contains("Cargo"))
+                            {
+                                cargoCapacity = dsFlightXMLData.Tables["Cargo"].Select("FLIGHT_id=" + flight_id)[0]["Cargo_Text"].ToString();
+                            }
 
-        //                    StringBuilder msgBody = new StringBuilder();
-        //                    msgBody.Append("Flight Number: " + flightNumber + "\r\n");
-        //                    msgBody.Append("flight Airline Code: " + flightAirlineCode + "\r\n");
-        //                    msgBody.Append("flightDate: " + flightDate.ToShortDateString() + "\r\n");
-        //                    msgBody.Append("origin: " + origin + "\r\n");
-        //                    msgBody.Append("destination: " + destination + "\r\n");
-        //                    msgBody.Append("registrationNumber: " + registrationNumber + "\r\n");
-        //                    msgBody.Append("cargoCapacity: " + cargoCapacity + "\r\n");
+                            StringBuilder msgBody = new StringBuilder();
+                            msgBody.Append("Flight Number: " + flightNumber + "\r\n");
+                            msgBody.Append("flight Airline Code: " + flightAirlineCode + "\r\n");
+                            msgBody.Append("flightDate: " + flightDate.ToShortDateString() + "\r\n");
+                            msgBody.Append("origin: " + origin + "\r\n");
+                            msgBody.Append("destination: " + destination + "\r\n");
+                            msgBody.Append("registrationNumber: " + registrationNumber + "\r\n");
+                            msgBody.Append("cargoCapacity: " + cargoCapacity + "\r\n");
 
-        //                    string[] paramname = new string[] {
-        //                        "FlightNumber"
-        //                        , "FlightAirlineCode"
-        //                        , "FlightDate"
-        //                        , "Origin"
-        //                        , "Destination"
-        //                        , "RegistrationNumber"
-        //                        , "cargoCapacity"
-        //                        , "MsgBody"
-        //                        , "FileName"
-        //                    };
+                            //string[] paramname = new string[] {
+                            //    "FlightNumber"
+                            //    , "FlightAirlineCode"
+                            //    , "FlightDate"
+                            //    , "Origin"
+                            //    , "Destination"
+                            //    , "RegistrationNumber"
+                            //    , "cargoCapacity"
+                            //    , "MsgBody"
+                            //    , "FileName"
+                            //};
 
-        //                    object[] paramvalue = new object[] {
-        //                        flightNumber
-        //                        , flightAirlineCode
-        //                        , flightDate
-        //                        , origin
-        //                        , destination
-        //                        , registrationNumber
-        //                        , cargoCapacity.Trim() == string.Empty ? 0 : Convert.ToDecimal(cargoCapacity)
-        //                        , msgBody.ToString()
-        //                        , fileName
-        //                    };
+                            //object[] paramvalue = new object[] {
+                            //    flightNumber
+                            //    , flightAirlineCode
+                            //    , flightDate
+                            //    , origin
+                            //    , destination
+                            //    , registrationNumber
+                            //    , cargoCapacity.Trim() == string.Empty ? 0 : Convert.ToDecimal(cargoCapacity)
+                            //    , msgBody.ToString()
+                            //    , fileName
+                            //};
 
-        //                    SqlDbType[] paramtype = new SqlDbType[] {
-        //                        SqlDbType.VarChar
-        //                        , SqlDbType.VarChar
-        //                        , SqlDbType.DateTime
-        //                        , SqlDbType.VarChar
-        //                        , SqlDbType.VarChar
-        //                        , SqlDbType.VarChar
-        //                        , SqlDbType.Decimal
-        //                        , SqlDbType.VarChar
-        //                        , SqlDbType.VarChar
-        //                    };
-        //                    SQLServer sqlServer = new SQLServer();
-        //                    DataSet dsResult = new DataSet();
-        //                    dsResult = sqlServer.SelectRecords("Messaging.uspCargoLoadXML", paramname, paramvalue, paramtype);
-        //                }
-        //            }
-        //        }
+                            //SqlDbType[] paramtype = new SqlDbType[] {
+                            //    SqlDbType.VarChar
+                            //    , SqlDbType.VarChar
+                            //    , SqlDbType.DateTime
+                            //    , SqlDbType.VarChar
+                            //    , SqlDbType.VarChar
+                            //    , SqlDbType.VarChar
+                            //    , SqlDbType.Decimal
+                            //    , SqlDbType.VarChar
+                            //    , SqlDbType.VarChar
+                            //};
+                            //SQLServer sqlServer = new SQLServer();
 
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        clsLog.WriteLogAzure(ex);
-        //    }
-        //}
+                            SqlParameter[] parameters =
+                            {
+                                new SqlParameter("@FlightNumber", SqlDbType.VarChar) { Value = flightNumber },
+                                new SqlParameter("@FlightAirlineCode", SqlDbType.VarChar) { Value = flightAirlineCode },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightDate },
+                                new SqlParameter("@Origin", SqlDbType.VarChar) { Value = origin },
+                                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = destination },
+                                new SqlParameter("@RegistrationNumber", SqlDbType.VarChar) { Value = registrationNumber },
+                                new SqlParameter("@cargoCapacity", SqlDbType.Decimal) { Value = cargoCapacity.Trim() == string.Empty ? 0 : Convert.ToDecimal(cargoCapacity) },
+                                new SqlParameter("@MsgBody", SqlDbType.VarChar) { Value = msgBody.ToString() },
+                                new SqlParameter("@FileName", SqlDbType.VarChar) { Value = fileName }
+                            };
+
+                            //DataSet? dsResult = new DataSet();
+                            //dsResult = sqlServer.SelectRecords("Messaging.uspCargoLoadXML", paramname, paramvalue, paramtype);
+                            await _readWriteDao.SelectRecords("Messaging.uspCargoLoadXML", parameters);
+
+                        }
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            }
+        }
+
 
         public async Task<DataSet?> GetChildHAWB(string awbPrefix, string awbNumber, string flightNo, DateTime flightDate, bool manifestedHawb, string POL = "", bool IsXFZB = false)
         {
