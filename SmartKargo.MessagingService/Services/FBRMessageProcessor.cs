@@ -12,12 +12,11 @@
       * Description           :   
      */
 #endregion
-using System;
-using System.IO;
-using System.Data;
-using QID.DataAccess;
-using System.Configuration;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System.Configuration;
+using System.Data;
 
 
 namespace QidWorkerRole
@@ -29,10 +28,15 @@ namespace QidWorkerRole
         string awbref = string.Empty;
         static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
         const string PAGE_NAME = "FBRMessageProcessor";
-        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FBRMessageProcessor> _logger;
-        public FBRMessageProcessor(ILogger<FBRMessageProcessor> logger)
+
+        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+        public FBRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FBRMessageProcessor> logger)
         {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
         }
 
@@ -103,8 +107,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    clsLog.WriteLogAzure(ex);
                                 }
 
                                 break;
@@ -145,8 +148,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    clsLog.WriteLogAzure(ex);
                                 }
                                 break;
 
@@ -161,15 +163,14 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 flag = false;
-                // clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
-                _logger.LogError("Error in Decoding FBR Message {0}", ex);
+                clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
             }
             return flag;
         }
 
         #endregion
 
-        public bool ValidatandGenerateFBLMessage(MessageData.FBRInformation fwrInformation, string strMessage, int refNo, string strmessageFrom, string strFromID, string strStatus)
+        public async Task<bool> ValidatandGenerateFBLMessage(MessageData.FBRInformation fwrInformation, string strMessage, int refNo, string strmessageFrom, string strFromID, string strStatus)
         {
             GenericFunction GF = new GenericFunction();
             bool flag = false;
@@ -233,7 +234,7 @@ namespace QidWorkerRole
                 }
                 string flightdate1 = date + "/" + flightMonth + "/" + System.DateTime.Today.Year;
 
-                dsData = GetRecordforGenerateFBLMessage(FlightOrigin, FlightDestination, strFLight, flightdate1);
+                dsData = await GetRecordforGenerateFBLMessage(FlightOrigin, FlightDestination, strFLight, flightdate1);
                 if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
                     DataSet dscheckconfiguration = gf.GetSitaAddressandMessageVersion(strCarriercode, "FBL", "AIR", "", "", "", string.Empty, "");
@@ -381,43 +382,47 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                clsLog.WriteLogAzure(ex);
                 flag = false;
             }
             return flag;
         }
 
         #region GetFBLData
-        private DataSet GetRecordforGenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
+        private async Task<DataSet> GetRecordforGenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
         {
 
-            DataSet dsData = new DataSet();
+            DataSet? dsData = new DataSet();
             try
             {
-                SQLServer dtb = new SQLServer();
+                //SQLServer dtb = new SQLServer();
+
                 string procedure = "spGetFBLDataForSend";
 
-                string[] paramname = new string[] { "FlightNo", "FlightOrigin", "FlightDestination", "FltDate" };
+                //string[] paramname = new string[] { "FlightNo", "FlightOrigin", "FlightDestination", "FltDate" };
+                //object[] paramvalue = new object[] { FlightNo, strFlightOrigin, strFlightDestination, FlightDate };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
+                //dsData = _readWriteDao.SelectRecords(procedure, paramname, paramvalue, paramtype);
 
-                object[] paramvalue = new object[] { FlightNo, strFlightOrigin, strFlightDestination, FlightDate };
+                SqlParameter[] parameters =
+                {
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = strFlightOrigin },
+                    new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = strFlightDestination },
+                    new SqlParameter("@FltDate", SqlDbType.DateTime) { Value = FlightDate }
+                };
 
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
-
-                dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+                dsData = await _readWriteDao.SelectRecords(procedure, parameters);
             }
             catch (Exception ex)
-            {
-                // clsLog.WriteLogAzure(ex.Message);
-                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-            }
+            { clsLog.WriteLogAzure(ex.Message); }
 
             return dsData;
         }
         #endregion
 
 
-        public void GenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
+        public async Task GenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
         {
             string SitaMessageHeader = string.Empty, FblMessageversion = string.Empty, Emailaddress = string.Empty, SFTPMessageHeader = string.Empty;
             GenericFunction gf = new GenericFunction();
@@ -426,7 +431,7 @@ namespace QidWorkerRole
             MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
             int count1 = 0;
             int count2 = 0;
-            DataSet dsData = GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+            DataSet dsData = await GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
             if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
             {
                 DataSet dsmessage = gf.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FBL", "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty);
@@ -450,10 +455,7 @@ namespace QidWorkerRole
                         objFBLInfo.date = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).Day.ToString().PadLeft(2, '0');
                     }
                     catch (Exception ex)
-                    {
-                        // clsLog.WriteLogAzure(ex.Message);
-                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                    }
+                    { clsLog.WriteLogAzure(ex.Message); }
 
                     objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
                     objFBLInfo.fltairportcode = strFlightOrigin;
@@ -545,7 +547,7 @@ namespace QidWorkerRole
                         MessageData.consignmentorigininfo[] objConsOriginInfo = new MessageData.consignmentorigininfo[0];
                         MessageData.ULDinfo[] objULDInfo = new MessageData.ULDinfo[0];
                         MessageData.otherserviceinfo objOtherInfo = new MessageData.otherserviceinfo("");
-                        Cls_BL cls_BL = new Cls_BL();
+                        //Cls_BL cls_BL = new Cls_BL();
                         string FBLMsg = cls_Encode_Decode.EncodeFBLforsend(objFBLInfo, objUnloadingPort, objConsInfo, objDimenInfo, objConsOriginInfo, objULDInfo, objOtherInfo);
                         if (FBLMsg != null)
                         {
