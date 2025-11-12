@@ -12,6 +12,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="AE.Net.Mail" Version="1.7.10" />
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.24.0" />
     <PackageReference Include="EAGetMail" Version="5.2.5.8" />
     <PackageReference Include="IBMMQDotnetClient" Version="9.4.4" />
     <PackageReference Include="Ionic.Zip" Version="1.9.1.8" />
