@@ -17,6 +17,7 @@ using System.IO;
 using System.Data;
 using QID.DataAccess;
 using System.Configuration;
+using Microsoft.Extensions.Logging;
 
 
 namespace QidWorkerRole
@@ -29,9 +30,10 @@ namespace QidWorkerRole
         static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
         const string PAGE_NAME = "FBRMessageProcessor";
         SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
-        public FBRMessageProcessor()
+        private readonly ILogger<FBRMessageProcessor> _logger;
+        public FBRMessageProcessor(ILogger<FBRMessageProcessor> logger)
         {
-
+            _logger = logger;
         }
 
         #region FBR Message Decoding for Update Dateabse
@@ -101,7 +103,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
 
                                 break;
@@ -142,7 +145,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
                                 break;
 
@@ -157,7 +161,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 flag = false;
-                clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
+                // clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
+                _logger.LogError("Error in Decoding FBR Message {0}", ex);
             }
             return flag;
         }
@@ -376,7 +381,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -401,7 +407,10 @@ namespace QidWorkerRole
                 dsData = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex.Message); }
+            {
+                // clsLog.WriteLogAzure(ex.Message);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
 
             return dsData;
         }
@@ -441,7 +450,10 @@ namespace QidWorkerRole
                         objFBLInfo.date = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).Day.ToString().PadLeft(2, '0');
                     }
                     catch (Exception ex)
-                    { clsLog.WriteLogAzure(ex.Message); }
+                    {
+                        // clsLog.WriteLogAzure(ex.Message);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    }
 
                     objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
                     objFBLInfo.fltairportcode = strFlightOrigin;
