@@ -23,6 +23,7 @@ namespace QidWorkerRole
         private readonly FBLMessageProcessor _fBLMessageProcessor;
         private readonly CustomsMessageProcessor _customsMessageProcessor;
         private readonly FHLMessageProcessor _fHLMessageProcessor;
+        private readonly LDMMessageProcessor _lDMMessageProcessor;
         public cls_SCMBL(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<cls_SCMBL> logger,
@@ -35,7 +36,8 @@ namespace QidWorkerRole
             ASM aSM,
             FBLMessageProcessor fBLMessageProcessor,
             CustomsMessageProcessor customsMessageProcessor,
-            FHLMessageProcessor fHLMessageProcessor
+            FHLMessageProcessor fHLMessageProcessor,
+            LDMMessageProcessor lDMMessageProcessor
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -51,6 +53,7 @@ namespace QidWorkerRole
             _fBLMessageProcessor = fBLMessageProcessor;
             _customsMessageProcessor = customsMessageProcessor;
             _fHLMessageProcessor = fHLMessageProcessor;
+            _lDMMessageProcessor = lDMMessageProcessor;
         }
 
 
@@ -1405,12 +1408,16 @@ namespace QidWorkerRole
                             msgType = "LDM";
                             flag = false;
                             MessageData.LDMInfo ldm = new MessageData.LDMInfo("");
-                            LDMMessageProcessor ldmProcessor = new LDMMessageProcessor();
-                            flag = ldmProcessor.DecodeReceiveLDMMessage(strMsg, ref ldm, refNO);
+
+                            //LDMMessageProcessor ldmProcessor = new LDMMessageProcessor();
+
+                            flag = _lDMMessageProcessor.DecodeReceiveLDMMessage(strMsg, ref ldm, refNO);
                             if (flag == true)
                             {
 
-                                flag = ldmProcessor.SaveandValidateLDMMessage(refNO, ref ldm);
+                                //flag = ldmProcessor.SaveandValidateLDMMessage(refNO, ref ldm);
+                                (flag, ldm) = await _lDMMessageProcessor.SaveandValidateLDMMessage(refNO, ldm);
+
                             }
                             #endregion
                         }
