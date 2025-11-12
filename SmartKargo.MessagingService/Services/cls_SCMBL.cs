@@ -22,6 +22,7 @@ namespace QidWorkerRole
         private readonly ASM _aSm;
         private readonly FBLMessageProcessor _fBLMessageProcessor;
         private readonly CustomsMessageProcessor _customsMessageProcessor;
+        private readonly FHLMessageProcessor _fHLMessageProcessor;
         public cls_SCMBL(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<cls_SCMBL> logger,
@@ -33,7 +34,8 @@ namespace QidWorkerRole
             MVT mVT,
             ASM aSM,
             FBLMessageProcessor fBLMessageProcessor,
-            CustomsMessageProcessor customsMessageProcessor
+            CustomsMessageProcessor customsMessageProcessor,
+            FHLMessageProcessor fHLMessageProcessor
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -48,6 +50,7 @@ namespace QidWorkerRole
             _aSm = aSM;
             _fBLMessageProcessor = fBLMessageProcessor;
             _customsMessageProcessor = customsMessageProcessor;
+            _fHLMessageProcessor = fHLMessageProcessor;
         }
 
 
@@ -106,7 +109,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //finally
@@ -145,7 +148,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 dsAWB = null;
             }
             return dsAWB;
@@ -176,7 +179,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 dsFlight = null;
             }
             return dsFlight;
@@ -234,7 +237,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -287,7 +290,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return flag;
             }
         }
@@ -465,7 +468,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -497,36 +500,37 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 // clsLog.WriteLogAzure(ex); 
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
         private XmlNode RenameNode(XmlNode e, string newName)
         {
-           try
-           {
-             XmlDocument doc = e.OwnerDocument;
-             XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
-             while (e.HasChildNodes)
-             {
-                 newNode.AppendChild(e.FirstChild);
-             }
-             XmlAttributeCollection ac = e.Attributes;
-             while (ac.Count > 0)
-             {
-                 newNode.Attributes.Append(ac[0]);
-             }
-             XmlNode parent = e.ParentNode;
-             parent.ReplaceChild(newNode, e);
-             return newNode;
-           }
-           catch (System.Exception ex)
-           {
-            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-            throw;
-           }
+            try
+            {
+                XmlDocument doc = e.OwnerDocument;
+                XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
+                while (e.HasChildNodes)
+                {
+                    newNode.AppendChild(e.FirstChild);
+                }
+                XmlAttributeCollection ac = e.Attributes;
+                while (ac.Count > 0)
+                {
+                    newNode.Attributes.Append(ac[0]);
+                }
+                XmlNode parent = e.ParentNode;
+                parent.ReplaceChild(newNode, e);
+                return newNode;
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
         }
 
         private async Task<bool> validateAndInsertSCMData(MessageData.SCMInfo[] scm)
@@ -620,7 +624,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -647,7 +651,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -942,7 +946,7 @@ namespace QidWorkerRole
                             MessageData.fhlinfo fhl = new MessageData.fhlinfo("");
                             MessageData.consignmnetinfo[] consinfo;//= new MessageData.consignmnetinfo[0];
                             MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
-                            FHLMessageProcessor fhlMessage = new FHLMessageProcessor();
+                            //FHLMessageProcessor fhlMessage = new FHLMessageProcessor();
                             if (arrFHLMessage.Length > 1)
                             {
                                 if (arrFHLMessage[1].Contains("FHL"))
@@ -955,10 +959,13 @@ namespace QidWorkerRole
                                         strMsg = strMsg.Replace("$$", "$");
                                         strMsg = strMsg.Trim('$');
                                         consinfo = new MessageData.consignmnetinfo[0];
-                                        flag = fhlMessage.DecodeReceiveFHLMessage(strMsg, ref fhl, ref consinfo, ref customextrainfo, out ErrorMsg);
+                                        flag = _fHLMessageProcessor.DecodeReceiveFHLMessage(strMsg, ref fhl, ref consinfo, ref customextrainfo, out ErrorMsg);
 
                                         if (flag == true)
-                                            flag = fhlMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+
+                                            //flag = fhlMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+                                            (flag, fhl, consinfo, customextrainfo) = await _fHLMessageProcessor.validateAndInsertFHLData(fhl, consinfo, customextrainfo, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+
 
                                         if (!flag)
                                         {
@@ -1118,7 +1125,7 @@ namespace QidWorkerRole
                             catch (Exception ex)
                             {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             }
                         }
                         else if (strMsg.Trim().StartsWith("CPM", StringComparison.OrdinalIgnoreCase))
@@ -1130,8 +1137,8 @@ namespace QidWorkerRole
                             catch (Exception ex)
                             {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                             }
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
                         }
                         else if (strMsg.Trim().StartsWith("UNB"))
                         {
@@ -1448,7 +1455,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //return flag;
@@ -1557,7 +1564,7 @@ namespace QidWorkerRole
                     catch (Exception ex)
                     {
                         // clsLog.WriteLogAzure(ex);
-                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         fltDate = dtFlightDate.ToString("MM/dd/yyyy");
                     }
                 }
@@ -1608,7 +1615,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return objRouteInfo; // return original on error
             }
         }
@@ -1660,7 +1667,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
 
@@ -1785,7 +1792,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -1822,8 +1829,8 @@ namespace QidWorkerRole
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex);
-                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                         }
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                        }
                         objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
                         objFBLInfo.fltairportcode = POL;
                         objFBLInfo.endmesgcode = "LAST";
@@ -1887,7 +1894,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure("Exception in FBL Encode:" + ex.Message);
-                _logger.LogError("Exception in FBL Encode: {0}" , ex.Message);
+                _logger.LogError("Exception in FBL Encode: {0}", ex.Message);
             }
             return flag;
         }
@@ -1978,7 +1985,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2085,7 +2092,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2222,9 +2229,10 @@ namespace QidWorkerRole
                                 }
                             }
 
-                            catch (Exception ex) {
+                            catch (Exception ex)
+                            {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); 
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             }
 
                             if (dsData != null && dsData.Tables.Count > 0)
@@ -2282,7 +2290,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure(ex);
-                                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             try
                                             {
@@ -2297,7 +2305,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure(ex);
-                                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 objTempConsInfo.uldsequence = "";
                                             }
                                             for (int k = 0; k < objUnloadingPort.Length; k++)
@@ -2338,7 +2346,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
             return FFMMsg;
@@ -2382,7 +2390,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -2430,7 +2438,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2614,8 +2622,8 @@ namespace QidWorkerRole
                             catch (Exception ex)
                             {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");    
-                             }
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
 
                             Array.Resize(ref objFSANode, objFSANode.Length + 1);
                             objFSANode[objFSANode.Length - 1] = objComnStruct;
@@ -2632,7 +2640,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2670,7 +2678,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2716,7 +2724,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2762,7 +2770,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -2855,7 +2863,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2910,7 +2918,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure("Error:" + ex.Message);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -2997,7 +3005,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3027,7 +3035,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3076,7 +3084,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -3168,7 +3176,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3200,7 +3208,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -3281,9 +3289,10 @@ namespace QidWorkerRole
                                             route.month = mon.ToString();
 
                                         }
-                                        catch (Exception ex) {
+                                        catch (Exception ex)
+                                        {
                                             // clsLog.WriteLogAzure(ex); 
-                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         route.carriercode = "";
                                         route.fltnum = drAWBRouteMaster["FltNumber"].ToString();
@@ -3315,8 +3324,8 @@ namespace QidWorkerRole
                                         catch (Exception ex)
                                         {
                                             // clsLog.WriteLogAzure(ex);
-                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                                         }
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        }
 
                                         Array.Resize(ref fltRoute, fltRoute.Length + 1);
                                         fltRoute[fltRoute.Length - 1] = route;
@@ -3379,10 +3388,11 @@ namespace QidWorkerRole
                                     }
                                 }
                             }
-                            catch (Exception ex) {
+                            catch (Exception ex)
+                            {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                             }
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
 
                             #endregion
                             //line 9 
@@ -3417,10 +3427,11 @@ namespace QidWorkerRole
                                     objFFRInfo.conscontactnum = drAWBShipperConsigneeDetails["ConsigneeTelephone"].ToString();
                                 }
                             }
-                            catch (Exception ex) {
+                            catch (Exception ex)
+                            {
                                 // clsLog.WriteLogAzure(ex);
-                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-                             }
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
                             //line 12
                             objFFRInfo.custaccnum = "";
                             objFFRInfo.iatacargoagentcode = ""; //drAWBSummaryMaster["AgentCode"].ToString();
@@ -3454,8 +3465,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-             }
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
             return flag;
         }
 
@@ -3571,7 +3582,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3688,8 +3699,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-             }
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
             return flag;
         }
 
@@ -3823,8 +3834,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
-             }
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
             return flag;
         }
 
@@ -5044,7 +5055,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5053,7 +5064,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedTareGrossWeightMeasure')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5062,8 +5073,8 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_IncludedTareGrossWeightMeasure");
                         }
                     }
-    
-    
+
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5084,7 +5095,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
                         }
                     }
-    
+
                     xmlMsg = doc.OuterXml;
                     xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
                     xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
@@ -5112,7 +5123,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossVolumeMeasure')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5149,7 +5160,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5185,7 +5196,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_TransportContractDocument");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5194,7 +5205,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5203,7 +5214,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5212,13 +5223,13 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_IncludedCustomsNote");
                         }
                     }
-    
+
                     xmlMsg = doc.OuterXml;
                     xmlMsg = xmlMsg.Replace("MasterConsignment_TransportContractDocument", "ram:MasterConsignment_TransportContractDocument");
                     xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
                     xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
                     xmlMsg = xmlMsg.Replace("MasterConsignment_IncludedCustomsNote", "ram:MasterConsignment_IncludedCustomsNote");
-    
+
                 }
                 else if (root.Name.Equals("rsm:FreightBookedList"))
                 {
@@ -5230,7 +5241,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:LogisticsTransportMovement_IncludedCustomsNote");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5243,7 +5254,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:UtilizedUnitLoadTransportEquipment_GrossWeightMeasure");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PrimaryID')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5252,7 +5263,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:OperatingParty_PrimaryID");
                         }
                     }
-    
+
                     xmlMsg = doc.OuterXml;
                     xmlMsg = xmlMsg.Replace("LogisticsTransportMovement_IncludedCustomsNote", "ram:LogisticsTransportMovement_IncludedCustomsNote");
                     xmlMsg = xmlMsg.Replace("TransportLogisticsPackage_GrossWeightMeasure", "ram:TransportLogisticsPackage_GrossWeightMeasure");
@@ -5277,7 +5288,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_GrossWeightMeasure");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5286,7 +5297,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TransportContractDocument");
                         }
                     }
-    
+
                     xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TotalGrossWeightMeasure')]");
                     foreach (XmlNode xmlNode in xmlNodelst)
                     {
@@ -5295,7 +5306,7 @@ namespace QidWorkerRole
                             nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
                         }
                     }
-    
+
                     xmlMsg = doc.OuterXml;
                     xmlMsg = xmlMsg.Replace("MasterConsignment_GrossWeightMeasure", "ram:MasterConsignment_GrossWeightMeasure");
                     xmlMsg = xmlMsg.Replace("AssociatedStatusConsignment_GrossWeightMeasure", "ram:AssociatedStatusConsignment_GrossWeightMeasure");
@@ -5306,7 +5317,7 @@ namespace QidWorkerRole
             }
             catch (System.Exception ex)
             {
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
             return xmlMsg;
@@ -5453,7 +5464,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -5501,7 +5512,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
 

@@ -13,29 +13,36 @@
      */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Text.RegularExpressions;
-using System.Globalization;
-using System.Text;
-using System.IO;
-using System.Reflection;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using QidWorkerRole;
-using System.Data.SqlClient;
+using System.Text.RegularExpressions;
 
 namespace QidWorkerRole
 {
     public class FHLMessageProcessor
     {
-        string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
-        public FHLMessageProcessor()
+        //string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+
+        private readonly ILogger<FHLMessageProcessor> _logger;
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ISqlDataHelperDao _readOnlyDao;
+        private readonly FFRMessageProcessor _ffrMessageProcessor;
+        private readonly GenericFunction _genericFunction;
+
+        public FHLMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FHLMessageProcessor> logger,
+            FFRMessageProcessor ffrMessageProcessor,
+            GenericFunction genericFunction)
         {
+            _logger = logger;
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
+            _ffrMessageProcessor = ffrMessageProcessor;
+            _genericFunction = genericFunction;
         }
 
         /// <summary>
@@ -616,26 +623,34 @@ namespace QidWorkerRole
         /// <summary>
         /// validate and insert house data
         /// </summary>
-        public bool validateAndInsertFHLData(ref MessageData.fhlinfo fhl, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+        public async Task<(bool success, MessageData.fhlinfo fhl, MessageData.consignmnetinfo[] consinfo, MessageData.customsextrainfo[] customextrainfo)> validateAndInsertFHLData(MessageData.fhlinfo fhl, MessageData.consignmnetinfo[] consinfo, MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
         {
             bool flag = false;
-            GenericFunction gf = new GenericFunction();
-            FFRMessageProcessor ffRMessageProcessor = new FFRMessageProcessor();
+            //GenericFunction gf = new GenericFunction();
+            //FFRMessageProcessor ffRMessageProcessor = new FFRMessageProcessor();
             try
             {
                 bool isAWBPresent = false;
                 string AWBNum = fhl.awbnum;
                 string AWBPrefix = fhl.airlineprefix;
-                SQLServer db = new SQLServer();
 
-                gf.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + AWBNum, string.Empty, string.Empty, string.Empty, "FHL", strMessageFrom, DateTime.Parse("1900-01-01"));
+                //SQLServer db = new SQLServer();
+
+                _genericFunction.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + AWBNum, string.Empty, string.Empty, string.Empty, "FHL", strMessageFrom, DateTime.Parse("1900-01-01"));
 
                 #region Check AWB Present or Not
-                DataSet ds = new DataSet();
-                string[] pname = new string[] { "AWBNumber", "AWBPrefix" };
-                object[] values = new object[] { AWBNum, AWBPrefix };
-                SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                ds = db.SelectRecords("sp_getawbdetails", pname, values, ptype);
+                DataSet? ds = new DataSet();
+
+                //string[] pname = new string[] { "AWBNumber", "AWBPrefix" };
+                //object[] values = new object[] { AWBNum, AWBPrefix };
+                //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                //ds = db.SelectRecords("sp_getawbdetails", pname, values, ptype);
+
+                SqlParameter[] parameters = [
+                    new SqlParameter("@AWBNumber",AWBNum)
+                    ,new SqlParameter("@AWBPrefix",AWBPrefix)
+                ];
+                ds = await _readWriteDao.SelectRecords("sp_getawbdetails", parameters);
 
                 if (ds != null)
                 {
@@ -652,14 +667,16 @@ namespace QidWorkerRole
                 #region Add AWB details
                 if (!isAWBPresent)
                 {
-                    SqlParameter[] sqlParameter = new SqlParameter[] {
+                    SqlParameter[] sqlParameter = [
                         new SqlParameter("@RefNo",REFNo)
                         ,new SqlParameter("@Status","Processed")
                         ,new SqlParameter("@Error","AWB number not present")
                         ,new SqlParameter("@UpdatedOn",DateTime.Now)
-                    };
-                    db.SelectRecords("uspUpdateMsgFromInbox", sqlParameter);
-                    return false;
+                    ];
+                    /*Replaced SelectRecords as it does update operation and not returning any dataset*/
+                    //db.SelectRecords("uspUpdateMsgFromInbox", sqlParameter);
+                    await _readWriteDao.ExecuteNonQueryAsync("uspUpdateMsgFromInbox", sqlParameter);
+                    return (false, fhl, consinfo, customextrainfo);
                 }
                 #endregion
 
@@ -692,7 +709,7 @@ namespace QidWorkerRole
                     Decimal DecValueCarriageHAWB = fhl.declaredvalue.ToUpper() == "" ? 0 : fhl.declaredvalue.ToUpper() == "NVD" ? 0 : System.Convert.ToDecimal(fhl.declaredvalue.ToUpper());
 
 
-                    flag = PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
+                    flag = await PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
                         fhl.consname, fhl.consadd.Trim(','), fhl.consplace.Trim(','), fhl.consstate, fhl.conscountrycode.Trim(','), fhl.conspostcode, fhl.shipperstate, fhl.shippercountrycode, "", slac, "", "",
                         fhl.shippercontactnum, "", fhl.conscontactnum, customextrainfo, commodity, REFNo, DecValueHAWB, DecValueCarriageHAWB, fhl.currency, insuranceAmount, txtDesc);
                 }
@@ -701,19 +718,34 @@ namespace QidWorkerRole
                 #region ProcessRateFunction
                 //if (ds.Tables[0].Rows[0]["IsAccepted"].ToString() == "True")
                 //{
-                DataSet dsrateCheck = ffRMessageProcessor.CheckAirlineForRateProcessing(AWBPrefix, "FHL");
+                DataSet? dsrateCheck = await _ffrMessageProcessor.CheckAirlineForRateProcessing(AWBPrefix, "FHL");
                 if (dsrateCheck != null && dsrateCheck.Tables.Count > 0 && dsrateCheck.Tables[0].Rows.Count > 0)
                 {
                     bool billingReprocess = false;
                     if (ds.Tables[0].Rows[0]["IsAccepted"].ToString() == "True")
                         billingReprocess = true;
-                   
-                    string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
-                    SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
-                    object[] CRValues = new object[] { AWBNum, AWBPrefix, "FHL", System.DateTime.Now, 1, 1, "B", billingReprocess };
-                    if (!db.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+
+                    //string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
+                    //SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
+                    //object[] CRValues = new object[] { AWBNum, AWBPrefix, "FHL", System.DateTime.Now, 1, 1, "B", billingReprocess };
+
+                    SqlParameter[] parameters1 =
                     {
-                        clsLog.WriteLogAzure("Rates Not Calculated for:" + AWBNum + Environment.NewLine + "Error: " + db.LastErrorDescription);
+                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = AWBNum },
+                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                        new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FHL" },
+                        new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.Now },
+                        new SqlParameter("@ValidateMin", SqlDbType.Bit) { Value = 1 },
+                        new SqlParameter("@UpdateBooking", SqlDbType.Bit) { Value = 1 },
+                        new SqlParameter("@RouteFrom", SqlDbType.VarChar) { Value = "B" },
+                        new SqlParameter("@UpdateBilling", SqlDbType.Bit) { Value = billingReprocess }
+                    };
+
+                    //if (!db.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+                    var dbRes1 = await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", parameters1);
+                    if (!dbRes1)
+                    {
+                        clsLog.WriteLogAzure("Rates Not Calculated for:" + AWBNum + Environment.NewLine);
                     }
                 }
                 //}
@@ -725,13 +757,15 @@ namespace QidWorkerRole
                 clsLog.WriteLogAzure(ex);
                 flag = false;
             }
-            return flag;
+            //return flag;
+            return (flag, fhl, consinfo, customextrainfo);
+
         }
 
         /// <summary>
         /// Save HAWB Details
         /// </summary>
-        public bool PutHAWBDetails(string MAWBNo, string HAWBNo, int HAWBPcs, float HAWBWt, string Description, string CustID, string CustName,
+        public async Task<bool> PutHAWBDetails(string MAWBNo, string HAWBNo, int HAWBPcs, float HAWBWt, string Description, string CustID, string CustName,
             string CustAddress, string CustCity, string Zipcode, string Origin, string Destination, string SHC,
             string HAWBPrefix, string AWBPrefix, string FltOrigin, string FltDest, string ArrivalStatus, string FlightNo,
             string FlightDt, string ConsigneeName, string ConsigneeAddress, string ConsigneeCity, string ConsigneeState, string ConsigneeCountry, string ConsigneePostalCode,
@@ -785,174 +819,233 @@ namespace QidWorkerRole
                     }
                 }
                 #endregion OCI
-                DataSet ds = new DataSet();
-                SQLServer da = new SQLServer();
+                DataSet? ds = new DataSet();
 
-                string[] paramname = new string[50];
-                paramname[0] = "MAWBNo";
-                paramname[1] = "HAWBNo";
-                paramname[2] = "HAWBPcs";
-                paramname[3] = "HAWBWt";
-                paramname[4] = "Description";
-                paramname[5] = "CustID";
-                paramname[6] = "CustName";
-                paramname[7] = "CustAddress";
-                paramname[8] = "CustCity";
-                paramname[9] = "Zipcode";
-                paramname[10] = "Origin";
-                paramname[11] = "Destination";
-                paramname[12] = "SHC";
-                paramname[13] = "HAWBPrefix";
-                paramname[14] = "AWBPrefix";
-                paramname[15] = "ArrivalStatus";
-                paramname[16] = "FlightNo";
-                paramname[17] = "FlightDt";
-                paramname[18] = "FlightOrigin";
-                paramname[19] = "flightDest";
-                paramname[20] = "ConsigneeName";
-                paramname[21] = "ConsigneeAddress";
-                paramname[22] = "ConsigneeCity";
-                paramname[23] = "ConsigneeState";
-                paramname[24] = "ConsigneeCountry";
-                paramname[25] = "ConsigneePostalCode";
-                paramname[26] = "CustState";
-                paramname[27] = "CustCountry";
-                paramname[28] = "UOM";
-                paramname[29] = "SLAC";
-                paramname[30] = "ConsigneeID";
-                paramname[31] = "ShipperEmail";
-                paramname[32] = "ShipperTelephone";
-                paramname[33] = "ConsigneeEmail";
-                paramname[34] = "ConsigneeTelephone";
+                //SQLServer da = new SQLServer();
 
-                paramname[35] = "ShipIDCode";
-                paramname[36] = "ShipAEONum";
-                paramname[37] = "ConsIDCode";
-                paramname[38] = "ConsAEONum";
-                paramname[39] = "ConsContactName";
-                paramname[40] = "ConsContactTelephone";
-                paramname[41] = "Customs";
-                paramname[42] = "DecValueHAWB";
-                paramname[43] = "ConsigEORICode";
-                paramname[44] = "ShippEORICode";
-                paramname[45] = "REFNo";
-                paramname[46] = "DecValueCarriage";
-                paramname[47] = "HAWBInsuranceAmt";
-                paramname[48] = "HAWBCurrency";
-                paramname[49] = "DescriptionOfGoods";
+                //string[] paramname = new string[50];
+                //paramname[0] = "MAWBNo";
+                //paramname[1] = "HAWBNo";
+                //paramname[2] = "HAWBPcs";
+                //paramname[3] = "HAWBWt";
+                //paramname[4] = "Description";
+                //paramname[5] = "CustID";
+                //paramname[6] = "CustName";
+                //paramname[7] = "CustAddress";
+                //paramname[8] = "CustCity";
+                //paramname[9] = "Zipcode";
+                //paramname[10] = "Origin";
+                //paramname[11] = "Destination";
+                //paramname[12] = "SHC";
+                //paramname[13] = "HAWBPrefix";
+                //paramname[14] = "AWBPrefix";
+                //paramname[15] = "ArrivalStatus";
+                //paramname[16] = "FlightNo";
+                //paramname[17] = "FlightDt";
+                //paramname[18] = "FlightOrigin";
+                //paramname[19] = "flightDest";
+                //paramname[20] = "ConsigneeName";
+                //paramname[21] = "ConsigneeAddress";
+                //paramname[22] = "ConsigneeCity";
+                //paramname[23] = "ConsigneeState";
+                //paramname[24] = "ConsigneeCountry";
+                //paramname[25] = "ConsigneePostalCode";
+                //paramname[26] = "CustState";
+                //paramname[27] = "CustCountry";
+                //paramname[28] = "UOM";
+                //paramname[29] = "SLAC";
+                //paramname[30] = "ConsigneeID";
+                //paramname[31] = "ShipperEmail";
+                //paramname[32] = "ShipperTelephone";
+                //paramname[33] = "ConsigneeEmail";
+                //paramname[34] = "ConsigneeTelephone";
 
-                object[] paramvalue = new object[50];
-                paramvalue[0] = MAWBNo;
-                paramvalue[1] = HAWBNo;
-                paramvalue[2] = HAWBPcs;
-                paramvalue[3] = HAWBWt;
-                paramvalue[4] = Description;
-                paramvalue[5] = CustID;
-                paramvalue[6] = CustName;
-                paramvalue[7] = CustAddress;
-                paramvalue[8] = CustCity;
-                paramvalue[9] = Zipcode;
-                paramvalue[10] = Origin;
-                paramvalue[11] = Destination;
-                paramvalue[12] = SHC;
-                paramvalue[13] = HAWBPrefix;
-                paramvalue[14] = AWBPrefix;
-                paramvalue[15] = ArrivalStatus;
-                paramvalue[16] = FlightNo;
-                if (FlightDt == "")
+                //paramname[35] = "ShipIDCode";
+                //paramname[36] = "ShipAEONum";
+                //paramname[37] = "ConsIDCode";
+                //paramname[38] = "ConsAEONum";
+                //paramname[39] = "ConsContactName";
+                //paramname[40] = "ConsContactTelephone";
+                //paramname[41] = "Customs";
+                //paramname[42] = "DecValueHAWB";
+                //paramname[43] = "ConsigEORICode";
+                //paramname[44] = "ShippEORICode";
+                //paramname[45] = "REFNo";
+                //paramname[46] = "DecValueCarriage";
+                //paramname[47] = "HAWBInsuranceAmt";
+                //paramname[48] = "HAWBCurrency";
+                //paramname[49] = "DescriptionOfGoods";
+
+                //object[] paramvalue = new object[50];
+                //paramvalue[0] = MAWBNo;
+                //paramvalue[1] = HAWBNo;
+                //paramvalue[2] = HAWBPcs;
+                //paramvalue[3] = HAWBWt;
+                //paramvalue[4] = Description;
+                //paramvalue[5] = CustID;
+                //paramvalue[6] = CustName;
+                //paramvalue[7] = CustAddress;
+                //paramvalue[8] = CustCity;
+                //paramvalue[9] = Zipcode;
+                //paramvalue[10] = Origin;
+                //paramvalue[11] = Destination;
+                //paramvalue[12] = SHC;
+                //paramvalue[13] = HAWBPrefix;
+                //paramvalue[14] = AWBPrefix;
+                //paramvalue[15] = ArrivalStatus;
+                //paramvalue[16] = FlightNo;
+                //if (FlightDt == "")
+                //{
+                //    paramvalue[17] = DateTime.Now.ToString();
+                //}
+                //else
+                //{
+                //    paramvalue[17] = FlightDt;
+                //}
+                //paramvalue[18] = FltOrigin;
+                //paramvalue[19] = FltDest;
+                //paramvalue[20] = ConsigneeName;
+                //paramvalue[21] = ConsigneeAddress;
+                //paramvalue[22] = ConsigneeCity;
+                //paramvalue[23] = ConsigneeState;
+                //paramvalue[24] = ConsigneeCountry;
+                //paramvalue[25] = ConsigneePostalCode;
+                //paramvalue[26] = CustState;
+                //paramvalue[27] = CustCountry;
+                //paramvalue[28] = UOM;
+                //paramvalue[29] = SLAC != string.Empty ? SLAC : "0";
+                //paramvalue[30] = ConsigneeID;
+                //paramvalue[31] = ShipperEmail;
+                //paramvalue[32] = ShipperTelephone;
+                //paramvalue[33] = ConsigneeEmail;
+                //paramvalue[34] = ConsigneeTelephone;
+                //paramvalue[35] = customShipIDCode;
+                //paramvalue[36] = customShipAEONum;
+                //paramvalue[37] = customConsIDCode;
+                //paramvalue[38] = customConsAEONum;
+                //paramvalue[39] = customConsigneeContactPerson;
+                //paramvalue[40] = customConsigneeTelephone;
+                //paramvalue[41] = harmonizedcodes;
+                //paramvalue[42] = DecValueHAWB;
+                //paramvalue[43] = customConsIDCode;
+                //paramvalue[44] = customShipIDCode;
+                //paramvalue[45] = REFNo;
+                //paramvalue[46] = DecValueCarriageHAWB;
+                //paramvalue[47] = insuranceAmount;
+                //paramvalue[48] = currency;
+                //paramvalue[49] = DescriptionOfGoods;
+
+                //SqlDbType[] paramtype = new SqlDbType[50];
+                //paramtype[0] = SqlDbType.VarChar;
+                //paramtype[1] = SqlDbType.VarChar;
+                //paramtype[2] = SqlDbType.Int;
+                //paramtype[3] = SqlDbType.Float;
+                //paramtype[4] = SqlDbType.VarChar;
+                //paramtype[5] = SqlDbType.VarChar;
+                //paramtype[6] = SqlDbType.VarChar;
+                //paramtype[7] = SqlDbType.VarChar;
+                //paramtype[8] = SqlDbType.VarChar;
+                //paramtype[9] = SqlDbType.VarChar;
+                //paramtype[10] = SqlDbType.VarChar;
+                //paramtype[11] = SqlDbType.VarChar;
+                //paramtype[12] = SqlDbType.VarChar;
+                //paramtype[13] = SqlDbType.VarChar;
+                //paramtype[14] = SqlDbType.VarChar;
+                //paramtype[15] = SqlDbType.VarChar;
+                //paramtype[16] = SqlDbType.VarChar;
+                //paramtype[17] = SqlDbType.DateTime;
+                //paramtype[18] = SqlDbType.VarChar;
+                //paramtype[19] = SqlDbType.VarChar;
+                //paramtype[20] = SqlDbType.VarChar;
+                //paramtype[21] = SqlDbType.VarChar;
+                //paramtype[22] = SqlDbType.VarChar;
+                //paramtype[23] = SqlDbType.VarChar;
+                //paramtype[24] = SqlDbType.VarChar;
+                //paramtype[25] = SqlDbType.VarChar;
+                //paramtype[26] = SqlDbType.VarChar;
+                //paramtype[27] = SqlDbType.VarChar;
+                //paramtype[28] = SqlDbType.VarChar;
+                //paramtype[29] = SqlDbType.Int;
+                //paramtype[30] = SqlDbType.VarChar;
+                //paramtype[31] = SqlDbType.VarChar;
+                //paramtype[32] = SqlDbType.VarChar;
+                //paramtype[33] = SqlDbType.VarChar;
+                //paramtype[34] = SqlDbType.VarChar;
+                //paramtype[35] = SqlDbType.VarChar;
+                //paramtype[36] = SqlDbType.VarChar;
+                //paramtype[37] = SqlDbType.VarChar;
+                //paramtype[38] = SqlDbType.VarChar;
+                //paramtype[39] = SqlDbType.VarChar;
+                //paramtype[40] = SqlDbType.VarChar;
+                //paramtype[41] = SqlDbType.VarChar;
+                //paramtype[42] = SqlDbType.Decimal;
+                //paramtype[43] = SqlDbType.VarChar;
+                //paramtype[44] = SqlDbType.VarChar;
+                //paramtype[45] = SqlDbType.Int;
+                //paramtype[46] = SqlDbType.Decimal;
+                //paramtype[47] = SqlDbType.Decimal;
+                //paramtype[48] = SqlDbType.VarChar;
+                //paramtype[49] = SqlDbType.VarChar;
+
+
+                SqlParameter[] parameters =
                 {
-                    paramvalue[17] = DateTime.Now.ToString();
-                }
-                else
-                {
-                    paramvalue[17] = FlightDt;
-                }
-                paramvalue[18] = FltOrigin;
-                paramvalue[19] = FltDest;
-                paramvalue[20] = ConsigneeName;
-                paramvalue[21] = ConsigneeAddress;
-                paramvalue[22] = ConsigneeCity;
-                paramvalue[23] = ConsigneeState;
-                paramvalue[24] = ConsigneeCountry;
-                paramvalue[25] = ConsigneePostalCode;
-                paramvalue[26] = CustState;
-                paramvalue[27] = CustCountry;
-                paramvalue[28] = UOM;
-                paramvalue[29] = SLAC != string.Empty ? SLAC : "0";
-                paramvalue[30] = ConsigneeID;
-                paramvalue[31] = ShipperEmail;
-                paramvalue[32] = ShipperTelephone;
-                paramvalue[33] = ConsigneeEmail;
-                paramvalue[34] = ConsigneeTelephone;
-                paramvalue[35] = customShipIDCode;
-                paramvalue[36] = customShipAEONum;
-                paramvalue[37] = customConsIDCode;
-                paramvalue[38] = customConsAEONum;
-                paramvalue[39] = customConsigneeContactPerson;
-                paramvalue[40] = customConsigneeTelephone;
-                paramvalue[41] = harmonizedcodes;
-                paramvalue[42] = DecValueHAWB;
-                paramvalue[43] = customConsIDCode;
-                paramvalue[44] = customShipIDCode;
-                paramvalue[45] = REFNo;
-                paramvalue[46] = DecValueCarriageHAWB;
-                paramvalue[47] = insuranceAmount;
-                paramvalue[48] = currency;
-                paramvalue[49] = DescriptionOfGoods;
+                    new SqlParameter("@MAWBNo", SqlDbType.VarChar) { Value = MAWBNo },
+                    new SqlParameter("@HAWBNo", SqlDbType.VarChar) { Value = HAWBNo },
+                    new SqlParameter("@HAWBPcs", SqlDbType.Int) { Value = HAWBPcs },
+                    new SqlParameter("@HAWBWt", SqlDbType.Float) { Value = HAWBWt },
+                    new SqlParameter("@Description", SqlDbType.VarChar) { Value = Description },
+                    new SqlParameter("@CustID", SqlDbType.VarChar) { Value = CustID },
+                    new SqlParameter("@CustName", SqlDbType.VarChar) { Value = CustName },
+                    new SqlParameter("@CustAddress", SqlDbType.VarChar) { Value = CustAddress },
+                    new SqlParameter("@CustCity", SqlDbType.VarChar) { Value = CustCity },
+                    new SqlParameter("@Zipcode", SqlDbType.VarChar) { Value = Zipcode },
+                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = Origin },
+                    new SqlParameter("@Destination", SqlDbType.VarChar) { Value = Destination },
+                    new SqlParameter("@SHC", SqlDbType.VarChar) { Value = SHC },
+                    new SqlParameter("@HAWBPrefix", SqlDbType.VarChar) { Value = HAWBPrefix },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                    new SqlParameter("@ArrivalStatus", SqlDbType.VarChar) { Value = ArrivalStatus },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now : DateTime.Parse(FlightDt) },
+                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FltOrigin },
+                    new SqlParameter("@flightDest", SqlDbType.VarChar) { Value = FltDest },
+                    new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = ConsigneeName },
+                    new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = ConsigneeAddress },
+                    new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = ConsigneeCity },
+                    new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = ConsigneeState },
+                    new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = ConsigneeCountry },
+                    new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = ConsigneePostalCode },
+                    new SqlParameter("@CustState", SqlDbType.VarChar) { Value = CustState },
+                    new SqlParameter("@CustCountry", SqlDbType.VarChar) { Value = CustCountry },
+                    new SqlParameter("@UOM", SqlDbType.VarChar) { Value = UOM },
+                    new SqlParameter("@SLAC", SqlDbType.Int) { Value = string.IsNullOrEmpty(SLAC) ? 0 : Convert.ToInt32(SLAC) },
+                    new SqlParameter("@ConsigneeID", SqlDbType.VarChar) { Value = ConsigneeID },
+                    new SqlParameter("@ShipperEmail", SqlDbType.VarChar) { Value = ShipperEmail },
+                    new SqlParameter("@ShipperTelephone", SqlDbType.VarChar) { Value = ShipperTelephone },
+                    new SqlParameter("@ConsigneeEmail", SqlDbType.VarChar) { Value = ConsigneeEmail },
+                    new SqlParameter("@ConsigneeTelephone", SqlDbType.VarChar) { Value = ConsigneeTelephone },
+                    new SqlParameter("@ShipIDCode", SqlDbType.VarChar) { Value = customShipIDCode },
+                    new SqlParameter("@ShipAEONum", SqlDbType.VarChar) { Value = customShipAEONum },
+                    new SqlParameter("@ConsIDCode", SqlDbType.VarChar) { Value = customConsIDCode },
+                    new SqlParameter("@ConsAEONum", SqlDbType.VarChar) { Value = customConsAEONum },
+                    new SqlParameter("@ConsContactName", SqlDbType.VarChar) { Value = customConsigneeContactPerson },
+                    new SqlParameter("@ConsContactTelephone", SqlDbType.VarChar) { Value = customConsigneeTelephone },
+                    new SqlParameter("@Customs", SqlDbType.VarChar) { Value = harmonizedcodes },
+                    new SqlParameter("@DecValueHAWB", SqlDbType.Decimal) { Value = DecValueHAWB },
+                    new SqlParameter("@ConsigEORICode", SqlDbType.VarChar) { Value = customConsIDCode },
+                    new SqlParameter("@ShippEORICode", SqlDbType.VarChar) { Value = customShipIDCode },
+                    new SqlParameter("@REFNo", SqlDbType.Int) { Value = REFNo },
+                    new SqlParameter("@DecValueCarriage", SqlDbType.Decimal) { Value = DecValueCarriageHAWB },
+                    new SqlParameter("@HAWBInsuranceAmt", SqlDbType.Decimal) { Value = insuranceAmount },
+                    new SqlParameter("@HAWBCurrency", SqlDbType.VarChar) { Value = currency },
+                    new SqlParameter("@DescriptionOfGoods", SqlDbType.VarChar) { Value = DescriptionOfGoods }
+                };
 
-                SqlDbType[] paramtype = new SqlDbType[50];
-                paramtype[0] = SqlDbType.VarChar;
-                paramtype[1] = SqlDbType.VarChar;
-                paramtype[2] = SqlDbType.Int;
-                paramtype[3] = SqlDbType.Float;
-                paramtype[4] = SqlDbType.VarChar;
-                paramtype[5] = SqlDbType.VarChar;
-                paramtype[6] = SqlDbType.VarChar;
-                paramtype[7] = SqlDbType.VarChar;
-                paramtype[8] = SqlDbType.VarChar;
-                paramtype[9] = SqlDbType.VarChar;
-                paramtype[10] = SqlDbType.VarChar;
-                paramtype[11] = SqlDbType.VarChar;
-                paramtype[12] = SqlDbType.VarChar;
-                paramtype[13] = SqlDbType.VarChar;
-                paramtype[14] = SqlDbType.VarChar;
-                paramtype[15] = SqlDbType.VarChar;
-                paramtype[16] = SqlDbType.VarChar;
-                paramtype[17] = SqlDbType.DateTime;
-                paramtype[18] = SqlDbType.VarChar;
-                paramtype[19] = SqlDbType.VarChar;
-                paramtype[20] = SqlDbType.VarChar;
-                paramtype[21] = SqlDbType.VarChar;
-                paramtype[22] = SqlDbType.VarChar;
-                paramtype[23] = SqlDbType.VarChar;
-                paramtype[24] = SqlDbType.VarChar;
-                paramtype[25] = SqlDbType.VarChar;
-                paramtype[26] = SqlDbType.VarChar;
-                paramtype[27] = SqlDbType.VarChar;
-                paramtype[28] = SqlDbType.VarChar;
-                paramtype[29] = SqlDbType.Int;
-                paramtype[30] = SqlDbType.VarChar;
-                paramtype[31] = SqlDbType.VarChar;
-                paramtype[32] = SqlDbType.VarChar;
-                paramtype[33] = SqlDbType.VarChar;
-                paramtype[34] = SqlDbType.VarChar;
-                paramtype[35] = SqlDbType.VarChar;
-                paramtype[36] = SqlDbType.VarChar;
-                paramtype[37] = SqlDbType.VarChar;
-                paramtype[38] = SqlDbType.VarChar;
-                paramtype[39] = SqlDbType.VarChar;
-                paramtype[40] = SqlDbType.VarChar;
-                paramtype[41] = SqlDbType.VarChar;
-                paramtype[42] = SqlDbType.Decimal;
-                paramtype[43] = SqlDbType.VarChar;
-                paramtype[44] = SqlDbType.VarChar;
-                paramtype[45] = SqlDbType.Int;
-                paramtype[46] = SqlDbType.Decimal;
-                paramtype[47] = SqlDbType.Decimal;
-                paramtype[48] = SqlDbType.VarChar;
-                paramtype[49] = SqlDbType.VarChar;
 
-                if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
+                //if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
+                var dbRes = await _readWriteDao.ExecuteNonQueryAsync("SP_PutHAWBDetails_V2", parameters);
+                if (dbRes)
                 {
                     return true;
                 }
@@ -971,20 +1064,24 @@ namespace QidWorkerRole
         /// <summary>
         /// Used to generate FHL Message
         /// </summary>
-        public void GenerateFHL(string DepartureAirport, string flightdest, string FlightNo, string FlightDate, DateTime itdate)
+        public async Task GenerateFHL(string DepartureAirport, string flightdest, string FlightNo, string FlightDate, DateTime itdate)
         {
             string SitaMessageHeader = string.Empty, FHLMessageversion = string.Empty, Emailaddress = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty;
-            GenericFunction gf = new GenericFunction();
+
+            //GenericFunction gf = new GenericFunction();
+
             MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
             MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
             MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
-            FHLMessageProcessor FHL = new FHLMessageProcessor();
-            DataSet dsData = gf.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
+
+            //FHLMessageProcessor FHL = new FHLMessageProcessor();
+
+            DataSet dsData = _genericFunction.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
 
             if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
             {
 
-                DataSet dsmessage = gf.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty);
+                DataSet dsmessage = _genericFunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty);
 
                 if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                 {
@@ -992,9 +1089,9 @@ namespace QidWorkerRole
                     string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
                     FHLMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
                     if (MessageCommunicationType.Equals("ALL", StringComparison.OrdinalIgnoreCase) || MessageCommunicationType.Equals("SITA", StringComparison.OrdinalIgnoreCase))
-                        SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                     if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                        SFTPHeaderSITAddress = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                 }
                 DataTable dt = new DataTable();
 
@@ -1013,7 +1110,8 @@ namespace QidWorkerRole
                             string awbNumber = string.Empty, awbPrefix = string.Empty;
                             awbNumber = dt.Rows[i]["AWBNumbers"].ToString().Substring(4, 8);
                             awbPrefix = dt.Rows[i]["AWBNumbers"].ToString().Substring(0, 3);
-                            string FHLMsg = EncodeFHLForSend(awbNumber, awbPrefix, ref error, FHLMessageversion);
+                            string FHLMsg = string.Empty;
+                            (FHLMsg, error) = await EncodeFHLForSend(awbNumber, awbPrefix, error, FHLMessageversion);
                             if (FHLMsg.Length > 3)
                             {
                                 string[] msg = FHLMsg.Split('~');
@@ -1032,19 +1130,23 @@ namespace QidWorkerRole
             }
         }
 
-        public void GenerateFHL(string DepartureAirport, string flightdest, string FlightNo, string FlightDate, DateTime itdate, DateTime lstFBLSent, bool isAutoSendOnTriggerTime)
+        public async Task GenerateFHL(string DepartureAirport, string flightdest, string FlightNo, string FlightDate, DateTime itdate, DateTime lstFBLSent, bool isAutoSendOnTriggerTime)
         {
             string SitaMessageHeader = string.Empty, FHLMessageversion = string.Empty, Emailaddress = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty;
-            GenericFunction gf = new GenericFunction();
+
+            //GenericFunction gf = new GenericFunction();
+
             MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
             MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
             MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
-            FHLMessageProcessor FHL = new FHLMessageProcessor();
-            DataSet dsData = gf.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
+
+            //FHLMessageProcessor FHL = new FHLMessageProcessor();
+
+            DataSet dsData = _genericFunction.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
 
             if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
             {
-                DataSet dsmessage = gf.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
+                DataSet dsmessage = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
 
                 if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                 {
@@ -1052,9 +1154,9 @@ namespace QidWorkerRole
                     string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
                     FHLMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
                     if (MessageCommunicationType.Equals("ALL", StringComparison.OrdinalIgnoreCase) || MessageCommunicationType.Equals("SITA", StringComparison.OrdinalIgnoreCase))
-                        SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                     if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                        SFTPHeaderSITAddress = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                 }
                 DataTable dt = new DataTable();
 
@@ -1078,27 +1180,31 @@ namespace QidWorkerRole
                             awbNumber = dt.Rows[i]["AWBNumbers"].ToString().Substring(4, 8);
                             carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
 
-                            string FHLMsg = EncodeFHLForSend(awbNumber, awbPrefix, ref error, FHLMessageversion);
+                            //string FHLMsg = await EncodeFHLForSend(awbNumber, awbPrefix, ref error, FHLMessageversion);
+                            string FHLMsg = string.Empty;
+                            (FHLMsg, error) = await EncodeFHLForSend(awbNumber, awbPrefix, error, FHLMessageversion);
 
                             if (FHLMsg.Length > 3)
                             {
                                 string[] msg = FHLMsg.Split('~');
-                                GenericFunction genericFunction = new GenericFunction();
+
+                                //GenericFunction genericFunction = new GenericFunction();
+
                                 for (int j = 0; j < msg.Length; j++)
                                 {
                                     string fhlMessage = msg[j].Trim();
-                                    genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, Emailaddress, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbPrefix + "-" + awbNumber
+                                    _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, Emailaddress, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbPrefix + "-" + awbNumber
                                         , FlightNo, FlightDate.ToString(), DepartureAirport, flightdest, carrierCode);
                                     if (fhlMessage.Trim().Length > 3)
                                     {
                                         if (SitaMessageHeader.Trim().Length > 0)
-                                            genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.Trim() + "\r\n" + fhlMessage.Trim(), "", "SITAFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+                                            _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.Trim() + "\r\n" + fhlMessage.Trim(), "", "SITAFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
 
                                         if (SFTPHeaderSITAddress.Trim().Length > 0)
-                                            genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.Trim() + "\r\n" + fhlMessage.Trim(), "", "SFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+                                            _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.Trim() + "\r\n" + fhlMessage.Trim(), "", "SFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
 
                                         if (Emailaddress.Trim().Length > 0)
-                                            genericFunction.SaveMessageOutBox("FHL", fhlMessage.Trim(), "", Emailaddress.Trim(), DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+                                            _genericFunction.SaveMessageOutBox("FHL", fhlMessage.Trim(), "", Emailaddress.Trim(), DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
                                     }
                                 }
                             }
@@ -1113,22 +1219,33 @@ namespace QidWorkerRole
         /// Get FHL information and Encode FHL Message
         /// </summary>
         /// <returns>Return message (with seperator'~' for multiple houses)</returns>
-        public static string EncodeFHLForSend(string AWBNo, string AWBPrefix, ref string Error, string MsgVer, string SitaMessageHeader = "", string Emailaddress = "", string SFTPHeaderSITAddress = "")
+        //public static async Task<string> EncodeFHLForSend(string AWBNo, string AWBPrefix, ref string Error, string MsgVer, string SitaMessageHeader = "", string Emailaddress = "", string SFTPHeaderSITAddress = "")
+        public async Task<(string fhlMsg, string Error)> EncodeFHLForSend(string AWBNo, string AWBPrefix, string Error, string MsgVer, string SitaMessageHeader = "", string Emailaddress = "", string SFTPHeaderSITAddress = "")
         {
             string fhlMessage = string.Empty;
-            GenericFunction gf = new GenericFunction();
+            //GenericFunction gf = new GenericFunction();
             try
             {
-                DataSet ds = new DataSet();
-                SQLServer da = new SQLServer(true);
-                string[] paramname = new string[] { "MAWBNo", "MAWBPrefix" };
-                object[] paramvalue = new object[] { AWBNo, AWBPrefix };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                ds = da.SelectRecords("spGetHAWBSummary", paramname, paramvalue, paramtype);
+                DataSet? ds = new DataSet();
+
+                //SQLServer da = new SQLServer(true);
+                //string[] paramname = new string[] { "MAWBNo", "MAWBPrefix" };
+                //object[] paramvalue = new object[] { AWBNo, AWBPrefix };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+
+                SqlParameter[] parameters =
+                [
+                    new SqlParameter("@MAWBNo", SqlDbType.VarChar) { Value = AWBNo },
+                    new SqlParameter("@MAWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                ];
+
+                //ds = da.SelectRecords("spGetHAWBSummary", paramname, paramvalue, paramtype);
+                ds = await _readOnlyDao.SelectRecords("spGetHAWBSummary", parameters);
 
                 MessageData.fhlinfo fhl = new MessageData.fhlinfo("");
                 MessageData.consignmnetinfo[] objTempConsInfo = new MessageData.consignmnetinfo[1];
                 MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
+
                 if (ds != null)
                 {
                     if (ds.Tables.Count > 0)
@@ -1284,7 +1401,8 @@ namespace QidWorkerRole
                         else
                         {
                             Error = "Required Data Not Availabe for Message";
-                            return fhlMessage;
+                            //return fhlMessage;
+                            return (fhlMessage, Error);
                         }
                     }
                 }
@@ -1294,17 +1412,20 @@ namespace QidWorkerRole
                 clsLog.WriteLogAzure(ex);
                 Error = ex.Message;
             }
-            return fhlMessage;
+            //return fhlMessage;
+            return (fhlMessage, Error);
         }
 
         /// <summary>
         /// Method to generate FHL messages for All AWB from the flight
         /// Method added by prashant
         /// </summary>
-        public void GenerateFHL(string PartnerCode, string DepartureAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
+        public async Task GenerateFHL(string PartnerCode, string DepartureAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
             string FlightDestination = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
+
+            //GenericFunction genericFunction = new GenericFunction();
+
             string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4";
 
             DataSet dsData = new DataSet();
@@ -1317,7 +1438,7 @@ namespace QidWorkerRole
                 FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
                 DataSet dsfwb = fwbMessageProcessor.GetAWBRecordForGenerateFWBMessage(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString());
                 string awbDestination = dsfwb.Tables[0].Rows[0]["DestinationCode"].ToString();
-                DataSet dsconfiguration = genericFunction.GetSitaAddressandMessageVersion(PartnerCode, "FHL", "AIR", "", awbDestination, FlightNo, string.Empty);
+                DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersion(PartnerCode, "FHL", "AIR", "", awbDestination, FlightNo, string.Empty);
                 if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
                 {
                     strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -1327,16 +1448,18 @@ namespace QidWorkerRole
 
                     if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
                     {
-                        SitaMessageHeader = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                     if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                     {
-                        SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                 }
 
                 string carrierCode = string.Empty;
-                string FHLMsg = EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                string FHLMsg = string.Empty;
+                //string FHLMsg =await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
                 carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
                 try
                 {
@@ -1346,7 +1469,7 @@ namespace QidWorkerRole
                         for (int j = 0; j < msg.Length; j++)
                         {
                             string fhlMessage = msg[j].Trim();
-                            genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, strEmailid, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbArrray[i].Trim().ToString()
+                            _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, strEmailid, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbArrray[i].Trim().ToString()
                                        , FlightNo, FlightDate.ToString(), DepartureAirport, FlightDestination, carrierCode);
                         }
                     }
@@ -1362,10 +1485,12 @@ namespace QidWorkerRole
         /// Method to generate FHL messages for All AWB from the flight
         /// Method added by prashant
         /// </summary>
-        public void GenerateFHL(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
+        public async Task GenerateFHL(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
             string FlightDestination = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
+
+            //GenericFunction genericFunction = new GenericFunction();
+
             string SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4", WEBAPIAddress = string.Empty, WebAPIURL = string.Empty;
 
             DataSet dsData = new DataSet();
@@ -1383,7 +1508,7 @@ namespace QidWorkerRole
                 string awbOrigin = dsfwb.Tables[0].Rows[0]["OriginCode"].ToString();
                 string SFTPHeaderSITAddress = string.Empty;
 
-                DataSet dsconfiguration = genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FHL", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
+                DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FHL", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
                 if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
                 {
                     strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -1393,19 +1518,22 @@ namespace QidWorkerRole
                     WebAPIURL = dsconfiguration.Tables[0].Rows[0]["WebAPIURL"].ToString();
                     if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
                     {
-                        SitaMessageHeader = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                     if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                     {
-                        SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                     if (WebAPIURL.Length > 0)
                     {
-                        WEBAPIAddress = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
+                        WEBAPIAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
                     }
                 }
 
-                string FHLMsg = EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                //string FHLMsg = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                string FHLMsg = string.Empty;
+                (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
+
                 try
                 {
                     if (FHLMsg.Length > 3)
@@ -1416,16 +1544,16 @@ namespace QidWorkerRole
                             string fhlMessage = msg[j].Trim();
 
                             if (SitaMessageHeader.Trim().Length > 0)
-                                genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.ToString() + "\r\n" + fhlMessage, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                                _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.ToString() + "\r\n" + fhlMessage, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
 
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
-                                genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.ToString() + "\r\n" + fhlMessage, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                                _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.ToString() + "\r\n" + fhlMessage, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
 
                             if (strEmailid.Trim().Length > 0)
-                                genericFunction.SaveMessageOutBox("FHL", fhlMessage, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                                _genericFunction.SaveMessageOutBox("FHL", fhlMessage, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
 
                             if (WEBAPIAddress.Trim().Length > 0)
-                                genericFunction.SaveMessageOutBox("FHL", WEBAPIAddress.ToString() + "\r\n" + fhlMessage, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                                _genericFunction.SaveMessageOutBox("FHL", WEBAPIAddress.ToString() + "\r\n" + fhlMessage, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
                         }
                     }
                 }
