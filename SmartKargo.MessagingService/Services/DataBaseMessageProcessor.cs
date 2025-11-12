@@ -136,7 +136,8 @@ namespace QidWorkerRole
 
                         if (!dbRes)
                         {
-                            clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
+                            // clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
+                            _logger.LogWarning("Error Status Update: {0}" , ds.Tables[0].Rows[row][0]);
                         }
                     }
                 }
@@ -147,7 +148,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ex);
-                clsLog.WriteLogAzure("Exception in CheckMessagesforProcessing:", ex);
+                // clsLog.WriteLogAzure("Exception in CheckMessagesforProcessing:", ex);
+                _logger.LogError("Exception in CheckMessagesforProcessing: {0}", ex);
             }
         }
 
@@ -166,7 +168,8 @@ namespace QidWorkerRole
             {
 
                 #region Check FFA for send
-                clsLog.WriteLogAzure("FFA Processing");
+                // clsLog.WriteLogAzure("FFA Processing");
+                _logger.LogInformation("FFA Processing");
                 FFAMessageProcessor ffmMessage = new FFAMessageProcessor();
                 ffmMessage.MakeanSendFFAMessage();
 
@@ -189,7 +192,8 @@ namespace QidWorkerRole
             {
                 //SCMExceptionHandling.logexception(ref ex);
 
-                clsLog.WriteLog("Exception in Auto FBL process:" + ex.Message);
+                // clsLog.WriteLog("Exception in Auto FBL process:" + ex.Message);
+                _logger.LogError("Exception in Auto FBL process: {0}" , ex.Message);
             }
             #endregion
         }

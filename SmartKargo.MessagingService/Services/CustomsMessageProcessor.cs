@@ -92,7 +92,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 isMessageProcessed = false;
             }
             return isMessageProcessed;
@@ -233,7 +234,8 @@ namespace QidWorkerRole
                         break;
                     case "PH":
                         bool IsHousePH = false;
-                        clsLog.WriteLogAzure("Send PH_Custom message automatically");
+                        // clsLog.WriteLogAzure("Send PH_Custom message automatically");
+                        _logger.LogInformation("Send PH_Custom message automatically");
                         ///Send message automatically
                         dsIsAWBSavedSuccessfully = await AutoGeneratePHCustomMessage(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
 
@@ -243,7 +245,8 @@ namespace QidWorkerRole
                             {
                                 if (!Convert.ToBoolean(Convert.ToString(dt.Rows[0][0]).Trim()))
                                 {
-                                    clsLog.WriteLogAzure("Insufficient data tp send PH_Custom message automatically: " + FlightNumber + ":" + FlightDate.ToString());
+                                    // clsLog.WriteLogAzure("Insufficient data tp send PH_Custom message automatically: " + FlightNumber + ":" + FlightDate.ToString());
+                                    _logger.LogInformation("Insufficient data tp send PH_Custom message automatically: {0} : {1} " , FlightNumber , FlightDate);
                                     IsSavedSuccessfully = false;
                                     break;
                                 }
@@ -251,12 +254,14 @@ namespace QidWorkerRole
                         }
                         if (IsSavedSuccessfully)
                         {
-                            clsLog.WriteLogAzure("Get data to generate Custom Message for AWB: " + FlightNumber + ":" + FlightDate.ToString());
+                            // clsLog.WriteLogAzure("Get data to generate Custom Message for AWB: " + FlightNumber + ":" + FlightDate.ToString());
+                            _logger.LogInformation($"Get data to generate Custom Message for AWB: {0} : {1}" , FlightNumber , FlightDate);
 
                             ///Generate Custom Message for AWB
                             dsAWBDetails = await GetDataSetForPHXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHousePH);
 
-                            clsLog.WriteLogAzure("Generate Custom Message: " + FlightNumber + ":" + FlightDate.ToString());
+                            // clsLog.WriteLogAzure("Generate Custom Message: " + FlightNumber + ":" + FlightDate.ToString());
+                            _logger.LogInformation("Generate Custom Message: {0} : {1}" , FlightNumber,FlightDate);
                             StringBuilder sbAWB = GenerateXMLforPH(dsAWBDetails);
 
                             //string subject = FlightNumber.ToLower().Trim() + "_" + FlightDate.Year.ToString()+ FlightDate.Month.ToString().PadLeft(2, '0') + FlightDate.Day.ToString().PadLeft(2, '0') + "_" +  "imp" + "_" + DateTime.UtcNow.Year.ToString() + DateTime.UtcNow.Month.ToString().PadLeft(2,'0') + DateTime.UtcNow.Day.ToString().PadLeft(2, '0') + DateTime.UtcNow.Hour.ToString() + DateTime.UtcNow.Minute.ToString() + ".xml";
@@ -265,7 +270,8 @@ namespace QidWorkerRole
                             //GenericFunction genericFunction = new GenericFunction();
                             if (_genericFunction.SaveMessageOutBox(subject, sbAWB.ToString(), "", "SFTP", FlightOrigin, FlightDestination, FlightNumber, FlightDate.ToString("yyyy-MM-dd HH:mm:ss"), "", "FFM", MessageData.MessageTypeName.PHCUSTOM_M))
                             {
-                                clsLog.WriteLogAzure("Custom Message Saved to the outbox: " + subject);
+                                // clsLog.WriteLogAzure("Custom Message Saved to the outbox: " + subject);
+                                _logger.LogInformation("Custom Message Saved to the outbox: {0}" , subject);
                                 DataSet? dsUpdateXMLResult = new DataSet();
                                 dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHousePH);
                             }
@@ -278,7 +284,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
 
                 throw;
             }
@@ -848,7 +855,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return sbCebuXml;
         }
@@ -879,7 +887,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsResult;
         }
@@ -910,7 +919,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsResult;
         }
@@ -944,7 +954,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -973,7 +984,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1004,7 +1016,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1249,7 +1262,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1261,11 +1275,19 @@ namespace QidWorkerRole
         /// <returns></returns>
         public async Task<DataSet?> GetXMLMessageData(string listType)
         {
-            //SQLServer da = new SQLServer();
-            SqlParameter[] sqlParameter = new SqlParameter[] {
-                      new SqlParameter("@ListType",listType)
-             };
-            return await _readWriteDao.SelectRecords("uspGetXMLMessageData", sqlParameter);
+            try
+            {
+                //SQLServer da = new SQLServer();
+                SqlParameter[] sqlParameter = new SqlParameter[] {
+                          new SqlParameter("@ListType",listType)
+                 };
+                return await _readWriteDao.SelectRecords("uspGetXMLMessageData", sqlParameter);
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
         }
 
         public async Task<DataSet?> SaveCustomMessageXML(string flightNo, DateTime flightDate, string customeMessageType, string xmlString, bool isHouse)
@@ -1288,7 +1310,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1455,7 +1478,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1491,7 +1515,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
