@@ -37,12 +37,24 @@ namespace SmartKargo.MessagingService.Configurations
         public bool IsSMSNewApi { get; set; } = false;
     }
 
+    public class PollingConfig
+    {
+        public int SleepSeconds { get; set; } = 0;
+    }
+
+    public class AlertConfig
+    {
+        public string DataDumpAlertEmailID { get; set; } = string.Empty;
+    }
+
     public class AppConfig
     {
         public DatabaseConfig Database { get; set; } = new();
         public AppLoggingConfig AppLogging { get; set; } = new();
         public AuthenticationConfig Authentication { get; set; } = new();
         public SmsConfig Sms { get; set; } = new();
+        public PollingConfig Polling { get; set; } = new();
+        public AlertConfig Alert { get; set; } = new();
 
     }
 }
