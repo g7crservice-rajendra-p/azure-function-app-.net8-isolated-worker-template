@@ -12,6 +12,8 @@
       * Description           :   
      */
 #endregion
+
+using Microsoft.Extensions.Logging;
 using System;
 using System.Globalization;
 using System.Data;
@@ -26,9 +28,11 @@ namespace QidWorkerRole
     {
         SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         const string PAGE_NAME = "FBLMessageProcessor";
+        private readonly ILogger<FFAMessageProcessor> _logger;
 
-        public FFAMessageProcessor()
+        public FFAMessageProcessor(ILogger<FFAMessageProcessor> logger)
         {
+            _logger = logger;
         }
 
         public bool DecodeReceivedFFAMessage(string ffamsg, ref MessageData.ffainfo ffadata, ref MessageData.ffainfo[] flightinfo)
@@ -59,7 +63,10 @@ namespace QidWorkerRole
                                     string[] msg = str[i].Split('/');
                                     ffadata.ffaversionnum = msg[1];
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -191,7 +198,10 @@ namespace QidWorkerRole
 
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message); 
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                }
                             }
                             #endregion
 
@@ -207,7 +217,10 @@ namespace QidWorkerRole
                                         ffadata.otherserviceinfo1 = msg[1];
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -228,7 +241,10 @@ namespace QidWorkerRole
                                     }
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -245,7 +261,10 @@ namespace QidWorkerRole
                                         ffadata.supplemetryshipperinfo2 = msg[3].Length > 0 ? msg[3] : null;
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -266,7 +285,10 @@ namespace QidWorkerRole
 
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message); 
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                }
                             }
                             #endregion
                         }
@@ -276,7 +298,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
             }
             return flag;
         }
@@ -307,7 +330,10 @@ namespace QidWorkerRole
                                     string[] msg = str[i].Split('/');
                                     ffadata.ffaversionnum = msg[1];
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message); 
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                }
                             }
                             #endregion
 
@@ -426,7 +452,10 @@ namespace QidWorkerRole
 
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -442,7 +471,10 @@ namespace QidWorkerRole
                                         ffadata.otherserviceinfo1 = msg[1];
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -463,7 +495,10 @@ namespace QidWorkerRole
                                     }
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -480,7 +515,10 @@ namespace QidWorkerRole
                                         ffadata.supplemetryshipperinfo2 = msg[3].Length > 0 ? msg[3] : null;
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                catch (Exception ex) {
+                                    // clsLog.WriteLogAzure(ex.Message);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                 }
                             }
                             #endregion
 
@@ -501,7 +539,10 @@ namespace QidWorkerRole
 
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex.Message); }
+                                {
+                                    // clsLog.WriteLogAzure(ex.Message); 
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                }
                             }
                             #endregion
                         }
@@ -511,7 +552,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
             }
             return flag;
         }
@@ -590,11 +632,13 @@ namespace QidWorkerRole
                 SqlDbType[] PType = new SqlDbType[] { SqlDbType.Structured };
                 flag = dtb.InsertData("spInsertAWBStatusFFA_V2", PName, PType, PValues);
                 if (!flag)
-                    clsLog.WriteLogAzure("Error Status Update:" + dt.Rows[0]["awbno"].ToString());
+                    // clsLog.WriteLogAzure("Error Status Update:" + dt.Rows[0]["awbno"].ToString());
+                    _logger.LogWarning("Error Status Update: {0}" , dt.Rows[0]["awbno"]);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -629,13 +673,15 @@ namespace QidWorkerRole
                                 if (dsFFAData.Tables.Count > 1)
                                 {
                                     if (!EncodeFFAForSend(dsFFAData))
-                                        clsLog.WriteLogAzure("FFA not Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
+                                        // clsLog.WriteLogAzure("FFA not Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
+                                        _logger.LogWarning("FFA not Update: {0}" , dsFFAData.Tables[0].Rows[0][0]);
                                 }
                                 string[] PName = new string[] { "AWBNo", "AWBPrefix" };
                                 object[] PValues = new object[] { dsFFAData.Tables[0].Rows[0]["AWBNumber"].ToString(), dsFFAData.Tables[0].Rows[0]["AWBPrefix"].ToString() };
                                 SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
                                 if (!sqlServer.ExecuteProcedure("spUpdateFFAStatus", PName, PType, PValues))
-                                    clsLog.WriteLogAzure("Error Status Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
+                                    // clsLog.WriteLogAzure("Error Status Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
+                                    _logger.LogWarning("Error Status Update: {0}" , dsFFAData.Tables[0].Rows[0][0]);
                             }
                         }
                     }
@@ -645,7 +691,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -736,7 +783,9 @@ namespace QidWorkerRole
                             if (gf.SaveMessageOutBox("FFA", ffaMessage, FromEmailID, ToEmailID))
                                 flag = true;
                             else
-                                clsLog.WriteLogAzure("Error: Not inserted in outbox");
+                                // clsLog.WriteLogAzure("Error: Not inserted in outbox");
+                                _logger.LogWarning("Error: Not inserted in outbox");
+                                
 
                         }
                         if (SitaAddress != "")
@@ -745,7 +794,8 @@ namespace QidWorkerRole
                             if (gf.SaveMessageOutBox("SITA:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP"))
                                 flag = true;
                             else
-                                clsLog.WriteLogAzure("Error: Not inserted in outbox");
+                                // clsLog.WriteLogAzure("Error: Not inserted in outbox");
+                                _logger.LogWarning("Error: Not inserted in outbox");
 
                         }
                     }
@@ -755,7 +805,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error in encode FFA:" + ex.Message);
+                // clsLog.WriteLogAzure("Error in encode FFA:" + ex.Message);
+                _logger.LogError("Error in encode FFA: {0}" , ex.Message);
             }
             return flag;
         }
@@ -872,7 +923,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -976,7 +1028,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                 ffa = "ERR";
             }
             return ffa;
