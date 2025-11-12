@@ -662,7 +662,7 @@ namespace QidWorkerRole
                         {
                             DataRow dr = ds.Tables[0].Rows[i];
                             FBRMessageProcessor Fbr = new FBRMessageProcessor();
-                            GenerateFBLMessage(dr["Source"].ToString(), dr["Dest"].ToString(), dr["FlightID"].ToString(), dr["Date"].ToString());
+                            await GenerateFBLMessage(dr["Source"].ToString(), dr["Dest"].ToString(), dr["FlightID"].ToString(), dr["Date"].ToString());
                         }
 
 

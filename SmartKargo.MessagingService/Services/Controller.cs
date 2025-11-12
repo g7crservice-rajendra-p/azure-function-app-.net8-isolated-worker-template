@@ -53,7 +53,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Error :", ex);
+                    // clsLog.WriteLogAzure("Error :", ex);
+                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 }
                 //Thread.Sleep(1000 * 60 * int.Parse(Convert.ToString(genericFunction.ReadValueFromDb("Interval"))));//ConfigurationSettings.AppSettings["Interval"].ToString()
                 Thread.Sleep(1000 * 60 * int.Parse(Convert.ToString(ConfigCache.Get("Interval"))));//ConfigurationSettings.AppSettings["Interval"].ToString()
@@ -84,7 +85,8 @@ namespace QidWorkerRole
                 //poppy.Authenticate(sUserName, sPassword);
                 _popClient.Connect(sServer, 110, bSSLConnection);
                 _popClient.Authenticate(sUserName, sPassword);
-                clsLog.WriteLogAzure("Server Connected..[" + DateTime.Now + "]", null);
+                // clsLog.WriteLogAzure("Server Connected..[" + DateTime.Now + "]", null);
+                _logger.LogInformation($"Server Connected..[ {DateTime.Now}");
                 //int Count = poppy.GetMessageCount();
                 int Count = _popClient.GetMessageCount();
                 if (Count > 0)
@@ -114,9 +116,11 @@ namespace QidWorkerRole
                         DateTime dtSend = dtRec;
 
 
-                        clsLog.WriteLogAzure("Email Received : Subject :" + Subject + " [" + DateTime.Now + "]");
+                        // clsLog.WriteLogAzure("Email Received : Subject :" + Subject + " [" + DateTime.Now + "]");
+                        _logger.LogInformation("Email Received : Subject : {0} [{1}]" , Subject , DateTime.Now);
                         StoreIROPSEmail(Subject, MailBody, fromEmail, toEmail, dtRec, dtSend, Subject, status);
-                        clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                        // clsLog.WriteLogAzure("Email " + (i + 1) + " Saved");
+                        _logger.LogInformation($"Email {i+1} Saved");
                         //poppy.DeleteMessage(i);
                         _popClient.DeleteMessage(i);
 
@@ -131,15 +135,18 @@ namespace QidWorkerRole
             catch (MailServerException ep)
             {
                 //Message contains the information returned by mail server
-                Console.WriteLine("Server Respond: {0}", ep.Message);
+                // Console.WriteLine("Server Respond: {0}", ep.Message);
+                _logger.LogError("Server Respond: {0}", ep.Message);
             }
             catch (System.Net.Sockets.SocketException ep)
             {
-                Console.WriteLine("Socket Error: {0}", ep.Message);
+                // Console.WriteLine("Socket Error: {0}", ep.Message);
+                _logger.LogError("Socket Error: {0}", ep.Message);
             }
             catch (Exception ep)
             {
-                Console.WriteLine("System Error: {0}", ep.Message);
+                // Console.WriteLine("System Error: {0}", ep.Message);
+                _logger.LogError("System Error: {0}", ep.Message);
             }
 
 
@@ -255,7 +262,8 @@ namespace QidWorkerRole
             }
             catch (Exception)
             {
-                clsLog.WriteLogAzure("Error : In(StoreEmail) [" + DateTime.Now + "]");
+                // clsLog.WriteLogAzure("Error : In(StoreEmail) [" + DateTime.Now + "]");
+                _logger.LogError("Error IN(StoreEmail) [{0}]" , DateTime.Now);
                 return false;
             }
         }
@@ -274,14 +282,16 @@ namespace QidWorkerRole
                         strRecord += "  " + row[i].ToString();
                     }
 
-                    clsLog.WriteLogAzure("Record : " + strRecord + "");
+                    // clsLog.WriteLogAzure("Record : " + strRecord + "");
+                    _logger.LogInformation("Record : {0}" , strRecord );
                 }
 
 
             }
             catch (Exception)
             {
-                clsLog.WriteLogAzure("Error : In[LogRecords] [" + DateTime.Now + "]");
+                // clsLog.WriteLogAzure("Error : In[LogRecords] [" + DateTime.Now + "]");
+                _logger.LogError("Error : In[LogRecords] [{0}]" , DateTime.Now);
 
             }
 
