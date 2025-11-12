@@ -12,6 +12,7 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<cls_SCMBL> _logger;
+        private static ILogger _staticLogger;
         private readonly GenericFunction _genericFunction;
         private readonly CIMPMessageValidation _cIMPMessageValidation;
         private readonly cls_Encode_Decode _cls_Encode_Decode;
@@ -37,6 +38,7 @@ namespace QidWorkerRole
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _staticLogger ??= logger;
             _genericFunction = genericFunction;
             _cIMPMessageValidation = cIMPMessageValidation;
             _cls_Encode_Decode = cls_Encode_Decode;
@@ -103,7 +105,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //finally
@@ -141,7 +144,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 dsAWB = null;
             }
             return dsAWB;
@@ -171,7 +175,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 dsFlight = null;
             }
             return dsFlight;
@@ -228,7 +233,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -280,7 +286,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return flag;
             }
         }
@@ -457,7 +464,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -489,25 +497,36 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+            catch (Exception ex) {
+                // clsLog.WriteLogAzure(ex); 
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
         }
 
         private XmlNode RenameNode(XmlNode e, string newName)
         {
-            XmlDocument doc = e.OwnerDocument;
-            XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
-            while (e.HasChildNodes)
-            {
-                newNode.AppendChild(e.FirstChild);
-            }
-            XmlAttributeCollection ac = e.Attributes;
-            while (ac.Count > 0)
-            {
-                newNode.Attributes.Append(ac[0]);
-            }
-            XmlNode parent = e.ParentNode;
-            parent.ReplaceChild(newNode, e);
-            return newNode;
+           try
+           {
+             XmlDocument doc = e.OwnerDocument;
+             XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
+             while (e.HasChildNodes)
+             {
+                 newNode.AppendChild(e.FirstChild);
+             }
+             XmlAttributeCollection ac = e.Attributes;
+             while (ac.Count > 0)
+             {
+                 newNode.Attributes.Append(ac[0]);
+             }
+             XmlNode parent = e.ParentNode;
+             parent.ReplaceChild(newNode, e);
+             return newNode;
+           }
+           catch (System.Exception ex)
+           {
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
         private async Task<bool> validateAndInsertSCMData(MessageData.SCMInfo[] scm)
@@ -593,13 +612,15 @@ namespace QidWorkerRole
 
                 if (!flag)
                 {
-                    clsLog.WriteLogAzure("Error in Updating SCM Data");
+                    // clsLog.WriteLogAzure("Error in Updating SCM Data");
+                    _logger.LogWarning("Error in Updating SCM Data");
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -625,7 +646,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -1044,7 +1066,8 @@ namespace QidWorkerRole
                             if (flag == true)
                                 flag = fsbProcessor.ValidateAndSaveFSBMessage(fsbMessage, fsbShipper, fsbConsignee, RouteIformation, Dimensionformation, bublistinformation, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
                             else
-                                clsLog.WriteLogAzure("FSB Message not reprossed");
+                                // clsLog.WriteLogAzure("FSB Message not reprossed");
+                                _logger.LogWarning("FSB Message not reprossed");
                             #endregion
                         }
                         else if (strMsg.Trim().StartsWith("FWR", StringComparison.OrdinalIgnoreCase) || strMsg.Trim().StartsWith("FWR/"))
@@ -1094,7 +1117,8 @@ namespace QidWorkerRole
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure(ex);
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             }
                         }
                         else if (strMsg.Trim().StartsWith("CPM", StringComparison.OrdinalIgnoreCase))
@@ -1104,7 +1128,10 @@ namespace QidWorkerRole
                                 msgType = "CPM";
                             }
                             catch (Exception ex)
-                            { clsLog.WriteLogAzure(ex); }
+                            {
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
                         }
                         else if (strMsg.Trim().StartsWith("UNB"))
                         {
@@ -1420,7 +1447,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //return flag;
@@ -1528,7 +1556,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         fltDate = dtFlightDate.ToString("MM/dd/yyyy");
                     }
                 }
@@ -1578,7 +1607,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return objRouteInfo; // return original on error
             }
         }
@@ -1629,7 +1659,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
 
@@ -1753,7 +1784,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -1788,7 +1820,10 @@ namespace QidWorkerRole
                             objFBLInfo.date = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).Day.ToString().PadLeft(2, '0');
                         }
                         catch (Exception ex)
-                        { clsLog.WriteLogAzure(ex); }
+                        {
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                         }
                         objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
                         objFBLInfo.fltairportcode = POL;
                         objFBLInfo.endmesgcode = "LAST";
@@ -1851,7 +1886,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception in FBL Encode:" + ex.Message);
+                // clsLog.WriteLogAzure("Exception in FBL Encode:" + ex.Message);
+                _logger.LogError("Exception in FBL Encode: {0}" , ex.Message);
             }
             return flag;
         }
@@ -1941,7 +1977,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2047,7 +2084,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2184,7 +2222,10 @@ namespace QidWorkerRole
                                 }
                             }
 
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                            catch (Exception ex) {
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); 
+                            }
 
                             if (dsData != null && dsData.Tables.Count > 0)
                             {
@@ -2240,7 +2281,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             try
                                             {
@@ -2254,7 +2296,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 objTempConsInfo.uldsequence = "";
                                             }
                                             for (int k = 0; k < objUnloadingPort.Length; k++)
@@ -2294,7 +2337,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
 
             return FFMMsg;
@@ -2337,7 +2381,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -2384,7 +2429,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2566,7 +2612,10 @@ namespace QidWorkerRole
 
                             }
                             catch (Exception ex)
-                            { clsLog.WriteLogAzure(ex); }
+                            {
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");    
+                             }
 
                             Array.Resize(ref objFSANode, objFSANode.Length + 1);
                             objFSANode[objFSANode.Length - 1] = objComnStruct;
@@ -2582,7 +2631,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2619,7 +2669,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2664,7 +2715,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2709,7 +2761,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return ds;
         }
@@ -2801,7 +2854,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -2848,13 +2902,15 @@ namespace QidWorkerRole
                 if (!flag)
                 {
                     //clsLog.WriteLogAzure("Error in addMsgToOutBox:" + dtb.LastErrorDescription);
-                    clsLog.WriteLogAzure("Error in addMsgToOutBox:");
+                    // clsLog.WriteLogAzure("Error in addMsgToOutBox:");
+                    _logger.LogWarning("Error in addMsgToOutBox:");
 
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error:" + ex.Message);
+                // clsLog.WriteLogAzure("Error:" + ex.Message);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -2940,7 +2996,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -2969,7 +3026,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3017,7 +3075,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsData;
         }
@@ -3108,7 +3167,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3139,7 +3199,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -3220,7 +3281,10 @@ namespace QidWorkerRole
                                             route.month = mon.ToString();
 
                                         }
-                                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                                        catch (Exception ex) {
+                                            // clsLog.WriteLogAzure(ex); 
+                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        }
                                         route.carriercode = "";
                                         route.fltnum = drAWBRouteMaster["FltNumber"].ToString();
 
@@ -3249,7 +3313,10 @@ namespace QidWorkerRole
                                             }
                                         }
                                         catch (Exception ex)
-                                        { clsLog.WriteLogAzure(ex); }
+                                        {
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                         }
 
                                         Array.Resize(ref fltRoute, fltRoute.Length + 1);
                                         fltRoute[fltRoute.Length - 1] = route;
@@ -3312,7 +3379,10 @@ namespace QidWorkerRole
                                     }
                                 }
                             }
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                            catch (Exception ex) {
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
 
                             #endregion
                             //line 9 
@@ -3347,7 +3417,10 @@ namespace QidWorkerRole
                                     objFFRInfo.conscontactnum = drAWBShipperConsigneeDetails["ConsigneeTelephone"].ToString();
                                 }
                             }
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                            catch (Exception ex) {
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                             }
                             //line 12
                             objFFRInfo.custaccnum = "";
                             objFFRInfo.iatacargoagentcode = ""; //drAWBSummaryMaster["AgentCode"].ToString();
@@ -3379,7 +3452,10 @@ namespace QidWorkerRole
                 }
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex); }
+            {
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+             }
             return flag;
         }
 
@@ -3485,7 +3561,8 @@ namespace QidWorkerRole
                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spOutboxErrorUpdate", parameters);
                             if (!dbRes)
                             {
-                                clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
+                                // clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
+                                _logger.LogWarning("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
                             }
                         }
                     }
@@ -3493,7 +3570,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -3600,14 +3678,18 @@ namespace QidWorkerRole
                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spOutboxErrorUpdate", parameters);
                             if (!dbRes)
                             {
-                                clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFBLForSend");
+                                // clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFBLForSend");
+                                _logger.LogWarning("Error on calling spOutboxErrorUpdate in EncodeFBLForSend");
                             }
                         }
                     }
                 }
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex); }
+            {
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+             }
             return flag;
         }
 
@@ -3731,14 +3813,18 @@ namespace QidWorkerRole
                             var dbRes = await _readWriteDao.ExecuteNonQueryAsync("spOutboxErrorUpdate", parameters);
                             if (!dbRes)
                             {
-                                clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
+                                // clsLog.WriteLogAzure("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
+                                _logger.LogWarning("Error on calling spOutboxErrorUpdate in EncodeFHLForSend");
                             }
                         }
                     }
                 }
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex); }
+            {
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+             }
             return flag;
         }
 
@@ -4927,293 +5013,301 @@ namespace QidWorkerRole
 
         public string ReplacingNodeNames(string xmlMsg, ref string xmlMessageName)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xmlMsg);
-            XmlNode nodeToFind;
-            XmlElement root = doc.DocumentElement;
-            xmlMessageName = root.Name;
-            XmlNodeList xmlNodelst;
-            if (xmlMessageName.Equals("rsm:FlightManifest"))
+            try
             {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(xmlMsg);
+                XmlNode nodeToFind;
+                XmlElement root = doc.DocumentElement;
+                xmlMessageName = root.Name;
+                XmlNodeList xmlNodelst;
+                if (xmlMessageName.Equals("rsm:FlightManifest"))
                 {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedCustomsNote1");
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedCustomsNote1");
+                        }
                     }
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("IncludedCustomsNote1", "ram:IncludedCustomsNote1");
                 }
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("IncludedCustomsNote1", "ram:IncludedCustomsNote1");
+                else if (xmlMessageName.Equals("rsm:HouseWaybill"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedTareGrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_IncludedTareGrossWeightMeasure");
+                        }
+                    }
+    
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:FreightForwarderParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:FreightForwarderParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
+                        }
+                    }
+    
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_IncludedTareGrossWeightMeasure", "ram:IncludedHouseConsignment_IncludedTareGrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("FreightForwarderParty_PostalStructuredAddress", "ram:FreightForwarderParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
+                }
+                else if (xmlMessageName.Equals("rsm:Waybill"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossVolumeMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
+                        }
+                    }
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
+                }
+                else if (xmlMessageName.Equals("rsm:BookingRequest"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:RequestorParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:RequestorParty_PostalStructuredAddress");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedUnitLoadTransportEquipment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedUnitLoadTransportEquipment_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:TransportLogisticsPackage"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:TransportLogisticsPackage_GrossWeightMeasure");
+                        }
+                    }
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("RequestorParty_PostalStructuredAddress", "ram:RequestorParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossWeightMeasure", "ram:IncludedMasterConsignmentItem_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("AssociatedUnitLoadTransportEquipment_GrossWeightMeasure", "ram:AssociatedUnitLoadTransportEquipment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("TransportLogisticsPackage_GrossWeightMeasure", "ram:TransportLogisticsPackage_GrossWeightMeasure");
+                }
+                else if (root.Name.Equals("rsm:HouseManifest"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_TransportContractDocument");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_IncludedCustomsNote");
+                        }
+                    }
+    
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_TransportContractDocument", "ram:MasterConsignment_TransportContractDocument");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_IncludedCustomsNote", "ram:MasterConsignment_IncludedCustomsNote");
+    
+                }
+                else if (root.Name.Equals("rsm:FreightBookedList"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:LogisticsTransportMovement"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:LogisticsTransportMovement_IncludedCustomsNote");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:TransportLogisticsPackage"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:TransportLogisticsPackage_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:UtilizedUnitLoadTransportEquipment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:UtilizedUnitLoadTransportEquipment_GrossWeightMeasure");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PrimaryID')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:OperatingParty"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:OperatingParty_PrimaryID");
+                        }
+                    }
+    
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("LogisticsTransportMovement_IncludedCustomsNote", "ram:LogisticsTransportMovement_IncludedCustomsNote");
+                    xmlMsg = xmlMsg.Replace("TransportLogisticsPackage_GrossWeightMeasure", "ram:TransportLogisticsPackage_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("UtilizedUnitLoadTransportEquipment_GrossWeightMeasure", "ram:UtilizedUnitLoadTransportEquipment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("OperatingParty_PrimaryID", "ram:OperatingParty_PrimaryID");
+                }
+                else if (root.Name.Equals("rsm:StatusMessage"))
+                {
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedStatusConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedStatusConsignment_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_GrossWeightMeasure");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TransportContractDocument");
+                        }
+                    }
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TotalGrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
+                    {
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
+                        }
+                    }
+    
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_GrossWeightMeasure", "ram:MasterConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("AssociatedStatusConsignment_GrossWeightMeasure", "ram:AssociatedStatusConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_GrossWeightMeasure", "ram:IncludedHouseConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TransportContractDocument", "ram:IncludedHouseConsignment_TransportContractDocument");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
+                }
             }
-            else if (xmlMessageName.Equals("rsm:HouseWaybill"))
+            catch (System.Exception ex)
             {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedTareGrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_IncludedTareGrossWeightMeasure");
-                    }
-                }
-
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:FreightForwarderParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:FreightForwarderParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
-                    }
-                }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_IncludedTareGrossWeightMeasure", "ram:IncludedHouseConsignment_IncludedTareGrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("FreightForwarderParty_PostalStructuredAddress", "ram:FreightForwarderParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
-            }
-            else if (xmlMessageName.Equals("rsm:Waybill"))
-            {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossVolumeMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
-                    }
-                }
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
-            }
-            else if (xmlMessageName.Equals("rsm:BookingRequest"))
-            {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:RequestorParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:RequestorParty_PostalStructuredAddress");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossWeightMeasure");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedUnitLoadTransportEquipment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedUnitLoadTransportEquipment_GrossWeightMeasure");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:TransportLogisticsPackage"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:TransportLogisticsPackage_GrossWeightMeasure");
-                    }
-                }
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("RequestorParty_PostalStructuredAddress", "ram:RequestorParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossWeightMeasure", "ram:IncludedMasterConsignmentItem_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("AssociatedUnitLoadTransportEquipment_GrossWeightMeasure", "ram:AssociatedUnitLoadTransportEquipment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("TransportLogisticsPackage_GrossWeightMeasure", "ram:TransportLogisticsPackage_GrossWeightMeasure");
-            }
-            else if (root.Name.Equals("rsm:HouseManifest"))
-            {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_TransportContractDocument");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_IncludedCustomsNote");
-                    }
-                }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("MasterConsignment_TransportContractDocument", "ram:MasterConsignment_TransportContractDocument");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_IncludedCustomsNote", "ram:MasterConsignment_IncludedCustomsNote");
-
-            }
-            else if (root.Name.Equals("rsm:FreightBookedList"))
-            {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:LogisticsTransportMovement"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:LogisticsTransportMovement_IncludedCustomsNote");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:TransportLogisticsPackage"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:TransportLogisticsPackage_GrossWeightMeasure");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:UtilizedUnitLoadTransportEquipment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:UtilizedUnitLoadTransportEquipment_GrossWeightMeasure");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PrimaryID')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:OperatingParty"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:OperatingParty_PrimaryID");
-                    }
-                }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("LogisticsTransportMovement_IncludedCustomsNote", "ram:LogisticsTransportMovement_IncludedCustomsNote");
-                xmlMsg = xmlMsg.Replace("TransportLogisticsPackage_GrossWeightMeasure", "ram:TransportLogisticsPackage_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("UtilizedUnitLoadTransportEquipment_GrossWeightMeasure", "ram:UtilizedUnitLoadTransportEquipment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("OperatingParty_PrimaryID", "ram:OperatingParty_PrimaryID");
-            }
-            else if (root.Name.Equals("rsm:StatusMessage"))
-            {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_GrossWeightMeasure");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedStatusConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedStatusConsignment_GrossWeightMeasure");
-                    }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_GrossWeightMeasure");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TransportContractDocument");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TotalGrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
-                    }
-                }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("MasterConsignment_GrossWeightMeasure", "ram:MasterConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("AssociatedStatusConsignment_GrossWeightMeasure", "ram:AssociatedStatusConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_GrossWeightMeasure", "ram:IncludedHouseConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TransportContractDocument", "ram:IncludedHouseConsignment_TransportContractDocument");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
             return xmlMsg;
         }
@@ -5358,7 +5452,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return null;
             }
         }
@@ -5405,7 +5500,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
 
@@ -5414,10 +5510,6 @@ namespace QidWorkerRole
             // Return success flag + the (potentially unchanged) objects
             return (flag, csnInfo, custominfo);
         }
-
-
-
-
 
     }
 }

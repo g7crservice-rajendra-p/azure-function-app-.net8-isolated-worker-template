@@ -6878,7 +6878,7 @@ namespace QidWorkerRole
                                                     if (_emailOut.sendMail(accountEmail, sentadd, password, subject, body, ishtml, outport, ccadd, Attachments, AttachmentName, Extensions))
                                                     {
                                                         // clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID :" + dr[0].ToString());
-                                                        clsLog.WriteLogAzure("After Sending Mail with Attachment for MessageID : {0}" , dr[0]);
+                                                        _logger.LogInformation("After Sending Mail with Attachment for MessageID : {0}" , dr[0]);
                                                         //string pname = "num";
                                                         //object pvalue = int.Parse(dr[0].ToString());
                                                         //SqlDbType ptype = SqlDbType.Int;
@@ -8096,8 +8096,8 @@ namespace QidWorkerRole
                                     //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                     //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
                                     _logger.LogInformation("Before sending UWS: {0} : {1}",
-                                         ds.Tables[0].Rows[i]["airlineCode"]
-                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                         ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                         , ds.Tables[0].Rows[i]["originDate"]);
 
                                     SendUWSMessage(ds.Tables[0].Rows[i]["airlineCode"].ToString() + ds.Tables[0].Rows[i]["flightNo"].ToString()
@@ -8111,8 +8111,8 @@ namespace QidWorkerRole
                                     //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                     //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
                                     _logger.LogInformation("Before sending NTM: {0} : {1}",
-                                         ds.Tables[0].Rows[i]["airlineCode"]
-                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                         ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                         , ds.Tables[0].Rows[i]["originDate"]);
 
                                     SendNTMMessage(ds.Tables[0].Rows[i]["airlineCode"].ToString() + ds.Tables[0].Rows[i]["flightNo"].ToString()
@@ -8126,8 +8126,8 @@ namespace QidWorkerRole
                                     //     + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                     //     + " : " + ds.Tables[0].Rows[i]["originDate"].ToString());
                                     _logger.LogInformation("After sent NTM: {0} : {1}",
-                                         ds.Tables[0].Rows[i]["airlineCode"]
-                                        + ds.Tables[0].Rows[i]["flightNo"]
+                                         ds.Tables[0].Rows[i]["airlineCode"].ToString()
+                                        + ds.Tables[0].Rows[i]["flightNo"].ToString()
                                         , ds.Tables[0].Rows[i]["originDate"]);
                                 }
                             }
@@ -8188,7 +8188,7 @@ namespace QidWorkerRole
                                 catch (Exception exc)
                                 {
                                     // clsLog.WriteLogAzure(exc);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(exc,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
                             }
                         }
@@ -8560,7 +8560,7 @@ namespace QidWorkerRole
  
              return Excel;
            }
-           catch (System.Exception)
+           catch (System.Exception ex)
            {
             _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             throw;
@@ -8604,7 +8604,7 @@ namespace QidWorkerRole
     
                 return Excel;
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
                 _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
@@ -8967,7 +8967,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -10373,7 +10373,7 @@ namespace QidWorkerRole
                                          if (Convert.ToString(dsRateLog.Tables[1].Rows[0]["AgentCity"]).Length > 0)
                                              AgentName = AgentName + Environment.NewLine + dsRateLog.Tables[1].Rows[0]["AgentCity"].ToString();
                                      }
-                                     catch (Exception x) {
+                                     catch (Exception ex) {
                                          // clsLog.WriteLogAzure(x); 
                                          _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                      }
@@ -10661,7 +10661,7 @@ namespace QidWorkerRole
                  }
              }
            }
-           catch (System.Exception)
+           catch (System.Exception ex)
            {
             _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             throw;
@@ -11112,9 +11112,9 @@ namespace QidWorkerRole
                 return HTMLData;
     
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -11192,19 +11192,22 @@ namespace QidWorkerRole
         string Password;
         string SoapRequest;
 
+        private readonly ILogger<Cls_BL> _logger;
 
         public WebService()
         {
 
         }
 
-        public WebService(string url, string methodName, string userName, string password, string MessageBody)
+        public WebService(string url, string methodName, string userName, string password, string MessageBody, ILogger<Cls_BL> logger)
+        
         {
             Url = url;
             MethodName = methodName;
             UserName = userName;
             Password = password;
             SoapRequest = MessageBody;
+            _logger = logger;
         }
 
         /// <summary>
