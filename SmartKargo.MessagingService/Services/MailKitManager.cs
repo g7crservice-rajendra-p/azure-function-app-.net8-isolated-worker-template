@@ -1,30 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Net;
-using System.Configuration;
-using System.Net.Mail;
-using System.Data;
-using QID.DataAccess;
-using SendGrid;
-using SendGrid.Helpers.Mail;
-using System.Net.Http;
-using System.Threading.Tasks;
-
+﻿using MailKit.Security;
+using Microsoft.Extensions.Logging;
 using MimeKit;
-using MailKit.Net.Smtp;
-using MailKit.Security;
+using System.Data;
 
 namespace QidWorkerRole
 {
     public class MailKitManager
     {
-        bool success = false;
-        public bool SendEmailMailKitManager(DataSet ds, string accountEmail, string sentadd, string password, string subject, string body, bool ishtml, string CCEmailId, string FileName = "",string SMTPUserName="",string MailIouterver="")
+        private readonly Cls_BL _cls_BL;
+        private readonly ILogger<MailKitManager> _logger;
+
+        public MailKitManager(Cls_BL cls_BL, ILogger<MailKitManager> logger)
+        {
+            _cls_BL = cls_BL;
+            _logger = logger;
+        }
+
+        public bool SendEmailMailKitManager(DataSet ds, string accountEmail, string sentadd, string password, string subject, string body, bool ishtml, string CCEmailId, string FileName = "", string SMTPUserName = "", string MailIouterver = "")
         {
 
+            bool success = false;
             #region MailKit Email send
 
             try
@@ -34,7 +29,7 @@ namespace QidWorkerRole
 
                 var attachment = new MimePart();
 
-                Cls_BL clsbl = new Cls_BL();
+                //Cls_BL clsbl = new Cls_BL();
 
 
                 // Sender address
@@ -46,8 +41,8 @@ namespace QidWorkerRole
                 {
                     message.To.Add(MailboxAddress.Parse(email.Trim()));
                 }
-                                     
-                
+
+
 
 
                 if (ds != null)
@@ -70,7 +65,7 @@ namespace QidWorkerRole
                                 {
                                     string type = "";
 
-                                    byte[] byteData12 = clsbl.DownloadBlob(drow["FileUrl"].ToString());
+                                    byte[] byteData12 = _cls_BL.DownloadBlob(drow["FileUrl"].ToString());
 
                                     switch (drow["MIMEType"].ToString().ToUpper())
                                     {
@@ -133,7 +128,7 @@ namespace QidWorkerRole
                                             type = "application/octet-stream";
                                             break;
                                     }
-                                                                        
+
 
                                     // Let's assume this is your content type string (e.g., "application/pdf")
                                     string contentTypeString = type;
@@ -165,7 +160,7 @@ namespace QidWorkerRole
 
                 if (ishtml)
                 {
-                    
+
                     multipart.Add(new TextPart("html")
                     {
                         Text = body
@@ -173,7 +168,7 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    
+
                     multipart.Add(new TextPart("plain")
                     {
                         Text = body
@@ -213,11 +208,9 @@ namespace QidWorkerRole
             }
 
             catch (Exception ex)
-            {                
+            {
                 clsLog.WriteLogAzure("Exception in send grid functionality" + ex);
-
             }
-
 
             #endregion
             return success;

@@ -1,21 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static QidWorkerRole.MessageData;
+﻿using Microsoft.Data.SqlClient;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using System.Text.RegularExpressions;
 
 namespace QidWorkerRole
 {
     public class LDMMessageProcessor
     {
 
-        public LDMMessageProcessor()
+        private readonly ISqlDataHelperDao _readWriteDao;
+
+        public LDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory)
         {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
         }
         public bool DecodeReceiveLDMMessage(string strMsg, ref MessageData.LDMInfo ldm, int srno)
         {
@@ -73,7 +69,8 @@ namespace QidWorkerRole
             return flag;
 
         }
-        public bool SaveandValidateLDMMessage(int srno, ref MessageData.LDMInfo ldm)
+
+        public async Task<(bool success, MessageData.LDMInfo ldm)> SaveandValidateLDMMessage(int srno, MessageData.LDMInfo ldm)
         {
             bool flag = false;
             string formattedDate = string.Empty;
@@ -93,12 +90,27 @@ namespace QidWorkerRole
             }
             try
             {
+                //string[] paramName = new string[] { "FlightNo", "Flightdate", "FlightDestination", "Paxcount", "Paxcapacity", "Bagweight", "TailNumber", "Srno" };
+                //SqlDbType[] paramSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.Int };
+                //object[] paramValue = new string[] { ldm.flightno, formattedDate, ldm.flightdest, PaxCount.ToString(), Paxcapacitydata.ToString(), Bagweightdata.ToString(), ldm.tailno, srno.ToString() };
 
-                string[] paramName = new string[] { "FlightNo", "Flightdate", "FlightDestination", "Paxcount", "Paxcapacity", "Bagweight", "TailNumber", "Srno" };
-                SqlDbType[] paramSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.Int };
-                object[] paramValue = new string[] { ldm.flightno, formattedDate, ldm.flightdest, PaxCount.ToString(), Paxcapacitydata.ToString(), Bagweightdata.ToString(), ldm.tailno, srno.ToString() };
-                SQLServer sqlServer = new SQLServer();
-                sqlServer.SelectRecords("uspSaveLDMMessage", paramName, paramValue, paramSqlType);
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = ldm.flightno },
+                    new SqlParameter("@Flightdate", SqlDbType.VarChar) { Value = formattedDate },
+                    new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = ldm.flightdest },
+                    new SqlParameter("@Paxcount", SqlDbType.Int) { Value = PaxCount.ToString() },
+                    new SqlParameter("@Paxcapacity", SqlDbType.Decimal) { Value = Paxcapacitydata.ToString() },
+                    new SqlParameter("@Bagweight", SqlDbType.Decimal) { Value = Bagweightdata.ToString() },
+                    new SqlParameter("@TailNumber", SqlDbType.VarChar) { Value = ldm.tailno },
+                    new SqlParameter("@Srno", SqlDbType.Int) { Value = srno.ToString() }
+                };
+
+
+                //SQLServer sqlServer = new SQLServer();
+                //sqlServer.SelectRecords("uspSaveLDMMessage", paramName, paramValue, paramSqlType);
+
+                await _readWriteDao.ExecuteNonQueryAsync("uspSaveLDMMessage", sqlParameters);
                 flag = true;
             }
             catch (Exception ex)
@@ -106,7 +118,7 @@ namespace QidWorkerRole
                 clsLog.WriteLogAzure(ex);
                 flag = false;
             }
-            return flag;
+            return (flag, ldm);
         }
     }
 }

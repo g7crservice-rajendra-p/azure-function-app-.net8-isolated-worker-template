@@ -14,33 +14,61 @@
      */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Text.RegularExpressions;
-using System.Globalization;
-using System.Text;
-using System.IO;
-using System.Reflection;
+//using System; //Not in used
+//using System.Collections.Generic;//Not in used
+//using System.Linq;//Not in used
+//using System.Web;//Not in used
+//using System.Text.RegularExpressions;//Not in used
+using Grpc.Core;
+using Microsoft.Azure.Amqp.Framing;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
+
+//using System.Text;//Not in used
+//using System.IO;//Not in used
+//using System.Reflection;//Not in used
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using QidWorkerRole;
-using System.Data.SqlClient;
+using System.Globalization;
+using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
+using System.Xml.Linq;
+//using QID.DataAccess;//Not in used
+//using System.Configuration;//Not in used
+//using QidWorkerRole;//Not in used
+//using System.Data.SqlClient;//Not in used
 
 namespace QidWorkerRole
 {
     public class FSUMessageProcessor
     {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FSUMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
+        private readonly Cls_BL _clsBL;
+        private readonly FFRMessageProcessor _fFRMessageProcessor;
+        private readonly FWBMessageProcessor _fWBMessageProcessor;
+        private readonly FHLMessageProcessor _fHLMessageProcessor;
+
+
         #region :: Constructor ::
-        public FSUMessageProcessor()
+        public FSUMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FSUMessageProcessor> logger, GenericFunction genericFunction,
+            Cls_BL clsBL, FFRMessageProcessor fFRMessageProcessor, FWBMessageProcessor fWBMessageProcessor,
+            FHLMessageProcessor fHLMessageProcessor)
         {
-
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+            _clsBL = clsBL;
+            _fFRMessageProcessor = fFRMessageProcessor;
+            _fWBMessageProcessor = fWBMessageProcessor;
+            _fHLMessageProcessor = fHLMessageProcessor;
         }
-        #endregion Constructor
-
+        #endregion
         #region :: Public Methods ::
+
         /// <summary>
         /// Method to decode FSU message string and assing decoded data to the array of structure
         /// </summary>
@@ -300,8 +328,10 @@ namespace QidWorkerRole
                                                         if (recdata.pcsindicator.Trim().ToUpper() == "P")
                                                         {
                                                             flag = false;
-                                                            GenericFunction genericFunction = new GenericFunction();
-                                                            genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            //GenericFunction genericFunction = new GenericFunction();
+                                                            //genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+
                                                         }
 
                                                         recdata.numofpcs = currentLineRCSText[3] != ""
@@ -458,8 +488,9 @@ namespace QidWorkerRole
                                                         if (recdata.pcsindicator.Trim().ToUpper() == "P")
                                                         {
                                                             flag = false;
-                                                            GenericFunction genericFunction = new GenericFunction();
-                                                            genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            //GenericFunction genericFunction = new GenericFunction();
+                                                            //genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
                                                         }
                                                     }
                                                     if (currentLineRCTText.Length > 5)
@@ -1681,7 +1712,7 @@ namespace QidWorkerRole
                                                 MessageData.customsextrainfo custom = new MessageData.customsextrainfo("");
                                                 try
                                                 {
-                                                    if (fsanodes.Length == 0 )
+                                                    if (fsanodes.Length == 0)
                                                     {
                                                         recdata.messageprefix = msgdataOCIdata[0] != "" ? msgdataOCIdata[0] : "";
                                                     }
@@ -1938,1234 +1969,1679 @@ namespace QidWorkerRole
         /// <param name="strFromID"></param>
         /// <param name="strStatus"></param>
         /// <returns>Returns true if FSU message saved successfuly</returns>
-        public bool SaveandUpdateFSUMessage(string strMsg, ref MessageData.FSAInfo fsadata, ref MessageData.CommonStruct[] fsanodes, ref MessageData.customsextrainfo[] customextrainfo, ref MessageData.ULDinfo[] ulddata, ref MessageData.otherserviceinfo[] othinfoarray, int refNo, string strMessage, string strMessageFrom, string strFromID, string strStatus, out string ErrorMsg)
+        //public async Task<bool> SaveandUpdateFSUMessage(string strMsg, ref MessageData.FSAInfo fsadata, ref MessageData.CommonStruct[] fsanodes, ref MessageData.customsextrainfo[] customextrainfo, ref MessageData.ULDinfo[] ulddata, ref MessageData.otherserviceinfo[] othinfoarray, int refNo, string strMessage, string strMessageFrom, string strFromID, string strStatus, out string ErrorMsg)
+        public async Task<(bool Success, string ErrorMsg, MessageData.FSAInfo fsadata, MessageData.CommonStruct[] fsanodes, MessageData.customsextrainfo[] customextrainfo, MessageData.ULDinfo[] ulddata, MessageData.otherserviceinfo[] othinfoarray)>
+        SaveandUpdateFSUMessage(
+        string strMsg,
+        MessageData.FSAInfo fsadata,
+        MessageData.CommonStruct[] fsanodes,
+        MessageData.customsextrainfo[] customextrainfo,
+        MessageData.ULDinfo[] ulddata,
+        MessageData.otherserviceinfo[] othinfoarray,
+        int refNo,
+        string strMessage,
+        string strMessageFrom,
+        string strFromID,
+        string strStatus)
         {
-            SQLServer dtb = new SQLServer();
-            ErrorMsg = string.Empty;
-            bool flag = false;
-            string strFSUBooking = string.Empty;
-            Cls_BL objBL = new Cls_BL();
-            bool isAWBPresent = false;
-            bool AWBAccepted = true;
-            try
+
             {
-                string awbnum = string.Empty, awbprefix = string.Empty;
-                string MessagePrefix = fsanodes.Length > 0 && fsanodes[0].messageprefix.Length > 0 ? "FSU/" + fsanodes[0].messageprefix.ToUpper() : "FSU";
-                GenericFunction genericfunction = new GenericFunction();
-                genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
-
-                #region Check AWB is present or not
-
-                DataSet dsCheck = new DataSet();
-                dtb = new SQLServer();
-                string[] parametername = new string[] { "AWBNumber", "AWBPrefix", "refNo" };
-                object[] AWBvalues = new object[] { fsadata.awbnum, fsadata.airlineprefix, refNo };
-
-                SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-                dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
-                if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0)
+                //SQLServer dtb = new SQLServer();
+                string ErrorMsg = string.Empty;
+                bool flag = false;
+                string strFSUBooking = string.Empty;
+                //Cls_BL objBL = new Cls_BL();
+                bool isAWBPresent = false;
+                bool AWBAccepted = true;
+                try
                 {
-                    if (dsCheck.Tables[0].Rows[0]["AWBNumber"].ToString().Equals(fsadata.awbnum, StringComparison.OrdinalIgnoreCase))
-                    {
+                    string awbnum = string.Empty, awbprefix = string.Empty;
+                    string MessagePrefix = fsanodes.Length > 0 && fsanodes[0].messageprefix.Length > 0 ? "FSU/" + fsanodes[0].messageprefix.ToUpper() : "FSU";
+                    //GenericFunction genericfunction = new GenericFunction();
+                    //genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
+                    _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
 
-                        isAWBPresent = true;
-                        if (dsCheck.Tables[0].Rows[0]["IsAccepted"].ToString().ToUpper() == "FALSE" || dsCheck.Tables[0].Rows[0]["AWBStatus"].ToString().ToUpper() != "E")
-                            AWBAccepted = false;
-                        if (dsCheck.Tables[0].Rows[0]["AWBStatus"].ToString().ToUpper() == "V"
-                            && (fsanodes[0].messageprefix.ToUpper().Trim() == "RCS" || fsanodes[0].messageprefix.ToUpper().Trim() == "RCT"))
+                    #region Check AWB is present or not
+
+                    //DataSet dsCheck = new DataSet();
+                    //dtb = new SQLServer();
+                    //string[] parametername = new string[] { "AWBNumber", "AWBPrefix", "refNo" };
+                    //object[] AWBvalues = new object[] { fsadata.awbnum, fsadata.airlineprefix, refNo };
+
+                    //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
+                    //dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                    SqlParameter[] sqlParameters = new SqlParameter[]
+                    {
+                  new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum },
+                  new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
+                  new SqlParameter("@refNo", SqlDbType.VarChar) { Value = refNo },
+
+                    };
+                    DataSet dsCheck = await _readWriteDao.SelectRecords("Messaging.uspRelayFSAOnFSR", sqlParameters);
+                    if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0)
+                    {
+                        if (dsCheck.Tables[0].Rows[0]["AWBNumber"].ToString().Equals(fsadata.awbnum, StringComparison.OrdinalIgnoreCase))
                         {
-                            ErrorMsg = fsadata.awbnum + " AWB is Voided";
-                            return false;
-                        }
-                    }
-                    if (dsCheck.Tables[0].Rows[0]["IsRetToShipper"].ToString() == "True")
-                    {
-                        ErrorMsg = "AWB already return to shipper.";
-                        return false;
-                    }
 
-                    if ((dsCheck.Tables[0].Rows[0]["DestinationCode"].ToString() != fsadata.dest || dsCheck.Tables[0].Rows[0]["OriginCode"].ToString() != fsadata.origin) && fsadata.awbnum.Length > 0 && fsanodes.Length > 0
-                    && (fsanodes[0].messageprefix.ToUpper() == "DLV" || fsanodes[0].messageprefix.ToUpper() == "RCS" || fsanodes[0].messageprefix.ToUpper() == "RCT" || fsanodes[0].messageprefix.ToUpper() == "RCF"))
-                    {
-                        ErrorMsg = "Origin/Destination mismatch";
-                        return false;
-                    }
-
-                }
-                #endregion Check AWB is present or not
-
-                #region Below Segment of FSU/DIS
-                ///AWB Discrepancy Recorded through FSU/DIS Message
-                if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "DIS")
-                {
-                    if (fsanodes.Length > 0)
-                    {
-                        for (int i = 0; i < fsanodes.Length; i++)
-                        {
-                            DateTime strDiscrepancyDate = new DateTime();
-                            if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                            isAWBPresent = true;
+                            if (dsCheck.Tables[0].Rows[0]["IsAccepted"].ToString().ToUpper() == "FALSE" || dsCheck.Tables[0].Rows[0]["AWBStatus"].ToString().ToUpper() != "E")
+                                AWBAccepted = false;
+                            if (dsCheck.Tables[0].Rows[0]["AWBStatus"].ToString().ToUpper() == "V"
+                                && (fsanodes[0].messageprefix.ToUpper().Trim() == "RCS" || fsanodes[0].messageprefix.ToUpper().Trim() == "RCT"))
                             {
-                                string strdate = (fsanodes[i].fltmonth + "/" + fsanodes[i].fltday + "/" + DateTime.Now.Year.ToString());
-                                strDiscrepancyDate = DateTime.Parse(strdate);
-                            }
-
-                            string[] sqlParameterName = new string[]
-                            {
-                                 "AWBPrefix",
-                                 "AWBNumber",
-                                 "AWBOrigin",
-                                 "AWBDestination",
-                                "AWBPieces",
-                                "AWBGrossWeight" ,
-                                "FlightNumber",
-                                "DiscrepancyDate",
-                                "FlightOrigin",
-                                "DiscrepancyCode",
-                                "DiscrepancyPcsCode",
-                                "DiscrepancyPcs",
-                                "UOM",
-                                "Discrepancyweight",
-                                "UpdatedBy",
-                                "UpdatedOn",
-                                "OtherServiceInformation"
-                       };
-                            object[] sqlParameterValue = new object[] {
-                               fsadata.airlineprefix,
-                               fsadata.awbnum,
-                                fsadata.origin,
-                                fsadata.dest,
-                                int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                fsanodes[i].flightnum,
-                                strDiscrepancyDate,
-                                //fsanodes[0].fltorg,
-                                 fsadata.origin,
-                                fsanodes[0].infocode,
-                                fsanodes[i].pcsindicator,
-                                int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
-                                fsanodes[i].weightcode,
-                                decimal.Parse(fsanodes[i].weight == "" ? "0" : fsanodes[i].weight),
-                                "FSU",
-                                DateTime.Now,
-                               othinfoarray.Length > 0 ? Convert.ToString(othinfoarray[0].otherserviceinfo1) : ""
-                        };
-                            SqlDbType[] sqlParameter = new SqlDbType[] {
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar
-                            };
-                            if (dtb.InsertData("SpSaveFSUAWBDiscrepancy", sqlParameterName, sqlParameter, sqlParameterValue))
-                                flag = true;
-                            else
-                            {
-                                flag = false;
-                                return flag;
+                                ErrorMsg = fsadata.awbnum + " AWB is Voided";
+                                //return false;
+                                return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                             }
                         }
-                    }
-                }
-
-                #endregion
-
-                #region Below Segmnet of FSU/DLV Message
-                ///Make  AWB Delivered  Throgh  DLV Message 
-                if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "DLV")
-                {
-                    if (fsanodes.Length > 0)
-                    {
-                        for (int i = 0; i < fsanodes.Length; i++)
+                        if (dsCheck.Tables[0].Rows[0]["IsRetToShipper"].ToString() == "True")
                         {
-                            DateTime DeliveryDate = new DateTime();
-                            if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
-                            {
-                                string strdate = (fsanodes[i].fltmonth + "/" + fsanodes[i].fltday + "/" + DateTime.Now.Year.ToString());
-                                DeliveryDate = DateTime.Parse(strdate);
-                            }
-                            string[] sqlParameterName = new string[]
-                            {
-                                "AWBPrefix",
-                                "AWBNo",
-                                "Origin",
-                                "Destination",
-                                "AWbPcs",
-                                "AWbGrossWt" ,
-                                "PieceCode",
-                                "Deliverypcs",
-                                "WeightCode",
-                                "DeliveryGross",
-                                "FlightDestination ",
-                                "Dname",
-                                "Deliverydate",
-                                "UpdatedBy",
-                                "RefNo"
-                            };
-                            object[] sqlParameterValue = new object[]
-                            {
-                                fsadata.airlineprefix,
-                                fsadata.awbnum,
-                                fsadata.origin,
-                                fsadata.dest,
-                                int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                fsanodes[i].pcsindicator,
-                                fsanodes[i].numofpcs,
-                                fsanodes[i].weightcode,
-                                //fsanodes[i].weight,
-                                //decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
-                                fsanodes[0].fltdest,
-                                fsanodes[0].name,
-                                DeliveryDate,
-                                "FSU/DLV",
-                                refNo
-                            };
-                            SqlDbType[] sqlParameter = new SqlDbType[] {
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int
-                            };
-                            DataSet dsDLVResult = new DataSet();
-                            dsDLVResult = dtb.SelectRecords("MakeAWBDeliveryorderofFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
+                            ErrorMsg = "AWB already return to shipper.";
+                            //return false;
+                            return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                        }
 
-                            if (dsDLVResult != null && dsDLVResult.Tables.Count > 0)
+                        if ((dsCheck.Tables[0].Rows[0]["DestinationCode"].ToString() != fsadata.dest || dsCheck.Tables[0].Rows[0]["OriginCode"].ToString() != fsadata.origin) && fsadata.awbnum.Length > 0 && fsanodes.Length > 0
+                        && (fsanodes[0].messageprefix.ToUpper() == "DLV" || fsanodes[0].messageprefix.ToUpper() == "RCS" || fsanodes[0].messageprefix.ToUpper() == "RCT" || fsanodes[0].messageprefix.ToUpper() == "RCF"))
+                        {
+                            ErrorMsg = "Origin/Destination mismatch";
+                            //return false;
+                            return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                        }
+
+                    }
+                    #endregion Check AWB is present or not
+
+                    #region Below Segment of FSU/DIS
+                    ///AWB Discrepancy Recorded through FSU/DIS Message
+                    if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "DIS")
+                    {
+                        if (fsanodes.Length > 0)
+                        {
+                            for (int i = 0; i < fsanodes.Length; i++)
                             {
-                                for (int j = 0; j < dsDLVResult.Tables.Count; j++)
+                                DateTime strDiscrepancyDate = new DateTime();
+                                if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
                                 {
-                                    if (dsDLVResult.Tables[j].Columns.Contains("ResultStatus") && dsDLVResult.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE")
-                                        return true;
+                                    string strdate = (fsanodes[i].fltmonth + "/" + fsanodes[i].fltday + "/" + DateTime.Now.Year.ToString());
+                                    strDiscrepancyDate = DateTime.Parse(strdate);
                                 }
 
-                            }
+                                //     string[] sqlParameterName = new string[]
+                                //     {
+                                //          "AWBPrefix",
+                                //          "AWBNumber",
+                                //          "AWBOrigin",
+                                //          "AWBDestination",
+                                //         "AWBPieces",
+                                //         "AWBGrossWeight" ,
+                                //         "FlightNumber",
+                                //         "DiscrepancyDate",
+                                //         "FlightOrigin",
+                                //         "DiscrepancyCode",
+                                //         "DiscrepancyPcsCode",
+                                //         "DiscrepancyPcs",
+                                //         "UOM",
+                                //         "Discrepancyweight",
+                                //         "UpdatedBy",
+                                //         "UpdatedOn",
+                                //         "OtherServiceInformation"
+                                //};
+                                //     object[] sqlParameterValue = new object[] {
+                                //        fsadata.airlineprefix,
+                                //        fsadata.awbnum,
+                                //         fsadata.origin,
+                                //         fsadata.dest,
+                                //         int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                                //         decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                                //         fsanodes[i].flightnum,
+                                //         strDiscrepancyDate,
+                                //         //fsanodes[0].fltorg,
+                                //          fsadata.origin,
+                                //         fsanodes[0].infocode,
+                                //         fsanodes[i].pcsindicator,
+                                //         int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
+                                //         fsanodes[i].weightcode,
+                                //         decimal.Parse(fsanodes[i].weight == "" ? "0" : fsanodes[i].weight),
+                                //         "FSU",
+                                //         DateTime.Now,
+                                //        othinfoarray.Length > 0 ? Convert.ToString(othinfoarray[0].otherserviceinfo1) : ""
+                                // };
+                                //     SqlDbType[] sqlParameter = new SqlDbType[] {
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.Int,
+                                //         SqlDbType.Decimal,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.DateTime,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.Int,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.Decimal,
+                                //         SqlDbType.VarChar,
+                                //         SqlDbType.DateTime,
+                                //         SqlDbType.VarChar
+                                //     };
+                                var disParams = new[]
+                                {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix  },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum  },
+                                new SqlParameter("@AWBOrigin", SqlDbType.VarChar) { Value = fsadata.origin  },
+                                new SqlParameter("@AWBDestination", SqlDbType.VarChar) { Value = fsadata.dest  },
+                                new SqlParameter("@AWBPieces", SqlDbType.Int)
+                                {
+                                    Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0
+                                },
+                                new SqlParameter("@AWBGrossWeight", SqlDbType.Decimal)
+                                {
+                                    Value = decimal.TryParse(fsadata.weight, out var wt) ? wt : 0
+                                },
+                                new SqlParameter("@FlightNumber", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].flightnum
+                                },
+                                new SqlParameter("@DiscrepancyDate", SqlDbType.DateTime)
+                                {
+                                    Value = strDiscrepancyDate
+                                },
+                                new SqlParameter("@FlightOrigin", SqlDbType.VarChar)
+                                {
+                                    Value = fsadata.origin
+                                },
+                                new SqlParameter("@DiscrepancyCode", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].infocode
+                                },
+                                new SqlParameter("@DiscrepancyPcsCode", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].pcsindicator
+                                },
+                                new SqlParameter("@DiscrepancyPcs", SqlDbType.Int)
+                                {
+                                    Value = int.TryParse(fsanodes[i].numofpcs, out var np) ? np : 0
+                                },
+                                new SqlParameter("@UOM", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].weightcode
+                                },
+                                new SqlParameter("@DiscrepancyWeight", SqlDbType.Decimal)
+                                {
+                                    Value = decimal.TryParse(fsanodes[i].weight, out var dw) ? dw : 0
+                                },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FSU" },
+                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.UtcNow },
+                                new SqlParameter("@OtherServiceInformation", SqlDbType.VarChar)
+                                {
+                                    Value = othinfoarray.Length > 0
+                                        ? Convert.ToString(othinfoarray[0].otherserviceinfo1)
+                                        : string.Empty
+                                }
+                            };
+                                //if (dtb.InsertData("SpSaveFSUAWBDiscrepancy", sqlParameterName, sqlParameter, sqlParameterValue))
+                                if (await _readWriteDao.ExecuteNonQueryAsync("SpSaveFSUAWBDiscrepancy", disParams))
+                                    flag = true;
+                                else
+                                {
+                                    flag = false;
+                                    //return flag;
+                                    return (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
 
+                                }
+                            }
                         }
                     }
-                }
-                #endregion
 
-                #region  Below Segmnet of RCS and RCT Message
-                ///Make  AWB Accepted Throgh  RCS Message 
-                bool isAcceptedbyFSURCS = false;
-                bool isAcceptedbyFSURCT = false;
-                if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
-                {
-                    if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCS")
-                    {
-                        isAcceptedbyFSURCS = true;
-                    }
-                }
-                if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
-                {
-                    if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCT")
-                    {
-                        isAcceptedbyFSURCT = true;
-                    }
-                }
-                if (isAcceptedbyFSURCS || isAcceptedbyFSURCT)
-                {
-                    if (fsanodes.Length > 0)
-                    {
+                    #endregion
 
-                        if (!isAWBPresent)
+                    #region Below Segmnet of FSU/DLV Message
+                    ///Make  AWB Delivered  Throgh  DLV Message 
+                    if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "DLV")
+                    {
+                        if (fsanodes.Length > 0)
                         {
-                            return false;
+                            for (int i = 0; i < fsanodes.Length; i++)
+                            {
+                                DateTime DeliveryDate = new DateTime();
+                                if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                                {
+                                    string strdate = (fsanodes[i].fltmonth + "/" + fsanodes[i].fltday + "/" + DateTime.Now.Year.ToString());
+                                    DeliveryDate = DateTime.Parse(strdate);
+                                }
+                                //string[] sqlParameterName = new string[]
+                                //{
+                                //    "AWBPrefix",
+                                //    "AWBNo",
+                                //    "Origin",
+                                //    "Destination",
+                                //    "AWbPcs",
+                                //    "AWbGrossWt" ,
+                                //    "PieceCode",
+                                //    "Deliverypcs",
+                                //    "WeightCode",
+                                //    "DeliveryGross",
+                                //    "FlightDestination ",
+                                //    "Dname",
+                                //    "Deliverydate",
+                                //    "UpdatedBy",
+                                //    "RefNo"
+                                //};
+                                //object[] sqlParameterValue = new object[]
+                                //{
+                                //    fsadata.airlineprefix,
+                                //    fsadata.awbnum,
+                                //    fsadata.origin,
+                                //    fsadata.dest,
+                                //    int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                                //    decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                                //    fsanodes[i].pcsindicator,
+                                //    fsanodes[i].numofpcs,
+                                //    fsanodes[i].weightcode,
+                                //    //fsanodes[i].weight,
+                                //    //decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                                //    decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
+                                //    fsanodes[0].fltdest,
+                                //    fsanodes[0].name,
+                                //    DeliveryDate,
+                                //    "FSU/DLV",
+                                //    refNo
+                                //};
+                                //SqlDbType[] sqlParameter = new SqlDbType[] {
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.Int,
+                                //    SqlDbType.Decimal,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.Int,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.Decimal,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.DateTime,
+                                //    SqlDbType.VarChar,
+                                //    SqlDbType.Int
+                                //};
+                                var dlvParams = new[]
+                                {
+                              new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix  },
+                              new SqlParameter("@AWBNo", SqlDbType.VarChar) { Value = fsadata.awbnum },
+                              new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fsadata.origin  },
+                              new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest  },
+                              new SqlParameter("@AWbPcs", SqlDbType.Int) { Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0 },
+                              new SqlParameter("@AWbGrossWt", SqlDbType.Decimal) { Value = decimal.TryParse(fsadata.weight, out var awbWeight) ? awbWeight : 0 },
+                              new SqlParameter("@PieceCode", SqlDbType.VarChar) { Value = fsanodes[i].pcsindicator  },
+                              new SqlParameter("@Deliverypcs", SqlDbType.Int) { Value = int.TryParse(fsanodes[i].numofpcs, out var delPcs) ? delPcs : 0 },
+                              new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = fsanodes[i].weightcode  },
+                              new SqlParameter("@DeliveryGross", SqlDbType.Decimal) { Value = decimal.TryParse(fsanodes[i].weight, out var delWeight) ? delWeight : 0 },
+                              new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fsanodes[0].fltdest  },
+                              new SqlParameter("@Dname", SqlDbType.VarChar) { Value = fsanodes[0].name  },
+                              new SqlParameter("@Deliverydate", SqlDbType.DateTime) { Value = DeliveryDate },
+                              new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FSU/DLV" },
+                              new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
+                            };
+
+                                DataSet dsDLVResult = new DataSet();
+                                //dsDLVResult = dtb.SelectRecords("MakeAWBDeliveryorderofFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
+                                dsDLVResult = await _readWriteDao.SelectRecords("MakeAWBDeliveryorderofFSUMessage", dlvParams);
+
+                                if (dsDLVResult != null && dsDLVResult.Tables.Count > 0)
+                                {
+                                    for (int j = 0; j < dsDLVResult.Tables.Count; j++)
+                                    {
+                                        if (dsDLVResult.Tables[j].Columns.Contains("ResultStatus") && dsDLVResult.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE")
+                                            //return true;
+                                            return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+
+                                    }
+
+                                }
+                            }
                         }
+                        #endregion
 
-                        for (int i = 0; i < fsanodes.Length; i++)
+                        #region  Below Segmnet of RCS and RCT Message
+                        ///Make  AWB Accepted Throgh  RCS Message 
+                        bool isAcceptedbyFSURCS = false;
+                        bool isAcceptedbyFSURCT = false;
+                        //if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
+                        if (!string.IsNullOrEmpty(ConfigCache.Get("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(ConfigCache.Get("isAcceptedbyFSURCS").Trim()))
                         {
-                            #region : Check AWB is accepted or not :
-                            FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
-                            DataSet dsAWBStatus = new DataSet();
-                            dsAWBStatus = ffrMessageProcessor.CheckValidateFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
-                            for (int k = 0; k < dsAWBStatus.Tables.Count; k++)
+                            if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCS")
                             {
-                                if (dsAWBStatus.Tables[k].Columns.Contains("MessageName") && dsAWBStatus.Tables[k].Columns.Contains("AWBSttus"))
-                                {
-                                    if (dsAWBStatus.Tables[k].Rows[0]["AWBSttus"].ToString().ToUpper() == "ACCEPTED")
-                                    {
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
-                                        return true;
-                                    }
-                                }
-                                if (dsAWBStatus.Tables[k].Columns.Contains("ErrorMessage"))
-                                {
-                                    string str = dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().ToUpper();
-                                    if (str.Contains("MANIFESTED"))
-                                    {
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
-                                        return true;
-                                    }
-
-                                    string _errorMsg = dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().ToUpper();
-                                    if (_errorMsg.Contains("AGENT VALIDITY EXPIRED"))
-                                    {
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
-                                        return true;
-                                    }
-
-                                    if (dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().Contains("DGR is not yet approved"))
-                                    {
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
-                                        return true;
-                                    }
-                                }
+                                isAcceptedbyFSURCS = true;
                             }
-                            #endregion Check AWB is accepted or not
-
-                            DateTime AcceptedDate = new DateTime();
-                            string AcceptedTime = string.Empty;
-                            if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                        }
+                        //if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
+                        if (!string.IsNullOrEmpty(ConfigCache.Get("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(ConfigCache.Get("isAcceptedbyFSURCT").Trim()))
+                        {
+                            if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCT")
                             {
-                                if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
-                                    AcceptedDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
-                                if (fsanodes[i].flttime.Length > 0)
-                                    AcceptedTime = fsanodes[i].flttime.Substring(0, 2) + ":" + fsanodes[i].flttime.Substring(2) + ":00";
+                                isAcceptedbyFSURCT = true;
                             }
-
-                            DataSet dsAWBMaterLogOldValues = new DataSet();
-                            ///MasterLog
-                            dsAWBMaterLogOldValues = genericfunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
-
-                            string[] sqlParameterName = new string[]
-                                            {
-                                                "AWBPrefix",
-                                                "AWBNo",
-                                                "Origin",
-                                                "Destination",
-                                                "AWbPcs",
-                                                "AWbGrossWt" ,
-                                                "PieceCode",
-                                                "AcceptPieces",
-                                                "WeightCode",
-                                                "AcceptedGrWeight",
-                                                "AccpetedOrigin",
-                                                "ShipperName",
-                                                "VolumeCode",
-                                                "VolumeAmount",
-                                                "UpdatedBy",
-                                                "AcceptedDate",
-                                                "AcceptedTime",
-                                                "refNo"
-                                            };
-                            object[] sqlParameterValue = new object[]
-                                                {
-                                                    fsadata.airlineprefix,
-                                                    fsadata.awbnum,
-                                                    fsadata.origin,
-                                                    fsadata.dest,
-                                                    int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                                    decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                                    fsanodes[i].pcsindicator,
-                                                    int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
-                                                    fsanodes[i].weightcode,
-                                                    decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
-                                                    fsanodes[0].airportcode,
-                                                    fsanodes[0].name,
-                                                    fsanodes[0].volumecode,
-                                                    decimal.Parse(fsanodes[0].volumeamt==""?"0":fsanodes[0].volumeamt),
-                                                    MessagePrefix,
-                                                    AcceptedDate,
-                                                    AcceptedTime,
-                                                    refNo
-                                                };
-                            SqlDbType[] sqlParameter = new SqlDbType[]
-                                            {
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.DateTime,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int
-                                            };
-                            DataSet dsFSURCS = new DataSet();
-                            dsFSURCS = dtb.SelectRecords("MakeAWBAcceptenceThroughFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
-
-                            for (int k = 0; k < dsFSURCS.Tables.Count; k++)
+                        }
+                        if (isAcceptedbyFSURCS || isAcceptedbyFSURCT)
+                        {
+                            if (fsanodes.Length > 0)
                             {
-                                if (dsFSURCS.Tables[k].Columns.Contains("SuccessResult"))
+
+                                if (!isAWBPresent)
                                 {
-                                    if (Convert.ToBoolean(dsFSURCS.Tables[k].Rows[0]["SuccessResult"].ToString()))
+                                    //return false;
+                                    return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                }
+
+                                for (int i = 0; i < fsanodes.Length; i++)
+                                {
+                                    #region : Check AWB is accepted or not :
+                                    //FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
+                                    DataSet dsAWBStatus = new DataSet();
+                                    //dsAWBStatus = ffrMessageProcessor.CheckValidateFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
+                                    dsAWBStatus = await _fFRMessageProcessor.CheckValidateFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
+                                    for (int k = 0; k < dsAWBStatus.Tables.Count; k++)
                                     {
-                                        if (customextrainfo.Length > 0)
+                                        if (dsAWBStatus.Tables[k].Columns.Contains("MessageName") && dsAWBStatus.Tables[k].Columns.Contains("AWBSttus"))
                                         {
-                                            try
+                                            if (dsAWBStatus.Tables[k].Rows[0]["AWBSttus"].ToString().ToUpper() == "ACCEPTED")
                                             {
-                                                DataTable dtCustom = new DataTable();
-                                                dtCustom.Columns.Add("MRNNumber", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("MsgType", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("Country", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("DataID", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("DataValue", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("FlightNo", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("FlightDate", Type.GetType("System.DateTime"));
-                                                dtCustom.Columns.Add("Info", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("ProcessedBy", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("ProcessedDate", Type.GetType("System.DateTime"));
-                                                dtCustom.Columns.Add("Custom", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("IsActive", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("HAWBNumber", Type.GetType("System.String"));
-                                                dtCustom.Columns.Add("OCILine", Type.GetType("System.String"));
-
-                                                for (int j = 0; j < customextrainfo.Length; j++)
-                                                {
-                                                    DataRow drawb = dtCustom.NewRow();
-
-                                                    drawb["MRNNumber"] = "";
-                                                    drawb["MsgType"] = "";
-                                                    drawb["Country"] = customextrainfo[j].IsoCountryCodeOci;
-                                                    drawb["DataID"] = customextrainfo[j].InformationIdentifierOci;
-                                                    drawb["DataValue"] = customextrainfo[j].SupplementaryCsrIdentifierOci;
-                                                    drawb["FlightNo"] = "";
-                                                    drawb["FlightDate"] = System.DateTime.Now;
-                                                    drawb["Info"] = customextrainfo[j].CsrIdentifierOci;
-                                                    drawb["ProcessedBy"] = "FSU";
-                                                    drawb["ProcessedDate"] = System.DateTime.Now;
-                                                    drawb["Custom"] = "";
-                                                    drawb["IsActive"] = "1";
-                                                    drawb["HAWBNumber"] = "";
-                                                    drawb["OCILine"] = customextrainfo[j].OCIInfo;
-
-                                                    dtCustom.Rows.Add(drawb);
-                                                }
-
-                                                SqlParameter[] sqlParameters = new SqlParameter[] {
-                                        new SqlParameter("AWBPrefix",fsadata.airlineprefix)
-                                        , new SqlParameter("AWBNumber",fsadata.awbnum)
-                                        , new SqlParameter("Custom", dtCustom)
-                                         };
-                                                dtb.SelectRecords("Messaging.uspGetSetOCIDetails", sqlParameters);
-
-                                            }
-                                            catch
-                                            {
-                                                clsLog.WriteLogAzure("Error while save FSU/RCS OCI information Message:" + awbnum);
+                                                //GenericFunction genericFunction = new GenericFunction();
+                                                //genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                //return true;
+                                                return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                             }
                                         }
-                                        #region : Auto generate FWB and FHL  :
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        bool isAutoSendFWB = false, isAutoSendFHL = false, isAutoFWBFHL = false;
-                                        string PartnerCode = "";
-                                        DateTime flightdate = DateTime.UtcNow;
-
-                                        if (bool.TryParse(genericFunction.GetConfigurationValues("FWB"), out isAutoSendFWB))
-                                            isAutoFWBFHL = true;
-
-                                        if (bool.TryParse(genericFunction.GetConfigurationValues("AutoSendFHL"), out isAutoSendFHL))
-                                            isAutoFWBFHL = true;
-                                        if (dsFSURCS.Tables[0].Rows[0]["partnercode"].ToString() != "")
+                                        if (dsAWBStatus.Tables[k].Columns.Contains("ErrorMessage"))
                                         {
-                                            PartnerCode = dsFSURCS.Tables[0].Rows[0]["partnercode"].ToString();
-                                        }
-
-                                        if (isAutoFWBFHL && (isAutoSendFWB || isAutoSendFHL))
-                                        {
-                                            DataSet msgSeq = genericFunction.GenerateMessageSequence("", "AC", "");
-                                            if (msgSeq != null && msgSeq.Tables.Count > 0 && msgSeq.Tables[0].Rows.Count > 0)
+                                            string str = dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().ToUpper();
+                                            if (str.Contains("MANIFESTED"))
                                             {
-                                                for (int noofMsg = 0; noofMsg < msgSeq.Tables[0].Rows.Count; noofMsg++)
+                                                //GenericFunction genericFunction = new GenericFunction();
+                                                //genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                //return true;
+                                                return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                            }
+
+                                            string _errorMsg = dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().ToUpper();
+                                            if (_errorMsg.Contains("AGENT VALIDITY EXPIRED"))
+                                            {
+                                                //GenericFunction genericFunction = new GenericFunction();
+                                                //genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
+                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
+                                                //return true;
+                                                return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                            }
+
+                                            if (dsAWBStatus.Tables[k].Rows[0]["ErrorMessage"].ToString().Contains("DGR is not yet approved"))
+                                            {
+                                                //GenericFunction genericFunction = new GenericFunction();
+                                                //genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
+                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
+                                                //return true;
+                                                return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                            }
+                                        }
+                                    }
+                                    #endregion Check AWB is accepted or not
+
+                                    DateTime AcceptedDate = new DateTime();
+                                    string AcceptedTime = string.Empty;
+                                    if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                                    {
+                                        if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
+                                            AcceptedDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
+                                        if (fsanodes[i].flttime.Length > 0)
+                                            AcceptedTime = fsanodes[i].flttime.Substring(0, 2) + ":" + fsanodes[i].flttime.Substring(2) + ":00";
+                                    }
+
+                                    DataSet dsAWBMaterLogOldValues = new DataSet();
+                                    ///MasterLog
+                                    //dsAWBMaterLogOldValues = genericfunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+                                    dsAWBMaterLogOldValues = _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+
+                                    //string[] sqlParameterName = new string[]
+                                    //                {
+                                    //                    "AWBPrefix",
+                                    //                    "AWBNo",
+                                    //                    "Origin",
+                                    //                    "Destination",
+                                    //                    "AWbPcs",
+                                    //                    "AWbGrossWt" ,
+                                    //                    "PieceCode",
+                                    //                    "AcceptPieces",
+                                    //                    "WeightCode",
+                                    //                    "AcceptedGrWeight",
+                                    //                    "AccpetedOrigin",
+                                    //                    "ShipperName",
+                                    //                    "VolumeCode",
+                                    //                    "VolumeAmount",
+                                    //                    "UpdatedBy",
+                                    //                    "AcceptedDate",
+                                    //                    "AcceptedTime",
+                                    //                    "refNo"
+                                    //                };
+                                    //object[] sqlParameterValue = new object[]
+                                    //                    {
+                                    //                        fsadata.airlineprefix,
+                                    //                        fsadata.awbnum,
+                                    //                        fsadata.origin,
+                                    //                        fsadata.dest,
+                                    //                        int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                                    //                        decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                                    //                        fsanodes[i].pcsindicator,
+                                    //                        int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
+                                    //                        fsanodes[i].weightcode,
+                                    //                        decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
+                                    //                        fsanodes[0].airportcode,
+                                    //                        fsanodes[0].name,
+                                    //                        fsanodes[0].volumecode,
+                                    //                        decimal.Parse(fsanodes[0].volumeamt==""?"0":fsanodes[0].volumeamt),
+                                    //                        MessagePrefix,
+                                    //                        AcceptedDate,
+                                    //                        AcceptedTime,
+                                    //                        refNo
+                                    //                    };
+                                    //SqlDbType[] sqlParameter = new SqlDbType[]
+                                    //                {
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.Int,
+                                    //                    SqlDbType.Decimal,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.Int,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.Decimal,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.Decimal,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.DateTime,
+                                    //                    SqlDbType.VarChar,
+                                    //                    SqlDbType.Int
+                                    //                };
+                                    var fsuRcsParams = new[]
+                                    {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix},
+                                new SqlParameter("@AWBNo", SqlDbType.VarChar) { Value = fsadata.awbnum },
+                                new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fsadata.origin },
+                                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
+                                new SqlParameter("@AWbPcs", SqlDbType.Int)
+                                {
+                                    Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0
+                                },
+                                new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)
+                                {
+                                    Value = decimal.TryParse(fsadata.weight, out var grossWt) ? grossWt : 0
+                                },
+                                new SqlParameter("@PieceCode", SqlDbType.VarChar) { Value = fsanodes[i].pcsindicator },
+                                new SqlParameter("@AcceptPieces", SqlDbType.Int)
+                                {
+                                    Value = int.TryParse(fsanodes[i].numofpcs, out var acceptPcs) ? acceptPcs : 0
+                                },
+                                new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = fsanodes[i].weightcode },
+                                new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal)
+                                {
+                                    Value = decimal.TryParse(fsanodes[i].weight, out var acceptedWeight) ? acceptedWeight : 0
+                                },
+                                new SqlParameter("@AccpetedOrigin", SqlDbType.VarChar) { Value = fsanodes[0].airportcode },
+                                new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fsanodes[0].name },
+                                new SqlParameter("@VolumeCode", SqlDbType.VarChar) { Value = fsanodes[0].volumecode },
+                                new SqlParameter("@VolumeAmount", SqlDbType.Decimal)
+                                {
+                                    Value = decimal.TryParse(fsanodes[0].volumeamt, out var volumeAmt) ? volumeAmt : 0
+                                },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = MessagePrefix },
+                                new SqlParameter("@AcceptedDate", SqlDbType.DateTime)
+                                {
+                                    Value = AcceptedDate == default ? DateTime.UtcNow : AcceptedDate
+                                },
+                                new SqlParameter("@AcceptedTime", SqlDbType.VarChar) { Value = AcceptedTime },
+                                new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
+                            };
+
+                                    DataSet dsFSURCS = new DataSet();
+                                    //dsFSURCS = dtb.SelectRecords("MakeAWBAcceptenceThroughFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
+                                    dsFSURCS = await _readWriteDao.SelectRecords("MakeAWBAcceptenceThroughFSUMessage", fsuRcsParams);
+
+                                    for (int k = 0; k < dsFSURCS.Tables.Count; k++)
+                                    {
+                                        if (dsFSURCS.Tables[k].Columns.Contains("SuccessResult"))
+                                        {
+                                            if (Convert.ToBoolean(dsFSURCS.Tables[k].Rows[0]["SuccessResult"].ToString()))
+                                            {
+                                                if (customextrainfo.Length > 0)
                                                 {
-                                                    switch (msgSeq.Tables[0].Rows[noofMsg]["MessageName"].ToString())
+                                                    try
                                                     {
-                                                        case "FWB":
-                                                            if (isAutoSendFWB)
-                                                            {
-                                                                FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
-                                                                fwbMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
-                                                            }
-                                                            break;
-                                                        case "FHL":
-                                                            if (isAutoSendFHL)
-                                                            {
-                                                                FHLMessageProcessor fhlMessageProcessor = new FHLMessageProcessor();
-                                                                fhlMessageProcessor.GenerateFHL(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
-                                                            }
-                                                            break;
+                                                        DataTable dtCustom = new DataTable();
+                                                        dtCustom.Columns.Add("MRNNumber", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("MsgType", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("Country", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("DataID", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("DataValue", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("FlightNo", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("FlightDate", Type.GetType("System.DateTime"));
+                                                        dtCustom.Columns.Add("Info", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("ProcessedBy", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("ProcessedDate", Type.GetType("System.DateTime"));
+                                                        dtCustom.Columns.Add("Custom", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("IsActive", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("HAWBNumber", Type.GetType("System.String"));
+                                                        dtCustom.Columns.Add("OCILine", Type.GetType("System.String"));
+
+                                                        for (int j = 0; j < customextrainfo.Length; j++)
+                                                        {
+                                                            DataRow drawb = dtCustom.NewRow();
+
+                                                            drawb["MRNNumber"] = "";
+                                                            drawb["MsgType"] = "";
+                                                            drawb["Country"] = customextrainfo[j].IsoCountryCodeOci;
+                                                            drawb["DataID"] = customextrainfo[j].InformationIdentifierOci;
+                                                            drawb["DataValue"] = customextrainfo[j].SupplementaryCsrIdentifierOci;
+                                                            drawb["FlightNo"] = "";
+                                                            drawb["FlightDate"] = System.DateTime.Now;
+                                                            drawb["Info"] = customextrainfo[j].CsrIdentifierOci;
+                                                            drawb["ProcessedBy"] = "FSU";
+                                                            drawb["ProcessedDate"] = System.DateTime.Now;
+                                                            drawb["Custom"] = "";
+                                                            drawb["IsActive"] = "1";
+                                                            drawb["HAWBNumber"] = "";
+                                                            drawb["OCILine"] = customextrainfo[j].OCIInfo;
+
+                                                            dtCustom.Rows.Add(drawb);
+                                                        }
+
+                                                        //        SqlParameter[] sqlParameters = new SqlParameter[] {
+                                                        //new SqlParameter("AWBPrefix",fsadata.airlineprefix)
+                                                        //, new SqlParameter("AWBNumber",fsadata.awbnum)
+                                                        //, new SqlParameter("Custom", dtCustom)
+                                                        // };
+                                                        //        dtb.SelectRecords("Messaging.uspGetSetOCIDetails", sqlParameters);
+                                                        var dlvParams = new[]
+                                                        {
+                                                 new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix  },
+                                                 new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum  },
+                                                 new SqlParameter("@Custom", SqlDbType.Structured) { Value = dtCustom  },
+                                                };
+                                                        await _readWriteDao.SelectRecords("Messaging.uspGetSetOCIDetails", dlvParams);
+                                                    }
+                                                    catch
+                                                    {
+                                                        clsLog.WriteLogAzure("Error while save FSU/RCS OCI information Message:" + awbnum);
                                                     }
                                                 }
+                                                #region : Auto generate FWB and FHL  :
+                                                GenericFunction genericFunction = new GenericFunction();
+                                                bool isAutoSendFWB = false, isAutoSendFHL = false, isAutoFWBFHL = false;
+                                                string PartnerCode = "";
+                                                DateTime flightdate = DateTime.UtcNow;
+
+                                                if (bool.TryParse(genericFunction.GetConfigurationValues("FWB"), out isAutoSendFWB))
+                                                    isAutoFWBFHL = true;
+
+                                                if (bool.TryParse(genericFunction.GetConfigurationValues("AutoSendFHL"), out isAutoSendFHL))
+                                                    isAutoFWBFHL = true;
+                                                if (dsFSURCS.Tables[0].Rows[0]["partnercode"].ToString() != "")
+                                                {
+                                                    PartnerCode = dsFSURCS.Tables[0].Rows[0]["partnercode"].ToString();
+                                                }
+
+                                                if (isAutoFWBFHL && (isAutoSendFWB || isAutoSendFHL))
+                                                {
+                                                    DataSet msgSeq = genericFunction.GenerateMessageSequence("", "AC", "");
+                                                    if (msgSeq != null && msgSeq.Tables.Count > 0 && msgSeq.Tables[0].Rows.Count > 0)
+                                                    {
+                                                        for (int noofMsg = 0; noofMsg < msgSeq.Tables[0].Rows.Count; noofMsg++)
+                                                        {
+                                                            switch (msgSeq.Tables[0].Rows[noofMsg]["MessageName"].ToString())
+                                                            {
+                                                                case "FWB":
+                                                                    if (isAutoSendFWB)
+                                                                    {
+                                                                        //FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
+                                                                        //fwbMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
+                                                                        _fWBMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
+                                                                    }
+                                                                    break;
+                                                                case "FHL":
+                                                                    if (isAutoSendFHL)
+                                                                    {
+                                                                        //FHLMessageProcessor fhlMessageProcessor = new FHLMessageProcessor();
+                                                                        //fhlMessageProcessor.GenerateFHL(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
+                                                                        await _fHLMessageProcessor.GenerateFHL(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
+                                                                    }
+                                                                    break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                #endregion
+
+                                                flag = true;
+                                                ///MasterLog
+                                                //GenericFunction gf = new GenericFunction();
+                                                DataSet dsAWBMaterLogNewValues = new DataSet();
+                                                //dsAWBMaterLogNewValues = gf.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+                                                dsAWBMaterLogNewValues = _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+                                                if (dsAWBMaterLogNewValues != null && dsAWBMaterLogNewValues.Tables.Count > 0 && dsAWBMaterLogNewValues.Tables[0].Rows.Count > 0)
+                                                {
+                                                    DataTable dtMasterAuditLog = new DataTable();
+                                                    DataTable dtOldValues = new DataTable();
+                                                    DataTable dtNewValues = new DataTable();
+                                                    if (dsAWBMaterLogOldValues != null && dsAWBMaterLogOldValues.Tables.Count > 0 && dsAWBMaterLogOldValues.Tables[0].Rows.Count > 0)
+                                                        dtOldValues = dsAWBMaterLogOldValues.Tables[0];
+                                                    else
+                                                        dtOldValues = null;
+                                                    dtNewValues = dsAWBMaterLogNewValues.Tables[0];
+
+                                                    if (isAcceptedbyFSURCT == true)
+                                                        //gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
+                                                        _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
+                                                    else
+                                                        //gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
+                                                        _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
+
+                                                }
+                                            }
+                                            else
+                                            {
+                                                flag = false;
                                             }
                                         }
-                                        #endregion
-
+                                    }
+                                    if (flag)
+                                    {
                                         flag = true;
-                                        ///MasterLog
-                                        GenericFunction gf = new GenericFunction();
-                                        DataSet dsAWBMaterLogNewValues = new DataSet();
-                                        dsAWBMaterLogNewValues = gf.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
-                                        if (dsAWBMaterLogNewValues != null && dsAWBMaterLogNewValues.Tables.Count > 0 && dsAWBMaterLogNewValues.Tables[0].Rows.Count > 0)
+                                        #region Capacity Update
+                                        //string[] cparam = { "AWBPrefix", "AWBNumber" };
+                                        //SqlDbType[] cparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                                        //object[] cparamvalues = { fsadata.airlineprefix, fsadata.awbnum };
+                                        var cparam = new SqlParameter[]
                                         {
-                                            DataTable dtMasterAuditLog = new DataTable();
-                                            DataTable dtOldValues = new DataTable();
-                                            DataTable dtNewValues = new DataTable();
-                                            if (dsAWBMaterLogOldValues != null && dsAWBMaterLogOldValues.Tables.Count > 0 && dsAWBMaterLogOldValues.Tables[0].Rows.Count > 0)
-                                                dtOldValues = dsAWBMaterLogOldValues.Tables[0];
-                                            else
-                                                dtOldValues = null;
-                                            dtNewValues = dsAWBMaterLogNewValues.Tables[0];
+                                      new("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
+                                      new("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum },
 
-                                            if (isAcceptedbyFSURCT == true)
-                                                gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
-                                            else
-                                                gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
+                                        };
+                                        //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
+                                        if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", cparam))
+                                            clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
 
-                                        }
+                                        #endregion
                                     }
                                     else
                                     {
                                         flag = false;
+                                        //return flag;
+                                        return (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                     }
                                 }
                             }
-                            if (flag)
-                            {
-                                flag = true;
-                                #region Capacity Update
-                                string[] cparam = { "AWBPrefix", "AWBNumber" };
-                                SqlDbType[] cparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                                object[] cparamvalues = { fsadata.airlineprefix, fsadata.awbnum };
-
-                                if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
-                                    clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
-
-                                #endregion
-                            }
-                            else
-                            {
-                                flag = false;
-                                return flag;
-                            }
                         }
-                    }
-                }
-                #endregion
+                        #endregion
 
-                #region Below Segmnet of FSU/TFD Message
-                ///Created By :Badiuz khan
-                ///Created On :2016-05-26
-                ///Make  Transfer  Freight To  other SPA Airline
-                if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && (fsanodes[0].messageprefix.ToUpper() == "TFD" || fsanodes[0].messageprefix.ToUpper() == "RCT"))
-                {
-                    string strUpdatedby = "FSU/" + fsanodes[0].messageprefix.ToUpper();
-                    string strMessageType = fsanodes[0].messageprefix.ToUpper();
-
-                    if (!isAWBPresent)
-                    {
-                        return false;
-                    }
-
-                    if (fsanodes.Length > 0)
-                    {
-                        for (int i = 0; i < fsanodes.Length; i++)
+                        #region Below Segmnet of FSU/TFD Message
+                        ///Created By :Badiuz khan
+                        ///Created On :2016-05-26
+                        ///Make  Transfer  Freight To  other SPA Airline
+                        if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && (fsanodes[0].messageprefix.ToUpper() == "TFD" || fsanodes[0].messageprefix.ToUpper() == "RCT"))
                         {
-                            DateTime ReceivedDate = new DateTime();
-                            string ReceivedTime = string.Empty;
-                            if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                            string strUpdatedby = "FSU/" + fsanodes[0].messageprefix.ToUpper();
+                            string strMessageType = fsanodes[0].messageprefix.ToUpper();
+
+                            if (!isAWBPresent)
                             {
-                                if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
-                                    ReceivedDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
-                                if (fsanodes[i].flttime.Length > 0)
-                                    ReceivedTime = fsanodes[i].flttime.Substring(0, 2) + ":" + fsanodes[i].flttime.Substring(2) + ":00";
+                                //return false;
+                                return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                             }
 
-                            string[] sqlParameterName = new string[]
+                            if (fsanodes.Length > 0)
+                            {
+                                for (int i = 0; i < fsanodes.Length; i++)
+                                {
+                                    DateTime ReceivedDate = new DateTime();
+                                    string ReceivedTime = string.Empty;
+                                    if (fsanodes[i].fltmonth != "" && fsanodes[i].fltday != "")
+                                    {
+                                        if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
+                                            ReceivedDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
+                                        if (fsanodes[i].flttime.Length > 0)
+                                            ReceivedTime = fsanodes[i].flttime.Substring(0, 2) + ":" + fsanodes[i].flttime.Substring(2) + ":00";
+                                    }
+
+                                    //  string[] sqlParameterName = new string[]
+                                    //    {
+                                    //       "AWBPrefix",
+                                    //       "AWBNo",
+                                    //       "Origin",
+                                    //       "Destination",
+                                    //       "AWbPcs",
+                                    //       "AWbWeightCode",
+                                    //       "AWbGrossWt" ,
+                                    //       "TransferCarrierCode",
+                                    //       "ReceivedShipmentDate",
+                                    //       "ReceivedOrigin",
+                                    //       "PieceCode",
+                                    //       "AcceptPieces",
+                                    //       "WeightCode",
+                                    //       "AcceptedGrWeight",
+                                    //       "ReceivedCarrier",
+                                    //       "Name",
+                                    //       "UpdatedBy",
+                                    //       "MessageType",
+                                    //       "ManifestNumber"
+
+                                    //    };
+                                    //  object[] sqlParameterValue = new object[] {
+
+                                    //      fsadata.airlineprefix,
+                                    //      fsadata.awbnum,
+                                    //      fsadata.origin,
+                                    //      fsadata.dest,
+
+                                    //      int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                                    //      fsadata.weightcode,
+                                    //      decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+
+                                    //      fsanodes[i].carriercode,
+                                    //      ReceivedDate,
+                                    //      fsanodes[i].fltorg.Trim() == string.Empty ? fsanodes[i].airportcode.Trim() : fsanodes[i].fltorg.Trim(),
+
+                                    //      fsanodes[i].pcsindicator,
+                                    //      int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
+                                    //      fsanodes[i].weightcode,
+                                    //      decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
+
+                                    //      fsanodes[0].seccarriercode,
+                                    //      fsanodes[0].name,
+                                    //      strUpdatedby,
+                                    //      strMessageType,
+                                    //      int.Parse(fsanodes[0].transfermanifestnumber==""?"0":fsanodes[0].transfermanifestnumber)
+
+                                    //  };
+                                    //  SqlDbType[] sqlParameter = new SqlDbType[]
+                                    //  {
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.VarChar,
+
+                                    //      SqlDbType.Int,
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.Decimal,
+
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.DateTime,
+                                    //      SqlDbType.VarChar,
+
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.Int,
+                                    //      SqlDbType.VarChar,
+                                    //      SqlDbType.Decimal,
+
+                                    //     SqlDbType.VarChar,
+                                    //     SqlDbType.VarChar,
+                                    //     SqlDbType.VarChar,
+                                    //     SqlDbType.VarChar,
+                                    //     SqlDbType.Int
+                                    //};
+                                    var sqlParams = new[]
+                                    {
+                              new SqlParameter("@AWBPrefix", SqlDbType.VarChar)
                               {
-                                 "AWBPrefix",
-                                 "AWBNo",
-                                 "Origin",
-                                 "Destination",
-                                 "AWbPcs",
-                                 "AWbWeightCode",
-                                 "AWbGrossWt" ,
-                                 "TransferCarrierCode",
-                                 "ReceivedShipmentDate",
-                                 "ReceivedOrigin",
-                                 "PieceCode",
-                                 "AcceptPieces",
-                                 "WeightCode",
-                                 "AcceptedGrWeight",
-                                 "ReceivedCarrier",
-                                 "Name",
-                                 "UpdatedBy",
-                                 "MessageType",
-                                 "ManifestNumber"
-
-                              };
-                            object[] sqlParameterValue = new object[] {
-
-                                fsadata.airlineprefix,
-                                fsadata.awbnum,
-                                fsadata.origin,
-                                fsadata.dest,
-
-                                int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                fsadata.weightcode,
-                                decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-
-                                fsanodes[i].carriercode,
-                                ReceivedDate,
-                                fsanodes[i].fltorg.Trim() == string.Empty ? fsanodes[i].airportcode.Trim() : fsanodes[i].fltorg.Trim(),
-
-                                fsanodes[i].pcsindicator,
-                                int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
-                                fsanodes[i].weightcode,
-                                decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
-
-                                fsanodes[0].seccarriercode,
-                                fsanodes[0].name,
-                                strUpdatedby,
-                                strMessageType,
-                                int.Parse(fsanodes[0].transfermanifestnumber==""?"0":fsanodes[0].transfermanifestnumber)
-
+                                  Value = fsadata.airlineprefix
+                              },
+                              new SqlParameter("@AWBNo", SqlDbType.VarChar)
+                              {
+                                  Value = fsadata.awbnum
+                              },
+                              new SqlParameter("@Origin", SqlDbType.VarChar)
+                              {
+                                  Value = fsadata.origin
+                              },
+                              new SqlParameter("@Destination", SqlDbType.VarChar)
+                              {
+                                  Value = fsadata.dest
+                              },
+                              new SqlParameter("@AWbPcs", SqlDbType.Int)
+                              {
+                                  Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0
+                              },
+                              new SqlParameter("@AWbWeightCode", SqlDbType.VarChar)
+                              {
+                                  Value = fsadata.weightcode
+                              },
+                              new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)
+                              {
+                                  Value = decimal.TryParse(fsadata.weight, out var wt) ? wt : 0
+                              },
+                              new SqlParameter("@TransferCarrierCode", SqlDbType.VarChar)
+                              {
+                                  Value = fsanodes[i].carriercode
+                              },
+                              new SqlParameter("@ReceivedShipmentDate", SqlDbType.DateTime)
+                              {
+                                  Value = ReceivedDate
+                              },
+                              new SqlParameter("@ReceivedOrigin", SqlDbType.VarChar)
+                              {
+                                  Value = string.IsNullOrWhiteSpace(fsanodes[i].fltorg)
+                                              ? fsanodes[i].airportcode.Trim()
+                                              : fsanodes[i].fltorg.Trim()
+                              },
+                              new SqlParameter("@PieceCode", SqlDbType.VarChar)
+                              {
+                                  Value = fsanodes[i].pcsindicator
+                              },
+                              new SqlParameter("@AcceptPieces", SqlDbType.Int)
+                              {
+                                  Value = int.TryParse(fsanodes[i].numofpcs, out var acceptPieces) ? acceptPieces : 0
+                              },
+                              new SqlParameter("@WeightCode", SqlDbType.VarChar)
+                              {
+                                  Value = fsanodes[i].weightcode
+                              },
+                              new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal)
+                              {
+                                  Value = decimal.TryParse(fsanodes[i].weight, out var acceptedWt) ? acceptedWt : 0
+                              },
+                              new SqlParameter("@ReceivedCarrier", SqlDbType.VarChar)
+                              {
+                                  Value = fsanodes[0].seccarriercode
+                              },
+                              new SqlParameter("@Name", SqlDbType.VarChar)
+                              {
+                                  Value = fsanodes[0].name
+                              },
+                              new SqlParameter("@UpdatedBy", SqlDbType.VarChar)
+                              {
+                                  Value = strUpdatedby
+                              },
+                              new SqlParameter("@MessageType", SqlDbType.VarChar)
+                              {
+                                  Value = strMessageType
+                              },
+                              new SqlParameter("@ManifestNumber", SqlDbType.Int)
+                              {
+                                  Value = int.TryParse(fsanodes[0].transfermanifestnumber, out var manifestNo) ? manifestNo : 0
+                              }
                             };
-                            SqlDbType[] sqlParameter = new SqlDbType[]
-                            {
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
 
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
-
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar,
-
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
-
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.Int
-                          };
-                            if (dtb.InsertData("uspSaveAWBThroughFSURCTTFDMessage", sqlParameterName, sqlParameter, sqlParameterValue))
-                                flag = true;
-                            else
-                            {
-                                flag = false;
-                                return flag;
-                            }
-
-
-                        }
-
-                    }
-                }
-
-
-                #endregion
-
-                #region  Below Segmnet of RCF Message
-                if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "RCF")
-                {
-                    if (AWBAccepted == false)
-                    {
-                        ErrorMsg = ErrorMsg = fsadata.awbnum + " AWB is not accepted";
-                        return false;
-                    }
-                    for (int i = 0; i < fsanodes.Length; i++)
-                    {
-                        DateTime fltdate = DateTime.Now;
-                        fltdate = DateTime.Parse((fsanodes[i].fltmonth + "-" + fsanodes[i].fltday + "-" + DateTime.Now.Year));
-                        if (fsanodes[i].messageprefix.ToUpper().Trim() == "RCF")
-                        {
-                            string[] ParaNames = new string[] { "AWBPrefix", "AWBNumber", "Destination", "ConsignmentType", "Pieces", "Weight", "FlighNumber", "ArrivedDate", "WTCode", "RefNo", "FltOrigin", "FltDestination", "FlightDate" };
-                            SqlDbType[] ParaTypes = new System.Data.SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
-                            object[] ParaValues = new object[] { fsadata.airlineprefix, fsadata.awbnum, string.Empty, fsanodes[i].pcsindicator, fsanodes[i].numofpcs, (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight)), fsanodes[i].carriercode + fsanodes[i].flightnum, DateTime.Now, fsanodes[i].weightcode, refNo, fsanodes[i].fltorg, fsanodes[i].fltdest, fltdate };
-                            DataSet dsRCFARR = new DataSet();
-                            dsRCFARR = dtb.SelectRecords("USPUpdateRCForARRRecord", ParaNames, ParaValues, ParaTypes);
-
-                            if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
-                            {
-                                for (int j = 0; j < dsRCFARR.Tables.Count; j++)
-                                {
-                                    if ((dsRCFARR.Tables[j].Columns.Contains("IsFlightDeparted") && dsRCFARR.Tables[j].Rows[0]["IsFlightDeparted"].ToString().ToUpper() == "FALSE"))
+                                    //if (dtb.InsertData("uspSaveAWBThroughFSURCTTFDMessage", sqlParameterName, sqlParameter, sqlParameterValue))
+                                    if (await _readWriteDao.ExecuteNonQueryAsync("uspSaveAWBThroughFSURCTTFDMessage", sqlParams))
+                                        flag = true;
+                                    else
                                     {
-                                        ErrorMsg = "Flight is Not Departed";
-                                        return false;
+                                        flag = false;
+                                        //return flag;
+                                        return (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                     }
-                                }
-                            }
 
-                            if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
-                            {
-                                for (int j = 0; j < dsRCFARR.Tables.Count; j++)
-                                {
-                                    if ((dsRCFARR.Tables[j].Columns.Contains("ResultStatus") && dsRCFARR.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE"))
-                                    {
-                                        ErrorMsg = "Invalid Flight Details";
-                                        return false;
-                                    }
-                                }
-                            }
 
-                            if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
-                            {
-                                for (int j = 0; j < dsRCFARR.Tables.Count; j++)
-                                {
-                                    if ((dsRCFARR.Tables[j].Columns.Contains("IsFlightDeparted") && dsRCFARR.Tables[j].Rows[0]["IsFlightDeparted"].ToString().ToUpper() == "FALSE")
-                                        || (dsRCFARR.Tables[j].Columns.Contains("ResultStatus") && dsRCFARR.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE"))
-                                        return true;
                                 }
 
                             }
                         }
-                    }
-                }
-                #endregion Below Segmnet of RCF Message
 
-                dtb = new SQLServer();
-                if (fsadata.awbnum.Length > 0)
-                {
-                    awbnum = fsadata.awbnum;
-                    awbprefix = fsadata.airlineprefix;
-                    strMsg = strMsg.Replace("\r\n", "$");
-                    strMsg = strMsg.Replace("\n", "$");
-                    string[] splitStr = strMsg.Split('$');
-                    string date = "";
-                    //string time = "";
 
-                    string FlightNo = string.Empty, UOM = string.Empty, UpdatedBy = "FSU", StnCode = string.Empty;
-                    DateTime FlightDate = DateTime.Now, UpdatedON = DateTime.Now, DayChange = Convert.ToDateTime("1900-01-01");
-                    string strDepartureTime = string.Empty;
-                    int PCS = 0;
-                    decimal Wt = 0;
+                        #endregion
 
-                    if (splitStr.Length > 1 && fsanodes.Length > 1 && ulddata.Length > 0)
-                    {
-                        int depTotalPieces = 0;
-                        decimal depTotalWeight = 0;
-                        bool isMultilineDEP = false;
-                        int depIndex = 0;
-                        for (int i = 0; i < fsanodes.Length; i++)
+                        #region  Below Segmnet of RCF Message
+                        if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsanodes[0].messageprefix.ToUpper() == "RCF")
                         {
-                            switch (fsanodes[i].messageprefix.ToUpper())
+                            if (AWBAccepted == false)
                             {
-                                case "DEP":
-                                    if (fsanodes[i].pcsindicator.Trim().ToUpper() == "P")
+                                ErrorMsg = ErrorMsg = fsadata.awbnum + " AWB is not accepted";
+                                //return false;
+                                return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                            }
+                            for (int i = 0; i < fsanodes.Length; i++)
+                            {
+                                DateTime fltdate = DateTime.Now;
+                                fltdate = DateTime.Parse((fsanodes[i].fltmonth + "-" + fsanodes[i].fltday + "-" + DateTime.Now.Year));
+                                if (fsanodes[i].messageprefix.ToUpper().Trim() == "RCF")
+                                {
+                                    //string[] ParaNames = new string[] { "AWBPrefix", "AWBNumber", "Destination", "ConsignmentType", "Pieces", "Weight", "FlighNumber", "ArrivedDate", "WTCode", "RefNo", "FltOrigin", "FltDestination", "FlightDate" };
+                                    //SqlDbType[] ParaTypes = new System.Data.SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
+                                    //object[] ParaValues = new object[] { fsadata.airlineprefix, fsadata.awbnum, string.Empty, fsanodes[i].pcsindicator, fsanodes[i].numofpcs, (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight)), fsanodes[i].carriercode + fsanodes[i].flightnum, DateTime.Now, fsanodes[i].weightcode, refNo, fsanodes[i].fltorg, fsanodes[i].fltdest, fltdate };
+                                    var rcfArrParams = new[]
                                     {
-                                        string depTpcs = fsanodes[i].numofpcs.Trim();
-                                        int depTotalPiecesTmp = 0;
-                                        if (int.TryParse(depTpcs, out depTotalPiecesTmp))
-                                        {
-                                            depTotalPieces += depTotalPiecesTmp;
-                                        }
-                                        string depTwt = fsanodes[i].weight.Trim();
-                                        decimal depTotalWeightTmp = 0;
-                                        if (decimal.TryParse(depTwt, out depTotalWeightTmp))
-                                        {
-                                            depTotalWeight += depTotalWeightTmp;
-                                        }
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)
+                                {
+                                    Value = fsadata.airlineprefix
+                                },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)
+                                {
+                                    Value = fsadata.awbnum
+                                },
+                                new SqlParameter("@Destination", SqlDbType.VarChar)
+                                {
+                                    Value = string.Empty
+                                },
+                                new SqlParameter("@ConsignmentType", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].pcsindicator
+                                },
+                                new SqlParameter("@Pieces", SqlDbType.Int)
+                                {
+                                    Value = int.TryParse(fsanodes[i].numofpcs, out var pcs) ? pcs : 0
+                                },
+                                new SqlParameter("@Weight", SqlDbType.VarChar)
+                                {
+                                    Value = string.IsNullOrEmpty(fsanodes[i].weight) ? "0" : fsanodes[i].weight
+                                },
+                                new SqlParameter("@FlighNumber", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].carriercode + fsanodes[i].flightnum
+                                },
+                                new SqlParameter("@ArrivedDate", SqlDbType.DateTime)
+                                {
+                                    Value = DateTime.Now
+                                },
+                                new SqlParameter("@WTCode", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].weightcode
+                                },
+                                new SqlParameter("@RefNo", SqlDbType.Int)
+                                {
+                                    Value = refNo
+                                },
+                                new SqlParameter("@FltOrigin", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].fltorg
+                                },
+                                new SqlParameter("@FltDestination", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].fltdest
+                                },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime)
+                                {
+                                    Value = fltdate
+                                }
+                            };
+                                    DataSet dsRCFARR = new DataSet();
+                                    //dsRCFARR = dtb.SelectRecords("USPUpdateRCForARRRecord", ParaNames, ParaValues, ParaTypes);
+                                    dsRCFARR = await _readWriteDao.SelectRecords("USPUpdateRCForARRRecord", rcfArrParams);
 
-                                        isMultilineDEP = true;
-                                        if (depIndex == 0)
+                                    if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
+                                    {
+                                        for (int j = 0; j < dsRCFARR.Tables.Count; j++)
                                         {
-                                            depIndex = i + 1;
-                                        }
-                                        else
-                                        {
-                                            fsanodes[i].pcsindicator = "X";
+                                            if ((dsRCFARR.Tables[j].Columns.Contains("IsFlightDeparted") && dsRCFARR.Tables[j].Rows[0]["IsFlightDeparted"].ToString().ToUpper() == "FALSE"))
+                                            {
+                                                ErrorMsg = "Flight is Not Departed";
+                                                //return false;
+                                                return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                            }
                                         }
                                     }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        if (isMultilineDEP)
-                        {
-                            fsanodes[depIndex - 1].numofpcs = Convert.ToString(depTotalPieces);
-                            if (depTotalWeight > 0)
-                                fsanodes[depIndex - 1].weight = Convert.ToString(depTotalWeight);
-                        }
-                    }
 
-                    #region UpdateStatus on TblAwbMsg
-                    if (splitStr.Length > 1 && fsanodes.Length > 0)
-                    {
-                        for (int i = 0; i < fsanodes.Length; i++)
-                        {
-                            if (fsanodes[i].pcsindicator.Trim().ToUpper() == "X")
-                                continue;
-                            if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
-                            {
-                                date = fsanodes[i].fltday + "/" + DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + System.DateTime.Today.Year;
-                                FlightDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
-                            }
-                            else
-                            {
-                                FlightDate = DateTime.Now;
-                            }
-
-                            if (fsanodes[i].messageprefix.ToUpper() == "RCF")
-                            {
-                                if (fsanodes[i].daychangeindicator != null && fsanodes[i].daychangeindicator.Trim() != string.Empty)
-                                {
-                                    switch (fsanodes[i].daychangeindicator.Trim().ToUpper())
+                                    if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
                                     {
-                                        case "P":
-                                            DayChange = FlightDate.AddDays(-1);
-                                            break;
-                                        case "N":
-                                            DayChange = FlightDate.AddDays(1);
-                                            break;
-                                        case "S":
-                                            DayChange = FlightDate.AddDays(2);
-                                            break;
-                                        case "T":
-                                            DayChange = FlightDate.AddDays(3);
-                                            break;
-                                        case "A":
-                                            DayChange = FlightDate.AddDays(4);
-                                            break;
-                                        case "B":
-                                            DayChange = FlightDate.AddDays(5);
-                                            break;
-                                        case "C":
-                                            DayChange = FlightDate.AddDays(6);
-                                            break;
-                                        case "D":
-                                            DayChange = FlightDate.AddDays(7);
-                                            break;
-                                        case "E":
-                                            DayChange = FlightDate.AddDays(8);
-                                            break;
-                                        case "F":
-                                            DayChange = FlightDate.AddDays(9);
-                                            break;
-                                        case "G":
-                                            DayChange = FlightDate.AddDays(10);
-                                            break;
-                                        case "H":
-                                            DayChange = FlightDate.AddDays(11);
-                                            break;
-                                        case "I":
-                                            DayChange = FlightDate.AddDays(12);
-                                            break;
-                                        case "J":
-                                            DayChange = FlightDate.AddDays(13);
-                                            break;
-                                        case "K":
-                                            DayChange = FlightDate.AddDays(14);
-                                            break;
-                                        case "L":
-                                            DayChange = FlightDate.AddDays(15);
+                                        for (int j = 0; j < dsRCFARR.Tables.Count; j++)
+                                        {
+                                            if ((dsRCFARR.Tables[j].Columns.Contains("ResultStatus") && dsRCFARR.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE"))
+                                            {
+                                                ErrorMsg = "Invalid Flight Details";
+                                                //return false;
+                                                return (false, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                            }
+                                        }
+                                    }
+
+                                    if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
+                                    {
+                                        for (int j = 0; j < dsRCFARR.Tables.Count; j++)
+                                        {
+                                            if ((dsRCFARR.Tables[j].Columns.Contains("IsFlightDeparted") && dsRCFARR.Tables[j].Rows[0]["IsFlightDeparted"].ToString().ToUpper() == "FALSE")
+                                                || (dsRCFARR.Tables[j].Columns.Contains("ResultStatus") && dsRCFARR.Tables[j].Rows[0]["ResultStatus"].ToString().ToUpper() == "FALSE"))
+                                                //return true;
+                                                return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+                        #endregion Below Segmnet of RCF Message
+
+                        //dtb = new SQLServer();
+                        if (fsadata.awbnum.Length > 0)
+                        {
+                            awbnum = fsadata.awbnum;
+                            awbprefix = fsadata.airlineprefix;
+                            strMsg = strMsg.Replace("\r\n", "$");
+                            strMsg = strMsg.Replace("\n", "$");
+                            string[] splitStr = strMsg.Split('$');
+                            string date = "";
+                            //string time = "";
+
+                            string FlightNo = string.Empty, UOM = string.Empty, UpdatedBy = "FSU", StnCode = string.Empty;
+                            DateTime FlightDate = DateTime.Now, UpdatedON = DateTime.Now, DayChange = Convert.ToDateTime("1900-01-01");
+                            string strDepartureTime = string.Empty;
+                            int PCS = 0;
+                            decimal Wt = 0;
+
+                            if (splitStr.Length > 1 && fsanodes.Length > 1 && ulddata.Length > 0)
+                            {
+                                int depTotalPieces = 0;
+                                decimal depTotalWeight = 0;
+                                bool isMultilineDEP = false;
+                                int depIndex = 0;
+                                for (int i = 0; i < fsanodes.Length; i++)
+                                {
+                                    switch (fsanodes[i].messageprefix.ToUpper())
+                                    {
+                                        case "DEP":
+                                            if (fsanodes[i].pcsindicator.Trim().ToUpper() == "P")
+                                            {
+                                                string depTpcs = fsanodes[i].numofpcs.Trim();
+                                                int depTotalPiecesTmp = 0;
+                                                if (int.TryParse(depTpcs, out depTotalPiecesTmp))
+                                                {
+                                                    depTotalPieces += depTotalPiecesTmp;
+                                                }
+                                                string depTwt = fsanodes[i].weight.Trim();
+                                                decimal depTotalWeightTmp = 0;
+                                                if (decimal.TryParse(depTwt, out depTotalWeightTmp))
+                                                {
+                                                    depTotalWeight += depTotalWeightTmp;
+                                                }
+
+                                                isMultilineDEP = true;
+                                                if (depIndex == 0)
+                                                {
+                                                    depIndex = i + 1;
+                                                }
+                                                else
+                                                {
+                                                    fsanodes[i].pcsindicator = "X";
+                                                }
+                                            }
                                             break;
                                         default:
                                             break;
-
                                     }
-
-                                    date = DayChange.ToString("dd/MM/yyyy");
+                                }
+                                if (isMultilineDEP)
+                                {
+                                    fsanodes[depIndex - 1].numofpcs = Convert.ToString(depTotalPieces);
+                                    if (depTotalWeight > 0)
+                                        fsanodes[depIndex - 1].weight = Convert.ToString(depTotalWeight);
                                 }
                             }
-                            //if (fsanodes[i].flttime.Length > 0)
-                            //{
-                            //    time = fsanodes[i].flttime + " (UTC)";
-                            //}
 
-                            // time= 
-                            FlightNo = fsanodes[i].carriercode + fsanodes[i].flightnum;
-                            if (FlightNo.Trim().Length > 0)
+                            #region UpdateStatus on TblAwbMsg
+                            if (splitStr.Length > 1 && fsanodes.Length > 0)
                             {
-                                FlightNo = FlightNo.Replace(".", "").Replace(",", "").Replace("XX", "");
-                            }
-
-                            UOM = fsanodes[i].weightcode == "" ? "K" : fsanodes[i].weightcode;
-
-                            if (fsanodes[i].airportcode != "")
-                                StnCode = fsanodes[i].airportcode;
-                            if (fsanodes[i].fltorg != "")
-                                StnCode = fsanodes[i].fltorg;
-                            if (fsanodes[i].fltdest != "")
-                                StnCode = fsanodes[i].fltdest;
-                            if (fsanodes[i].fltdest != "" && fsanodes[i].fltorg != "")
-                                StnCode = fsanodes[i].fltorg;
-
-                            if (fsanodes[i].numofpcs != "")
-                                PCS = Convert.ToInt16(fsanodes[i].numofpcs);
-                            if (fsanodes[i].weight != "")
-                                Wt = Convert.ToDecimal(fsanodes[i].weight);
-
-                            string[] PName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno",
-                                "FlightNo","FlightDate","PCS","WT","UOM","UpdatedBy","UpdatedOn","StnCode"};
-                            object[] PValues = new object[] { awbprefix, awbnum, fsanodes[i].messageprefix, splitStr[2 + i], date, fsanodes[i].flttime, 0,
-                            FlightNo,FlightDate,PCS,Wt,UOM,UpdatedBy,UpdatedON,StnCode};
-                            SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
-                            SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar};
-                            if (dtb.InsertData("spInsertAWBMessageStatus", PName, PType, PValues))
-                                if (fsanodes[i].messageprefix == "DEP" || fsanodes[i].messageprefix == "MAN" || fsanodes[i].messageprefix == "OCI")
+                                for (int i = 0; i < fsanodes.Length; i++)
                                 {
-                                    if (customextrainfo.Length > 0)
+                                    if (fsanodes[i].pcsindicator.Trim().ToUpper() == "X")
+                                        continue;
+                                    if (fsanodes[i].fltday.Length > 0 || fsanodes[i].fltmonth.Length > 0)
                                     {
-                                        try
+                                        date = fsanodes[i].fltday + "/" + DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + System.DateTime.Today.Year;
+                                        FlightDate = DateTime.Parse(DateTime.Parse("1." + fsanodes[i].fltmonth + " 2008").Month + "/" + fsanodes[i].fltday + "/" + System.DateTime.Today.Year);
+                                    }
+                                    else
+                                    {
+                                        FlightDate = DateTime.Now;
+                                    }
+
+                                    if (fsanodes[i].messageprefix.ToUpper() == "RCF")
+                                    {
+                                        if (fsanodes[i].daychangeindicator != null && fsanodes[i].daychangeindicator.Trim() != string.Empty)
                                         {
-                                            DataTable dtCustom = new DataTable();
-                                            dtCustom.Columns.Add("MRNNumber", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("MsgType", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("Country", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("DataID", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("DataValue", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("FlightNo", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("FlightDate", Type.GetType("System.DateTime"));
-                                            dtCustom.Columns.Add("Info", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("ProcessedBy", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("ProcessedDate", Type.GetType("System.DateTime"));
-                                            dtCustom.Columns.Add("Custom", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("IsActive", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("HAWBNumber", Type.GetType("System.String"));
-                                            dtCustom.Columns.Add("OCILine", Type.GetType("System.String"));
-
-                                            for (int j = 0; j < customextrainfo.Length; j++)
+                                            switch (fsanodes[i].daychangeindicator.Trim().ToUpper())
                                             {
-                                                DataRow drawb = dtCustom.NewRow();
+                                                case "P":
+                                                    DayChange = FlightDate.AddDays(-1);
+                                                    break;
+                                                case "N":
+                                                    DayChange = FlightDate.AddDays(1);
+                                                    break;
+                                                case "S":
+                                                    DayChange = FlightDate.AddDays(2);
+                                                    break;
+                                                case "T":
+                                                    DayChange = FlightDate.AddDays(3);
+                                                    break;
+                                                case "A":
+                                                    DayChange = FlightDate.AddDays(4);
+                                                    break;
+                                                case "B":
+                                                    DayChange = FlightDate.AddDays(5);
+                                                    break;
+                                                case "C":
+                                                    DayChange = FlightDate.AddDays(6);
+                                                    break;
+                                                case "D":
+                                                    DayChange = FlightDate.AddDays(7);
+                                                    break;
+                                                case "E":
+                                                    DayChange = FlightDate.AddDays(8);
+                                                    break;
+                                                case "F":
+                                                    DayChange = FlightDate.AddDays(9);
+                                                    break;
+                                                case "G":
+                                                    DayChange = FlightDate.AddDays(10);
+                                                    break;
+                                                case "H":
+                                                    DayChange = FlightDate.AddDays(11);
+                                                    break;
+                                                case "I":
+                                                    DayChange = FlightDate.AddDays(12);
+                                                    break;
+                                                case "J":
+                                                    DayChange = FlightDate.AddDays(13);
+                                                    break;
+                                                case "K":
+                                                    DayChange = FlightDate.AddDays(14);
+                                                    break;
+                                                case "L":
+                                                    DayChange = FlightDate.AddDays(15);
+                                                    break;
+                                                default:
+                                                    break;
 
-                                                drawb["MRNNumber"] = "";
-                                                drawb["MsgType"] = "";
-                                                drawb["Country"] = customextrainfo[j].IsoCountryCodeOci;
-                                                drawb["DataID"] = customextrainfo[j].InformationIdentifierOci;
-                                                drawb["DataValue"] = customextrainfo[j].SupplementaryCsrIdentifierOci;
-                                                drawb["FlightNo"] = "";
-                                                drawb["FlightDate"] = System.DateTime.Now;
-                                                drawb["Info"] = customextrainfo[j].CsrIdentifierOci;
-                                                drawb["ProcessedBy"] = "FSU";
-                                                drawb["ProcessedDate"] = System.DateTime.Now;
-                                                drawb["Custom"] = "";
-                                                drawb["IsActive"] = "1";
-                                                drawb["HAWBNumber"] = "";
-                                                drawb["OCILine"] = customextrainfo[j].OCIInfo;
-
-                                                dtCustom.Rows.Add(drawb);
                                             }
 
-                                            SqlParameter[] sqlParameters = new SqlParameter[] {
-                                          new SqlParameter("AWBPrefix",fsadata.airlineprefix)
-                                        , new SqlParameter("AWBNumber",fsadata.awbnum)
-                                        , new SqlParameter("Custom", dtCustom)
-                                         };
-                                            dtb.SelectRecords("Messaging.uspGetSetOCIDetails", sqlParameters);
-
-                                        }
-                                        catch
-                                        {
-                                            clsLog.WriteLogAzure("Error while save FSU OCI information Message:" + awbnum);
+                                            date = DayChange.ToString("dd/MM/yyyy");
                                         }
                                     }
-                                }
-                            flag = true;
+                                    //if (fsanodes[i].flttime.Length > 0)
+                                    //{
+                                    //    time = fsanodes[i].flttime + " (UTC)";
+                                    //}
 
-                        }
-                    }
-                    #endregion
-
-                    #region Save AWB Record on Audit log Table
-                    if (fsanodes.Length > 0)
-                    {
-                        for (int k = 0; k < fsanodes.Length; k++)
-                        {
-                            if (fsanodes[k].pcsindicator.Trim().ToUpper() == "X")
-                                continue;
-                            //Updated On:2017-03-24
-                            //Updated By:Shrishail Ashtage
-                            //Description:Save AWB Record in AWB OperationAuditlog Table
-                            string messageStatus = string.Empty, strDescription = string.Empty, strAction = string.Empty, Updatedby = string.Empty;
-                            switch (fsanodes[k].messageprefix.ToUpper())
-                            {
-                                case "BKD":
-                                    messageStatus = "BKD-AWB Booked";
-                                    strDescription = "AWB Booked";
-                                    strAction = "Booked";
-                                    Updatedby = "FSU-BKD";
-                                    break;
-                                case "RCS":
-                                    messageStatus = "RCS-AWB HandedOver";
-                                    strDescription = "AWB Accepted.";
-                                    strAction = "Accepted";
-                                    Updatedby = "FSU-RCS";
-                                    break;
-                                case "MAN":
-                                    messageStatus = "MAN-AWB Manifested";
-                                    strDescription = "AWB Manifested.";
-                                    strAction = "Manifested";
-                                    Updatedby = "FSU-MAN";
-                                    break;
-                                case "DEP":
-                                    messageStatus = "DEP-AWB Departed";
-                                    strDescription = "AWB Departed";
-                                    strAction = "Departed";
-                                    Updatedby = "FSU-DEP";
-                                    break;
-                                case "DIS":
-                                    messageStatus = "DIS-AWB Discrepancy";
-                                    Updatedby = "FSU-DIS";
-                                    switch (fsanodes[k].infocode.ToUpper())
+                                    // time= 
+                                    FlightNo = fsanodes[i].carriercode + fsanodes[i].flightnum;
+                                    if (FlightNo.Trim().Length > 0)
                                     {
-                                        case "FDAW":
-                                            strDescription = "Found AWB";
-                                            strAction = "Found AWB";
+                                        FlightNo = FlightNo.Replace(".", "").Replace(",", "").Replace("XX", "");
+                                    }
+
+                                    UOM = fsanodes[i].weightcode == "" ? "K" : fsanodes[i].weightcode;
+
+                                    if (fsanodes[i].airportcode != "")
+                                        StnCode = fsanodes[i].airportcode;
+                                    if (fsanodes[i].fltorg != "")
+                                        StnCode = fsanodes[i].fltorg;
+                                    if (fsanodes[i].fltdest != "")
+                                        StnCode = fsanodes[i].fltdest;
+                                    if (fsanodes[i].fltdest != "" && fsanodes[i].fltorg != "")
+                                        StnCode = fsanodes[i].fltorg;
+
+                                    if (fsanodes[i].numofpcs != "")
+                                        PCS = Convert.ToInt16(fsanodes[i].numofpcs);
+                                    if (fsanodes[i].weight != "")
+                                        Wt = Convert.ToDecimal(fsanodes[i].weight);
+
+                                    //string[] PName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno",
+                                    //    "FlightNo","FlightDate","PCS","WT","UOM","UpdatedBy","UpdatedOn","StnCode"};
+                                    //object[] PValues = new object[] { awbprefix, awbnum, fsanodes[i].messageprefix, splitStr[2 + i], date, fsanodes[i].flttime, 0,
+                                    //FlightNo,FlightDate,PCS,Wt,UOM,UpdatedBy,UpdatedON,StnCode};
+                                    //SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
+                                    //SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar};
+                                    var messageParams = new[]
+                                    {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)
+                                {
+                                    Value = awbprefix
+                                },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)
+                                {
+                                    Value = awbnum
+                                },
+                                new SqlParameter("@MType", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].messageprefix
+                                },
+                                new SqlParameter("@desc", SqlDbType.VarChar)
+                                {
+                                    Value = splitStr[2 + i]
+                                },
+                                new SqlParameter("@date", SqlDbType.VarChar)
+                                {
+                                    Value = date
+                                },
+                                new SqlParameter("@time", SqlDbType.VarChar)
+                                {
+                                    Value = fsanodes[i].flttime
+                                },
+                                new SqlParameter("@refno", SqlDbType.Int)
+                                {
+                                    Value = 0
+                                },
+                                new SqlParameter("@FlightNo", SqlDbType.VarChar)
+                                {
+                                    Value = FlightNo
+                                },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime)
+                                {
+                                    Value = FlightDate
+                                },
+                                new SqlParameter("@PCS", SqlDbType.Int)
+                                {
+                                    Value = PCS
+                                },
+                                new SqlParameter("@WT", SqlDbType.Decimal)
+                                {
+                                    Value = Wt
+                                },
+                                new SqlParameter("@UOM", SqlDbType.VarChar)
+                                {
+                                    Value = UOM
+                                },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)
+                                {
+                                    Value = UpdatedBy
+                                },
+                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime)
+                                {
+                                    Value = UpdatedON
+                                },
+                                new SqlParameter("@StnCode", SqlDbType.VarChar)
+                                {
+                                    Value = StnCode
+                                }
+                            };
+                                    //if (dtb.InsertData("spInsertAWBMessageStatus", PName, PType, PValues))
+                                    if (await _readWriteDao.ExecuteNonQueryAsync("spInsertAWBMessageStatus", messageParams))
+                                        if (fsanodes[i].messageprefix == "DEP" || fsanodes[i].messageprefix == "MAN" || fsanodes[i].messageprefix == "OCI")
+                                        {
+                                            if (customextrainfo.Length > 0)
+                                            {
+                                                try
+                                                {
+                                                    DataTable dtCustom = new DataTable();
+                                                    dtCustom.Columns.Add("MRNNumber", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("MsgType", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("Country", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("DataID", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("DataValue", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("FlightNo", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("FlightDate", Type.GetType("System.DateTime"));
+                                                    dtCustom.Columns.Add("Info", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("ProcessedBy", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("ProcessedDate", Type.GetType("System.DateTime"));
+                                                    dtCustom.Columns.Add("Custom", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("IsActive", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("HAWBNumber", Type.GetType("System.String"));
+                                                    dtCustom.Columns.Add("OCILine", Type.GetType("System.String"));
+
+                                                    for (int j = 0; j < customextrainfo.Length; j++)
+                                                    {
+                                                        DataRow drawb = dtCustom.NewRow();
+
+                                                        drawb["MRNNumber"] = "";
+                                                        drawb["MsgType"] = "";
+                                                        drawb["Country"] = customextrainfo[j].IsoCountryCodeOci;
+                                                        drawb["DataID"] = customextrainfo[j].InformationIdentifierOci;
+                                                        drawb["DataValue"] = customextrainfo[j].SupplementaryCsrIdentifierOci;
+                                                        drawb["FlightNo"] = "";
+                                                        drawb["FlightDate"] = System.DateTime.Now;
+                                                        drawb["Info"] = customextrainfo[j].CsrIdentifierOci;
+                                                        drawb["ProcessedBy"] = "FSU";
+                                                        drawb["ProcessedDate"] = System.DateTime.Now;
+                                                        drawb["Custom"] = "";
+                                                        drawb["IsActive"] = "1";
+                                                        drawb["HAWBNumber"] = "";
+                                                        drawb["OCILine"] = customextrainfo[j].OCIInfo;
+
+                                                        dtCustom.Rows.Add(drawb);
+                                                    }
+
+                                                    //    SqlParameter[] sqlParameters = new SqlParameter[] {
+                                                    //  new SqlParameter("AWBPrefix",fsadata.airlineprefix)
+                                                    //, new SqlParameter("AWBNumber",fsadata.awbnum)
+                                                    //, new SqlParameter("Custom", dtCustom)
+                                                    // };
+                                                    var paramsSql = new[]
+                                                    {
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar)
+                                            {
+                                                Value = fsadata.airlineprefix
+                                            },
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar)
+                                            {
+                                                Value = fsadata.awbnum
+                                            },
+                                            new SqlParameter("@Custom", SqlDbType.Structured)
+                                            {
+                                                Value = dtCustom
+                                            }
+                                           };
+                                                    //dtb.SelectRecords("Messaging.uspGetSetOCIDetails", sqlParameters);
+                                                    await _readWriteDao.SelectRecords("Messaging.uspGetSetOCIDetails", paramsSql);
+
+                                                }
+                                                catch
+                                                {
+                                                    clsLog.WriteLogAzure("Error while save FSU OCI information Message:" + awbnum);
+                                                }
+                                            }
+                                        }
+                                    flag = true;
+
+                                }
+                            }
+                            #endregion
+
+                            #region Save AWB Record on Audit log Table
+                            if (fsanodes.Length > 0)
+                            {
+                                for (int k = 0; k < fsanodes.Length; k++)
+                                {
+                                    if (fsanodes[k].pcsindicator.Trim().ToUpper() == "X")
+                                        continue;
+                                    //Updated On:2017-03-24
+                                    //Updated By:Shrishail Ashtage
+                                    //Description:Save AWB Record in AWB OperationAuditlog Table
+                                    string messageStatus = string.Empty, strDescription = string.Empty, strAction = string.Empty, Updatedby = string.Empty;
+                                    switch (fsanodes[k].messageprefix.ToUpper())
+                                    {
+                                        case "BKD":
+                                            messageStatus = "BKD-AWB Booked";
+                                            strDescription = "AWB Booked";
+                                            strAction = "Booked";
+                                            Updatedby = "FSU-BKD";
                                             break;
-                                        case "FDCA":
-                                            strDescription = "Found Cargo";
-                                            strAction = "Found Cargo";
+                                        case "RCS":
+                                            messageStatus = "RCS-AWB HandedOver";
+                                            strDescription = "AWB Accepted.";
+                                            strAction = "Accepted";
+                                            Updatedby = "FSU-RCS";
                                             break;
-                                        case "MSAW":
-                                            strDescription = "Missing AWB";
-                                            strAction = "Missing AWB";
+                                        case "MAN":
+                                            messageStatus = "MAN-AWB Manifested";
+                                            strDescription = "AWB Manifested.";
+                                            strAction = "Manifested";
+                                            Updatedby = "FSU-MAN";
                                             break;
-                                        case "MSCA":
-                                            strDescription = "Missing Cargo";
-                                            strAction = "Missing Cargo";
+                                        case "DEP":
+                                            messageStatus = "DEP-AWB Departed";
+                                            strDescription = "AWB Departed";
+                                            strAction = "Departed";
+                                            Updatedby = "FSU-DEP";
                                             break;
-                                        case "FDAV":
-                                            strDescription = "Found Mail Document";
-                                            strAction = "Found Mail Document";
+                                        case "DIS":
+                                            messageStatus = "DIS-AWB Discrepancy";
+                                            Updatedby = "FSU-DIS";
+                                            switch (fsanodes[k].infocode.ToUpper())
+                                            {
+                                                case "FDAW":
+                                                    strDescription = "Found AWB";
+                                                    strAction = "Found AWB";
+                                                    break;
+                                                case "FDCA":
+                                                    strDescription = "Found Cargo";
+                                                    strAction = "Found Cargo";
+                                                    break;
+                                                case "MSAW":
+                                                    strDescription = "Missing AWB";
+                                                    strAction = "Missing AWB";
+                                                    break;
+                                                case "MSCA":
+                                                    strDescription = "Missing Cargo";
+                                                    strAction = "Missing Cargo";
+                                                    break;
+                                                case "FDAV":
+                                                    strDescription = "Found Mail Document";
+                                                    strAction = "Found Mail Document";
+                                                    break;
+                                                case "FDMB":
+                                                    strDescription = "Found Mailbag";
+                                                    strAction = "Found Mailbag";
+                                                    break;
+                                                case "MSAV":
+                                                    strDescription = "Missing Mail Document";
+                                                    strAction = "Missing Mail Document";
+                                                    break;
+                                                case "MSMB":
+                                                    strDescription = "Missing Mailbag";
+                                                    strAction = "Missing Mailbag";
+                                                    break;
+                                                case "DFLD":
+                                                    strDescription = "Definitely Loaded";
+                                                    strAction = "Definitely Loaded";
+                                                    break;
+                                                case "OFLD":
+                                                    strDescription = "AWB Offloaded";
+                                                    strAction = "Offloaded";
+                                                    break;
+                                                case "OVCD":
+                                                    strDescription = "Overcarried";
+                                                    strAction = "Overcarried";
+                                                    break;
+                                                case "SSPD":
+                                                    strDescription = "Shortshipped";
+                                                    strAction = "Shortshipped";
+                                                    break;
+                                                case "DMGD":
+                                                    strDescription = "Damage";
+                                                    strAction = "Damage";
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
                                             break;
-                                        case "FDMB":
-                                            strDescription = "Found Mailbag";
-                                            strAction = "Found Mailbag";
+                                        case "ARR":
+                                            messageStatus = "ARR-AWB Arrived";
+                                            strDescription = "AWB Arrived";
+                                            strAction = "Arrived";
+                                            Updatedby = "FSU-ARR";
                                             break;
-                                        case "MSAV":
-                                            strDescription = "Missing Mail Document";
-                                            strAction = "Missing Mail Document";
+                                        case "RCF":
+                                            messageStatus = "RCF-AWB received";
+                                            strDescription = "AWB received from a given flight";
+                                            strAction = "Arrived";
+                                            Updatedby = "FSU-RCF";
                                             break;
-                                        case "MSMB":
-                                            strDescription = "Missing Mailbag";
-                                            strAction = "Missing Mailbag";
+                                        case "DLV":
+                                            messageStatus = "DLV-AWB Delivered";
+                                            strDescription = "AWB Delivered";
+                                            strAction = "Delivered";
+                                            Updatedby = "FSU-DLV";
                                             break;
-                                        case "DFLD":
-                                            strDescription = "Definitely Loaded";
-                                            strAction = "Definitely Loaded";
+                                        case "RCT":
+                                            messageStatus = "RCT-Received Freight from Interline Partner(CTM-In generated)";
+                                            strDescription = "Received Freight from Interline Partner";
+                                            //strAction = "Accepted"; 
+                                            strAction = "CTM-In";
+                                            Updatedby = "FSU-RCT";
                                             break;
-                                        case "OFLD":
-                                            strDescription = "AWB Offloaded";
-                                            strAction = "Offloaded";
+                                        case "TFD":
+                                            messageStatus = "TFD-Transfer  Freight To  Interline Airline(CTM-Out generated)";
+                                            strDescription = "Transfer  Freight To  Interline Airline";
+                                            strAction = "CTM-Out";
+                                            Updatedby = "FSU-TFD";
                                             break;
-                                        case "OVCD":
-                                            strDescription = "Overcarried";
-                                            strAction = "Overcarried";
+                                        case "NFD":
+                                            messageStatus = "Consignment arrived at destination";
+                                            strDescription = "Consignment where consignee or his agent has been informed of its arrival at destination";
+                                            strAction = "Notify to Consignee";
+                                            Updatedby = "FSU-NFD";
                                             break;
-                                        case "SSPD":
-                                            strDescription = "Shortshipped";
-                                            strAction = "Shortshipped";
+                                        case "AWD":
+                                            messageStatus = "Documents delivered to the consignee or agent";
+                                            strDescription = "Consignment arrival documents delivered to the consignee or agent";
+                                            strAction = "Documents delivered";
+                                            Updatedby = "FSU-AWD";
                                             break;
-                                        case "DMGD":
-                                            strDescription = "Damage";
-                                            strAction = "Damage";
+                                        case "PRE":
+                                            messageStatus = "The consignment has been prepared";
+                                            strDescription = "The consignment has been prepared for loading on this flight for transport";// between these locations on this scheduled date";
+                                            strAction = "Consignment Prepared";
+                                            Updatedby = "FSU-PRE";
+                                            break;
+                                        case "CCD":
+                                            messageStatus = "Consignment cleared by Customs";
+                                            strDescription = "Consignment cleared by Customs";
+                                            strAction = "Consignment cleared";
+                                            Updatedby = "FSU-CCD";
                                             break;
                                         default:
+                                            messageStatus = "FSU";
+                                            strDescription = "FSU";
+                                            strAction = "FSU";
+                                            Updatedby = "FSU";
                                             break;
                                     }
-                                    break;
-                                case "ARR":
-                                    messageStatus = "ARR-AWB Arrived";
-                                    strDescription = "AWB Arrived";
-                                    strAction = "Arrived";
-                                    Updatedby = "FSU-ARR";
-                                    break;
-                                case "RCF":
-                                    messageStatus = "RCF-AWB received";
-                                    strDescription = "AWB received from a given flight";
-                                    strAction = "Arrived";
-                                    Updatedby = "FSU-RCF";
-                                    break;
-                                case "DLV":
-                                    messageStatus = "DLV-AWB Delivered";
-                                    strDescription = "AWB Delivered";
-                                    strAction = "Delivered";
-                                    Updatedby = "FSU-DLV";
-                                    break;
-                                case "RCT":
-                                    messageStatus = "RCT-Received Freight from Interline Partner(CTM-In generated)";
-                                    strDescription = "Received Freight from Interline Partner";
-                                    //strAction = "Accepted"; 
-                                    strAction = "CTM-In";
-                                    Updatedby = "FSU-RCT";
-                                    break;
-                                case "TFD":
-                                    messageStatus = "TFD-Transfer  Freight To  Interline Airline(CTM-Out generated)";
-                                    strDescription = "Transfer  Freight To  Interline Airline";
-                                    strAction = "CTM-Out";
-                                    Updatedby = "FSU-TFD";
-                                    break;
-                                case "NFD":
-                                    messageStatus = "Consignment arrived at destination";
-                                    strDescription = "Consignment where consignee or his agent has been informed of its arrival at destination";
-                                    strAction = "Notify to Consignee";
-                                    Updatedby = "FSU-NFD";
-                                    break;
-                                case "AWD":
-                                    messageStatus = "Documents delivered to the consignee or agent";
-                                    strDescription = "Consignment arrival documents delivered to the consignee or agent";
-                                    strAction = "Documents delivered";
-                                    Updatedby = "FSU-AWD";
-                                    break;
-                                case "PRE":
-                                    messageStatus = "The consignment has been prepared";
-                                    strDescription = "The consignment has been prepared for loading on this flight for transport";// between these locations on this scheduled date";
-                                    strAction = "Consignment Prepared";
-                                    Updatedby = "FSU-PRE";
-                                    break;
-                                case "CCD":
-                                    messageStatus = "Consignment cleared by Customs";
-                                    strDescription = "Consignment cleared by Customs";
-                                    strAction = "Consignment cleared";
-                                    Updatedby = "FSU-CCD";
-                                    break;
-                                default:
-                                    messageStatus = "FSU";
-                                    strDescription = "FSU";
-                                    strAction = "FSU";
-                                    Updatedby = "FSU";
-                                    break;
+
+                                    string origin = (fsanodes[k].fltorg).ToString();
+                                    string dest = (fsanodes[k].fltdest).ToString();
+                                    string fltno = (fsanodes[k].carriercode + fsanodes[k].flightnum).ToString();
+                                    if (fltno.Trim().Length > 0)
+                                    {
+                                        fltno = fltno.Replace(".", "").Replace(",", "").Replace("XX", "");
+                                    }
+                                    string airportcode = (fsanodes[k].airportcode).ToString();
+                                    string messageType = fsanodes[k].messageprefix.ToUpper();
+                                    DateTime Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
+                                    DateTime fltdate = DateTime.Now;
+
+                                    switch (messageType.Trim())
+                                    {
+                                        case "DLV":
+                                        case "ARR":
+                                        case "RCF":
+                                        case "MAN":
+                                            airportcode = dest;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));//Convert.ToDateTime("1900-01-01");
+                                            break;
+                                        case "RCS":
+                                            origin = airportcode;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            Date = Convert.ToDateTime("1900-01-01");
+                                            fsanodes[k].weight = (fsanodes[k].weight.Trim() == "" || fsanodes[k].weight == "0") ? fsadata.weight : fsanodes[k].weight;
+                                            break;
+                                        case "TFD":
+                                            origin = fsanodes[k].airportcode;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            //Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            break;
+                                        case "DIS":
+                                            origin = fsanodes[k].airportcode;
+                                            dest = fsadata.dest;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
+                                            break;
+                                        case "RCT":
+                                            origin = string.Empty;
+                                            dest = fsadata.dest;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            //Date = Convert.ToDateTime("1900-01-01");
+                                            break;
+                                        case "NFD":
+                                        case "AWD":
+                                        case "CCD":
+                                            origin = string.Empty;
+                                            dest = fsadata.dest;
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            Date = Convert.ToDateTime("1900-01-01");
+                                            break;
+                                        case "DEP":
+                                            airportcode = Convert.ToString(fsanodes[k].airportcode);
+                                            origin = Convert.ToString(fsanodes[k].fltorg);
+                                            dest = Convert.ToString(fsanodes[k].fltdest);
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            strDepartureTime = UpdatedON.ToString("MM/dd/yyyy HH:mm");
+                                            Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
+                                            break;
+                                        default:
+                                            airportcode = Convert.ToString(fsanodes[k].airportcode);
+                                            origin = Convert.ToString(fsanodes[k].fltorg);
+                                            dest = Convert.ToString(fsanodes[k].fltdest);
+                                            UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
+                                            Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
+                                            break;
+                                    }
+
+                                    if (messageType == "RCF" && DayChange != Convert.ToDateTime("1900-01-01"))
+                                    {
+                                        UpdatedON = DateTime.Parse(DayChange.ToString("MM/dd/yyyy") + " " + (fsanodes[k].flttime));
+                                    }
+
+                                    if (fsanodes[k].numofpcs == fsadata.pcscnt && (fsanodes[k].weight == "" || fsanodes[k].weight == "0" || fsanodes[k].weight == "0.00"))
+                                    {
+                                        fsanodes[k].weight = fsadata.weight;
+                                    }
+
+
+
+                                    //dtb = new SQLServer();
+                                    //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "Shipmenttype", "Volume", "RefNo" };
+                                    //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
+                                    //object[] CValues = new object[] { awbprefix, awbnum, fsadata.origin, fsadata.dest, fsanodes[k].numofpcs, Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight), fltno, Date, origin, dest, strAction, messageStatus, strDescription, Updatedby, strDepartureTime == "" ? UpdatedON.ToString() : strDepartureTime, 1, fsanodes[k].pcsindicator, fsanodes[k].volumeamt.Trim() == "" ? "0" : fsanodes[k].volumeamt, refNo };
+                                    var cnParams = new[]
+                                    {
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = awbprefix },
+                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                        new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fsadata.origin },
+                                        new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
+                                        new SqlParameter("@Pieces", SqlDbType.VarChar)
+                                        {
+                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].numofpcs) ? "0" : fsanodes[k].numofpcs
+                                        },
+                                        new SqlParameter("@Weight", SqlDbType.VarChar)
+                                        {
+                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].weight) ? "0" : fsanodes[k].weight
+                                        },
+                                        new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltno },
+                                        new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = Date },
+                                        new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = origin },
+                                        new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = dest },
+                                        new SqlParameter("@Action", SqlDbType.VarChar) { Value = strAction },
+                                        new SqlParameter("@Message", SqlDbType.VarChar) { Value = messageStatus },
+                                        new SqlParameter("@Description", SqlDbType.VarChar) { Value = strDescription },
+                                        new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = Updatedby },
+                                        new SqlParameter("@UpdatedOn", SqlDbType.VarChar)
+                                        {
+                                            Value = string.IsNullOrWhiteSpace(strDepartureTime)
+                                                ? UpdatedON.ToString()
+                                                : strDepartureTime
+                                        },
+                                        new SqlParameter("@Public", SqlDbType.Bit) { Value = true },
+                                        new SqlParameter("@ShipmentType", SqlDbType.VarChar) { Value = fsanodes[k].pcsindicator },
+                                        new SqlParameter("@Volume", SqlDbType.VarChar)
+                                        {
+                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].volumeamt) ? "0" : fsanodes[k].volumeamt
+                                        },
+                                        new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
+                                    };
+                                    //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                    if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", cnParams))
+                                    {
+                                        //clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                        //Fix the error dtb.LastErrorDescription while logging, currently removed + dtb.LastErrorDescription  , needs to add
+                                        clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: ");
+
+                                    }
+                                }
                             }
-
-                            string origin = (fsanodes[k].fltorg).ToString();
-                            string dest = (fsanodes[k].fltdest).ToString();
-                            string fltno = (fsanodes[k].carriercode + fsanodes[k].flightnum).ToString();
-                            if (fltno.Trim().Length > 0)
-                            {
-                                fltno = fltno.Replace(".", "").Replace(",", "").Replace("XX", "");
-                            }
-                            string airportcode = (fsanodes[k].airportcode).ToString();
-                            string messageType = fsanodes[k].messageprefix.ToUpper();
-                            DateTime Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
-                            DateTime fltdate = DateTime.Now;
-
-                            switch (messageType.Trim())
-                            {
-                                case "DLV":
-                                case "ARR":
-                                case "RCF":
-                                case "MAN":
-                                    airportcode = dest;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));//Convert.ToDateTime("1900-01-01");
-                                    break;
-                                case "RCS":
-                                    origin = airportcode;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    Date = Convert.ToDateTime("1900-01-01");
-                                    fsanodes[k].weight = (fsanodes[k].weight.Trim() == "" || fsanodes[k].weight == "0") ? fsadata.weight : fsanodes[k].weight;
-                                    break;
-                                case "TFD":
-                                    origin = fsanodes[k].airportcode;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    //Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    break;
-                                case "DIS":
-                                    origin = fsanodes[k].airportcode;
-                                    dest = fsadata.dest;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
-                                    break;
-                                case "RCT":
-                                    origin = string.Empty;
-                                    dest = fsadata.dest;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    //Date = Convert.ToDateTime("1900-01-01");
-                                    break;
-                                case "NFD":
-                                case "AWD":
-                                case "CCD":
-                                    origin = string.Empty;
-                                    dest = fsadata.dest;
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    Date = Convert.ToDateTime("1900-01-01");
-                                    break;
-                                case "DEP":
-                                    airportcode = Convert.ToString(fsanodes[k].airportcode);
-                                    origin = Convert.ToString(fsanodes[k].fltorg);
-                                    dest = Convert.ToString(fsanodes[k].fltdest);
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    strDepartureTime = UpdatedON.ToString("MM/dd/yyyy HH:mm");
-                                    Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
-                                    break;
-                                default:
-                                    airportcode = Convert.ToString(fsanodes[k].airportcode);
-                                    origin = Convert.ToString(fsanodes[k].fltorg);
-                                    dest = Convert.ToString(fsanodes[k].fltdest);
-                                    UpdatedON = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                    Date = DateTime.Parse((fsanodes[k].fltmonth + "-" + fsanodes[k].fltday + "-" + DateTime.Now.Year));
-                                    break;
-                            }
-
-                            if (messageType == "RCF" && DayChange != Convert.ToDateTime("1900-01-01"))
-                            {
-                                UpdatedON = DateTime.Parse(DayChange.ToString("MM/dd/yyyy") + " " + (fsanodes[k].flttime));
-                            }
-
-                            if (fsanodes[k].numofpcs == fsadata.pcscnt && (fsanodes[k].weight == "" || fsanodes[k].weight == "0" || fsanodes[k].weight == "0.00"))
-                            {
-                                fsanodes[k].weight = fsadata.weight;
-                            }
-
-
-
-                            dtb = new SQLServer();
-                            string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "Shipmenttype", "Volume", "RefNo" };
-                            SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-                            object[] CValues = new object[] { awbprefix, awbnum, fsadata.origin, fsadata.dest, fsanodes[k].numofpcs, Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight), fltno, Date, origin, dest, strAction, messageStatus, strDescription, Updatedby, strDepartureTime == "" ? UpdatedON.ToString() : strDepartureTime, 1, fsanodes[k].pcsindicator, fsanodes[k].volumeamt.Trim() == "" ? "0" : fsanodes[k].volumeamt, refNo };
-
-                            if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
-                            {
-                                clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
-                            }
+                            #endregion Save AWB Record on Audit log Table
                         }
                     }
-                    #endregion Save AWB Record on Audit log Table
                 }
+                catch (Exception ex)
+                {
+                    flag = false;
+                    clsLog.WriteLogAzure(ex);
+                }
+                //return flag;
+                return (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
+
             }
-            catch (Exception ex)
-            {
-                flag = false;
-                clsLog.WriteLogAzure(ex);
-            }
-            return flag;
         }
 
         public static string[] stringsplitter(string str)
