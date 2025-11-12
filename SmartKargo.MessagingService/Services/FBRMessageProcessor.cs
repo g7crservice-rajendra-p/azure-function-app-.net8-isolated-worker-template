@@ -107,7 +107,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
 
                                 break;
@@ -148,7 +149,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
                                 break;
 
@@ -163,7 +165,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 flag = false;
-                clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
+                // clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
+                _logger.LogError("Error in Decoding FBR Message {0}" , ex.ToString());
             }
             return flag;
         }
@@ -382,7 +385,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -415,7 +419,10 @@ namespace QidWorkerRole
                 dsData = await _readWriteDao.SelectRecords(procedure, parameters);
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex.Message); }
+            {
+                // clsLog.WriteLogAzure(ex.Message);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+             }
 
             return dsData;
         }
@@ -424,164 +431,175 @@ namespace QidWorkerRole
 
         public async Task GenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
         {
-            string SitaMessageHeader = string.Empty, FblMessageversion = string.Empty, Emailaddress = string.Empty, SFTPMessageHeader = string.Empty;
-            GenericFunction gf = new GenericFunction();
-            MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
-            MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
-            MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
-            int count1 = 0;
-            int count2 = 0;
-            DataSet dsData = await GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
-            if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
+            try
             {
-                DataSet dsmessage = gf.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FBL", "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty);
-                if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
+                string SitaMessageHeader = string.Empty, FblMessageversion = string.Empty, Emailaddress = string.Empty, SFTPMessageHeader = string.Empty;
+                GenericFunction gf = new GenericFunction();
+                MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
+                MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
+                MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
+                int count1 = 0;
+                int count2 = 0;
+                DataSet dsData = await GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                    string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
-                    FblMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
-                    if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
-                        SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
-                    if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                        SFTPMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString(), dsmessage.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
-                }
-                if (Emailaddress.Trim() != string.Empty || SitaMessageHeader.Trim() != string.Empty || SFTPMessageHeader.Trim() != string.Empty)
-                {
-                    DateTime dtFlight = DateTime.Now;
-                    objFBLInfo.date = DateTime.Now.Day.ToString().PadLeft(2, '0');
-                    try
+                    DataSet dsmessage = gf.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FBL", "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty);
+                    if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                     {
-                        dtFlight = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);//, "dd/MM/yyyy", null);
-                        objFBLInfo.date = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).Day.ToString().PadLeft(2, '0');
+                        Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                        string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
+                        FblMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
+                        if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
+                            SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                            SFTPMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString(), dsmessage.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
                     }
-                    catch (Exception ex)
-                    { clsLog.WriteLogAzure(ex.Message); }
-
-                    objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
-                    objFBLInfo.fltairportcode = strFlightOrigin;
-                    objFBLInfo.endmesgcode = "LAST";
-                    objFBLInfo.fblversion = FblMessageversion;
-                    objFBLInfo.messagesequencenum = "1";
-                    //flight details
-                    if (dsData.Tables[0].Rows.Count > 0)
+                    if (Emailaddress.Trim() != string.Empty || SitaMessageHeader.Trim() != string.Empty || SFTPMessageHeader.Trim() != string.Empty)
                     {
-                        count1 = 1;
-                        foreach (DataRow dr in dsData.Tables[0].Rows)
+                        DateTime dtFlight = DateTime.Now;
+                        objFBLInfo.date = DateTime.Now.Day.ToString().PadLeft(2, '0');
+                        try
                         {
-                            MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                            objTempUnloadingPort.unloadingairport = dr[2].ToString().ToUpper();
-                            Array.Resize(ref objUnloadingPort, count1);
-                            objUnloadingPort[count1 - 1] = objTempUnloadingPort;
-                            objFBLInfo.carriercode = dsData.Tables[0].Rows[0]["FlightID"].ToString().Substring(0, 2);
-                            objFBLInfo.fltnum = dsData.Tables[0].Rows[0]["FlightID"].ToString().Substring(2);
-                            count1++;
-                            if (dsData.Tables[1].Rows.Count > 0)
+                            dtFlight = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);//, "dd/MM/yyyy", null);
+                            objFBLInfo.date = DateTime.ParseExact(FlightDate, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture).Day.ToString().PadLeft(2, '0');
+                        }
+                        catch (Exception ex)
+                        {
+                            // clsLog.WriteLogAzure(ex.Message);
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                         }
+    
+                        objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
+                        objFBLInfo.fltairportcode = strFlightOrigin;
+                        objFBLInfo.endmesgcode = "LAST";
+                        objFBLInfo.fblversion = FblMessageversion;
+                        objFBLInfo.messagesequencenum = "1";
+                        //flight details
+                        if (dsData.Tables[0].Rows.Count > 0)
+                        {
+                            count1 = 1;
+                            foreach (DataRow dr in dsData.Tables[0].Rows)
                             {
-                                bool isNil = true;
-                                foreach (DataRow drAWB in dsData.Tables[1].Rows)
+                                MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
+                                objTempUnloadingPort.unloadingairport = dr[2].ToString().ToUpper();
+                                Array.Resize(ref objUnloadingPort, count1);
+                                objUnloadingPort[count1 - 1] = objTempUnloadingPort;
+                                objFBLInfo.carriercode = dsData.Tables[0].Rows[0]["FlightID"].ToString().Substring(0, 2);
+                                objFBLInfo.fltnum = dsData.Tables[0].Rows[0]["FlightID"].ToString().Substring(2);
+                                count1++;
+                                if (dsData.Tables[1].Rows.Count > 0)
                                 {
-                                    if (objTempUnloadingPort.unloadingairport.Trim() == drAWB["DestinationCode"].ToString().Trim())
+                                    bool isNil = true;
+                                    foreach (DataRow drAWB in dsData.Tables[1].Rows)
                                     {
-                                        isNil = false;
-                                        break;
+                                        if (objTempUnloadingPort.unloadingairport.Trim() == drAWB["DestinationCode"].ToString().Trim())
+                                        {
+                                            isNil = false;
+                                            break;
+                                        }
                                     }
-                                }
-                                if (isNil)
-                                {
-                                    objUnloadingPort[count1 - 2].nilcargocode = "NIL";
-                                }
-                            }
-                            else
-                            {
-                                objUnloadingPort[count1 - 2].nilcargocode = "NIL";
-                            }
-                        }
-                    }
-                    //awb details
-                    if (dsData.Tables[1].Rows.Count > 0)
-                    {
-                        objFBLInfo.carriercode = dsData.Tables[1].Rows[0]["CarrierCode"].ToString();
-                        objFBLInfo.fltnum = dsData.Tables[1].Rows[0]["FlightNo"].ToString();
-
-                        count2 = 1;
-                        foreach (DataRow dr in dsData.Tables[1].Rows)
-                        {
-                            MessageData.consignmnetinfo objTempConsInfo = new MessageData.consignmnetinfo("");
-                            string AWBNumber = dr[0].ToString().Trim();
-                            objTempConsInfo.airlineprefix = dr["Prefix"].ToString().Trim();//Prefix
-                            objTempConsInfo.awbnum = dr["AWBNumber"].ToString().Trim();
-                            objTempConsInfo.origin = dr["OrginCode"].ToString().Trim().ToUpper();
-                            objTempConsInfo.dest = dr["DestinationCode"].ToString().Trim().ToUpper();
-                            if (dr["Piececode"].ToString() == "P")
-                            {
-                                objTempConsInfo.consigntype = dr["Piececode"].ToString();
-                                objTempConsInfo.pcscnt = dr["FlightPcs"].ToString();
-                                objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
-                                objTempConsInfo.weight = dr["AWBGwt"].ToString();
-
-                                objTempConsInfo.TotalConsignmentType = "T";
-                                objTempConsInfo.AWBPieces = dr["AWBPcs"].ToString();
-                            }
-                            else
-                            {
-                                objTempConsInfo.consigntype = dr["Piececode"].ToString();
-                                objTempConsInfo.pcscnt = dr["FlightPcs"].ToString();
-                                objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
-                                objTempConsInfo.weight = dr["AWBGwt"].ToString();
-                            }
-
-                            objTempConsInfo.volumecode = dr["VolumeCode"].ToString();
-                            objTempConsInfo.volumeamt = dr["Volume"].ToString();
-
-                            objTempConsInfo.manifestdesc = dr["CommDesc"].ToString().Trim().ToUpper();
-                            objTempConsInfo.splhandling = dr["SHCCodes"].ToString().Trim().ToUpper();
-
-                            Array.Resize(ref objConsInfo, count2);
-                            objConsInfo[count2 - 1] = objTempConsInfo;
-                            count2++;
-                        }
-                    }
-                    if (count1 > 0)
-                    {
-                        MessageData.dimensionnfo[] objDimenInfo = new MessageData.dimensionnfo[0];
-                        MessageData.consignmentorigininfo[] objConsOriginInfo = new MessageData.consignmentorigininfo[0];
-                        MessageData.ULDinfo[] objULDInfo = new MessageData.ULDinfo[0];
-                        MessageData.otherserviceinfo objOtherInfo = new MessageData.otherserviceinfo("");
-                        //Cls_BL cls_BL = new Cls_BL();
-                        string FBLMsg = cls_Encode_Decode.EncodeFBLforsend(objFBLInfo, objUnloadingPort, objConsInfo, objDimenInfo, objConsOriginInfo, objULDInfo, objOtherInfo);
-                        if (FBLMsg != null)
-                        {
-                            if (FBLMsg.Trim() != "")
-                            {
-                                //Multipart FBL
-                                if (FBLMsg.Contains("#"))
-                                {
-                                    string[] MulitpartFBL = FBLMsg.Split('#');
-
-                                    foreach (string FBLMessage in MulitpartFBL)
+                                    if (isNil)
                                     {
-                                        if (SitaMessageHeader != "")
-                                            gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
-                                        if (Emailaddress != "")
-                                            gf.SaveMessageOutBox("FBL", FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
-                                        if (SFTPMessageHeader.Trim().Length > 0)
-                                            gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                        objUnloadingPort[count1 - 2].nilcargocode = "NIL";
                                     }
                                 }
                                 else
                                 {
-                                    if (SitaMessageHeader != "")
-                                        gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
-                                    if (Emailaddress != "")
-                                        gf.SaveMessageOutBox("FBL", FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
-                                    if (SFTPMessageHeader.Trim().Length > 0)
-                                        gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                    objUnloadingPort[count1 - 2].nilcargocode = "NIL";
+                                }
+                            }
+                        }
+                        //awb details
+                        if (dsData.Tables[1].Rows.Count > 0)
+                        {
+                            objFBLInfo.carriercode = dsData.Tables[1].Rows[0]["CarrierCode"].ToString();
+                            objFBLInfo.fltnum = dsData.Tables[1].Rows[0]["FlightNo"].ToString();
+    
+                            count2 = 1;
+                            foreach (DataRow dr in dsData.Tables[1].Rows)
+                            {
+                                MessageData.consignmnetinfo objTempConsInfo = new MessageData.consignmnetinfo("");
+                                string AWBNumber = dr[0].ToString().Trim();
+                                objTempConsInfo.airlineprefix = dr["Prefix"].ToString().Trim();//Prefix
+                                objTempConsInfo.awbnum = dr["AWBNumber"].ToString().Trim();
+                                objTempConsInfo.origin = dr["OrginCode"].ToString().Trim().ToUpper();
+                                objTempConsInfo.dest = dr["DestinationCode"].ToString().Trim().ToUpper();
+                                if (dr["Piececode"].ToString() == "P")
+                                {
+                                    objTempConsInfo.consigntype = dr["Piececode"].ToString();
+                                    objTempConsInfo.pcscnt = dr["FlightPcs"].ToString();
+                                    objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
+                                    objTempConsInfo.weight = dr["AWBGwt"].ToString();
+    
+                                    objTempConsInfo.TotalConsignmentType = "T";
+                                    objTempConsInfo.AWBPieces = dr["AWBPcs"].ToString();
+                                }
+                                else
+                                {
+                                    objTempConsInfo.consigntype = dr["Piececode"].ToString();
+                                    objTempConsInfo.pcscnt = dr["FlightPcs"].ToString();
+                                    objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
+                                    objTempConsInfo.weight = dr["AWBGwt"].ToString();
+                                }
+    
+                                objTempConsInfo.volumecode = dr["VolumeCode"].ToString();
+                                objTempConsInfo.volumeamt = dr["Volume"].ToString();
+    
+                                objTempConsInfo.manifestdesc = dr["CommDesc"].ToString().Trim().ToUpper();
+                                objTempConsInfo.splhandling = dr["SHCCodes"].ToString().Trim().ToUpper();
+    
+                                Array.Resize(ref objConsInfo, count2);
+                                objConsInfo[count2 - 1] = objTempConsInfo;
+                                count2++;
+                            }
+                        }
+                        if (count1 > 0)
+                        {
+                            MessageData.dimensionnfo[] objDimenInfo = new MessageData.dimensionnfo[0];
+                            MessageData.consignmentorigininfo[] objConsOriginInfo = new MessageData.consignmentorigininfo[0];
+                            MessageData.ULDinfo[] objULDInfo = new MessageData.ULDinfo[0];
+                            MessageData.otherserviceinfo objOtherInfo = new MessageData.otherserviceinfo("");
+                            //Cls_BL cls_BL = new Cls_BL();
+                            string FBLMsg = cls_Encode_Decode.EncodeFBLforsend(objFBLInfo, objUnloadingPort, objConsInfo, objDimenInfo, objConsOriginInfo, objULDInfo, objOtherInfo);
+                            if (FBLMsg != null)
+                            {
+                                if (FBLMsg.Trim() != "")
+                                {
+                                    //Multipart FBL
+                                    if (FBLMsg.Contains("#"))
+                                    {
+                                        string[] MulitpartFBL = FBLMsg.Split('#');
+    
+                                        foreach (string FBLMessage in MulitpartFBL)
+                                        {
+                                            if (SitaMessageHeader != "")
+                                                gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                            if (Emailaddress != "")
+                                                gf.SaveMessageOutBox("FBL", FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                            if (SFTPMessageHeader.Trim().Length > 0)
+                                                gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (SitaMessageHeader != "")
+                                            gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                        if (Emailaddress != "")
+                                            gf.SaveMessageOutBox("FBL", FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                        if (SFTPMessageHeader.Trim().Length > 0)
+                                            gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                    }
                                 }
                             }
                         }
                     }
                 }
+    
             }
-        }
+            catch (System.Exception ex)
+            {   
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }        }
     }
 }
