@@ -65,8 +65,9 @@ namespace QidWorkerRole
                 originalMessage = strMessage.Replace("$", "\r\n"); ;
                 if (arrLine.Length < 3)
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
                     return;
                 }
                 messageType = arrLine[0];
@@ -108,7 +109,7 @@ namespace QidWorkerRole
                 }
                 else
                 {
-
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
                     _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
                     return;
                 }
@@ -147,8 +148,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -584,8 +586,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -735,8 +738,9 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
                 }
             }
             catch (Exception ex)
@@ -770,8 +774,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
                     return;
                 }
 
@@ -891,8 +896,9 @@ namespace QidWorkerRole
                     flightInfoLine = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
                     return;
                 }
 
@@ -1526,15 +1532,19 @@ namespace QidWorkerRole
         private readonly ILogger<ASM> _logger;//instance logger
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ISqlDataHelperDao _readOnlyDao;
+        private readonly GenericFunction _genericFunction;
+        private readonly FDMMessageProcessor _fDMMessageProcessor;
+
 
         #region Constructor
-        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger)
+        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction, FDMMessageProcessor fDMMessageProcessor )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
             _staticLogger = staticLogger;
             _logger = logger;
-
+            _genericFunction = genericFunction;
+            _fDMMessageProcessor = fDMMessageProcessor;
         }
         #endregion
         public String messageType = "MVT";
@@ -1578,8 +1588,8 @@ namespace QidWorkerRole
             return tempDate.ToString("yyyy-MM-dd hh:mm:ss");
         }
 
-        //public async Task<MVT> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
-        public async Task<(MVT mvt, string msgType, bool isProcessFlag)> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom)
+        //public MVT ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom, out string msgType, out bool isProcessFlag)
+        public async Task<(string msgType, bool isProcessFlag)> ToMVT(string strMessage, int srno, string stroriginalMessage, string strMessageFrom)
         {
 
             string msgType = "MVT";
@@ -1592,7 +1602,7 @@ namespace QidWorkerRole
                 if (arrLine.Length < 3)
                 {
                     errorMsg = "Message is not in correct format.Cant parse correctly.";
-                    return (null, msgType, isProcessFlag);
+                    return (msgType, isProcessFlag);
                 }
                 messageType = arrLine[0];
 
@@ -1671,8 +1681,9 @@ namespace QidWorkerRole
                     {
                         if (msgType == "MVT/AD")
                         {
-                            FDMMessageProcessor FDM = new FDMMessageProcessor();
-                            FDM.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
+                            //FDMMessageProcessor FDM = new FDMMessageProcessor();
+                            //FDM.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
+                            await _fDMMessageProcessor.GenerateFDMMessage(flightNo, FlightDate, airportOfDepart);
                         }
                     }
                     catch (Exception ex)
@@ -1691,7 +1702,7 @@ namespace QidWorkerRole
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, "Error on getDate ToMVT");
             }
-            return (this, msgType, isProcessFlag);
+            return (msgType, isProcessFlag);
         }
 
         private void ParseEstimatedArrival(string[] arrLine, string actualMessageType)
@@ -2050,8 +2061,9 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    //genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
+                    _genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
                 }
                 try
                 {

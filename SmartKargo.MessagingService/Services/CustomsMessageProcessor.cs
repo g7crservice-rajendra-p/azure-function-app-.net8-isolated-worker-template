@@ -1,25 +1,36 @@
-﻿using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Xml;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole
 {
     public class CustomsMessageProcessor
     {
-
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<CustomsMessageProcessor> _logger;
+        private readonly cls_SCMBL _cls_SCMBL;
+        private readonly GenericFunction _genericFunction;
+        public CustomsMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<CustomsMessageProcessor> logger,
+            cls_SCMBL cls_SCMBL,
+            GenericFunction genericFunction
+        )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _cls_SCMBL = cls_SCMBL;
+            _genericFunction = genericFunction;
+        }
         /// <summary>
         /// Method to decode customs onformation from XML and save to the database
         /// </summary>
         /// <param name="strMsg">Actual Message</param>
         /// <returns>Flag shows message is processed successfully or not</returns>
-        public bool DecodeAndSaveCustomsMessage(string message, int messageSerialNumber)
+        public async Task<bool> DecodeAndSaveCustomsMessage(string message, int messageSerialNumber)
         {
             bool isMessageProcessed = false;
             try
@@ -48,16 +59,18 @@ namespace QidWorkerRole
                             responseCode = dsCustomsResponse.Tables["MessageHeader"].Rows[0]["ResponseCode"].ToString();
                             if (messageID.Trim() != string.Empty)
                             {
-                                DataSet dsResult = new DataSet();
-                                SqlParameter[] sqlParameter = new SqlParameter[] { 
+                                DataSet? dsResult = new DataSet();
+                                SqlParameter[] sqlParameter = new SqlParameter[] {
                                       new SqlParameter("MessageID",messageID)
                                     , new SqlParameter("ResponseMessage",dsCustomsResponse.GetXml().ToString())
                                     , new SqlParameter("ManifestNo",manifestNo)
                                     , new SqlParameter("ResponseCode",responseCode)
                                 };
 
-                                SQLServer sqlServer = new SQLServer();
-                                dsResult = sqlServer.SelectRecords("uspUpdateCustomsResponse", sqlParameter);
+                                //SQLServer sqlServer = new SQLServer();
+                                //dsResult = sqlServer.SelectRecords("uspUpdateCustomsResponse", sqlParameter);
+                                dsResult = await _readWriteDao.SelectRecords("uspUpdateCustomsResponse", sqlParameter);
+
                                 if (dsResult != null && dsResult.Tables.Count > 0 && dsResult.Tables[0].Rows.Count > 0)
                                 {
                                     isMessageProcessed = Convert.ToBoolean(dsResult.Tables[0].Rows[0]["Result"].ToString());
@@ -79,7 +92,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 isMessageProcessed = false;
             }
             return isMessageProcessed;
@@ -91,14 +105,16 @@ namespace QidWorkerRole
         /// Configuration value (IsAutoGenerateCustomMessage) is used to switch between auto and manual message
         /// </summary>
         /// <param name="PartnerCode">Country code</param>
-        public void GenerateCustomMessageXML(string FlightNumber, DateTime FlightDate, string FlightOrigin, string FlightDestination, string ImpExp, string AWBPrefix, string AWBNos, string CreatedBy, DateTime CreatedOn, string PartnerCode)
+        public async Task GenerateCustomMessageXML(string FlightNumber, DateTime FlightDate, string FlightOrigin, string FlightDestination, string ImpExp, string AWBPrefix, string AWBNos, string CreatedBy, DateTime CreatedOn, string PartnerCode)
         {
             try
             {
-                DataSet dsAWBDetails = new DataSet();
-                DataSet dsIsAWBSavedSuccessfully = new DataSet();
-                DataSet dsIsHAWBSavedSuccessfully = new DataSet();
-                cls_SCMBL cls_scmbl = new cls_SCMBL();
+                DataSet? dsAWBDetails = new DataSet();
+                DataSet? dsIsAWBSavedSuccessfully = new DataSet();
+                DataSet? dsIsHAWBSavedSuccessfully = new DataSet();
+
+                //cls_SCMBL cls_scmbl = new cls_SCMBL();
+
                 bool IsSavedSuccessfully = true;
                 //string PartnerCode = GetCountryCode(FlightOrigin);
                 switch (PartnerCode)
@@ -107,10 +123,10 @@ namespace QidWorkerRole
                         bool IsHouse = false;
 
                         ///Send message automatically
-                        dsIsAWBSavedSuccessfully = AutoGenerateCustomMessage(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
+                        dsIsAWBSavedSuccessfully = await AutoGenerateCustomMessage(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
 
                         ///Send message automatically for HAWB
-                        dsIsHAWBSavedSuccessfully = AutoGenerateCustomMessageHouse(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
+                        dsIsHAWBSavedSuccessfully = await AutoGenerateCustomMessageHouse(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
                         ///dsIsAWBSavedSuccessfully - contains the value ('true' or 'House AWB not present') for successfull
                         if (dsIsAWBSavedSuccessfully != null)
                         {
@@ -134,14 +150,14 @@ namespace QidWorkerRole
                         if (IsSavedSuccessfully)
                         {
                             ///Generate Custom Message for AWB
-                            dsAWBDetails = GetDataSetForXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHouse);
+                            dsAWBDetails = await GetDataSetForXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHouse);
 
-                            StringBuilder sbAWB = GenerateXMLForOM(dsAWBDetails);
-                        
-                            if (cls_scmbl.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", DateTime.UtcNow, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
+                            StringBuilder sbAWB = await GenerateXMLForOM(dsAWBDetails);
+
+                            if (await _cls_SCMBL.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", DateTime.UtcNow, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
                             {
-                                DataSet dsUpdateXMLResult = new DataSet();
-                                dsUpdateXMLResult = SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHouse);
+                                DataSet? dsUpdateXMLResult = new DataSet();
+                                dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHouse);
                                 //Un-Used code
                                 //if (dsUpdateXMLResult != null && dsUpdateXMLResult.Tables.Count > 0 && dsUpdateXMLResult.Tables[0].Rows.Count > 0)
                                 //{
@@ -159,13 +175,13 @@ namespace QidWorkerRole
                             ///Generate Custom Message for HAWB
                             if (IsHouse)
                             {
-                                DataSet dsHAWBDetails = new DataSet();
-                                dsHAWBDetails = GetDataSetForXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHouse);
-                                StringBuilder sbHABW = GenerateXMLForOMForHouse(dsHAWBDetails);
-                                if (cls_scmbl.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", FlightDate, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
+                                DataSet? dsHAWBDetails = new DataSet();
+                                dsHAWBDetails = await GetDataSetForXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHouse);
+                                StringBuilder sbHABW = await GenerateXMLForOMForHouse(dsHAWBDetails);
+                                if (await _cls_SCMBL.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", FlightDate, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
                                 {
-                                    DataSet dsUpdateXMLResult = new DataSet();
-                                    dsUpdateXMLResult = SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbHABW.ToString(), IsHouse);
+                                    DataSet? dsUpdateXMLResult = new DataSet();
+                                    dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbHABW.ToString(), IsHouse);
                                     //Un-Used code
                                     //if (dsUpdateXMLResult != null && dsUpdateXMLResult.Tables.Count > 0 && dsUpdateXMLResult.Tables[0].Rows.Count > 0)
                                     //{
@@ -218,17 +234,19 @@ namespace QidWorkerRole
                         break;
                     case "PH":
                         bool IsHousePH = false;
-                        clsLog.WriteLogAzure("Send PH_Custom message automatically");
+                        // clsLog.WriteLogAzure("Send PH_Custom message automatically");
+                        _logger.LogInformation("Send PH_Custom message automatically");
                         ///Send message automatically
-                        dsIsAWBSavedSuccessfully = AutoGeneratePHCustomMessage(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
-                       
+                        dsIsAWBSavedSuccessfully = await AutoGeneratePHCustomMessage(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, AWBPrefix, AWBNos, CreatedBy, CreatedOn);
+
                         if (dsIsAWBSavedSuccessfully != null)
                         {
                             foreach (DataTable dt in dsIsAWBSavedSuccessfully.Tables)
                             {
                                 if (!Convert.ToBoolean(Convert.ToString(dt.Rows[0][0]).Trim()))
                                 {
-                                    clsLog.WriteLogAzure("Insufficient data tp send PH_Custom message automatically: " + FlightNumber + ":" + FlightDate.ToString());
+                                    // clsLog.WriteLogAzure("Insufficient data tp send PH_Custom message automatically: " + FlightNumber + ":" + FlightDate.ToString());
+                                    _logger.LogInformation("Insufficient data tp send PH_Custom message automatically: {0} : {1} " , FlightNumber , FlightDate);
                                     IsSavedSuccessfully = false;
                                     break;
                                 }
@@ -236,22 +254,26 @@ namespace QidWorkerRole
                         }
                         if (IsSavedSuccessfully)
                         {
-                            clsLog.WriteLogAzure("Get data to generate Custom Message for AWB: " + FlightNumber + ":" + FlightDate.ToString());
+                            // clsLog.WriteLogAzure("Get data to generate Custom Message for AWB: " + FlightNumber + ":" + FlightDate.ToString());
+                            _logger.LogInformation($"Get data to generate Custom Message for AWB: {0} : {1}" , FlightNumber , FlightDate);
 
                             ///Generate Custom Message for AWB
-                            dsAWBDetails = GetDataSetForPHXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHousePH);
-                            
-                            clsLog.WriteLogAzure("Generate Custom Message: " + FlightNumber + ":" + FlightDate.ToString());
+                            dsAWBDetails = await GetDataSetForPHXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHousePH);
+
+                            // clsLog.WriteLogAzure("Generate Custom Message: " + FlightNumber + ":" + FlightDate.ToString());
+                            _logger.LogInformation("Generate Custom Message: {0} : {1}" , FlightNumber,FlightDate);
                             StringBuilder sbAWB = GenerateXMLforPH(dsAWBDetails);
 
                             //string subject = FlightNumber.ToLower().Trim() + "_" + FlightDate.Year.ToString()+ FlightDate.Month.ToString().PadLeft(2, '0') + FlightDate.Day.ToString().PadLeft(2, '0') + "_" +  "imp" + "_" + DateTime.UtcNow.Year.ToString() + DateTime.UtcNow.Month.ToString().PadLeft(2,'0') + DateTime.UtcNow.Day.ToString().PadLeft(2, '0') + DateTime.UtcNow.Hour.ToString() + DateTime.UtcNow.Minute.ToString() + ".xml";
                             string subject = FlightNumber.ToLower().Trim() + "_" + FlightDate.Day.ToString().PadLeft(2, '0') + FlightDate.Month.ToString().PadLeft(2, '0') + FlightDate.Year.ToString() + "_" + "imp" + "_" + DateTime.UtcNow.Year.ToString() + DateTime.UtcNow.Month.ToString().PadLeft(2, '0') + DateTime.UtcNow.Day.ToString().PadLeft(2, '0') + DateTime.UtcNow.Hour.ToString() + DateTime.UtcNow.Minute.ToString() + ".xml";
-                            GenericFunction genericFunction = new GenericFunction();
-                            if (genericFunction.SaveMessageOutBox(subject, sbAWB.ToString(), "", "SFTP", FlightOrigin, FlightDestination, FlightNumber, FlightDate.ToString("yyyy-MM-dd HH:mm:ss"), "", "FFM", MessageData.MessageTypeName.PHCUSTOM_M))
+
+                            //GenericFunction genericFunction = new GenericFunction();
+                            if (_genericFunction.SaveMessageOutBox(subject, sbAWB.ToString(), "", "SFTP", FlightOrigin, FlightDestination, FlightNumber, FlightDate.ToString("yyyy-MM-dd HH:mm:ss"), "", "FFM", MessageData.MessageTypeName.PHCUSTOM_M))
                             {
-                                clsLog.WriteLogAzure("Custom Message Saved to the outbox: " + subject);
-                                DataSet dsUpdateXMLResult = new DataSet();
-                                dsUpdateXMLResult = SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHousePH);
+                                // clsLog.WriteLogAzure("Custom Message Saved to the outbox: " + subject);
+                                _logger.LogInformation("Custom Message Saved to the outbox: {0}" , subject);
+                                DataSet? dsUpdateXMLResult = new DataSet();
+                                dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHousePH);
                             }
                         }
                         break;
@@ -262,7 +284,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
 
                 throw;
             }
@@ -279,7 +302,7 @@ namespace QidWorkerRole
             try
             {
                 //DataSet dsAwbDetails=new DataSet();
-                
+
                 //dsAwbDetails = GetDataSetForXMLCEBU(flightNumber, flightDate, flightOrigin, flightDestination);
 
                 if (dsAwbDetails != null && dsAwbDetails.Tables != null && dsAwbDetails.Tables.Count > 0 && dsAwbDetails.Tables[0].Rows.Count > 0)
@@ -832,7 +855,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return sbCebuXml;
         }
@@ -840,12 +864,13 @@ namespace QidWorkerRole
         /// <summary>
         /// Select custom message data for selected flight
         /// </summary>
-        private DataSet GetDataSetForPHXML(string flightNo, DateTime flightDate, string flightOrigin, string flightDestination, string exportImport, bool isHouse)
+        private async Task<DataSet?> GetDataSetForPHXML(string flightNo, DateTime flightDate, string flightOrigin, string flightDestination, string exportImport, bool isHouse)
         {
-            DataSet dsResult = new DataSet();
+            DataSet? dsResult = new DataSet();
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                          new SqlParameter("@FltNumber",flightNo)
                         ,new SqlParameter("@FltDate",flightDate)
@@ -857,24 +882,25 @@ namespace QidWorkerRole
 
                 };
 
-                dsResult = sqlServer.SelectRecords("uspGeneratePHCustomMessageXML", sqlParameter);
-
+                //dsResult = sqlServer.SelectRecords("uspGeneratePHCustomMessageXML", sqlParameter);
+                dsResult = await _readWriteDao.SelectRecords("uspGeneratePHCustomMessageXML", sqlParameter);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsResult;
         }
 
 
-        private DataSet AutoGeneratePHCustomMessage(string flightNumber, DateTime flightDate, string flightOrigin,
+        private async Task<DataSet?> AutoGeneratePHCustomMessage(string flightNumber, DateTime flightDate, string flightOrigin,
             string flightDestination, string messageType, string awbPrefix, string awbNos, string createdBy, DateTime createdOn)
         {
-            DataSet dsResult = new DataSet();
+            DataSet? dsResult = new DataSet();
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                       new SqlParameter("@FlightNo",flightNumber)
                     , new SqlParameter("@FlightDate",flightDate)
@@ -887,11 +913,14 @@ namespace QidWorkerRole
                     , new SqlParameter("@CreatedOn",createdOn)
 
                 };
-                dsResult = sqlServer.SelectRecords("uspAutoGeneratePHCustomMessage", sqlParameter);
+                //dsResult = sqlServer.SelectRecords("uspAutoGeneratePHCustomMessage", sqlParameter);
+                dsResult = await _readWriteDao.SelectRecords("uspAutoGeneratePHCustomMessage", sqlParameter);
+
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsResult;
         }
@@ -901,12 +930,12 @@ namespace QidWorkerRole
         /// Store data into Custom Message tables
         /// </summary>
         /// <returns>Function returns the data set that contains flags indicating the data insertion/updatation operations are fail or success</returns>
-        public DataSet AutoGenerateCustomMessage(string flightNumber, DateTime flightDate, string flightOrigin,
+        public async Task<DataSet?> AutoGenerateCustomMessage(string flightNumber, DateTime flightDate, string flightOrigin,
             string flightDestination, string messageType, string awbPrefix, string awbNos, string createdBy, DateTime createdOn)
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                       new SqlParameter("@FlightNo",flightNumber)
                     , new SqlParameter("@FlightDate",flightDate)
@@ -919,21 +948,24 @@ namespace QidWorkerRole
                     , new SqlParameter("@CreatedOn",createdOn)
 
                 };
-                return sqlServer.SelectRecords("uspAutoGenerateCustomMessage", sqlParameter);
+                //return sqlServer.SelectRecords("uspAutoGenerateCustomMessage", sqlParameter);
+                return await _readWriteDao.SelectRecords("uspAutoGenerateCustomMessage", sqlParameter);
+
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
 
-        public DataSet AutoGenerateCustomMessageHouse(string flightNumber, DateTime flightDate, string flightOrigin, string flightDestination,
+        public async Task<DataSet?> AutoGenerateCustomMessageHouse(string flightNumber, DateTime flightDate, string flightOrigin, string flightDestination,
           string messageType, string awbPrefix, string awbNos, string createdBy, DateTime createdOn)
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                       new SqlParameter("@FlightNo",flightNumber)
                     , new SqlParameter("@FlightDate",flightDate)
@@ -946,11 +978,14 @@ namespace QidWorkerRole
                     , new SqlParameter("@CreatedOn",createdOn)
 
                 };
-                return sqlServer.SelectRecords("uspAutoGenerateCustomMessageHouse", sqlParameter);
+                //return sqlServer.SelectRecords("uspAutoGenerateCustomMessageHouse", sqlParameter);
+                return await _readWriteDao.SelectRecords("uspAutoGenerateCustomMessageHouse", sqlParameter);
+
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -959,11 +994,11 @@ namespace QidWorkerRole
         /// Select the data for given flight to generate the XML file
         /// </summary>
         /// <returns></returns>
-        public DataSet GetDataSetForXML(string flightNumber, DateTime flightDate, string flightOrigin, string flightDestination, string exportImport, bool isHouse)
+        public async Task<DataSet?> GetDataSetForXML(string flightNumber, DateTime flightDate, string flightOrigin, string flightDestination, string exportImport, bool isHouse)
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                          new SqlParameter("@FltNumber",flightNumber)
                         ,new SqlParameter("@FltDate",flightDate)
@@ -974,12 +1009,15 @@ namespace QidWorkerRole
                         ,new SqlParameter("@H_SID","0")
                 };
 
-                return sqlServer.SelectRecords("uspGenerateCustomMessageXML", sqlParameter);
+                //return sqlServer.SelectRecords("uspGenerateCustomMessageXML", sqlParameter);
+                return await _readWriteDao.SelectRecords("uspGenerateCustomMessageXML", sqlParameter);
+
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -989,13 +1027,18 @@ namespace QidWorkerRole
         /// </summary>
         /// <param name="dsAwbDetails">Data set contains AWB Details</param>
         /// <returns>XML string format</returns>
-        public StringBuilder GenerateXMLForOM(DataSet dsAwbDetails)
+        public async Task<StringBuilder> GenerateXMLForOM(DataSet dsAwbDetails)
         {
             try
             {
                 StringBuilder sb = new StringBuilder(string.Empty);
 
-                var xmlSchemaTable = GetXMLMessageData("OM").Tables[0];
+                //var xmlSchemaTable = GetXMLMessageData("OM").Tables[0];
+
+                var xmlMsgRes = await GetXMLMessageData("OM");
+
+                var xmlSchemaTable = xmlMsgRes?.Tables[0];
+
                 if (xmlSchemaTable != null && xmlSchemaTable.Rows.Count > 0)
                 {
                     string strMessageXml = xmlSchemaTable.Rows[0]["XMLMessageData"].ToString();
@@ -1219,7 +1262,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1229,20 +1273,29 @@ namespace QidWorkerRole
         /// </summary>
         /// <param name="listType"></param>
         /// <returns></returns>
-        public DataSet GetXMLMessageData(string listType)
-        {
-            SQLServer da = new SQLServer();
-            SqlParameter[] sqlParameter = new SqlParameter[] {
-                      new SqlParameter("@ListType",listType)
-             };
-            return da.SelectRecords("uspGetXMLMessageData", sqlParameter);
-        }
-
-        public DataSet SaveCustomMessageXML(string flightNo, DateTime flightDate, string customeMessageType, string xmlString, bool isHouse)
+        public async Task<DataSet?> GetXMLMessageData(string listType)
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer da = new SQLServer();
+                SqlParameter[] sqlParameter = new SqlParameter[] {
+                          new SqlParameter("@ListType",listType)
+                 };
+                return await _readWriteDao.SelectRecords("uspGetXMLMessageData", sqlParameter);
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }
+        }
+
+        public async Task<DataSet?> SaveCustomMessageXML(string flightNo, DateTime flightDate, string customeMessageType, string xmlString, bool isHouse)
+        {
+            try
+            {
+                //SQLServer sqlServer = new SQLServer();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                          new SqlParameter("@FltNumber",flightNo)
                          ,new SqlParameter("@FltDate",flightDate)
@@ -1251,11 +1304,14 @@ namespace QidWorkerRole
                          ,new SqlParameter("@IsHouse",isHouse)
                 };
 
-                return sqlServer.SelectRecords("uspSaveCustomMessageXML", sqlParameter);
+                //return sqlServer.SelectRecords("uspSaveCustomMessageXML", sqlParameter);
+                return await _readWriteDao.SelectRecords("uspSaveCustomMessageXML", sqlParameter);
+
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1265,13 +1321,18 @@ namespace QidWorkerRole
         /// </summary>
         /// <param name="dsAwbDetails">Data set contains AWB Details</param>
         /// <returns>XML string format</returns>
-        public StringBuilder GenerateXMLForOMForHouse(DataSet dsAwbDetails)
+        public async Task<StringBuilder> GenerateXMLForOMForHouse(DataSet dsAwbDetails)
         {
             try
             {
                 StringBuilder sb = new StringBuilder(string.Empty);
 
-                var xmlSchemaTable = GetXMLMessageData("OMHouse").Tables[0];
+                //var xmlSchemaTable = await GetXMLMessageData("OMHouse").Tables[0];
+
+                var xmlMsgRes = await GetXMLMessageData("OMHouse");
+
+                var xmlSchemaTable = xmlMsgRes?.Tables[0];
+
                 if (xmlSchemaTable != null && xmlSchemaTable.Rows.Count > 0)
                 {
                     string strMessageXml = xmlSchemaTable.Rows[0]["XMLMessageData"].ToString();
@@ -1417,7 +1478,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }
@@ -1427,17 +1489,21 @@ namespace QidWorkerRole
         /// Method to get the country code using the Station Code
         /// </summary>
         /// <returns>Country Code</returns>
-        public string GetCountryCode(string stationCode)
+        public async Task<string?> GetCountryCode(string stationCode)
         {
             string countryCode = string.Empty;
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
+
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                         new SqlParameter("@StationCode",stationCode)
                 };
 
-                DataSet dsCountryCode = sqlServer.SelectRecords("uspGetCountryCode", sqlParameter);
+                //DataSet dsCountryCode = sqlServer.SelectRecords("uspGetCountryCode", sqlParameter);
+
+                DataSet? dsCountryCode = await _readWriteDao.SelectRecords("uspGetCountryCode", sqlParameter);
+
                 if (dsCountryCode != null)
                 {
                     if (dsCountryCode.Tables.Count > 0 && dsCountryCode.Tables[0].Rows.Count > 0)
@@ -1449,7 +1515,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 throw;
             }
         }

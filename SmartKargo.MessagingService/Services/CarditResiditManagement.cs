@@ -28,14 +28,10 @@ namespace QidWorkerRole
         SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         string AgentCode = string.Empty, AgentName = string.Empty;
         private readonly ISqlDataHelperDao _readWriteDao;
-        private readonly ILogger<EMAILOUT> _logger;
+        private readonly ILogger<CarditResiditManagement> _logger;
 
-        public CarditResiditManagement()
-        {
-            
-        }
         public CarditResiditManagement(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<EMAILOUT> logger)
+            ILogger<CarditResiditManagement> logger)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -102,7 +98,7 @@ namespace QidWorkerRole
         #endregion
 
 
-        public async Task<(bool, string ErrorMsg)> EncodeAndSaveCarditMessage(string strMessage, int Srno)
+        public async Task<(bool, string)> EncodeAndSaveCarditMessage(string strMessage, int Srno)
         {
             bool status = false;
             CarditDetail cardit;

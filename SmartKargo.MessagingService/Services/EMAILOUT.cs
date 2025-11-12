@@ -1,23 +1,13 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using QID.DataAccess;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Data.DbConstants;
-using SmartKargo.MessagingService.Functions.Activities;
 using SmartKargo.MessagingService.Services;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole
 {
@@ -31,6 +21,7 @@ namespace QidWorkerRole
         private readonly HttpClient _httpClient;
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<EMAILOUT> _logger;
+        private readonly Cls_BL _cls_BL;
         //private static readonly HttpClient _httpClient = new HttpClient();
         //GenericFunction genericFunction = new GenericFunction();
         //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
@@ -41,11 +32,14 @@ namespace QidWorkerRole
         /// </summary>
         public EMAILOUT(HttpClient httpClient,
             ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<EMAILOUT> logger)
+            ILogger<EMAILOUT> logger,
+            Cls_BL cls_BL
+         )
         {
             _httpClient = httpClient;
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _cls_BL = cls_BL;
         }
         #endregion
 
@@ -64,7 +58,7 @@ namespace QidWorkerRole
             bool sendEmail = false, ishtml = true, isMessageSent = true;
             string ccadd = string.Empty, subject = string.Empty, FileName = string.Empty, status = string.Empty, FileExtension = string.Empty, body = string.Empty, actualMsg = string.Empty, sentadd = string.Empty;
             //SQLServer _readWriteDao = new SQLServer();
-            Cls_BL clsbl = new Cls_BL();
+            //Cls_BL clsbl = new Cls_BL();
             #endregion
 
             SmtpClient smtp = new SmtpClient(OutgoingMailServer, outport);
@@ -112,7 +106,7 @@ namespace QidWorkerRole
                                     try
                                     {
                                         Array.Resize(ref Attachments, Attachments.Length + 1);
-                                        Attachments[Attachments.Length - 1] = new MemoryStream(clsbl.DownloadBlob(drow["FileUrl"].ToString()));
+                                        Attachments[Attachments.Length - 1] = new MemoryStream(_cls_BL.DownloadBlob(drow["FileUrl"].ToString()));
 
                                         Array.Resize(ref Extensions, Extensions.Length + 1);
                                         Extensions[Extensions.Length - 1] = drow["MIMEType"].ToString();
@@ -147,9 +141,10 @@ namespace QidWorkerRole
                                         new("@Status", SqlDbType.VarChar) { Value = status }
                                     ];
                                     var dbRes = await _readWriteDao.ExecuteNonQueryAsync(StoredProcedures.MailSent, parameters);
+
                                     if (dbRes)
                                     {
-                                        _logger.LogInformation("Email Sent successfully to:{MessageID}",dr[0].ToString());
+                                        _logger.LogInformation("Email Sent successfully to:{MessageID}", dr[0].ToString());
                                         //clsLog.WriteLogAzure("Email Sent successfully to:" + dr[0].ToString());
                                     }
                                     else
@@ -251,7 +246,7 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     //clsLog.WriteLogAzure(ex); 
                     _logger.LogError(ex, "Error on sendEmail");
@@ -266,11 +261,18 @@ namespace QidWorkerRole
             bool flag = false;
             try
             {
-                string OutgoingMailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
+                //string OutgoingMailServer = genericFunction.ReadValueFromDb("msgService_EmailOutServer");
+
+                string OutgoingMailServer = ConfigCache.Get("msgService_EmailOutServer");
+
                 MailMessage Mail = new MailMessage();
 
-                if (genericFunction.ReadValueFromDb("DoNotReplyEmailID") != "")
-                    Mail.From = new MailAddress(genericFunction.ReadValueFromDb("DoNotReplyEmailID"));
+                //genericFunction.ReadValueFromDb("DoNotReplyEmailID")
+
+                string doNotReplyEmailID = ConfigCache.Get("DoNotReplyEmailID");
+
+                if (doNotReplyEmailID != "")
+                    Mail.From = new MailAddress(doNotReplyEmailID);
                 else
                     Mail.From = new MailAddress(fromEmailId);
 
@@ -326,13 +328,15 @@ namespace QidWorkerRole
                 }
 
                 flag = true;
-                clsLog.WriteLogAzure("Mail Sent @ " + DateTime.Now.ToString());
+                // clsLog.WriteLogAzure("Mail Sent @ " + DateTime.Now.ToString());
+                _logger.LogInformation($"Mail Sent @ {DateTime.Now.ToString()}");
 
             }
             catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ex);
-                clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                // clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                _logger.LogError("Exception while collection Mail Info : {0}", ex);
                 flag = false;
             }
             return flag;
@@ -350,11 +354,16 @@ namespace QidWorkerRole
                     OutgoingMailServer = ConfigCache.Get("msgService_EmailOutServer");
                 }
 
-                clsLog.WriteLogAzure("OutgoingMailServer : " + OutgoingMailServer);
+                // clsLog.WriteLogAzure("OutgoingMailServer : " + OutgoingMailServer);
+                _logger.LogInformation("OutgoingMailServer : {0}" , OutgoingMailServer);
                 MailMessage Mail = new MailMessage();
 
-                if (genericFunction.ReadValueFromDb("DoNotReplyEmailID") != "")
-                    Mail.From = new MailAddress(genericFunction.ReadValueFromDb("DoNotReplyEmailID"));
+                //genericFunction.ReadValueFromDb("DoNotReplyEmailID")
+
+                string doNotReplyEmailID = ConfigCache.Get("DoNotReplyEmailID");
+
+                if (doNotReplyEmailID != "")
+                    Mail.From = new MailAddress(doNotReplyEmailID);
                 else
                     Mail.From = new MailAddress(fromEmailId);
 
@@ -392,13 +401,15 @@ namespace QidWorkerRole
                     }
                     if (Mail.To.Count > 0)
                     {
-                        clsLog.WriteLogAzure("In toEmailId.Length > 200 ");
+                        // clsLog.WriteLogAzure("In toEmailId.Length > 200 ");
+                        _logger.LogInformation("In toEmailId.Length > 200 ");
                         smtp.Send(Mail);
                     }
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("In Mail.To.Add(toEmailId) ");
+                    // clsLog.WriteLogAzure("In Mail.To.Add(toEmailId) ");
+                    _logger.LogWarning("In Mail.To.Add(toEmailId) ");
                     Mail.To.Add(toEmailId);
                     smtp.Send(Mail);
                 }
@@ -410,10 +421,12 @@ namespace QidWorkerRole
 
                 //SCMExceptionHandling.logexception(ref ex);
 
-                clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                // clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                _logger.LogError("Exception while collection Mail Info : {0}", ex);
                 flag = false;
             }
-            clsLog.WriteLogAzure("return flag from SENDMAIL():" + flag.ToString());
+            // clsLog.WriteLogAzure("return flag from SENDMAIL():" + flag.ToString());
+            _logger.LogInformation("return flag from SENDMAIL():{0}" + flag);
             return flag;
         }
 
@@ -421,8 +434,12 @@ namespace QidWorkerRole
         {
             try
             {
-                string doNotReplyEmailID = genericFunction.ReadValueFromDb("DoNotReplyEmailID");
-                string doNotReplyAlertTypes = genericFunction.ReadValueFromDb("DoNotReplyAlertTypes");
+                //string doNotReplyEmailID = genericFunction.ReadValueFromDb("DoNotReplyEmailID");
+                //string doNotReplyAlertTypes = genericFunction.ReadValueFromDb("DoNotReplyAlertTypes");
+
+                string doNotReplyEmailID = ConfigCache.Get("DoNotReplyEmailID");
+                string doNotReplyAlertTypes = ConfigCache.Get("DoNotReplyAlertTypes");
+
                 string[] arrAlertType = doNotReplyAlertTypes.Split(',');
                 if (doNotReplyEmailID != string.Empty && doNotReplyAlertTypes != string.Empty && arrAlertType.Contains(messageType))
                     fromEmailId = doNotReplyEmailID;
@@ -430,7 +447,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+               _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return fromEmailId;
         }
@@ -444,8 +462,12 @@ namespace QidWorkerRole
             {
                 MailMessage Mail = new MailMessage();
 
-                if (genericFunction.ReadValueFromDb("DoNotReplyEmailID") != "")
-                    Mail.From = new MailAddress(genericFunction.ReadValueFromDb("DoNotReplyEmailID"));
+                //genericFunction.ReadValueFromDb("DoNotReplyEmailID")
+
+                string doNotReplyEmailID = ConfigCache.Get("DoNotReplyEmailID");
+
+                if (doNotReplyEmailID != "")
+                    Mail.From = new MailAddress(doNotReplyEmailID);
                 else
                     Mail.From = new MailAddress(fromEmailId);
 
@@ -497,13 +519,15 @@ namespace QidWorkerRole
                 }
 
                 flag = true;
-                clsLog.WriteLogAzure("Mail Sent @ " + DateTime.Now.ToString());
+                // clsLog.WriteLogAzure("Mail Sent @ " + DateTime.Now.ToString());
+                _logger.LogInformation($"Mail Sent @ {DateTime.Now.ToString()}");
 
             }
             catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ex);
-                clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                // clsLog.WriteLogAzure("Exception while collection Mail Info : ", ex);
+                _logger.LogError("Exception while collection Mail Info : {0}", ex);
                 flag = false;
             }
             return flag;
@@ -518,7 +542,8 @@ namespace QidWorkerRole
             try
             {
                 string apiKey = password;
-                Cls_BL clsbl = new Cls_BL();
+
+                //Cls_BL clsbl = new Cls_BL();
 
                 string[] emailids = sentadd.Split(',');
                 string[] ccEmailids = CCEmailId.Split(',');
@@ -601,7 +626,7 @@ namespace QidWorkerRole
                                 {
                                     string type = "";
 
-                                    byte[] byteData12 = clsbl.DownloadBlob(drow["FileUrl"].ToString());
+                                    byte[] byteData12 = _cls_BL.DownloadBlob(drow["FileUrl"].ToString());
 
                                     switch (drow["MIMEType"].ToString().ToUpper())
                                     {
@@ -677,7 +702,10 @@ namespace QidWorkerRole
 
                                 }
                             }
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                            catch (Exception ex) {
+                                // clsLog.WriteLogAzure(ex); 
+                               _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
                         }
 
                     }
@@ -696,7 +724,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception in send grid functionality" + ex);
+                // clsLog.WriteLogAzure("Exception in send grid functionality" + ex);
+                _logger.LogError("Exception in send grid functionality {0}" , ex);
 
             }
 
@@ -724,12 +753,11 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //scmexception.logexception(ref ex);
-                clsLog.WriteLogAzure("SendEmailMessage Function Error:", ex);
+                _logger.LogError("SendEmailMessage Function Error:{0}", ex);
             }
         }
         #endregion
 
     }
     #endregion
-
 }
