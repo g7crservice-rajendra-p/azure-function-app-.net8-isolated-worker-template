@@ -88,7 +88,11 @@ namespace QidWorkerRole
                                     string[] msg = str[i].Split('/');
                                     data.ffrversionnum = msg[1];
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME, "Error while reading ffr header.", ""); }
+                                catch (Exception ex)
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME, "Error while reading ffr header.", "");
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME, "Error while reading ffr header.");
+                                }
                             }
                             #endregion
 
@@ -143,7 +147,11 @@ namespace QidWorkerRole
                                             }
 
                                         }
-                                        catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                        catch (Exception ex)
+                                        {
+                                            // clsLog.WriteLogAzure(ex.Message);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        }
                                         Array.Resize(ref fltroute, fltroute.Length + 1);
                                         fltroute[fltroute.Length - 1] = flight;
                                     }
@@ -151,7 +159,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     continue;
                                 }
                             }
@@ -188,7 +197,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                                 }
                             }
                             #endregion
@@ -209,7 +219,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                                 }
                             }
                             #endregion
@@ -227,7 +238,11 @@ namespace QidWorkerRole
                                         data.otherserviceinfo1 = msg[1];
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                catch (Exception ex)
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); 
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
 
@@ -257,7 +272,10 @@ namespace QidWorkerRole
                                     }
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                                }
                             }
 
                             #endregion
@@ -301,7 +319,11 @@ namespace QidWorkerRole
                                                 dimension.piecenum = msg[msg.Length - 1];
                                             }
                                         }
-                                        catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                        catch (Exception ex)
+                                        {
+                                            // clsLog.WriteLogAzure(ex.Message);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        }
                                         Array.Resize(ref objDimension, objDimension.Length + 1);
                                         objDimension[objDimension.Length - 1] = dimension;
 
@@ -314,7 +336,11 @@ namespace QidWorkerRole
                                         return false;
                                     }
                                 }
-                                catch (Exception e8) { clsLog.WriteLogAzure(e8, PAGE_NAME, FUN_NAME); }
+                                catch (Exception e8)
+                                {
+                                    // clsLog.WriteLogAzure(e8, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(e8, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
 
@@ -333,7 +359,8 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                                 }
                             }
                             #endregion
@@ -353,7 +380,11 @@ namespace QidWorkerRole
                                     }
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+
+                                }
                             }
                             #endregion
 
@@ -371,7 +402,10 @@ namespace QidWorkerRole
                                     }
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
 
@@ -391,7 +425,11 @@ namespace QidWorkerRole
 
                                     }
                                 }
-                                catch (Exception e12) { clsLog.WriteLogAzure(e12, PAGE_NAME, FUN_NAME); }
+                                catch (Exception e12)
+                                {
+                                    // clsLog.WriteLogAzure(e12, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(e12, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
 
@@ -408,7 +446,11 @@ namespace QidWorkerRole
                                         data.supplemetryshipperinfo2 = msg[3].Length > 0 ? msg[3] : null;
                                     }
                                 }
-                                catch (Exception ex) { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                catch (Exception ex)
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
 
@@ -527,18 +569,29 @@ namespace QidWorkerRole
                                                 {
                                                     dimension.piecenum = msg[3];
                                                 }
-                                                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                                catch (Exception ex)
+                                                {
+                                                    // clsLog.WriteLogAzure(ex.Message);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                }
                                                 Array.Resize(ref objDimension, objDimension.Length + 1);
                                                 objDimension[objDimension.Length - 1] = dimension;
 
                                             }
                                         }
-                                        catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                        catch (Exception ex)
+                                        {
+                                            // clsLog.WriteLogAzure(ex.Message);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        }
                                     }
                                     #endregion
                                 }
                                 catch (Exception ex)
-                                { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                                {
+                                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                                }
                             }
                             #endregion
                         }
@@ -549,7 +602,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
             }
             return flag;
         }
@@ -583,7 +637,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                     }
                 }
                 else
@@ -596,7 +651,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                     }
                 }
                 //1
@@ -663,7 +719,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                     }
                 }
                 if (msg.Length > 2)
@@ -675,7 +732,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                     }
 
                 }
@@ -693,7 +751,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                        _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                     }
                 }
                 try
@@ -703,7 +762,11 @@ namespace QidWorkerRole
                     if (uldsequencenum.Length > 0)
                         consig.uldsequence = uldsequencenum;
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message); 
+                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                }
                 awbprefix = consig.airlineprefix;
                 awbnumber = consig.awbnum;
                 Array.Resize(ref consinfo, consinfo.Length + 1);
@@ -712,7 +775,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
             }
         }
 
@@ -747,8 +811,9 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 strarr = null;
             }
             return strarr;
@@ -886,7 +951,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                    _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                }
                 #endregion
 
                 #region Line 11
@@ -936,7 +1005,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
                 #endregion
 
                 #region Line 12
@@ -967,7 +1040,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
                 #endregion
 
                 #region Line 13
@@ -1025,7 +1102,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
                 ffr = "ERR";
             }
             return ffr;
@@ -1185,7 +1263,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message); 
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
                 #endregion
 
                 #region Line 11
@@ -1235,7 +1317,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
                 #endregion
 
                 #region Line 12
@@ -1266,7 +1352,11 @@ namespace QidWorkerRole
                         }
                     }
                 }
-                catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                catch (Exception ex)
+                {
+                    // clsLog.WriteLogAzure(ex.Message); 
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                }
                 #endregion
 
                 #region Line 13
@@ -1325,7 +1415,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 ffr = "ERR";
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
             }
             return ffr;
         }
@@ -1552,7 +1643,10 @@ namespace QidWorkerRole
                 }
             }
             catch (Exception ex)
-            { clsLog.WriteLogAzure(ex.Message); }
+            {
+                // clsLog.WriteLogAzure(ex.Message);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            }
             return flag;
         }
 
@@ -2555,7 +2649,8 @@ namespace QidWorkerRole
                     //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
                     if (!dbRes)
                     {
-                        clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                        // clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                        _logger.LogInformation("AWB Audit log  for:{0}" , awbnum + Environment.NewLine);
                     }
                     #endregion
 
@@ -2821,7 +2916,8 @@ namespace QidWorkerRole
                                     //if (!dtb.UpdateData("spSaveFFRAWBRoute", paramNames, dataTypes, values))
                                     if (!dbRes4)
                                     {
-                                        clsLog.WriteLogAzure("Error in Save AWB Route FFR ");
+                                        // clsLog.WriteLogAzure("Error in Save AWB Route FFR ");
+                                        _logger.LogWarning("Error in Save AWB Route FFR ");
                                     }
                                     #endregion O & D Matched
                                 }
@@ -2890,7 +2986,8 @@ namespace QidWorkerRole
 
                                         if (!dbRes5)
                                         {
-                                            clsLog.WriteLogAzure("Error on Save AWB Route FFR in first leg (Origin Miasmatched)");
+                                            // clsLog.WriteLogAzure("Error on Save AWB Route FFR in first leg (Origin Miasmatched)");
+                                            _logger.LogWarning("Error on Save AWB Route FFR in first leg (Origin Miasmatched)");
                                         }
 
 
@@ -2949,7 +3046,8 @@ namespace QidWorkerRole
 
                                         if (!dbRes6)
                                         {
-                                            clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Origin Miasmatched)");
+                                            // clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Origin Miasmatched)");
+                                            _logger.LogWarning("Error on Save AWB Route FFR in second leg (Origin Miasmatched)");
                                         }
                                         isSecondLegAdded = true;
                                     }
@@ -3017,7 +3115,8 @@ namespace QidWorkerRole
 
                                             if (!dbRes7)
                                             {
-                                                clsLog.WriteLogAzure("Error on Save AWB Route FFR in first leg (Destination Miasmatched)");
+                                                // clsLog.WriteLogAzure("Error on Save AWB Route FFR in first leg (Destination Miasmatched)");
+                                                _logger.LogWarning("Error on Save AWB Route FFR in first leg (Destination Miasmatched)");
                                             }
                                         }
                                         ///2nd Leg
@@ -3078,7 +3177,8 @@ namespace QidWorkerRole
 
                                         if (!dbRes8)
                                         {
-                                            clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
+                                            // clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
+                                            _logger.LogWarning("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
                                         }
                                     }
                                     else
@@ -3142,7 +3242,8 @@ namespace QidWorkerRole
 
                                         if (!dbRes9)
                                         {
-                                            clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
+                                            // clsLog.WriteLogAzure("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
+                                            _logger.LogWarning("Error on Save AWB Route FFR in second leg (Destination Miasmatched)");
                                         }
                                     }
                                     #endregion O & D Mismatched
@@ -3171,7 +3272,7 @@ namespace QidWorkerRole
                                     new SqlParameter("@Message", SqlDbType.VarChar) { Value = "FFR" },
                                     new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Flight Information" },
                                     new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FFR" },
-                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.Now.ToString() },
+                                    new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = DateTime.Now.ToString() }, //expected varchar datatype
                                     new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 }, // 1 = true
                                     new SqlParameter("@Volume", SqlDbType.VarChar)
                                     {
@@ -3186,7 +3287,8 @@ namespace QidWorkerRole
                                 //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
                                 if (!dbRes10)
                                 {
-                                    clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                                    // clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                                    _logger.LogWarning("AWB Audit log  for: {0}" , awbnum + Environment.NewLine);
                                 }
                                 #endregion Save Audit Log
 
@@ -3220,7 +3322,8 @@ namespace QidWorkerRole
                                 var dbRes11 = await _readWriteDao.ExecuteNonQueryAsync("spDeleteAWBDetailsNoRoute", parameters11);
                                 if (!dbRes11)
                                 {
-                                    clsLog.WriteLogAzure("Error in Deleting AWB Details ");
+                                    // clsLog.WriteLogAzure("Error in Deleting AWB Details ");
+                                    _logger.LogWarning("Error in Deleting AWB Details ");
                                 }
                             }
                             #endregion Delete AWB Data if No Route Present
@@ -3270,7 +3373,8 @@ namespace QidWorkerRole
 
                             if (!dbRes12)
                             {
-                                clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                _logger.LogWarning("Error  Delete Dimension Through Message : {0}" , awbnum);
                             }
                             else
                             {
@@ -3359,7 +3463,8 @@ namespace QidWorkerRole
                                     var dbRes13 = await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBDimensions_FFR", parameters13);
                                     if (!dbRes13)
                                     {
-                                        clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        _logger.LogWarning("Error  Delete Dimension Through Message : {0}" , awbnum);
 
                                     }
                                 }
@@ -3380,7 +3485,8 @@ namespace QidWorkerRole
                                 var dbRes14 = await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspUpdateAuditLogVolume", parameters14);
                                 if (!dbRes14)
                                 {
-                                    clsLog.WriteLogAzure("Error while Update Volume In AuditLog ");
+                                    // clsLog.WriteLogAzure("Error while Update Volume In AuditLog ");
+                                    _logger.LogWarning("Error while Update Volume In AuditLog ");
                                 }
                                 #endregion Update audit trail volume
 
@@ -3404,7 +3510,8 @@ namespace QidWorkerRole
                             var dbRes15 = await _readWriteDao.ExecuteNonQueryAsync("SpDeleteDimensionThroughMessage", parameters15);
                             if (!dbRes15)
                             {
-                                clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                _logger.LogWarning("Error  Delete Dimension Through Message :{0}" , awbnum);
                             }
                         }
                         #endregion
@@ -3430,7 +3537,8 @@ namespace QidWorkerRole
                                 var dbRes16 = await _readWriteDao.ExecuteNonQueryAsync("SpDeleteDimensionThroughMessage", parameters16);
                                 if (!dbRes16)
                                 {
-                                    clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                    // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                    _logger.LogWarning("Error  Delete Dimension Through Message : {0}" , awbnum);
                                 }
                             }
 
@@ -3477,7 +3585,8 @@ namespace QidWorkerRole
                                 var dbRes17 = await _readWriteDao.ExecuteNonQueryAsync("SaveandUpdateShippperBUPThroughFWB", parameters17);
                                 if (!dbRes17)
                                 {
-                                    clsLog.WriteLogAzure("BUP ULD is not Updated for:" + awbnum + Environment.NewLine);
+                                    // clsLog.WriteLogAzure("BUP ULD is not Updated for:" + awbnum + Environment.NewLine);
+                                    _logger.LogWarning("BUP ULD is not Updated for: {0}" , awbnum + Environment.NewLine);
                                 }
                             }
 
@@ -3509,7 +3618,8 @@ namespace QidWorkerRole
                             var dbRes18 = await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", parameters18);
                             if (!dbRes18)
                             {
-                                clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                // clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                _logger.LogWarning("Rates Not Calculated for:{0}" , awbnum + Environment.NewLine);
                             }
 
                         }
@@ -3549,7 +3659,8 @@ namespace QidWorkerRole
                         var dbRes19 = await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", parameters19);
                         if (!dbRes19)
                         {
-                            clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                            // clsLog.WriteLogAzure("Error  on Update capacity Plan : " + awbnum);
+                            _logger.LogWarning("Error  on Update capacity Plan : {0}" , awbnum);
                         }
 
                         #endregion
@@ -3580,7 +3691,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 ErrorMsg = string.Empty;
             }
             //return flag;
@@ -3633,7 +3745,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return dsResult;
         }
@@ -3824,10 +3937,11 @@ namespace QidWorkerRole
                 //return ds;
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
                 //clsLog.WriteLogAzure(ex, "BLExpManifest", "GetAwbTabdetails_GHA");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return ds = null;
             }
             //finally
@@ -3927,10 +4041,11 @@ namespace QidWorkerRole
                 //return ds;
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
                 //clsLog.WriteLogAzure(ex, "BLExpManifest", "GetAwbTabdetails_GHA");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return ds = null;
             }
             //finally
@@ -3965,9 +4080,10 @@ namespace QidWorkerRole
                 dssitaMessage = await _readOnlyDao.SelectRecords("CheckAirlineForRateProcessing", parameters);
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 dssitaMessage = null;
             }
             return dssitaMessage;
@@ -3979,127 +4095,144 @@ namespace QidWorkerRole
         #region :: Private Methods ::
         private void GenerateFNAMessage(string strMessage, string strErrorMessage, string AWBPrefix, string awbNumber, string strFromID)
         {
-            //GenericFunction GF = new GenericFunction();
-
-            string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, Emailaddress = string.Empty, FNAMessageVersion = string.Empty, messageid = string.Empty;
-            //strMessage = strMessage.Replace("$", "\r\n");
-            //strMessage = strMessage.Replace("$", "\n");
-            //strMessage = strMessage.Replace("$$", "\r\n");
-
-
-
-
-            DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
-            if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
+            try
             {
-                Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                string MessageCommunicationType = dscheckconfiguration.Tables[0].Rows[0]["MsgCommType"].ToString();
-                FNAMessageVersion = dscheckconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
-                messageid = dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString();
+                //GenericFunction GF = new GenericFunction();
+
+                string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, Emailaddress = string.Empty, FNAMessageVersion = string.Empty, messageid = string.Empty;
+                //strMessage = strMessage.Replace("$", "\r\n");
+                //strMessage = strMessage.Replace("$", "\n");
+                //strMessage = strMessage.Replace("$$", "\r\n");
 
 
-            }
 
-            StringBuilder strFNAMessage = new StringBuilder();
-            strFNAMessage.Append("FNA/1\r\n");
-            strFNAMessage.Append("ACK/");
-            strFNAMessage.Append(strErrorMessage + "\r\n");
-            strFNAMessage.Append(strMessage);
-            if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
-            {
-                if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString() != string.Empty)
+
+                DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                 {
+                    Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                    string MessageCommunicationType = dscheckconfiguration.Tables[0].Rows[0]["MsgCommType"].ToString();
+                    FNAMessageVersion = dscheckconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
+                    messageid = dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString();
 
-                    SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strFromID, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                    _genericFunction.SaveMessageOutBox("FNA", SitaMessageHeader + "\r\n" + strFNAMessage, "SITAFTP", "SITAFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+
                 }
 
-                if (dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                StringBuilder strFNAMessage = new StringBuilder();
+                strFNAMessage.Append("FNA/1\r\n");
+                strFNAMessage.Append("ACK/");
+                strFNAMessage.Append(strErrorMessage + "\r\n");
+                strFNAMessage.Append(strMessage);
+                if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
                 {
+                    if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString() != string.Empty)
+                    {
 
-                    SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                    _genericFunction.SaveMessageOutBox("FNA", SFTPHeaderSITAddress + "\r\n" + strFNAMessage, "SFTP", "SFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strFromID, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                        _genericFunction.SaveMessageOutBox("FNA", SitaMessageHeader + "\r\n" + strFNAMessage, "SITAFTP", "SITAFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                    }
+
+                    if (dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                    {
+
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                        _genericFunction.SaveMessageOutBox("FNA", SFTPHeaderSITAddress + "\r\n" + strFNAMessage, "SFTP", "SFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                    }
                 }
-            }
-            string ToEmailAddress = (strFromID == string.Empty ? Emailaddress : strFromID + "," + Emailaddress);
-            //ToEmailAddress = (ToEmailAddress == string.Empty ? "prashant@smartkargo.com" : ToEmailAddress);
+                string ToEmailAddress = (strFromID == string.Empty ? Emailaddress : strFromID + "," + Emailaddress);
+                //ToEmailAddress = (ToEmailAddress == string.Empty ? "prashant@smartkargo.com" : ToEmailAddress);
 
-            if (ToEmailAddress.Trim().Length > 0)
+                if (ToEmailAddress.Trim().Length > 0)
+                {
+                    _genericFunction.SaveMessageOutBox("FNA", strFNAMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", AWBPrefix + "-" + awbNumber);
+                }
+                //GenericFunction GF = new GenericFunction();
+                //strMessage = strMessage.Replace("$", "\r\n");
+                //strMessage = strMessage.Replace("$", "\n");
+                //strMessage = strMessage.Replace("$$", "\r\n");
+
+                //StringBuilder strFNAMessage = new StringBuilder();
+                //strFNAMessage.Append("FNA/1\r\n");
+                //strFNAMessage.Append("ACK/");
+                //strFNAMessage.Append(strErrorMessage + "\r\n");
+                //strFNAMessage.Append(strMessage);
+                //GF.SaveMessageOutBox("MSG:FNA", strFNAMessage.ToString(), "", "SITAFTP");
+
+            }
+            catch (System.Exception ex)
             {
-                _genericFunction.SaveMessageOutBox("FNA", strFNAMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", AWBPrefix + "-" + awbNumber);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
-            //GenericFunction GF = new GenericFunction();
-            //strMessage = strMessage.Replace("$", "\r\n");
-            //strMessage = strMessage.Replace("$", "\n");
-            //strMessage = strMessage.Replace("$$", "\r\n");
-
-            //StringBuilder strFNAMessage = new StringBuilder();
-            //strFNAMessage.Append("FNA/1\r\n");
-            //strFNAMessage.Append("ACK/");
-            //strFNAMessage.Append(strErrorMessage + "\r\n");
-            //strFNAMessage.Append(strMessage);
-            //GF.SaveMessageOutBox("MSG:FNA", strFNAMessage.ToString(), "", "SITAFTP");
-
         }
 
         private void GenerateFMAMessage(string strMessage, string strSuccessMessage, string AWBPrefix, string awbNumber, string strFromID)
         {
-            GenericFunction GF = new GenericFunction();
-
-            string SitaMessageHeader = string.Empty, Emailaddress = string.Empty, FMAMessageVersion = string.Empty, messageid = string.Empty;
-            strMessage = strMessage.Replace("$", "\r\n");
-            strMessage = strMessage.Replace("$", "\n");
-            strMessage = strMessage.Replace("$$", "\r\n");
-
-            StringBuilder strFMAMessage = new StringBuilder();
-            strFMAMessage.Append("FMA\r\n");
-            strFMAMessage.Append("ACK/");
-            strFMAMessage.Append(strSuccessMessage + "\r\n");
-            strFMAMessage.Append(strMessage);
-
-            DataSet dscheckconfiguration = GF.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
-            if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
+            try
             {
-                Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                string MessageCommunicationType = dscheckconfiguration.Tables[0].Rows[0]["MsgCommType"].ToString();
-                FMAMessageVersion = dscheckconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
-                messageid = dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString();
+                GenericFunction GF = new GenericFunction();
 
+                string SitaMessageHeader = string.Empty, Emailaddress = string.Empty, FMAMessageVersion = string.Empty, messageid = string.Empty;
+                strMessage = strMessage.Replace("$", "\r\n");
+                strMessage = strMessage.Replace("$", "\n");
+                strMessage = strMessage.Replace("$$", "\r\n");
 
-            }
-            if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
-            {
-                if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString() != string.Empty)
+                StringBuilder strFMAMessage = new StringBuilder();
+                strFMAMessage.Append("FMA\r\n");
+                strFMAMessage.Append("ACK/");
+                strFMAMessage.Append(strSuccessMessage + "\r\n");
+                strFMAMessage.Append(strMessage);
+
+                DataSet dscheckconfiguration = GF.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                 {
-                    SitaMessageHeader = GF.MakeMailMessageFormat(strFromID, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), messageid);
-                    GF.SaveMessageOutBox("FMA", SitaMessageHeader + "\r\n" + strFMAMessage, "SITAFTP", "SITAFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                    Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                    string MessageCommunicationType = dscheckconfiguration.Tables[0].Rows[0]["MsgCommType"].ToString();
+                    FMAMessageVersion = dscheckconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
+                    messageid = dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString();
+
+
                 }
-            }
+                if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
+                {
+                    if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString() != string.Empty)
+                    {
+                        SitaMessageHeader = GF.MakeMailMessageFormat(strFromID, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), messageid);
+                        GF.SaveMessageOutBox("FMA", SitaMessageHeader + "\r\n" + strFMAMessage, "SITAFTP", "SITAFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                    }
+                }
 
-            if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                {
+                    string SFTPHeaderSITAddress = string.Empty;
+                    SFTPHeaderSITAddress = GF.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                    GF.SaveMessageOutBox("FNA", SFTPHeaderSITAddress + "\r\n" + strFMAMessage, "SFTP", "SFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                }
+                string ToEmailAddress = (strFromID == string.Empty ? Emailaddress : strFromID + "," + Emailaddress);
+                //ToEmailAddress = (ToEmailAddress == string.Empty ? "prashant@smartkargo.com" : ToEmailAddress);
+                if (ToEmailAddress.Trim().Length > 0)
+                {
+                    GF.SaveMessageOutBox("FMA", strFMAMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", AWBPrefix + "-" + awbNumber);
+                }
+                //GenericFunction GF = new GenericFunction();
+                //strMessage = strMessage.Replace("$", "\r\n");
+                //strMessage = strMessage.Replace("$", "\n");
+                //strMessage = strMessage.Replace("$$", "\r\n");
+
+                //StringBuilder strFMAMessage = new StringBuilder();
+                //strFMAMessage.Append("FMA\r\n");
+                //strFMAMessage.Append("ACK/");
+                //strFMAMessage.Append(strSuccessMessage + "\r\n");
+                //strFMAMessage.Append(strMessage);
+                //GF.SaveMessageOutBox("MSG:FMA", strFMAMessage.ToString(), "", "SITAFTP");
+
+
+            }
+            catch (System.Exception ex)
             {
-                string SFTPHeaderSITAddress = string.Empty;
-                SFTPHeaderSITAddress = GF.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                GF.SaveMessageOutBox("FNA", SFTPHeaderSITAddress + "\r\n" + strFMAMessage, "SFTP", "SFTP", "", "", "", "", AWBPrefix + "-" + awbNumber);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
-            string ToEmailAddress = (strFromID == string.Empty ? Emailaddress : strFromID + "," + Emailaddress);
-            //ToEmailAddress = (ToEmailAddress == string.Empty ? "prashant@smartkargo.com" : ToEmailAddress);
-            if (ToEmailAddress.Trim().Length > 0)
-            {
-                GF.SaveMessageOutBox("FMA", strFMAMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", AWBPrefix + "-" + awbNumber);
-            }
-            //GenericFunction GF = new GenericFunction();
-            //strMessage = strMessage.Replace("$", "\r\n");
-            //strMessage = strMessage.Replace("$", "\n");
-            //strMessage = strMessage.Replace("$$", "\r\n");
-
-            //StringBuilder strFMAMessage = new StringBuilder();
-            //strFMAMessage.Append("FMA\r\n");
-            //strFMAMessage.Append("ACK/");
-            //strFMAMessage.Append(strSuccessMessage + "\r\n");
-            //strFMAMessage.Append(strMessage);
-            //GF.SaveMessageOutBox("MSG:FMA", strFMAMessage.ToString(), "", "SITAFTP");
-
         }
         #endregion Private Methods
     }

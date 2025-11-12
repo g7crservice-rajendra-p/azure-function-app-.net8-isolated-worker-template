@@ -77,7 +77,10 @@ namespace QidWorkerRole
                                         fhldata.fhlversionnum = msg[1];
                                         version = Convert.ToInt16(msg[1]);
                                     }
-                                    catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                    catch (Exception ex) {
+                                        // clsLog.WriteLogAzure(ex.Message); 
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    }
                                 }
                                 #endregion
 
@@ -145,7 +148,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         continue;
                                     }
                                 }
@@ -167,7 +171,8 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         //SCMExceptionHandling.logexception(ref e);
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         continue;
                                     }
                                 }
@@ -205,7 +210,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
 
@@ -245,7 +251,10 @@ namespace QidWorkerRole
                                         }
                                     }
                                     catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
+                                    {
+                                        // clsLog.WriteLogAzure(ex.Message);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                     }
                                 }
                                 #endregion
 
@@ -263,7 +272,10 @@ namespace QidWorkerRole
                                         }
                                     }
                                     catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
+                                    {
+                                        // clsLog.WriteLogAzure(ex.Message); 
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    }
                                 }
                                 #endregion
 
@@ -283,7 +295,10 @@ namespace QidWorkerRole
                                             fhldata.insuranceamount = msg[5];
                                             line++;
                                         }
-                                        catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+                                        catch (Exception ex) {
+                                            // clsLog.WriteLogAzure(ex.Message);
+                                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                         }
                                     }
                                 }
                                 #endregion
@@ -435,7 +450,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex.Message);
+                                        // clsLog.WriteLogAzure(ex.Message);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -557,7 +573,10 @@ namespace QidWorkerRole
                                         #endregion
                                     }
                                     catch (Exception ex)
-                                    { clsLog.WriteLogAzure(ex.Message); }
+                                    {
+                                        // clsLog.WriteLogAzure(ex.Message); 
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    }
                                 }
                                 #endregion
                             }
@@ -567,13 +586,15 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     flag = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;
@@ -615,7 +636,10 @@ namespace QidWorkerRole
                 }
 
             }
-            catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
+            catch (Exception ex) {
+                // clsLog.WriteLogAzure(ex.Message);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+             }
             Array.Resize(ref consinfo, consinfo.Length + 1);
             consinfo[consinfo.Length - 1] = consig;
         }
@@ -745,7 +769,8 @@ namespace QidWorkerRole
                     var dbRes1 = await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", parameters1);
                     if (!dbRes1)
                     {
-                        clsLog.WriteLogAzure("Rates Not Calculated for:" + AWBNum + Environment.NewLine);
+                        // clsLog.WriteLogAzure("Rates Not Calculated for:" + AWBNum + Environment.NewLine);
+                        _logger.LogWarning("Rates Not Calculated for: {0}" , AWBNum + Environment.NewLine);
                     }
                 }
                 //}
@@ -754,7 +779,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //return flag;
@@ -1056,7 +1082,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return false;
             }
         }
@@ -1124,7 +1151,10 @@ namespace QidWorkerRole
                                 }
                             }
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                        catch (Exception ex) {
+                            // clsLog.WriteLogAzure(ex); 
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                        }
                     }
                 }
             }
@@ -1132,86 +1162,97 @@ namespace QidWorkerRole
 
         public async Task GenerateFHL(string DepartureAirport, string flightdest, string FlightNo, string FlightDate, DateTime itdate, DateTime lstFBLSent, bool isAutoSendOnTriggerTime)
         {
-            string SitaMessageHeader = string.Empty, FHLMessageversion = string.Empty, Emailaddress = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty;
-
-            //GenericFunction gf = new GenericFunction();
-
-            MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
-            MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
-            MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
-
-            //FHLMessageProcessor FHL = new FHLMessageProcessor();
-
-            DataSet dsData = _genericFunction.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
-
-            if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
+            try
             {
-                DataSet dsmessage = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
-
-                if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
+                string SitaMessageHeader = string.Empty, FHLMessageversion = string.Empty, Emailaddress = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty;
+    
+                //GenericFunction gf = new GenericFunction();
+    
+                MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
+                MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
+                MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
+    
+                //FHLMessageProcessor FHL = new FHLMessageProcessor();
+    
+                DataSet dsData = _genericFunction.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
+    
+                if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                    string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
-                    FHLMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
-                    if (MessageCommunicationType.Equals("ALL", StringComparison.OrdinalIgnoreCase) || MessageCommunicationType.Equals("SITA", StringComparison.OrdinalIgnoreCase))
-                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
-                    if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
-                }
-                DataTable dt = new DataTable();
-
-
-                if (dsData.Tables[1] != null && dsData.Tables[1].Rows.Count > 0)
-                {
-
-                    dt = dsData.Tables[1];
-                    dt = GenericFunction.SelectDistinct(dt, "AWBNumbers");
-
-                    for (int i = 0; i < dt.Rows.Count; i++)
+                    DataSet dsmessage = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FHL", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
+    
+                    if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                     {
-                        try
+                        Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                        string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
+                        FHLMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
+                        if (MessageCommunicationType.Equals("ALL", StringComparison.OrdinalIgnoreCase) || MessageCommunicationType.Equals("SITA", StringComparison.OrdinalIgnoreCase))
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                        if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                            SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                    }
+                    DataTable dt = new DataTable();
+    
+    
+                    if (dsData.Tables[1] != null && dsData.Tables[1].Rows.Count > 0)
+                    {
+    
+                        dt = dsData.Tables[1];
+                        dt = GenericFunction.SelectDistinct(dt, "AWBNumbers");
+    
+                        for (int i = 0; i < dt.Rows.Count; i++)
                         {
-
-                            //if ((Convert.ToDateTime(dt.Rows[i]["UTCUpdatedOn"].ToString()) <= lstFBLSent) && (lstFBLSent != Convert.ToDateTime("1900-01-01 00:00:00.000")))
-                            //    return;
-
-                            string awbPrefix = string.Empty, awbNumber = string.Empty, carrierCode = string.Empty;
-                            awbPrefix = dt.Rows[i]["AWBNumbers"].ToString().Substring(0, 3);
-                            awbNumber = dt.Rows[i]["AWBNumbers"].ToString().Substring(4, 8);
-                            carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
-
-                            //string FHLMsg = await EncodeFHLForSend(awbNumber, awbPrefix, ref error, FHLMessageversion);
-                            string FHLMsg = string.Empty;
-                            (FHLMsg, error) = await EncodeFHLForSend(awbNumber, awbPrefix, error, FHLMessageversion);
-
-                            if (FHLMsg.Length > 3)
+                            try
                             {
-                                string[] msg = FHLMsg.Split('~');
-
-                                //GenericFunction genericFunction = new GenericFunction();
-
-                                for (int j = 0; j < msg.Length; j++)
+    
+                                //if ((Convert.ToDateTime(dt.Rows[i]["UTCUpdatedOn"].ToString()) <= lstFBLSent) && (lstFBLSent != Convert.ToDateTime("1900-01-01 00:00:00.000")))
+                                //    return;
+    
+                                string awbPrefix = string.Empty, awbNumber = string.Empty, carrierCode = string.Empty;
+                                awbPrefix = dt.Rows[i]["AWBNumbers"].ToString().Substring(0, 3);
+                                awbNumber = dt.Rows[i]["AWBNumbers"].ToString().Substring(4, 8);
+                                carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
+    
+                                //string FHLMsg = await EncodeFHLForSend(awbNumber, awbPrefix, ref error, FHLMessageversion);
+                                string FHLMsg = string.Empty;
+                                (FHLMsg, error) = await EncodeFHLForSend(awbNumber, awbPrefix, error, FHLMessageversion);
+    
+                                if (FHLMsg.Length > 3)
                                 {
-                                    string fhlMessage = msg[j].Trim();
-                                    _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, Emailaddress, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbPrefix + "-" + awbNumber
-                                        , FlightNo, FlightDate.ToString(), DepartureAirport, flightdest, carrierCode);
-                                    if (fhlMessage.Trim().Length > 3)
+                                    string[] msg = FHLMsg.Split('~');
+    
+                                    //GenericFunction genericFunction = new GenericFunction();
+    
+                                    for (int j = 0; j < msg.Length; j++)
                                     {
-                                        if (SitaMessageHeader.Trim().Length > 0)
-                                            _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.Trim() + "\r\n" + fhlMessage.Trim(), "", "SITAFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
-
-                                        if (SFTPHeaderSITAddress.Trim().Length > 0)
-                                            _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.Trim() + "\r\n" + fhlMessage.Trim(), "", "SFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
-
-                                        if (Emailaddress.Trim().Length > 0)
-                                            _genericFunction.SaveMessageOutBox("FHL", fhlMessage.Trim(), "", Emailaddress.Trim(), DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+                                        string fhlMessage = msg[j].Trim();
+                                        _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, Emailaddress, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbPrefix + "-" + awbNumber
+                                            , FlightNo, FlightDate.ToString(), DepartureAirport, flightdest, carrierCode);
+                                        if (fhlMessage.Trim().Length > 3)
+                                        {
+                                            if (SitaMessageHeader.Trim().Length > 0)
+                                                _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.Trim() + "\r\n" + fhlMessage.Trim(), "", "SITAFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+    
+                                            if (SFTPHeaderSITAddress.Trim().Length > 0)
+                                                _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.Trim() + "\r\n" + fhlMessage.Trim(), "", "SFTP", DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+    
+                                            if (Emailaddress.Trim().Length > 0)
+                                                _genericFunction.SaveMessageOutBox("FHL", fhlMessage.Trim(), "", Emailaddress.Trim(), DepartureAirport, flightdest, FlightNo, FlightDate.ToString(), awbPrefix + "-" + awbNumber, "Auto", "FHL");
+                                        }
                                     }
                                 }
                             }
+                            catch (Exception ex) {
+                                // clsLog.WriteLogAzure(ex); 
+                                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            }
                         }
-                        catch (Exception ex) { clsLog.WriteLogAzure(ex); }
                     }
                 }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
         }
 
@@ -1389,12 +1430,14 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    clsLog.WriteLogAzure(ex);
+                                    // clsLog.WriteLogAzure(ex);
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                 }
                             }
                         }
@@ -1409,7 +1452,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 Error = ex.Message;
             }
             //return fhlMessage;
@@ -1422,62 +1466,71 @@ namespace QidWorkerRole
         /// </summary>
         public async Task GenerateFHL(string PartnerCode, string DepartureAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
-            string FlightDestination = string.Empty;
-
-            //GenericFunction genericFunction = new GenericFunction();
-
-            string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4";
-
-            DataSet dsData = new DataSet();
-            DataSet ds = new DataSet();
-            DataSet dsFlt = new DataSet();
-
-            string[] awbArrray = AWBnumbers.Split(',');
-            for (int i = 0; i < awbArrray.Length; i++)
+            try
             {
-                FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
-                DataSet dsfwb = fwbMessageProcessor.GetAWBRecordForGenerateFWBMessage(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString());
-                string awbDestination = dsfwb.Tables[0].Rows[0]["DestinationCode"].ToString();
-                DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersion(PartnerCode, "FHL", "AIR", "", awbDestination, FlightNo, string.Empty);
-                if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
+                string FlightDestination = string.Empty;
+    
+                //GenericFunction genericFunction = new GenericFunction();
+    
+                string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4";
+    
+                DataSet dsData = new DataSet();
+                DataSet ds = new DataSet();
+                DataSet dsFlt = new DataSet();
+    
+                string[] awbArrray = AWBnumbers.Split(',');
+                for (int i = 0; i < awbArrray.Length; i++)
                 {
-                    strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-
-                    MsgVer = dsconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
-                    strSITAHeaderType = dsconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString();
-
-                    if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
+                    FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
+                    DataSet dsfwb = fwbMessageProcessor.GetAWBRecordForGenerateFWBMessage(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString());
+                    string awbDestination = dsfwb.Tables[0].Rows[0]["DestinationCode"].ToString();
+                    DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersion(PartnerCode, "FHL", "AIR", "", awbDestination, FlightNo, string.Empty);
+                    if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
                     {
-                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
-                    }
-                    if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                    {
-                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
-                    }
-                }
-
-                string carrierCode = string.Empty;
-                string FHLMsg = string.Empty;
-                //string FHLMsg =await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
-                (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
-                carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
-                try
-                {
-                    if (FHLMsg.Length > 3)
-                    {
-                        string[] msg = FHLMsg.Split('~');
-                        for (int j = 0; j < msg.Length; j++)
+                        strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+    
+                        MsgVer = dsconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
+                        strSITAHeaderType = dsconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString();
+    
+                        if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
                         {
-                            string fhlMessage = msg[j].Trim();
-                            _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, strEmailid, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbArrray[i].Trim().ToString()
-                                       , FlightNo, FlightDate.ToString(), DepartureAirport, FlightDestination, carrierCode);
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        }
+                        if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                        {
+                            SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                         }
                     }
+    
+                    string carrierCode = string.Empty;
+                    string FHLMsg = string.Empty;
+                    //string FHLMsg =await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                    (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
+                    carrierCode = FlightNo.Trim() == "" || FlightNo.Trim().Length < 2 ? "" : FlightNo.Trim().Substring(0, 2);
+                    try
+                    {
+                        if (FHLMsg.Length > 3)
+                        {
+                            string[] msg = FHLMsg.Split('~');
+                            for (int j = 0; j < msg.Length; j++)
+                            {
+                                string fhlMessage = msg[j].Trim();
+                                _genericFunction.SaveMessageToOutbox(string.Empty, fhlMessage, strEmailid, SitaMessageHeader, SFTPHeaderSITAddress, "FHL", awbArrray[i].Trim().ToString()
+                                           , FlightNo, FlightDate.ToString(), DepartureAirport, FlightDestination, carrierCode);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    clsLog.WriteLogAzure(ex);
-                }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
         }
 
@@ -1487,81 +1540,91 @@ namespace QidWorkerRole
         /// </summary>
         public async Task GenerateFHL(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
-            string FlightDestination = string.Empty;
-
-            //GenericFunction genericFunction = new GenericFunction();
-
-            string SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4", WEBAPIAddress = string.Empty, WebAPIURL = string.Empty;
-
-            DataSet dsData = new DataSet();
-            DataSet ds = new DataSet();
-            DataSet dsFlt = new DataSet();
-
-            string[] awbArrray = AWBnumbers.Split(',');
-            for (int i = 0; i < awbArrray.Length; i++)
+            try
             {
-                FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
-                DataSet dsfwb = fwbMessageProcessor.GetAWBRecordForGenerateFWBMessage(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString());
+                string FlightDestination = string.Empty;
 
-                string awbDestination = dsfwb.Tables[0].Rows[0]["DestinationCode"].ToString();
-                awbDestination = awbDestination + "," + ArrivalAirport.Trim();
-                string awbOrigin = dsfwb.Tables[0].Rows[0]["OriginCode"].ToString();
-                string SFTPHeaderSITAddress = string.Empty;
+                //GenericFunction genericFunction = new GenericFunction();
 
-                DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FHL", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
-                if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
+                string SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, MsgVer = "4", WEBAPIAddress = string.Empty, WebAPIURL = string.Empty;
+
+                DataSet dsData = new DataSet();
+                DataSet ds = new DataSet();
+                DataSet dsFlt = new DataSet();
+
+                string[] awbArrray = AWBnumbers.Split(',');
+                for (int i = 0; i < awbArrray.Length; i++)
                 {
-                    strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                    FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
+                    DataSet dsfwb = fwbMessageProcessor.GetAWBRecordForGenerateFWBMessage(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString());
 
-                    MsgVer = dsconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
-                    strSITAHeaderType = dsconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString();
-                    WebAPIURL = dsconfiguration.Tables[0].Rows[0]["WebAPIURL"].ToString();
-                    if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
-                    {
-                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
-                    }
-                    if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                    {
-                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
-                    }
-                    if (WebAPIURL.Length > 0)
-                    {
-                        WEBAPIAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
-                    }
-                }
+                    string awbDestination = dsfwb.Tables[0].Rows[0]["DestinationCode"].ToString();
+                    awbDestination = awbDestination + "," + ArrivalAirport.Trim();
+                    string awbOrigin = dsfwb.Tables[0].Rows[0]["OriginCode"].ToString();
+                    string SFTPHeaderSITAddress = string.Empty;
 
-                //string FHLMsg = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
-                string FHLMsg = string.Empty;
-                (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
-
-                try
-                {
-                    if (FHLMsg.Length > 3)
+                    DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FHL", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
+                    if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
                     {
-                        string[] msg = FHLMsg.Split('~');
-                        for (int j = 0; j < msg.Length; j++)
+                        strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+
+                        MsgVer = dsconfiguration.Tables[0].Rows[0]["MessageVersion"].ToString();
+                        strSITAHeaderType = dsconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString();
+                        WebAPIURL = dsconfiguration.Tables[0].Rows[0]["WebAPIURL"].ToString();
+                        if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
                         {
-                            string fhlMessage = msg[j].Trim();
-
-                            if (SitaMessageHeader.Trim().Length > 0)
-                                _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.ToString() + "\r\n" + fhlMessage, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
-
-                            if (SFTPHeaderSITAddress.Trim().Length > 0)
-                                _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.ToString() + "\r\n" + fhlMessage, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
-
-                            if (strEmailid.Trim().Length > 0)
-                                _genericFunction.SaveMessageOutBox("FHL", fhlMessage, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
-
-                            if (WEBAPIAddress.Trim().Length > 0)
-                                _genericFunction.SaveMessageOutBox("FHL", WEBAPIAddress.ToString() + "\r\n" + fhlMessage, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        }
+                        if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                        {
+                            SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        }
+                        if (WebAPIURL.Length > 0)
+                        {
+                            WEBAPIAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
                         }
                     }
+
+                    //string FHLMsg = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), ref error, MsgVer);
+                    string FHLMsg = string.Empty;
+                    (FHLMsg, error) = await EncodeFHLForSend(awbArrray[i].Substring(4, 8).ToString(), awbArrray[i].Substring(0, 3).ToString(), error, MsgVer);
+
+                    try
+                    {
+                        if (FHLMsg.Length > 3)
+                        {
+                            string[] msg = FHLMsg.Split('~');
+                            for (int j = 0; j < msg.Length; j++)
+                            {
+                                string fhlMessage = msg[j].Trim();
+
+                                if (SitaMessageHeader.Trim().Length > 0)
+                                    _genericFunction.SaveMessageOutBox("SITA:FHL", SitaMessageHeader.ToString() + "\r\n" + fhlMessage, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+
+                                if (SFTPHeaderSITAddress.Trim().Length > 0)
+                                    _genericFunction.SaveMessageOutBox("SITA:FHL", SFTPHeaderSITAddress.ToString() + "\r\n" + fhlMessage, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+
+                                if (strEmailid.Trim().Length > 0)
+                                    _genericFunction.SaveMessageOutBox("FHL", fhlMessage, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+
+                                if (WEBAPIAddress.Trim().Length > 0)
+                                    _genericFunction.SaveMessageOutBox("FHL", WEBAPIAddress.ToString() + "\r\n" + fhlMessage, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FHL");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    clsLog.WriteLogAzure(ex);
-                }
+
             }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }        
         }
     }
 }
