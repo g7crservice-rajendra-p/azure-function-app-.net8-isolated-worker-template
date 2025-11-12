@@ -1,19 +1,29 @@
-﻿using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+﻿//using QID.DataAccess; //Not in used
+//using System;//Not in used
+//using System.Collections.Generic;//Not in used
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+//using System.Linq;//Not in used
+//using System.Text;//Not in used
+//using System.Threading.Tasks;//Not in used
 
 namespace QidWorkerRole
 {
     public class FSRMessageProcessor
     {
-        public FSRMessageProcessor()
-        {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FSRMessageProcessor> _logger;
 
+        #region Constructor
+        public FSRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FSRMessageProcessor> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
         }
+        #endregion
 
         public bool DecodeFSR(string message, string messageFromAddress, string pimaAddress)
         {
@@ -43,15 +53,26 @@ namespace QidWorkerRole
             return flag;
         }
 
-        private void RelayFSA(string awbPrefix, string awbNumber, string messageFromAddress, string pimaAddress)
+        // void RelayFSA(string awbPrefix, string awbNumber, string messageFromAddress, string pimaAddress)
+        private async Task RelayFSA(string awbPrefix, string awbNumber, string messageFromAddress, string pimaAddress)
         {
             try
             {
-                SQLServer sqlServer = new SQLServer();
-                string[] paramName = new string[] { "AWBPrefix", "AWBNumber", "MessageFromAddress", "PIMAAddress" };
-                object[] paramValue = new object[] { awbPrefix, awbNumber, messageFromAddress, pimaAddress };
-                SqlDbType[] paramType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                DataSet ds = sqlServer.SelectRecords("Messaging.uspRelayFSAOnFSR", paramName, paramValue, paramType);
+                //SQLServer sqlServer = new SQLServer();
+                //string[] paramName = new string[] { "AWBPrefix", "AWBNumber", "MessageFromAddress", "PIMAAddress" };
+                //object[] paramValue = new object[] { awbPrefix, awbNumber, messageFromAddress, pimaAddress };
+                //SqlDbType[] paramType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                //DataSet ds = sqlServer.SelectRecords("Messaging.uspRelayFSAOnFSR", paramName, paramValue, paramType);
+
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                  new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = awbPrefix },
+                  new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber },
+                  new SqlParameter("@MessageFromAddress", SqlDbType.VarChar) { Value = messageFromAddress },
+                  new SqlParameter("@PIMAAddress", SqlDbType.VarChar) { Value = pimaAddress }
+                };
+
+                DataSet ds = await _readWriteDao.SelectRecords("Messaging.uspRelayFSAOnFSR", sqlParameters);
             }
             catch (Exception ex)
             {
