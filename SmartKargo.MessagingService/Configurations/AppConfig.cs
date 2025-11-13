@@ -47,6 +47,23 @@ namespace SmartKargo.MessagingService.Configurations
         public string DataDumpAlertEmailID { get; set; } = string.Empty;
     }
 
+    public class MiscellaneousConfig
+    {
+        public string UTCORLOCALTIME { get; set; } = string.Empty;
+        public string DownLoadFilePath { get; set; } = string.Empty;
+        public string XMLFilePath { get; set; } = string.Empty;
+        
+    }
+
+    //SFTP config
+    public class SftpConfig
+    {
+        public string HostName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string SshHostKeyFingerprint { get; set; } = string.Empty;
+    }
+
     public class AppConfig
     {
         public DatabaseConfig Database { get; set; } = new();
@@ -55,6 +72,9 @@ namespace SmartKargo.MessagingService.Configurations
         public SmsConfig Sms { get; set; } = new();
         public PollingConfig Polling { get; set; } = new();
         public AlertConfig Alert { get; set; } = new();
+        public MiscellaneousConfig Miscellaneous { get; set; } = new();
+        public SftpConfig Sftp { get; set; } = new();
+
 
     }
 }

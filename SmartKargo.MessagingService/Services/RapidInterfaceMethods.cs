@@ -1,21 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Configurations;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System.Data;
-using System.IO;
-using QID.DataAccess;
-using System.Data.SqlClient;
-using System.Configuration;
-using QidWorkerRole;
-using System.Web;
+using System.Text;
 using WinSCP;
-using System.Drawing;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using System.ComponentModel;
-using System.Net;
 
 namespace QidWorkerRole
 {
@@ -23,8 +13,9 @@ namespace QidWorkerRole
     {
         static Dictionary<string, string> objDictionary = null;
         static Dictionary<string, string> objUploadDictionary = null;
-        static string BlobKey = String.Empty;
-        static string BlobName = String.Empty;
+
+        //static string BlobKey = String.Empty;
+        //static string BlobName = String.Empty;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -48,11 +39,35 @@ namespace QidWorkerRole
         //        objUploadDictionary = null;
         //    }
         //}
-        public void UpdateRapidDetailsForCebu()
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<RapidInterfaceMethods> _logger;
+        private readonly AppConfig _appConfig;
+        private readonly balRapidInterfaceForCebu _balRapidInterfaceForCebu;
+        private readonly balRapidInterface _balRapidInterface;
+        public RapidInterfaceMethods(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<RapidInterfaceMethods> logger,
+            AppConfig appConfig,
+            balRapidInterfaceForCebu balRapidInterfaceForCebu,
+            balRapidInterface balRapidInterface
+         )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _appConfig = appConfig;
+            _balRapidInterfaceForCebu = balRapidInterfaceForCebu;
+            _balRapidInterface = balRapidInterface;
+        }
+
+        public async Task UpdateRapidDetailsForCebu()
         {
             try
             {
-                String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+                //String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+
+                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;
                 DateTime ToDate = DateTime.Now;
@@ -75,14 +90,21 @@ namespace QidWorkerRole
                 objDictionary = new Dictionary<string, string>();
                 objUploadDictionary = new Dictionary<string, string>();
 
-                string FilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string flnFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string salesFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string ccaFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string FilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string flnFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string salesFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string ccaFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
 
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                string FilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string flnFilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string salesFilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string ccaFilePath = _appConfig.Miscellaneous.XMLFilePath;
+
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
                 string XML = string.Empty;
-                balRapidInterfaceForCebu objBAL = new balRapidInterfaceForCebu();
+
+                //balRapidInterfaceForCebu objBAL = new balRapidInterfaceForCebu();
+
                 clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
                 clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
                 objDictionary.Add("File Names ", "Status");
@@ -97,7 +119,7 @@ namespace QidWorkerRole
                     StringBuilder sbAWB = new StringBuilder();
                     string filenameAWBData = string.Empty;
 
-                    dsRpdIntrfcAWBFileName = objBAL.InsertRapidInterfaceData(Convert.ToDateTime(ExecutedOn)
+                    dsRpdIntrfcAWBFileName = await _balRapidInterfaceForCebu.InsertRapidInterfaceData(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -122,7 +144,7 @@ namespace QidWorkerRole
                                     if (!string.IsNullOrEmpty(drAWBFileName["FileName"].ToString()))
                                     {
                                         filenameAWBData = drAWBFileName["FileName"].ToString();
-                                        dsAWBData = objBAL.GetRapidInterfaceData(filenameAWBData);
+                                        dsAWBData = await _balRapidInterfaceForCebu.GetRapidInterfaceData(filenameAWBData);
                                         if (dsAWBData != null && dsAWBData.Tables.Count > 0)
                                         {
                                             var result = new StringBuilder();
@@ -276,7 +298,7 @@ namespace QidWorkerRole
                     string filenameFlown = "";
 
                     #region INSERT Flown DATA
-                    dsFlownFileName = objBAL.InsertRapidFlownTransaction(Convert.ToDateTime(ExecutedOn)
+                    dsFlownFileName = await _balRapidInterfaceForCebu.InsertRapidFlownTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -318,7 +340,7 @@ namespace QidWorkerRole
 
                     #region GET Flown DATA
 
-                    dsFlownData = objBAL.GetRapidFlownTransaction(filenameFlown);
+                    dsFlownData = await _balRapidInterfaceForCebu.GetRapidFlownTransaction(filenameFlown);
                     if (dsFlownData != null && dsFlownData.Tables.Count > 0)
                     {
                         //DataTable table = ds.Tables[0];// You data table values;
@@ -396,7 +418,7 @@ namespace QidWorkerRole
                 {
                     #region INSERT Flown DATA
 
-                    dsExportFileName = objBAL.InsertRapidExportSales(Convert.ToDateTime(ExecutedOn)
+                    dsExportFileName = await _balRapidInterfaceForCebu.InsertRapidExportSales(Convert.ToDateTime(ExecutedOn)
                                                            , "SKAdmin"
                                                             , FromDate
                                                             , ToDate
@@ -432,7 +454,7 @@ namespace QidWorkerRole
 
                     #region GET Flown DATA
 
-                    dsExportData = objBAL.GetRapidExportSalesTransaction(filenameExport);
+                    dsExportData = await _balRapidInterfaceForCebu.GetRapidExportSalesTransaction(filenameExport);
                     if (dsExportData != null && dsExportData.Tables.Count > 0)
                     {
                         //DataTable table = ds.Tables[0];// You data table values;
@@ -522,9 +544,11 @@ namespace QidWorkerRole
 
                     string strSubject = "Rapid Files Upload Status Dated: " + DateTime.Today.ToString("MM-dd-yyyy");
 
-                    string toId = GetConfigurationValue("ToEmailIDForRapid");
+                    //string toId = GetConfigurationValue("ToEmailIDForRapid");
+                    //string fromID = GetConfigurationValue("msgService_OutEmailId");
 
-                    string fromID = GetConfigurationValue("msgService_OutEmailId");
+                    string toId = ConfigCache.Get("ToEmailIDForRapid");
+                    string fromID = ConfigCache.Get("msgService_OutEmailId");
 
                     String ToEmailID = string.Empty;
                     if (!string.IsNullOrEmpty(toId))
@@ -568,7 +592,7 @@ namespace QidWorkerRole
                     body += "<br><br>Thank You," + "<br> SmartKargo Team <br><br>";
                     body += "<br><br>Note: This is a system generated email. Please do not reply. If you were an unintended recipient kindly delete this email.";
 
-                    addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPID");
+                    await addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPID");
 
                 }
                 catch (Exception ex)
@@ -583,12 +607,15 @@ namespace QidWorkerRole
                 clsLog.WriteLogAzure(ex);
             }
         }
-        public void UpdateRapidDetails()
+        public async Task UpdateRapidDetails()
         {
             try
             {
                 clsLog.WriteLogAzure("After UpdateULDStock 1111");
-                String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+                //String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+
+                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+
                 clsLog.WriteLogAzure("After UpdateULDStock 2222 :  " + TimeZone);
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;
@@ -616,14 +643,23 @@ namespace QidWorkerRole
                 objDictionary = new Dictionary<string, string>();
                 objUploadDictionary = new Dictionary<string, string>();
 
-                string FilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string flnFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string salesFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string CTMFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
-                string CCAPXFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string FilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string flnFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string salesFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string CTMFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+                //string CCAPXFilePath = ConfigurationManager.AppSettings["XMLFilePath"].ToString();
+
+                string FilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string flnFilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string salesFilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string CTMFilePath = _appConfig.Miscellaneous.XMLFilePath;
+                string CCAPXFilePath = _appConfig.Miscellaneous.XMLFilePath;
+
                 string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
                 string XML = string.Empty;
-                balRapidInterface objBAL = new balRapidInterface();
+
+                //balRapidInterface objBAL = new balRapidInterface();
+
                 clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
                 clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
                 objDictionary.Add("File Names ", "Status");
@@ -632,13 +668,13 @@ namespace QidWorkerRole
                 try
                 {
                     // string filenameCTM = string.Empty;
-                    DataSet dsRpdIntrfcAWBFileName = new DataSet();
-                    DataSet dsAWBData = new DataSet();
+                    DataSet? dsRpdIntrfcAWBFileName = new DataSet();
+                    DataSet? dsAWBData = new DataSet();
 
                     StringBuilder sbAWB = new StringBuilder();
                     string filenameAWBData = string.Empty;
 
-                    dsRpdIntrfcAWBFileName = objBAL.InsertRapidInterfaceData(Convert.ToDateTime(ExecutedOn)
+                    dsRpdIntrfcAWBFileName = await _balRapidInterface.InsertRapidInterfaceData(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -665,7 +701,7 @@ namespace QidWorkerRole
                                     if (!string.IsNullOrEmpty(drAWBFileName["FileName"].ToString()))
                                     {
                                         filenameAWBData = drAWBFileName["FileName"].ToString();
-                                        dsAWBData = objBAL.GetRapidInterfaceData(filenameAWBData);
+                                        dsAWBData = await _balRapidInterface.GetRapidInterfaceData(filenameAWBData);
                                         if (dsAWBData != null && dsAWBData.Tables.Count > 0)
                                         {
                                             if (Convert.ToInt64(dsAWBData.Tables[5].Rows[0]["TotalAWBs"]).ToString() == "0")
@@ -765,7 +801,7 @@ namespace QidWorkerRole
                                                                 File.Delete(FilePath + FileName);
 
                                                             File.WriteAllText(FilePath + FileName, sbAWB.ToString());
-                                                            addMsgToOutBox(FileName, sbAWB.ToString(), "", "SFTP", false, true, "RAPID");
+                                                            await addMsgToOutBox(FileName, sbAWB.ToString(), "", "SFTP", false, true, "RAPID");
                                                             objDictionary.Add(FileName, "Success");
                                                             objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsAWBData.Tables[5].Rows[0]["TotalAWBs"]).ToString());
                                                             clsLog.WriteLogAzure("--AWB file write Process Completed -");
@@ -839,14 +875,14 @@ namespace QidWorkerRole
                 try
                 {
 
-                    DataSet dsFlownFileName = new DataSet();
-                    DataSet dsFlownData = new DataSet();
+                    DataSet? dsFlownFileName = new DataSet();
+                    DataSet? dsFlownData = new DataSet();
                     StringBuilder sbFlown = new StringBuilder();
                     string filenameFlown = "";
 
                     #region INSERT Flown DATA
                     clsLog.WriteLogAzure("-Flown File write Processing Started -");
-                    dsFlownFileName = objBAL.InsertRapidFlownTransaction(Convert.ToDateTime(ExecutedOn)
+                    dsFlownFileName = await _balRapidInterface.InsertRapidFlownTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -890,7 +926,7 @@ namespace QidWorkerRole
                     #region GET Flown DATA
                     if (filenameFlown != null && filenameFlown != "")
                     {
-                        dsFlownData = objBAL.GetRapidFlownTransaction(filenameFlown);
+                        dsFlownData = await _balRapidInterface.GetRapidFlownTransaction(filenameFlown);
                         if (dsFlownData != null && dsFlownData.Tables.Count > 0)
                         {
                             //DataTable table = ds.Tables[0];// You data table values;
@@ -925,7 +961,7 @@ namespace QidWorkerRole
                                             File.Delete(flnFilePath + FileName);
 
                                         File.WriteAllText(flnFilePath + FileName, sbFlown.ToString());
-                                        addMsgToOutBox(FileName, sbFlown.ToString(), "", "SFTP", false, true, "RAPID");
+                                        await addMsgToOutBox(FileName, sbFlown.ToString(), "", "SFTP", false, true, "RAPID");
                                         objDictionary.Add(FileName, "Success");
                                         objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsFlownData.Tables[2].Rows[0]["TotalAWBs"]).ToString());
                                         clsLog.WriteLogAzure("--Flown file write Process Completed -");
@@ -967,8 +1003,8 @@ namespace QidWorkerRole
                 #endregion
 
                 #region "CTM Rapid Interface"
-                DataSet dsCTMData = new DataSet();
-                DataSet dsCTMFileName = new DataSet();
+                DataSet? dsCTMData = new DataSet();
+                DataSet? dsCTMFileName = new DataSet();
 
                 StringBuilder sbCTM = new StringBuilder();
                 string filenameCTM = "";
@@ -978,7 +1014,7 @@ namespace QidWorkerRole
 
                     clsLog.WriteLogAzure("--CTM file write Process Started -");
                     #region Insert CTM DATA
-                    dsCTMFileName = objBAL.InsertRapidCTMTransaction(Convert.ToDateTime(ExecutedOn)
+                    dsCTMFileName = await _balRapidInterface.InsertRapidCTMTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -1023,7 +1059,7 @@ namespace QidWorkerRole
                     #endregion
 
                     #region GET CTM DATA
-                    dsCTMData = objBAL.GetRapidCTMTransaction(filenameCTM);
+                    dsCTMData = await _balRapidInterface.GetRapidCTMTransaction(filenameCTM);
                     if (dsCTMData != null && dsCTMData.Tables.Count > 0)
                     {
                         var result = new StringBuilder();
@@ -1059,7 +1095,7 @@ namespace QidWorkerRole
                                         File.Delete(CTMFilePath + FileName);
 
                                     File.WriteAllText(CTMFilePath + FileName, sbCTM.ToString());
-                                    addMsgToOutBox(FileName, sbCTM.ToString(), "", "SFTP", false, true, "RAPID");
+                                    await addMsgToOutBox(FileName, sbCTM.ToString(), "", "SFTP", false, true, "RAPID");
                                     objDictionary.Add(FileName, "Success");
                                     objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsCTMData.Tables[2].Rows[0]["TotalAWBs"]).ToString());
                                     clsLog.WriteLogAzure("--CTM file write Process Completed -");
@@ -1110,8 +1146,8 @@ namespace QidWorkerRole
                 #endregion
 
                 #region "CCA PX Rapid Interface"
-                DataSet dsCCAPXData = new DataSet();
-                DataSet dsCCAPXFileName = new DataSet();
+                DataSet? dsCCAPXData = new DataSet();
+                DataSet? dsCCAPXFileName = new DataSet();
 
                 StringBuilder sbCCAPX = new StringBuilder();
                 string filenameCCAPX = "";
@@ -1122,7 +1158,7 @@ namespace QidWorkerRole
 
                     #region Insert CTM DATA
                     clsLog.WriteLogAzure("--CCA For PX file write Process Started -");
-                    dsCCAPXFileName = objBAL.InsertRapidCCAPXTransaction(Convert.ToDateTime(ExecutedOn)
+                    dsCCAPXFileName = await _balRapidInterface.InsertRapidCCAPXTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
                                                                  , ToDate
@@ -1167,7 +1203,7 @@ namespace QidWorkerRole
                     #endregion
 
                     #region GET CCA PX DATA
-                    dsCCAPXData = objBAL.GetRapidCCAPXTransaction(filenameCCAPX);
+                    dsCCAPXData = await _balRapidInterface.GetRapidCCAPXTransaction(filenameCCAPX);
                     if (dsCCAPXData != null && dsCCAPXData.Tables.Count > 0)
                     {
                         var result = new StringBuilder();
@@ -1203,7 +1239,7 @@ namespace QidWorkerRole
                                         File.Delete(CCAPXFilePath + FileName);
 
                                     File.WriteAllText(CCAPXFilePath + FileName, sbCCAPX.ToString());
-                                    addMsgToOutBox(FileName, sbCCAPX.ToString(), "", "SFTP", false, true, "RAPID");
+                                    await addMsgToOutBox(FileName, sbCCAPX.ToString(), "", "SFTP", false, true, "RAPID");
                                     objDictionary.Add(FileName, "Success");
                                     objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsCCAPXData.Tables[5].Rows[0]["TotalAWBs"]).ToString());
                                     clsLog.WriteLogAzure("--CCA for PX file write Process Completed -");
@@ -1325,57 +1361,65 @@ namespace QidWorkerRole
 
         }
 
-        public static string GetConfigurationValue(string Key)
-        {
-            SqlDataAdapter objDA = null;
-            DataSet objDs = null;
-            string FileName = string.Empty;
-            try
-            {
+        /*Not in use*/
+        //public static string GetConfigurationValue(string Key)
+        //{
+        //    SqlDataAdapter objDA = null;
+        //    DataSet objDs = null;
+        //    string FileName = string.Empty;
+        //    try
+        //    {
 
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //        string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
 
-                string Command = "Exec [dbo].[uspGetTblConfiguration] '" + Key + "'";
-                objDA = new SqlDataAdapter(Command, connectionString);
-                objDA.SelectCommand.CommandTimeout = 0;
-                objDs = new DataSet();
-                objDA.Fill(objDs);
+        //        string Command = "Exec [dbo].[uspGetTblConfiguration] '" + Key + "'";
+        //        objDA = new SqlDataAdapter(Command, connectionString);
+        //        objDA.SelectCommand.CommandTimeout = 0;
+        //        objDs = new DataSet();
+        //        objDA.Fill(objDs);
 
-                if (objDs != null && objDs.Tables.Count > 0 && objDs.Tables[0].Rows.Count > 0)
-                {
-                    FileName = objDs.Tables[0].Rows[0]["values"].ToString();
+        //        if (objDs != null && objDs.Tables.Count > 0 && objDs.Tables[0].Rows.Count > 0)
+        //        {
+        //            FileName = objDs.Tables[0].Rows[0]["values"].ToString();
 
-                }
-                return FileName;
+        //        }
+        //        return FileName;
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return "";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return "";
 
-            }
-            finally
-            {
-                objDA = null;
-                objDs = null;
-            }
-        }
+        //    }
+        //    finally
+        //    {
+        //        objDA = null;
+        //        objDs = null;
+        //    }
+        //}
 
-        public static void uploadfiles()
+        public void uploadfiles()
         {
             TransferOperationResult transferResult = null;
             try
             {
 
+                //@ConfigurationManager.AppSettings["XMLFilePath"]
+                var xMLFilePath = _appConfig.Miscellaneous.XMLFilePath;
+
                 // Setup session options
                 SessionOptions sessionOptions = new SessionOptions
                 {
                     Protocol = Protocol.Sftp,
-                    HostName = ConfigurationManager.AppSettings["HostName"].ToString(),
-                    UserName = ConfigurationManager.AppSettings["UserName"].ToString(),
-                    Password = ConfigurationManager.AppSettings["Password"].ToString(),
-                    SshHostKeyFingerprint = ConfigurationManager.AppSettings["SshHostKeyFingerprint"].ToString()
+                    //HostName = ConfigurationManager.AppSettings["HostName"].ToString(),
+                    //UserName = ConfigurationManager.AppSettings["UserName"].ToString(),
+                    //Password = ConfigurationManager.AppSettings["Password"].ToString(),
+                    //SshHostKeyFingerprint = ConfigurationManager.AppSettings["SshHostKeyFingerprint"].ToString()
+                    HostName = _appConfig.Sftp.HostName,
+                    UserName = _appConfig.Sftp.UserName,
+                    Password = _appConfig.Sftp.Password,
+                    SshHostKeyFingerprint = _appConfig.Sftp.SshHostKeyFingerprint
                 };
                 using (Session session = new Session())
                 {
@@ -1385,7 +1429,9 @@ namespace QidWorkerRole
                     TransferOptions transferOptions = new TransferOptions();
                     transferOptions.TransferMode = TransferMode.Binary;
                     transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
-                    transferResult = session.PutFiles(@ConfigurationManager.AppSettings["XMLFilePath"].ToString() + "*", @ConfigurationManager.AppSettings["SFTPFolderPath"].ToString(), true, transferOptions);
+                    //transferResult = session.PutFiles(@ConfigurationManager.AppSettings["XMLFilePath"].ToString() + "*", @ConfigurationManager.AppSettings["SFTPFolderPath"].ToString(), true, transferOptions);
+                    transferResult = session.PutFiles(@xMLFilePath + "*", @xMLFilePath, true, transferOptions);
+
                     if (transferResult.IsSuccess)
                     {
                         foreach (TransferEventArgs transfer in transferResult.Transfers)
@@ -1427,104 +1473,114 @@ namespace QidWorkerRole
             }
         }
 
-        public static bool UploadBlob(Stream stream, string fileName)
-        {
-            try
-            {
-                string containerName = "blobstorage";
+        /*Not in use*/
+        //public static bool UploadBlob(Stream stream, string fileName)
+        //{
+        //    try
+        //    {
+        //        string containerName = "blobstorage";
 
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());// "NUro8/C7+kMqtwOwLbe6agUvA83s+8xSTBqrkMwSjPP6MAxVkdtsLDGjyfyEqQIPv6JHEEf5F5s4a+DFPsSQfg==");
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
-                blobContainer.CreateIfNotExist();
-                CloudBlob blob = blobContainer.GetBlobReference(fileName);
-                blob.Properties.ContentType = "";
-                blob.UploadFromStream(stream);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return false;
-            }
-        }
-        private static string getStorageKey()
-        {
-            try
-            {
-                if (String.IsNullOrEmpty(BlobKey))
-                {
+        //        StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());// "NUro8/C7+kMqtwOwLbe6agUvA83s+8xSTBqrkMwSjPP6MAxVkdtsLDGjyfyEqQIPv6JHEEf5F5s4a+DFPsSQfg==");
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
+        //        blobContainer.CreateIfNotExist();
+        //        CloudBlob blob = blobContainer.GetBlobReference(fileName);
+        //        blob.Properties.ContentType = "";
+        //        blob.UploadFromStream(stream);
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return false;
+        //    }
+        //}
+        /*Not in use*/
+        //private static string getStorageKey()
+        //{
+        //    try
+        //    {
+        //        if (String.IsNullOrEmpty(BlobKey))
+        //        {
 
-                    BlobKey = GetMasterConfiguration("BlobStorageKey");
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return BlobKey;
-        }
+        //            BlobKey = GetMasterConfiguration("BlobStorageKey");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return BlobKey;
+        //}
 
-        private static string getStorageName()
-        {
-            try
-            {
-                if (String.IsNullOrEmpty(BlobName))
-                {
+        /*Not in use*/
+        //private static string getStorageName()
+        //{
+        //    try
+        //    {
+        //        if (String.IsNullOrEmpty(BlobName))
+        //        {
 
-                    BlobName = GetMasterConfiguration("BlobStorageName");
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return BlobName;
-        }
-        public static string GetMasterConfiguration(string Parameter)
-        {
-            string ParameterValue = string.Empty;
+        //            BlobName = GetMasterConfiguration("BlobStorageName");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return BlobName;
+        //}
 
-            balRapidInterface da = new balRapidInterface();
-            string[] QName = new string[] { "PType" };
-            object[] QValues = new object[] { Parameter };
-            SqlDbType[] QType = new SqlDbType[] { SqlDbType.VarChar };
-            ParameterValue = da.GetStringByProcedure("spGetSystemParameter", QName, QValues, QType);
-            if (ParameterValue == null)
-                ParameterValue = "";
-            da = null;
-            QName = null;
-            QValues = null;
-            QType = null;
+        /*Not in use*/
+        //public static string GetMasterConfiguration(string Parameter)
+        //{
+        //    string ParameterValue = string.Empty;
 
-            return ParameterValue;
-        }
-        public static bool addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
+        //    balRapidInterface da = new balRapidInterface();
+        //    string[] QName = new string[] { "PType" };
+        //    object[] QValues = new object[] { Parameter };
+        //    SqlDbType[] QType = new SqlDbType[] { SqlDbType.VarChar };
+        //    ParameterValue = da.GetStringByProcedure("spGetSystemParameter", QName, QValues, QType);
+        //    if (ParameterValue == null)
+        //        ParameterValue = "";
+        //    da = null;
+        //    QName = null;
+        //    QValues = null;
+        //    QType = null;
+
+        //    return ParameterValue;
+        //}
+        public async Task<bool> addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
         {
             bool flag = false;
             try
             {
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-                SqlConnection con = new SqlConnection(connectionString);
-                con.Open();
-                SqlCommand cmd = new SqlCommand();
 
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandText = "spInsertMsgToOutbox";
-                cmd.Connection = con;
-                SqlParameter[] prm = new SqlParameter[] {
+
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                //SqlConnection con = new SqlConnection(connectionString);
+                //con.Open();
+                //SqlCommand cmd = new SqlCommand();
+
+                //cmd.CommandType = CommandType.StoredProcedure;
+                //cmd.CommandText = "spInsertMsgToOutbox";
+                //cmd.Connection = con;
+
+                SqlParameter[] prm = [
                     new SqlParameter("@Subject",subject)
                     ,new SqlParameter("@Body",Msg)
                     ,new SqlParameter("@FromEmailID",FromEmailID)
                     ,new SqlParameter("@ToEmailID",ToEmailID)
                     ,new SqlParameter("@Type",type)
                     ,new SqlParameter("@IsHTML",isHTML)
-                };
+                ];
 
-                cmd.Parameters.AddRange(prm);
-                cmd.ExecuteNonQuery();
+                return await _readWriteDao.ExecuteNonQueryAsync("spInsertMsgToOutbox", prm);
+
+                //cmd.Parameters.AddRange(prm);
+                //cmd.ExecuteNonQuery();
                 //    string procedure = "spInsertMsgToOutbox";
 
                 //    string CarrierCode = string.Empty;
@@ -1570,11 +1626,11 @@ namespace QidWorkerRole
             return flag;
         }
 
-        public void SaveRapidStatus(string SaveSendFlag)
+        public async Task SaveRapidStatus(string SaveSendFlag)
         {
             SqlParameter[] sqlParameters = new SqlParameter[] { };
-            SQLServer sqlServer = new SQLServer();
-            DataSet dsReturn = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
+            DataSet? dsReturn = new DataSet();
 
             try
             {
@@ -1603,7 +1659,10 @@ namespace QidWorkerRole
                         Rno++;
                     }
                     sqlParameters = new SqlParameter[] { new SqlParameter("@RapidFileUploadLog", dtRapidStatus), new SqlParameter("@Flag", 1) };
-                    dsReturn = sqlServer.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
+
+                    //dsReturn = sqlServer.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
+
+                    dsReturn = await _readWriteDao.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
                     if (dsReturn != null)
                     {
                         clsLog.WriteLogAzure("Sucess-SaveRapidLog_Ds ::" + System.DateTime.Now);
@@ -1626,7 +1685,9 @@ namespace QidWorkerRole
                 if (SaveSendFlag == "SendRapidAleart")
                 {
                     sqlParameters = new SqlParameter[] { new SqlParameter("@RapidFileUploadLog", dtRapidStatus), new SqlParameter("@Flag", 2) };
-                    dsReturn = sqlServer.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
+
+                    //dsReturn = sqlServer.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
+                    dsReturn = await _readWriteDao.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
                     if (dsReturn != null)
                     {
                         clsLog.WriteLogAzure("Sucess-SendRapidAleart_Ds ::" + System.DateTime.Now);
@@ -1639,8 +1700,12 @@ namespace QidWorkerRole
                                 string agentEmail = string.Empty; string AgentCode = string.Empty; String body = string.Empty; String ToEmailID = string.Empty;
                                 DataTable dt = new DataTable();
                                 string strSubject = "Rapid Files Upload Status Dated: " + DateTime.Today.ToString("MM-dd-yyyy");
-                                string toId = GetConfigurationValue("ToEmailIDForRapid");
-                                string fromID = GetConfigurationValue("msgService_OutEmailId");
+
+                                //string toId = GetConfigurationValue("ToEmailIDForRapid");
+                                //string fromID = GetConfigurationValue("msgService_OutEmailId");
+
+                                string toId = ConfigCache.Get("ToEmailIDForRapid");
+                                string fromID = ConfigCache.Get("msgService_OutEmailId");
 
                                 if (!string.IsNullOrEmpty(toId))
                                 {
@@ -1661,7 +1726,7 @@ namespace QidWorkerRole
                                 body += "<br><br>Thank You," + "<br> SmartKargo Team <br><br>";
                                 body += "<br><br>Note: This is a system generated email. Please do not reply. If you were an unintended recipient kindly delete this email.";
 
-                                addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPID");
+                                await addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPID");
                             }
                         }
                         else
