@@ -3118,7 +3118,7 @@ namespace QidWorkerRole
                     new SqlParameter("@FLTno", SqlDbType.VarChar) { Value = FlightNo },
                     new SqlParameter("@POL", SqlDbType.VarChar) { Value = POL },
                     new SqlParameter("@POU", SqlDbType.VarChar) { Value = POU },
-                    new SqlParameter("@FLTDate", SqlDbType.DateTime) { Value = FltDate },
+                    new SqlParameter("@FLTDate", SqlDbType.DateTime) { Value = FltDate.ToShortDateString() },
                     new SqlParameter("@TailNo", SqlDbType.VarChar) { Value = AircraftRegistration },
                     new SqlParameter("@REFNo", SqlDbType.Int) { Value = REFNo }
                 };
