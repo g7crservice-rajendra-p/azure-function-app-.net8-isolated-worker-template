@@ -12,20 +12,12 @@
       * Description          :   
      */
 #endregion
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Text.RegularExpressions;
-using System.Globalization;
-using System.Text;
-using System.IO;
-using System.Reflection;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using QidWorkerRole;
-using System.Data.SqlClient;
+using static QidWorkerRole.MessageData;
+using static QidWorkerRole.SCMExceptionHandlingWorkRole;
 
 
 namespace QidWorkerRole
@@ -33,6 +25,20 @@ namespace QidWorkerRole
     public class XFHLMessageProcessor
     {
         //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FDMMessageProcessor> _logger;
+        private GenericFunction _genericFunction;
+        public XFHLMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FDMMessageProcessor> logger,
+            GenericFunction genericFunction
+        )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
 
         #region Decode XFHL message
         public bool DecodeReceiveFHLMessage(string fhlmsg, ref MessageData.fhlinfo fhldata, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] custominfo)
@@ -197,8 +203,6 @@ namespace QidWorkerRole
                 custom.consigref = "";
                 Array.Resize(ref custominfo, custominfo.Length + 1);
                 custominfo[custominfo.Length - 1] = custom;
-
-
             }
         }
         #endregion
@@ -206,26 +210,37 @@ namespace QidWorkerRole
 
 
         #region validateAndInsertFHLData
-        public bool validateAndInsertFHLData(ref MessageData.fhlinfo fhl, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+        //public async Task<bool> validateAndInsertFHLData(ref MessageData.fhlinfo fhl, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+        public async Task<(bool success, MessageData.fhlinfo fhl, MessageData.consignmnetinfo[] consinfo, MessageData.customsextrainfo[] customextrainfo)> validateAndInsertFHLData(MessageData.fhlinfo fhl, MessageData.consignmnetinfo[] consinfo, MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
         {
             bool flag = false;
-            GenericFunction gf = new GenericFunction();
-            AWBOperations objOpsAuditLog = null;
+
+            //GenericFunction _genericFunction = new GenericFunction();
+            AWBOperations? objOpsAuditLog = null;
             try
             {
                 bool isAWBPresent = false;
                 string AWBNum = fhl.awbnum;
                 string AWBPrefix = fhl.airlineprefix;
-                SQLServer db = new SQLServer();
 
-                gf.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + AWBNum, string.Empty, string.Empty, string.Empty, "FHL", strMessageFrom, DateTime.Parse("1900-01-01"));
+                //SQLServer db = new SQLServer();
+
+                await _genericFunction.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + AWBNum, string.Empty, string.Empty, string.Empty, "FHL", strMessageFrom, DateTime.Parse("1900-01-01"));
 
                 #region Check AWB Present or Not
-                DataSet ds = new DataSet();
-                string[] pname = new string[] { "AWBNumber" };
-                object[] values = new object[] { AWBNum };
-                SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar };
-                ds = db.SelectRecords("sp_getawbdetails", pname, values, ptype);
+
+                DataSet? ds = new DataSet();
+
+                //string[] pname = new string[] { "AWBNumber" };
+                //object[] values = new object[] { AWBNum };
+                //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar };
+
+                SqlParameter[] sqlParameters = new SqlParameter[] {
+                     new("@AWBNumber", SqlDbType.VarChar) { Value = AWBNum },
+                };
+
+                //ds = db.SelectRecords("sp_getawbdetails", pname, values, ptype);
+                ds = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters);
 
                 if (ds != null)
                 {
@@ -242,14 +257,18 @@ namespace QidWorkerRole
                 #region Add AWB details
                 if (!isAWBPresent)
                 {
-                    SqlParameter[] sqlParameter = new SqlParameter[] { 
+                    SqlParameter[] sqlParameter = new SqlParameter[] {
                         new SqlParameter("@RefNo",REFNo)
                         ,new SqlParameter("@Status","Processed")
                         ,new SqlParameter("@Error","AWB number not present")
                         ,new SqlParameter("@UpdatedOn",DateTime.Now)
                     };
-                    db.SelectRecords("uspUpdateMsgFromInbox", sqlParameter);
-                    return false;
+
+                    //db.SelectRecords("uspUpdateMsgFromInbox", sqlParameter);
+                    await _readWriteDao.SelectRecords("uspUpdateMsgFromInbox", sqlParameter);
+                    return (false, fhl, consinfo, customextrainfo);
+                    //return false;
+
                     ///Below code is commented by prashantz on 7-Mar-2017 to resolve JIRA# CEBV4-944
                     //string[] paramname = new string[] { "AirlinePrefix", "AWBNum", "Origin", "Dest", "PcsCount", "Weight", "Volume", "ComodityCode", "ComodityDesc", "CarrierCode", "FlightNum", "FlightDate", "FlightOrigin", "FlightDest", "ShipperName", "ShipperAddr", "ShipperPlace", "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ConsName", "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo", "CustAccNo", "IATACargoAgentCode", "CustName", "SystemDate", "MeasureUnit", "Length", "Breadth", "Height", "PartnerStatus", "REFNo" };
 
@@ -291,7 +310,7 @@ namespace QidWorkerRole
                     slac = consinfo[i].slac.Length > 0 ? consinfo[i].slac : consinfo[i].pcscnt;
 
 
-                    flag = PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
+                    flag = await PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
                         fhl.consname, fhl.consadd.Trim(','), fhl.consplace.Trim(','), fhl.consstate, fhl.conscountrycode.Trim(','), fhl.conspostcode, fhl.shipperstate, fhl.shippercountrycode, "", slac, "", "",
                         fhl.shippercontactnum, "", fhl.conscontactnum);
 
@@ -334,144 +353,186 @@ namespace QidWorkerRole
                 //SCMExceptionHandling.logexception(ref ex);
                 flag = false;
             }
-            return flag;
+            //return flag;
+            return (flag, fhl, consinfo, customextrainfo);
         }
         #endregion
 
 
         #region HAWB Details Save
-        public bool PutHAWBDetails(string MAWBNo, string HAWBNo, int HAWBPcs, float HAWBWt, string Description, string CustID, string CustName,
-string CustAddress, string CustCity, string Zipcode, string Origin, string Destination, string SHC,
-string HAWBPrefix, string AWBPrefix, string FltOrigin, string FltDest, string ArrivalStatus, string FlightNo,
-string FlightDt, string ConsigneeName, string ConsigneeAddress, string ConsigneeCity, string ConsigneeState, string ConsigneeCountry, string ConsigneePostalCode,
-string CustState, string CustCountry, string UOM, string SLAC, string ConsigneeID, string ShipperEmail, string ShipperTelephone, string ConsigneeEmail, string ConsigneeTelephone)
+        public async Task<bool> PutHAWBDetails(string MAWBNo, string HAWBNo, int HAWBPcs, float HAWBWt, string Description, string CustID, string CustName,
+            string CustAddress, string CustCity, string Zipcode, string Origin, string Destination, string SHC,
+            string HAWBPrefix, string AWBPrefix, string FltOrigin, string FltDest, string ArrivalStatus, string FlightNo,
+            string FlightDt, string ConsigneeName, string ConsigneeAddress, string ConsigneeCity, string ConsigneeState, string ConsigneeCountry, string ConsigneePostalCode,
+            string CustState, string CustCountry, string UOM, string SLAC, string ConsigneeID, string ShipperEmail, string ShipperTelephone, string ConsigneeEmail, string ConsigneeTelephone)
         {
-            DataSet ds = new DataSet();
-            SQLServer da = new SQLServer();
+            DataSet? ds = new DataSet();
 
-            string[] paramname = new string[35];
-            paramname[0] = "MAWBNo";
-            paramname[1] = "HAWBNo";
-            paramname[2] = "HAWBPcs";
-            paramname[3] = "HAWBWt";
-            paramname[4] = "Description";
-            paramname[5] = "CustID";
-            paramname[6] = "CustName";
-            paramname[7] = "CustAddress";
-            paramname[8] = "CustCity";
-            paramname[9] = "Zipcode";
-            paramname[10] = "Origin";
-            paramname[11] = "Destination";
-            paramname[12] = "SHC";
-            paramname[13] = "HAWBPrefix";
-            paramname[14] = "AWBPrefix";
-            paramname[15] = "ArrivalStatus";
-            paramname[16] = "FlightNo";
-            paramname[17] = "FlightDt";
-            paramname[18] = "FlightOrigin";
-            paramname[19] = "flightDest";
-            paramname[20] = "ConsigneeName";
-            paramname[21] = "ConsigneeAddress";
-            paramname[22] = "ConsigneeCity";
-            paramname[23] = "ConsigneeState";
-            paramname[24] = "ConsigneeCountry";
-            paramname[25] = "ConsigneePostalCode";
-            paramname[26] = "CustState";
-            paramname[27] = "CustCountry";
-            paramname[28] = "UOM";
-            paramname[29] = "SLAC";
-            paramname[30] = "ConsigneeID";
-            paramname[31] = "ShipperEmail";
-            paramname[32] = "ShipperTelephone";
-            paramname[33] = "ConsigneeEmail";
-            paramname[34] = "ConsigneeTelephone";
+            //SQLServer da = new SQLServer();
+
+            //string[] paramname = new string[35];
+            //paramname[0] = "MAWBNo";
+            //paramname[1] = "HAWBNo";
+            //paramname[2] = "HAWBPcs";
+            //paramname[3] = "HAWBWt";
+            //paramname[4] = "Description";
+            //paramname[5] = "CustID";
+            //paramname[6] = "CustName";
+            //paramname[7] = "CustAddress";
+            //paramname[8] = "CustCity";
+            //paramname[9] = "Zipcode";
+            //paramname[10] = "Origin";
+            //paramname[11] = "Destination";
+            //paramname[12] = "SHC";
+            //paramname[13] = "HAWBPrefix";
+            //paramname[14] = "AWBPrefix";
+            //paramname[15] = "ArrivalStatus";
+            //paramname[16] = "FlightNo";
+            //paramname[17] = "FlightDt";
+            //paramname[18] = "FlightOrigin";
+            //paramname[19] = "flightDest";
+            //paramname[20] = "ConsigneeName";
+            //paramname[21] = "ConsigneeAddress";
+            //paramname[22] = "ConsigneeCity";
+            //paramname[23] = "ConsigneeState";
+            //paramname[24] = "ConsigneeCountry";
+            //paramname[25] = "ConsigneePostalCode";
+            //paramname[26] = "CustState";
+            //paramname[27] = "CustCountry";
+            //paramname[28] = "UOM";
+            //paramname[29] = "SLAC";
+            //paramname[30] = "ConsigneeID";
+            //paramname[31] = "ShipperEmail";
+            //paramname[32] = "ShipperTelephone";
+            //paramname[33] = "ConsigneeEmail";
+            //paramname[34] = "ConsigneeTelephone";
 
 
-            object[] paramvalue = new object[35];
-            paramvalue[0] = MAWBNo;
-            paramvalue[1] = HAWBNo;
-            paramvalue[2] = HAWBPcs;
-            paramvalue[3] = HAWBWt;
-            paramvalue[4] = Description;
-            paramvalue[5] = CustID;
-            paramvalue[6] = CustName;
-            paramvalue[7] = CustAddress;
-            paramvalue[8] = CustCity;
-            paramvalue[9] = Zipcode;
-            paramvalue[10] = Origin;
-            paramvalue[11] = Destination;
-            paramvalue[12] = SHC;
-            paramvalue[13] = HAWBPrefix;
-            paramvalue[14] = AWBPrefix;
-            paramvalue[15] = ArrivalStatus;
-            paramvalue[16] = FlightNo;
-            if (FlightDt == "")
+            //object[] paramvalue = new object[35];
+            //paramvalue[0] = MAWBNo;
+            //paramvalue[1] = HAWBNo;
+            //paramvalue[2] = HAWBPcs;
+            //paramvalue[3] = HAWBWt;
+            //paramvalue[4] = Description;
+            //paramvalue[5] = CustID;
+            //paramvalue[6] = CustName;
+            //paramvalue[7] = CustAddress;
+            //paramvalue[8] = CustCity;
+            //paramvalue[9] = Zipcode;
+            //paramvalue[10] = Origin;
+            //paramvalue[11] = Destination;
+            //paramvalue[12] = SHC;
+            //paramvalue[13] = HAWBPrefix;
+            //paramvalue[14] = AWBPrefix;
+            //paramvalue[15] = ArrivalStatus;
+            //paramvalue[16] = FlightNo;
+            //if (FlightDt == "")
+            //{
+            //    // FlightDt = DateTime.Now.ToString();
+            //    paramvalue[17] = DateTime.Now.ToString();
+            //    //paramvalue[17] = FlightDt;
+            //}
+            //else
+            //{
+            //    paramvalue[17] = FlightDt;
+            //}
+            //paramvalue[18] = FltOrigin;
+            //paramvalue[19] = FltDest;
+            //paramvalue[20] = ConsigneeName;
+            //paramvalue[21] = ConsigneeAddress;
+            //paramvalue[22] = ConsigneeCity;
+            //paramvalue[23] = ConsigneeState;
+            //paramvalue[24] = ConsigneeCountry;
+            //paramvalue[25] = ConsigneePostalCode;
+            //paramvalue[26] = CustState;
+            //paramvalue[27] = CustCountry;
+            //paramvalue[28] = UOM;
+            //paramvalue[29] = SLAC != string.Empty ? SLAC : "0";
+            //paramvalue[30] = ConsigneeID;
+            //paramvalue[31] = ShipperEmail;
+            //paramvalue[32] = ShipperTelephone;
+            //paramvalue[33] = ConsigneeEmail;
+            //paramvalue[34] = ConsigneeTelephone;
+
+
+            //SqlDbType[] paramtype = new SqlDbType[35];
+            //paramtype[0] = SqlDbType.VarChar;
+            //paramtype[1] = SqlDbType.VarChar;
+            //paramtype[2] = SqlDbType.Int;
+            //paramtype[3] = SqlDbType.Float;
+            //paramtype[4] = SqlDbType.VarChar;
+            //paramtype[5] = SqlDbType.VarChar;
+            //paramtype[6] = SqlDbType.VarChar;
+            //paramtype[7] = SqlDbType.VarChar;
+            //paramtype[8] = SqlDbType.VarChar;
+            //paramtype[9] = SqlDbType.VarChar;
+            //paramtype[10] = SqlDbType.VarChar;
+            //paramtype[11] = SqlDbType.VarChar;
+            //paramtype[12] = SqlDbType.VarChar;
+            //paramtype[13] = SqlDbType.VarChar;
+            //paramtype[14] = SqlDbType.VarChar;
+            //paramtype[15] = SqlDbType.VarChar;
+            //paramtype[16] = SqlDbType.VarChar;
+            //paramtype[17] = SqlDbType.DateTime;
+            //paramtype[18] = SqlDbType.VarChar;
+            //paramtype[19] = SqlDbType.VarChar;
+            //paramtype[20] = SqlDbType.VarChar;
+            //paramtype[21] = SqlDbType.VarChar;
+            //paramtype[22] = SqlDbType.VarChar;
+            //paramtype[23] = SqlDbType.VarChar;
+            //paramtype[24] = SqlDbType.VarChar;
+            //paramtype[25] = SqlDbType.VarChar;
+            //paramtype[26] = SqlDbType.VarChar;
+            //paramtype[27] = SqlDbType.VarChar;
+            //paramtype[28] = SqlDbType.VarChar;
+            //paramtype[29] = SqlDbType.Int;
+            //paramtype[30] = SqlDbType.VarChar;
+            //paramtype[31] = SqlDbType.VarChar;
+            //paramtype[32] = SqlDbType.VarChar;
+            //paramtype[33] = SqlDbType.VarChar;
+            //paramtype[34] = SqlDbType.VarChar;
+
+            var parameters = new SqlParameter[]
             {
-                // FlightDt = DateTime.Now.ToString();
-                paramvalue[17] = DateTime.Now.ToString();
-                //paramvalue[17] = FlightDt;
-            }
-            else
-            {
-                paramvalue[17] = FlightDt;
-            }
-            paramvalue[18] = FltOrigin;
-            paramvalue[19] = FltDest;
-            paramvalue[20] = ConsigneeName;
-            paramvalue[21] = ConsigneeAddress;
-            paramvalue[22] = ConsigneeCity;
-            paramvalue[23] = ConsigneeState;
-            paramvalue[24] = ConsigneeCountry;
-            paramvalue[25] = ConsigneePostalCode;
-            paramvalue[26] = CustState;
-            paramvalue[27] = CustCountry;
-            paramvalue[28] = UOM;
-            paramvalue[29] = SLAC != string.Empty ? SLAC : "0";
-            paramvalue[30] = ConsigneeID;
-            paramvalue[31] = ShipperEmail;
-            paramvalue[32] = ShipperTelephone;
-            paramvalue[33] = ConsigneeEmail;
-            paramvalue[34] = ConsigneeTelephone;
+                new SqlParameter("@MAWBNo", SqlDbType.VarChar) { Value = MAWBNo },
+                new SqlParameter("@HAWBNo", SqlDbType.VarChar) { Value = HAWBNo },
+                new SqlParameter("@HAWBPcs", SqlDbType.Int) { Value = HAWBPcs },
+                new SqlParameter("@HAWBWt", SqlDbType.Float) { Value = HAWBWt },
+                new SqlParameter("@Description", SqlDbType.VarChar) { Value = Description },
+                new SqlParameter("@CustID", SqlDbType.VarChar) { Value = CustID },
+                new SqlParameter("@CustName", SqlDbType.VarChar) { Value = CustName },
+                new SqlParameter("@CustAddress", SqlDbType.VarChar) { Value = CustAddress },
+                new SqlParameter("@CustCity", SqlDbType.VarChar) { Value = CustCity },
+                new SqlParameter("@Zipcode", SqlDbType.VarChar) { Value = Zipcode },
+                new SqlParameter("@Origin", SqlDbType.VarChar) { Value = Origin },
+                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = Destination },
+                new SqlParameter("@SHC", SqlDbType.VarChar) { Value = SHC },
+                new SqlParameter("@HAWBPrefix", SqlDbType.VarChar) { Value = HAWBPrefix },
+                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                new SqlParameter("@ArrivalStatus", SqlDbType.VarChar) { Value = ArrivalStatus },
+                new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now : DateTime.Parse(FlightDt) },
+                new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FltOrigin },
+                new SqlParameter("@flightDest", SqlDbType.VarChar) { Value = FltDest },
+                new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = ConsigneeName },
+                new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = ConsigneeAddress },
+                new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = ConsigneeCity },
+                new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = ConsigneeState },
+                new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = ConsigneeCountry },
+                new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = ConsigneePostalCode },
+                new SqlParameter("@CustState", SqlDbType.VarChar) { Value = CustState },
+                new SqlParameter("@CustCountry", SqlDbType.VarChar) { Value = CustCountry },
+                new SqlParameter("@UOM", SqlDbType.VarChar) { Value = UOM },
+                new SqlParameter("@SLAC", SqlDbType.Int) { Value = string.IsNullOrEmpty(SLAC) ? "0" : SLAC },
+                new SqlParameter("@ConsigneeID", SqlDbType.VarChar) { Value = ConsigneeID },
+                new SqlParameter("@ShipperEmail", SqlDbType.VarChar) { Value = ShipperEmail },
+                new SqlParameter("@ShipperTelephone", SqlDbType.VarChar) { Value = ShipperTelephone },
+                new SqlParameter("@ConsigneeEmail", SqlDbType.VarChar) { Value = ConsigneeEmail },
+                new SqlParameter("@ConsigneeTelephone", SqlDbType.VarChar) { Value = ConsigneeTelephone }
+            };
 
-
-            SqlDbType[] paramtype = new SqlDbType[35];
-            paramtype[0] = SqlDbType.VarChar;
-            paramtype[1] = SqlDbType.VarChar;
-            paramtype[2] = SqlDbType.Int;
-            paramtype[3] = SqlDbType.Float;
-            paramtype[4] = SqlDbType.VarChar;
-            paramtype[5] = SqlDbType.VarChar;
-            paramtype[6] = SqlDbType.VarChar;
-            paramtype[7] = SqlDbType.VarChar;
-            paramtype[8] = SqlDbType.VarChar;
-            paramtype[9] = SqlDbType.VarChar;
-            paramtype[10] = SqlDbType.VarChar;
-            paramtype[11] = SqlDbType.VarChar;
-            paramtype[12] = SqlDbType.VarChar;
-            paramtype[13] = SqlDbType.VarChar;
-            paramtype[14] = SqlDbType.VarChar;
-            paramtype[15] = SqlDbType.VarChar;
-            paramtype[16] = SqlDbType.VarChar;
-            paramtype[17] = SqlDbType.DateTime;
-            paramtype[18] = SqlDbType.VarChar;
-            paramtype[19] = SqlDbType.VarChar;
-            paramtype[20] = SqlDbType.VarChar;
-            paramtype[21] = SqlDbType.VarChar;
-            paramtype[22] = SqlDbType.VarChar;
-            paramtype[23] = SqlDbType.VarChar;
-            paramtype[24] = SqlDbType.VarChar;
-            paramtype[25] = SqlDbType.VarChar;
-            paramtype[26] = SqlDbType.VarChar;
-            paramtype[27] = SqlDbType.VarChar;
-            paramtype[28] = SqlDbType.VarChar;
-            paramtype[29] = SqlDbType.Int;
-            paramtype[30] = SqlDbType.VarChar;
-            paramtype[31] = SqlDbType.VarChar;
-            paramtype[32] = SqlDbType.VarChar;
-            paramtype[33] = SqlDbType.VarChar;
-            paramtype[34] = SqlDbType.VarChar;
-
-            if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
+            //if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
+            if (await _readWriteDao.ExecuteNonQueryAsync("SP_PutHAWBDetails_V2", parameters))
             {
                 return true;
             }
