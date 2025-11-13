@@ -12,39 +12,60 @@
       * Description          :   
      */
 #endregion
-using System;
-using System.Text;
-using System.IO;
-using System.Data;
-using QID.DataAccess;
-using System.Xml;
 using BAL;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System.Data;
+using System.Text;
+using System.Xml;
 using System.Xml.Schema;
-using System.Linq;
 
 namespace QidWorkerRole
 {
     public class XFSUMessageProcessor
     {
-        GenericFunction genericFunction = new GenericFunction();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<XFSUMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
+        private readonly cls_SCMBL _cl_SCMBL;
+        private readonly FFRMessageProcessor _ffrMessageProcessor;
+        private readonly CustomsImportBAL _objCustoms;
+
+        #region Constructor
+        public XFSUMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFSUMessageProcessor> logger,GenericFunction genericFunction,
+            cls_SCMBL cl_SCMBL, FFRMessageProcessor fFRMessageProcessor, CustomsImportBAL objCustoms)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+            _cl_SCMBL = cl_SCMBL;
+            _ffrMessageProcessor = fFRMessageProcessor;
+            _objCustoms = objCustoms;
+        }
+        #endregion
+
+        //GenericFunction genericFunction = new GenericFunction();
 
         #region :: Public Methods ::
 
-        public void GenerateAndSendXFSUMessages()
+        
+        public async Task GenerateAndSendXFSUMessages()
         {
             DataSet dsAWBRecords = new DataSet();
-            dsAWBRecords = GetAWBRecordsToAutoSendXFSUMessage();
+            dsAWBRecords = await GetAWBRecordsToAutoSendXFSUMessage();
 
             if (dsAWBRecords != null && dsAWBRecords.Tables != null && dsAWBRecords.Tables.Count > 0 && dsAWBRecords.Tables[0].Rows.Count > 0)
             {
                 for (int i = 0; i < dsAWBRecords.Tables[0].Rows.Count; i++)
                 {
-                    GenerateXFSUMessageofTheAWB(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBPrefix"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBNumber"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["Status"]));
-                    genericFunction.updateAWBStatusMSG(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["TID"]));
+                    await GenerateXFSUMessageofTheAWB(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBPrefix"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBNumber"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["Status"]));
+                    await _genericFunction.updateAWBStatusMSG(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["TID"]));
                 }
             }
         }
-        public string GenerateXFSUMessageofTheAWBV3(string AWBPrefix, string AWBNumber, string orgDest,
+        public async Task<string> GenerateXFSUMessageofTheAWBV3(string AWBPrefix, string AWBNumber, string orgDest,
          string messageType, string doNumber, string flightNo = "", string flightDate = "1900-01-01", int DLVpcs = 0, double DLVWt = 0.00, string EventDate = "1900-01-01")
         {
             StringBuilder sbgenerateXFSUMessage = new StringBuilder();
@@ -52,7 +73,7 @@ namespace QidWorkerRole
             try
             {
                 DataSet dsxfsuMessage = new DataSet();
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt);
+                dsxfsuMessage = await GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt);
 
                 if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
                 {
@@ -734,13 +755,15 @@ namespace QidWorkerRole
 
 
 
-        public DataSet GetAWBRecordsToAutoSendXFSUMessage()
+        public async Task<DataSet> GetAWBRecordsToAutoSendXFSUMessage()
         {
-            DataSet dsAWBRecords = new DataSet();
+            DataSet? dsAWBRecords = new DataSet();
             try
             {
-                SQLServer da = new SQLServer();
-                dsAWBRecords = da.SelectRecords("USPGetAWBRecordsToAutoSendXFSUMessage");
+                //SQLServer da = new SQLServer();
+                //dsAWBRecords = da.SelectRecords("USPGetAWBRecordsToAutoSendXFSUMessage");
+                dsAWBRecords = await _readWriteDao.SelectRecords("USPGetAWBRecordsToAutoSendXFSUMessage");
+
             }
             catch (Exception ex)
             {
@@ -757,7 +780,7 @@ namespace QidWorkerRole
         /// <param name="AWBPrefix"></param>
         /// <param name="AWBNumber"></param>
         /// <returns></returns>
-        public string GenerateXFSUMessageofTheAWB(string AWBPrefix, string AWBNumber, string EventStatus)
+        public async Task<string> GenerateXFSUMessageofTheAWB(string AWBPrefix, string AWBNumber, string EventStatus)
         {
             StringBuilder strGenerateXFSUMessage = new StringBuilder();
 
@@ -765,7 +788,7 @@ namespace QidWorkerRole
             try
             {
                 DataSet dsxfsuMessage = new DataSet();
-                dsxfsuMessage = GetAWBDetailstoGenerateXFSUMessage(AWBPrefix, AWBNumber, EventStatus);
+                dsxfsuMessage = await GetAWBDetailstoGenerateXFSUMessage(AWBPrefix, AWBNumber, EventStatus);
                 //if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Columns.Count == 1)
                 //{
                 //    return strGenerateXFSUMessage.Append(Convert.ToString(dsxfsuMessage.Tables[0].Rows[0][""]));
@@ -775,7 +798,7 @@ namespace QidWorkerRole
                 {
                     var xfsuDataSet = new DataSet();
                     DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
+                    var xmlSchema = await _genericFunction.GetXMLMessageData("XFSU");
                     if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
                     {
                         string messageXML = Convert.ToString(xmlSchema.Tables[0].Rows[0]["XMLMessageData"]);
@@ -1120,8 +1143,9 @@ namespace QidWorkerRole
                             strGenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
                             strGenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
 
-                            cls_SCMBL cls_scmbl = new cls_SCMBL();
-                            cls_scmbl.addMsgToOutBox("XFSU", Convert.ToString(strGenerateXFSUMessage), "", Convert.ToString(dsxfsuMessage.Tables[7].Rows[0]["PartnerEmailiD"]));
+                            //cls_SCMBL cls_scmbl = new cls_SCMBL();
+                            
+                            await _cl_SCMBL.addMsgToOutBox("XFSU", Convert.ToString(strGenerateXFSUMessage), "", Convert.ToString(dsxfsuMessage.Tables[7].Rows[0]["PartnerEmailiD"]));
 
 
                         }
@@ -1135,2791 +1159,2792 @@ namespace QidWorkerRole
             return strGenerateXFSUMessage.ToString();
         }
 
-        public string GenerateXFSURCSMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-              string doNumber, string flightNo = "", string flightDate = "1900-01-01", string EventDate = "1900-01-01")
-        {
-            StringBuilder sbgenerateXFSUMessage = new StringBuilder();
-
-
-            try
-            {
-                DataSet dsxfsuMessage = new DataSet();
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, string.Empty, flightNo, "01/01/1900", 0, 0.00);
-
-                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                {
-                    var xfsuDataSet = new DataSet();
-                    DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
-                    if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
-                    {
-                        string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
-                        messageXML = ReplacingNodeNames(messageXML);
-                        var txMessage = new StringReader(messageXML);
-                        xfsuDataSet.ReadXml(txMessage);
-
-                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
-                        {
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ReferenceNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
-
-                            //SenderParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
-                                }
-                            }
-                            //RecipientParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
-                                }
-                            }
-
-                            //BusinessHeaderDocument
-                            xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-
-                            if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
-                            {
-                                xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
-                            }
-
-                            //MasterConsignment
-                            if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                            {
-                                if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
-                                        drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-
-                                // AWBNumber Section
-                                if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
-                                {
-                                    drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
-                                        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
-                                    }
-                                }
-
-                                // AWBNumber Origin Section
-                                if (xfsuDataSet.Tables.Contains("OriginLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                    }
-                                }
-
-                                //AWBNumber Destination Section
-                                if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
-                                    }
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
-                                {//LOOP
-                                    //AWBRouter Information
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
-
-                                }
-
-
-                                //AWBStatus Code
-                                xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
-
-
-                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
-                                        drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
-                                        drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
-
-
-                                    xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
-
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
-
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
-
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-                                        }
-                                    }
-
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
-
-                                    //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
-
-                                }
-
-                                xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-                                xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-
-
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
-
-
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = "";
-                                            drs[0]["PrimaryID_Text"] = "";
-                                        }
-                                    }
-                                }
-
-                                ///House AWB s
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
-                                        }
-                                    }
-
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
-
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
-                                            drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
-
-
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
-
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = "";
-                                            drs[0]["TypeCode"] = "";
-                                        }
-                                    }
-                                }
-                            }
-                            string generatMessage = xfsuDataSet.GetXml();
-                            xfsuDataSet.Dispose();
-                            sbgenerateXFSUMessage = new StringBuilder(generatMessage);
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                            sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
-
-                            //Replace Nodes
-                            sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-
-                            sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
-                            sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-
-                        }
-                    }
-                    //else
-                    //{
-                    //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
-                    //}
-                }
-
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return sbgenerateXFSUMessage.ToString();
-        }
-
-        public string GenerateXFSUBKDMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-             string doNumber, string flightNo = "", string flightDate = "1900-01-01", string EventDate = "1900-01-01")
-        {
-            StringBuilder sbgenerateXFSUMessage = new StringBuilder();
-
-            try
-            {
-                DataSet dsxfsuMessage = new DataSet();
-
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, 0, 0.00);
-
-                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                {
-                    var xfsuDataSet = new DataSet();
-                    DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
-
-                    if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
-                    {
-                        string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
-                        messageXML = ReplacingNodeNames(messageXML);
-                        var txMessage = new StringReader(messageXML);
-                        xfsuDataSet.ReadXml(txMessage);
-
-                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
-                        {
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
-
-                            //SenderParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
-                                }
-                            }
-                            //RecipientParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
-                                }
-                            }
-
-                            //BusinessHeaderDocument
-                            if (xfsuDataSet.Tables.Contains("BusinessHeaderDocument"))
-                            {
-                                xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-
-                                if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
-                                {
-                                    xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
-                                }
-                            }
-
-
-                            //MasterConsignment
-                            if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                            {
-                                if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
-                                        drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-
-                                // AWBNumber Section
-                                if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
-                                {
-                                    drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
-                                        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
-                                    }
-                                }
-
-                                // AWBNumber Origin Section
-                                if (xfsuDataSet.Tables.Contains("OriginLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                    }
-                                }
-
-                                //AWBNumber Destination Section
-                                if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
-                                    }
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
-                                {//LOOP
-
-                                    for (int row = 1; row < dsxfsuMessage.Tables[3].Rows.Count; row++)
-                                    {
-                                        //if (!(xfsuDataSet.Tables["MasterConsignment"].Rows.Count > row))
-                                        //{
-                                        //    DataRow drBolsegment = xfsuDataSet.Tables["MasterConsignment"].NewRow();
-                                        //    drBolsegment["MasterConsignment_Id"] = row;
-
-                                        //    xfsuDataSet.Tables["MasterConsignment"].Rows.Add(drBolsegment);
-                                        //}
-                                        if (row == 1)
-                                        {
-                                            drs = xfsuDataSet.Tables["RoutingLocation"].Select("MasterConsignment_Id=0");
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
-                                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["AirportName"]);
-                                            }
-                                        }
-                                        if (!(xfsuDataSet.Tables["RoutingLocation"].Rows.Count >= row))
-                                        {
-
-                                            DataRow drBolsegment = xfsuDataSet.Tables["RoutingLocation"].NewRow();
-                                            drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
-                                            drBolsegment["Name"] = dsxfsuMessage.Tables[3].Rows[row]["AirportName"];
-                                            drBolsegment["MasterConsignment_Id"] = 0;
-                                            xfsuDataSet.Tables["RoutingLocation"].Rows.Add(drBolsegment);
-                                        }
-
-                                    }
-
-
-                                    //AWBRouter Information
-                                    //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
-                                    //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
-
-
-                                    for (int rowchild = 0; rowchild < dsxfsuMessage.Tables[3].Rows.Count; rowchild++)
-                                    {
-
-
-                                        //AWBStatus Code
-                                        if (!(xfsuDataSet.Tables["ReportedStatus"].Rows.Count > rowchild))
-                                        {
-                                            DataRow drMaster = xfsuDataSet.Tables["ReportedStatus"].NewRow();
-                                            drMaster["ReasonCode"] = rowchild;
-                                            drMaster["ReportedStatus_Id"] = rowchild;
-
-                                            drMaster["MasterConsignment_Id"] = 0;
-
-                                            xfsuDataSet.Tables["ReportedStatus"].Rows.Add(drMaster);
-                                        }
-                                        xfsuDataSet.Tables["ReportedStatus"].Rows[rowchild]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
-
-                                        if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment"))
-                                        {
-
-                                            if (rowchild == 0)
-                                            {
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["PCSonflight"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-                                            }
-                                            if (!(xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["AssociatedStatusConsignment"].NewRow();
-                                                drBolsegment["DensityGroupCode"] = rowchild;
-                                                drBolsegment["PieceQuantity"] = rowchild;
-                                                drBolsegment["TransportSplitDescription"] = rowchild;
-                                                drBolsegment["DiscrepancyDescriptionCode"] = rowchild;
-                                                drBolsegment["StatusDescription"] = rowchild;
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-                                                drBolsegment["ReportedStatus_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["PCSonflight"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-
-                                            }
-
-                                        }
-
-
-                                        if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))//AssociatedStatusGrossWeightMeasure
-                                        {
-                                            if (rowchild == 0)
-                                            {
-
-                                                drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightUOM"]);
-                                                    drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["WTonflight"]);
-                                                }
-
-                                            }
-                                            if (!(xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Rows.Count > rowchild))
-                                            {
-
-                                                DataRow drBolsegment = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].NewRow();
-                                                drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightUOM"]);
-                                                drBolsegment["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = dsxfsuMessage.Tables[2].Rows[rowchild]["WTonflight"];
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Rows.Add(drBolsegment);
-                                            }
-                                        }
-                                        if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
-                                        {
-
-                                            if (rowchild == 0)
-                                            {
-                                                drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["fltVolumeunit"]);
-                                                    drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["fltVolume"]);
-                                                }
-                                            }
-                                            if (!(xfsuDataSet.Tables["GrossVolumeMeasure"].Rows.Count > rowchild))
-                                            {
-
-                                                DataRow drBolsegment = xfsuDataSet.Tables["GrossVolumeMeasure"].NewRow();
-                                                drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["fltVolumeunit"]);
-                                                drBolsegment["GrossVolumeMeasure_Text"] = dsxfsuMessage.Tables[2].Rows[rowchild]["fltVolume"];
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["GrossVolumeMeasure"].Rows.Add(drBolsegment);
-                                            }
-
-
-                                        }
-
-
-                                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2
-                                            && dsxfsuMessage.Tables[2].Rows.Count > 0)
-                                        {
-                                            if (xfsuDataSet.Tables.Contains("AssociatedManifestDocument"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                                }
-                                                if (!(xfsuDataSet.Tables["AssociatedManifestDocument"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["AssociatedManifestDocument"].NewRow();
-                                                    drBolsegment["ID"] = rowchild;
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows.Add(drBolsegment);
-
-                                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[rowchild]["ID"]
-                                                        = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                                }
-                                            }
-                                            if (xfsuDataSet.Tables.Contains("ApplicableLogisticsServiceCharge"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                                }
-
-                                                if (!(xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].NewRow();
-                                                    drBolsegment["ServiceTypeCode"] = rowchild;
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows.Add(drBolsegment);
-
-                                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[rowchild]["ServiceTypeCode"]
-                                                        = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                                }
-
-                                            }
-
-
-                                            if (xfsuDataSet.Tables.Contains("SpecifiedLogisticsTransportMovement"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[rowchild]["ID"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightNumber"]);
-                                                }
-                                                if (!(xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows.Count > rowchild))
-                                                {
-
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].NewRow();
-                                                    drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-                                                    drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightNumber"]);
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows.Add(drBolsegment);
-                                                }
-
-                                                if (xfsuDataSet.Tables.Contains("UsedLogisticsTransportMeans"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-
-                                                        xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["UsedLogisticsTransportMeans"].NewRow();
-                                                        drBolsegment["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["CarrierName"]); ;
-                                                        drBolsegment["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["AirCraftTypeMaster"]);
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("ScheduledArrivalEvent"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-
-                                                        xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["ScheduledArrivalEvent"].NewRow();
-                                                        drBolsegment["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightScheduleArrivlaTime"]); ;
-
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("ArrivalEvent"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
-                                                        xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["ArrivalEvent"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["ArrivalEvent"].NewRow();
-                                                        drBolsegment["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightArriveTime"]); ;
-                                                        drBolsegment["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["ScheduleArrivalIndicator"]); ;
-
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["ArrivalEvent"].Rows.Add(drBolsegment);
-                                                    }
-
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("DepartureEvent"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
-                                                        xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["DepartureEvent"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["DepartureEvent"].NewRow();
-                                                        drBolsegment["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightScheduleDepartureTime"]); ;
-                                                        drBolsegment["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["EstimatedDepTime"]); ;
-
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["DepartureEvent"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                                {
-                                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
-                                                    if (drs.Length > 0)
-                                                    {
-                                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
-                                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-                                                    }
-                                                }
-
-                                                if (xfsuDataSet.Tables.Contains("SpecifiedLocation"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                                        xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                                        xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
-                                                        xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["SpecifiedLocation"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedLocation"].NewRow();
-                                                        drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]); ;
-                                                        drBolsegment["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]); ;
-                                                        drBolsegment["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["LocationType"]); ;
-                                                        drBolsegment["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightStatusTypeCode"]); ;
-
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["SpecifiedLocation"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("SpecifiedEvent"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
-                                                        xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                                        xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["SpecifiedEvent"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedEvent"].NewRow();
-                                                        //drBolsegment["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["SpecifiedEvent"]);
-                                                        drBolsegment["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                                        drBolsegment["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["DateTimeTypeCode"]);
-
-                                                        drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["SpecifiedEvent"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if (xfsuDataSet.Tables.Contains("NotifiedParty"))
-                                        {
-
-                                            if (rowchild == 0)
-                                            {
-                                                xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-                                            }
-                                            if (!(xfsuDataSet.Tables["NotifiedParty"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["NotifiedParty"].NewRow();
-                                                drBolsegment["Name"] = rowchild;
-
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["NotifiedParty"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["NotifiedParty"].Rows[rowchild]["Name"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-
-                                            }
-                                        }
-                                        if (xfsuDataSet.Tables.Contains("DeliveryParty"))
-                                        {
-                                            if (rowchild == 0)
-                                            {
-                                                xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-                                            }
-                                            if (!(xfsuDataSet.Tables["DeliveryParty"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["DeliveryParty"].NewRow();
-                                                drBolsegment["Name"] = rowchild;
-
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["DeliveryParty"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["DeliveryParty"].Rows[rowchild]["Name"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-                                            }
-                                        }
-
-                                        if (xfsuDataSet.Tables.Contains("AssociatedReceivedFromParty"))
-                                        {
-                                            if (rowchild == 0)
-                                            {
-
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-                                            }
-
-                                            if (!(xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["AssociatedReceivedFromParty"].NewRow();
-                                                drBolsegment["Name"] = rowchild;
-                                                drBolsegment["RoleCode"] = rowchild;
-                                                drBolsegment["Role"] = rowchild;
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["Name"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["RoleCode"] =
-                                                   Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["Role"] =
-                                                   Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-
-                                            }
-                                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                            {
-                                                //drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=" + rowchild);
-                                                //if (drs.Length > 0)
-                                                //{
-                                                //    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                                //    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                                //}
-
-                                                if (!(xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0").Length > rowchild))
-                                                {
-                                                    DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                    drMaster["AssociatedReceivedFromParty_Id"] = rowchild;
-                                                    xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                                }
-                                                drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=" + Convert.ToString(rowchild));
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                                }
-                                            }
-
-                                        }
-
-
-                                        if (xfsuDataSet.Tables.Contains("AssociatedTransferredFromParty"))
-                                        {
-                                            if (rowchild == 0)
-                                            {
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
-                                            }
-
-                                            if (!(xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["AssociatedTransferredFromParty"].NewRow();
-                                                drBolsegment["Name"] = rowchild;
-                                                drBolsegment["RoleCode"] = rowchild;
-                                                drBolsegment["Role"] = rowchild;
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["Name"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["RoleCode"] =
-                                                   Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["Role"] =
-                                                   Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
-
-                                            }
-
-                                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                            {
-                                                if (!(xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0").Length > rowchild))
-                                                {
-                                                    DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                    drMaster["AssociatedTransferredFromParty_Id"] = rowchild;
-                                                    xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                                }
-                                                drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=" + rowchild);
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
-                                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
-                                                }
-
-                                            }
-
-                                        }
-
-                                        if (xfsuDataSet.Tables.Contains("HandlingOSIInstructions"))
-                                        {
-                                            if (rowchild == 0)
-                                            {
-
-                                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
-                                            }
-                                            if (!(xfsuDataSet.Tables["HandlingOSIInstructions"].Rows.Count > rowchild))
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["HandlingOSIInstructions"].NewRow();
-                                                drBolsegment["Description"] = rowchild;
-                                                drBolsegment["DescriptionCode"] = rowchild;
-
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows.Add(drBolsegment);
-                                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[rowchild]["Description"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[rowchild]["DescriptionCode"] =
-                                                   Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
-                                            }
-
-
-                                        }
-
-                                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
-                                        {
-                                            if (xfsuDataSet.Tables.Contains("IncludedCustomsNote"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                                }
-                                                if (!(xfsuDataSet.Tables["IncludedCustomsNote"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["IncludedCustomsNote"].NewRow();
-                                                    drBolsegment["ContentCode"] = rowchild;
-                                                    drBolsegment["Content"] = rowchild;
-                                                    drBolsegment["SubjectCode"] = rowchild;
-                                                    drBolsegment["CountryID"] = rowchild;
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows.Add(drBolsegment);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["ContentCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["Content"] =
-                                                       Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["SubjectCode"] =
-                                                      Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["CountryID"] =
-                                                      Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                                }
-
-                                            }
-
-                                            if (xfsuDataSet.Tables.Contains("AssociatedConsignmentCustomsProcedure"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-
-                                                }
-                                                if (!(xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].NewRow();
-                                                    drBolsegment["GoodsStatusCode"] = rowchild;
-
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows.Add(drBolsegment);
-                                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[rowchild]["GoodsStatusCode"] =
-                                                        Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-
-                                                }
-
-                                            }
-                                        }
-
-                                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
-                                        {
-                                            if (xfsuDataSet.Tables.Contains("UtilizedUnitLoadTransportEquipment"))
-                                            {
-                                                for (int uldrow = 0; dsxfsuMessage.Tables[5].Rows.Count > uldrow; uldrow++)
-                                                {
-                                                    if (uldrow == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("AssociatedStatusConsignment_Id=" + rowchild).Length > uldrow))
-
-                                                    //if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Count > uldrow))
-                                                    {
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
-                                                        drBolsegment["ID"] = uldrow;
-                                                        drBolsegment["CharacteristicCode"] = uldrow;
-                                                        drBolsegment["OperationalStatusCode"] = uldrow;
-
-                                                        drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = rowchild + "" + uldrow;
-
-                                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
-
-                                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
-                                                        //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
-                                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
-                                                        //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
-                                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
-                                                        //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
-                                                        drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
-                                                            Select("UtilizedUnitLoadTransportEquipment_Id=" + rowchild + "" + uldrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
-                                                            drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
-                                                            drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
-
-                                                        }
-
-
-                                                    }
-                                                    if (xfsuDataSet.Tables.Contains("OperatingParty"))
-                                                    {
-                                                        //if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                                        //{
-                                                        //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                                        //    if (drs.Length > 0)
-                                                        //    {
-                                                        //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                        //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                                        //    }
-                                                        //}
-                                                        if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
-                                                            + rowchild + "" + uldrow).Length > uldrow))
-
-                                                        // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
-                                                        {
-                                                            DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
-                                                            drMaster["OperatingParty_Id"] = rowchild + "" + uldrow; ;
-                                                            drMaster["UtilizedUnitLoadTransportEquipment_Id"] = rowchild + "" + uldrow;
-
-                                                            xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
-
-                                                        }
-                                                        if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
-                                                           + rowchild + "" + uldrow).Length > uldrow))
-                                                        //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
-                                                        {
-                                                            DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                            drMaster["OperatingParty_Id"] = rowchild + "" + uldrow; ;
-                                                            xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                                        }
-                                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + rowchild + "" + uldrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["OperatingParty_schemeAgencyID"]);
-                                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["OperatingParty_PrimaryID_Text"]);
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                        }
-                                        else
-                                        {
-                                            if (xfsuDataSet.Tables.Contains("UtilizedUnitLoadTransportEquipment"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] =
-                                                        "";
-
-                                                }
-                                                if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
-                                                    drBolsegment["ID"] = rowchild;
-                                                    drBolsegment["CharacteristicCode"] = rowchild;
-                                                    drBolsegment["OperationalStatusCode"] = rowchild;
-                                                    drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = rowchild;
-
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
-
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["ID"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["CharacteristicCode"] =
-                                                       "";
-                                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["OperationalStatusCode"] =
-                                                       "";
-
-
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("OperatingParty"))
-                                                {
-                                                    //if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                                    //{
-                                                    //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                                    //    if (drs.Length > 0)
-                                                    //    {
-                                                    //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                    //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                                    //    }
-                                                    //}
-                                                    if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id=0").Length > rowchild))
-                                                    {
-
-
-                                                        DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
-                                                        drMaster["OperatingParty_Id"] = rowchild;
-                                                        drMaster["UtilizedUnitLoadTransportEquipment_Id"] = rowchild;
-                                                        xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
-
-                                                    }
-
-                                                    if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > rowchild))
-                                                    {
-
-
-                                                        DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                        drMaster["OperatingParty_Id"] = rowchild;
-                                                        xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                                    }
-                                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + rowchild);
-                                                    if (drs.Length > 0)
-                                                    {
-
-                                                        drs[0]["schemeAgencyID"] = "";
-                                                        drs[0]["PrimaryID_Text"] = "";
-                                                    }
-                                                }
-                                            }
-                                        }
-
-
-                                        ///House AWB s
-                                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
-                                        {
-                                            #region Comment
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
-                                            //        drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
-                                            //    }
-                                            //}
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
-                                            //        drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
-                                            //    }
-                                            //}
-
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
-
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
-                                            //        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
-                                            //    }
-                                            //} 
-                                            #endregion
-                                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment"))
-                                            {
-                                                for (int Hawbrow = 0; Hawbrow < dsxfsuMessage.Tables[6].Rows.Count; Hawbrow++)
-                                                {
-                                                    if (Hawbrow == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                                        xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
-                                                            Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                                        xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
-                                                             Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"]);
-
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].
-                                                        Select("AssociatedStatusConsignment_Id=" + rowchild).Length > Hawbrow))
-
-                                                    //if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
-                                                    {
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
-                                                        drBolsegment["PieceQuantity"] = Hawbrow;
-                                                        drBolsegment["TotalPieceQuantity"] = Hawbrow;
-                                                        drBolsegment["TransportSplitDescription"] = Hawbrow;
-                                                        drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
-
-                                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
-
-                                                        //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["PieceQuantity"] =
-                                                        //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
-                                                        //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["TotalPieceQuantity"] =
-                                                        //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                                        //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
-                                                        //   Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"])
-
-                                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment"].
-                                                             Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
-                                                            drs[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
-                                                            drs[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBTransportSplitDescription"]);
-
-                                                        }
-
-
-
-                                                    }
-                                                    if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
-                                                    {
-                                                        //if (Hawbrow == 0)
-                                                        //{
-
-                                                        //    //drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +Hawbrow);
-                                                        //    drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +rowchild);
-                                                        //    if (drs.Length > 0)
-                                                        //    {
-                                                        //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                        //        drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                                        //    }
-
-                                                        //}
-                                                        if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].
-                                                        Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow).Length > Hawbrow))
-                                                        //if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
-                                                        {
-
-                                                            DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
-                                                            drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
-                                                            drBolsegment["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                                            drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
-
-                                                            xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                                        }
-                                                        drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                            drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                                        }
-                                                    }
-
-                                                    if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
-                                                    {
-                                                        //if (Hawbrow == 0)
-                                                        //{
-
-                                                        //    drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id="+rowchild);
-                                                        //    if (drs.Length > 0)
-                                                        //    {
-                                                        //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
-                                                        //        drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
-                                                        //    }
-
-                                                        //}
-                                                        if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].
-                                                        Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow).Length > Hawbrow))
-                                                        // if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
-                                                        {
-
-                                                            DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
-                                                            drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                            drBolsegment["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
-                                                            drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
-
-                                                            xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                                        }
-                                                        drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                            drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                                        }
-                                                    }
-
-
-                                                    if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
-                                                    {
-                                                        if (Hawbrow == 0)
-                                                        {
-                                                            xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] =
-                                                                Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
-                                                            xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] =
-                                                                Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
-                                                        }
-                                                        if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id="
-                                                            + rowchild + "" + Hawbrow).Length > Hawbrow))
-                                                        //if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
-                                                        {
-
-                                                            DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
-                                                            drBolsegment["ID"] = "";
-                                                            drBolsegment["TypeCode"] = "";
-                                                            drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
-
-                                                            xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
-
-
-
-                                                        }
-                                                        drs = xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
-                                                            drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
-                                                        }
-                                                    }
-
-
-                                                }
-                                            }
-
-                                        }
-                                        else
-                                        {
-                                            #region comment
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["unitCode"] = "";
-                                            //        drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
-                                            //    }
-                                            //}
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["unitCode"] = "";
-                                            //        drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
-                                            //    }
-                                            //}
-
-
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
-
-                                            //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["ID"] = "";
-                                            //        drs[0]["TypeCode"] = "";
-                                            //    }
-                                            //} 
-                                            #endregion
-                                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment"))
-                                            {
-                                                if (rowchild == 0)
-                                                {
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
-                                                        "";
-
-
-
-                                                }
-                                                if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
-                                                {
-                                                    DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
-                                                    drBolsegment["PieceQuantity"] = rowchild;
-                                                    drBolsegment["TotalPieceQuantity"] = rowchild;
-                                                    drBolsegment["TransportSplitDescription"] = rowchild;
-                                                    drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
-
-                                                    drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
-
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
-
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["PieceQuantity"] =
-                                                        "";
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TotalPieceQuantity"] =
-                                                       "";
-                                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
-                                                       "";
-
-
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-
-                                                        drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["UnitCode"] = "";
-                                                            drs[0]["HouseGrossWeightMeasure_Text"] = "";
-                                                        }
-
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
-                                                        drBolsegment["UnitCode"] = "";
-                                                        drBolsegment["HouseGrossWeightMeasure_Text"] = "";
-                                                        drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                //----------------
-                                                if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-
-                                                        drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                                        if (drs.Length > 0)
-                                                        {
-                                                            drs[0]["UnitCode"] = "";
-                                                            drs[0]["HouseTotalGrossWeightMeasure_Text"] = "";
-                                                        }
-
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
-                                                        drBolsegment["UnitCode"] = "";
-                                                        drBolsegment["HouseTotalGrossWeightMeasure_Text"] = "";
-                                                        drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                                if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
-                                                {
-                                                    if (rowchild == 0)
-                                                    {
-                                                        xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] = "";
-                                                        xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] = "";
-                                                    }
-                                                    if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
-                                                    {
-
-                                                        DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
-                                                        drBolsegment["ID"] = "";
-                                                        drBolsegment["TypeCode"] = "";
-                                                        drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
-
-                                                        xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                }
-                            }
-                            string generatMessage = xfsuDataSet.GetXml();
-                            xfsuDataSet.Dispose();
-                            sbgenerateXFSUMessage = new StringBuilder(generatMessage);
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                            sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
-
-                            //Replace Nodes
-                            sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusGrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-
-                            sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
-                            sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-
-                        }
-                    }
-                    //else
-                    //{
-                    //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
-                    //}
-                }
-                //else
-                //{
-                //    sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
-                //}
-            }
-
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-
-            return sbgenerateXFSUMessage.ToString();
-        }
-
-        public string GenerateXFSUMANDEPMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-   string flightNo, string flightDate, string doNumber = "", string EventDate = "1900-01-01")
-        {
-            StringBuilder sbgenerateXFSUMessage = new StringBuilder();
-
-
-            try
-            {
-                DataSet dsxfsuMessage = new DataSet();
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, 0, 0.00);
-
-                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                {
-                    var xfsuDataSet = new DataSet();
-                    DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
-                    if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
-                    {
-                        string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
-                        messageXML = ReplacingNodeNames(messageXML);
-                        var txMessage = new StringReader(messageXML);
-                        xfsuDataSet.ReadXml(txMessage);
-
-                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
-                        {
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
-
-                            //SenderParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
-                                }
-                            }
-                            //RecipientParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
-                                }
-                            }
-
-                            //BusinessHeaderDocument
-                            xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-
-                            if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
-                            {
-                                xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
-                            }
-
-                            //MasterConsignment
-                            if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                            {
-                                if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-
-                                // AWBNumber Section
-                                if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
-                                {
-                                    drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
-                                        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
-                                    }
-                                }
-
-                                // AWBNumber Origin Section
-                                if (xfsuDataSet.Tables.Contains("OriginLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                    }
-                                }
-
-                                //AWBNumber Destination Section
-                                if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
-                                    }
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
-                                {//LOOP
-                                    //AWBRouter Information
-                                    //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
-                                    //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
-                                    for (int row = 1; row < dsxfsuMessage.Tables[3].Rows.Count; row++)
-                                    {
-                                        //if (!(xfsuDataSet.Tables["MasterConsignment"].Rows.Count > row))
-                                        //{
-                                        //    DataRow drBolsegment = xfsuDataSet.Tables["MasterConsignment"].NewRow();
-                                        //    drBolsegment["MasterConsignment_Id"] = row;
-
-                                        //    xfsuDataSet.Tables["MasterConsignment"].Rows.Add(drBolsegment);
-                                        //}
-                                        if (row == 1)
-                                        {
-                                            drs = xfsuDataSet.Tables["RoutingLocation"].Select("MasterConsignment_Id=0");
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
-                                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["AirportName"]);
-                                            }
-                                        }
-                                        if (!(xfsuDataSet.Tables["RoutingLocation"].Rows.Count >= row))
-                                        {
-
-                                            DataRow drBolsegment = xfsuDataSet.Tables["RoutingLocation"].NewRow();
-                                            drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
-                                            drBolsegment["Name"] = dsxfsuMessage.Tables[3].Rows[row]["AirportName"];
-                                            drBolsegment["MasterConsignment_Id"] = 0;
-                                            xfsuDataSet.Tables["RoutingLocation"].Rows.Add(drBolsegment);
-                                        }
-
-                                    }
-
-                                }
-
-
-                                //AWBStatus Code
-                                xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
-
-
-                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["Manifestdweight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
-                                        drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["VolumetricWeight"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["manifestedpcs"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
-
-
-                                    xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
-
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
-
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
-
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-                                        }
-                                    }
-
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightOrigin"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirportName"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
-
-                                    //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
-
-                                }
-
-                                xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-                                xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-
-
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
-
-
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
-                                {
-                                    for (int i = 0; i < dsxfsuMessage.Tables[5].Rows.Count; i++)
-                                    {
-                                        if (i == 0)
-                                        {
-                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-                                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                            {
-                                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                                }
-                                            }
-                                        }
-                                        if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("UtilizedUnitLoadTransportEquipment_Id=" + i).Length > i))
-
-
-                                        {
-                                            DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
-                                            drBolsegment["ID"] = i;
-                                            drBolsegment["CharacteristicCode"] = i;
-                                            drBolsegment["OperationalStatusCode"] = i;
-
-                                            drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = i;
-
-                                            drBolsegment["AssociatedStatusConsignment_Id"] = 0;
-
-                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
-
-                                            //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
-                                            //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
-                                            //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
-                                            //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
-                                            //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
-                                            //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
-                                            drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
-                                                Select("UtilizedUnitLoadTransportEquipment_Id=" + i);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDNumber"]);
-                                                drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDType"]);
-                                                drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDHeightIndicator"]);
-
-                                            }
-
-
-                                        }
-                                        if (xfsuDataSet.Tables.Contains("OperatingParty"))
-                                        {
-                                            //if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                            //{
-                                            //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                            //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                            //    }
-                                            //}
-                                            if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
-                                                + i).Length > i))
-
-                                            // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
-                                            {
-                                                DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
-                                                drMaster["OperatingParty_Id"] = i;
-                                                drMaster["UtilizedUnitLoadTransportEquipment_Id"] = i;
-
-                                                xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
-
-                                            }
-                                            if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
-                                               + i).Length > i))
-                                            //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
-                                            {
-                                                DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                drMaster["OperatingParty_Id"] = i;
-                                                xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                            }
-                                            drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + i);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_schemeAgencyID"]);
-                                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_PrimaryID_Text"]);
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = "";
-                                            drs[0]["PrimaryID_Text"] = "";
-                                        }
-                                    }
-
-
-
-                                }
-
-                                ///House AWB s
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
-                                {
-                                    for (int Hawbrow = 0; Hawbrow < dsxfsuMessage.Tables[6].Rows.Count; Hawbrow++)
-                                    {
-                                        if (Hawbrow == 0)
-                                        {
-                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
-                                                Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["ManifestedPCS"]);
-                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
-                                                Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
-                                                 Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"]);
-
-                                        }
-                                        if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].
-                                            Select("AssociatedStatusConsignment_Id=" + Hawbrow).Length > Hawbrow))
-
-                                        //if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
-                                        {
-                                            DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
-                                            drBolsegment["PieceQuantity"] = Hawbrow;
-                                            drBolsegment["TotalPieceQuantity"] = Hawbrow;
-                                            drBolsegment["TransportSplitDescription"] = Hawbrow;
-                                            drBolsegment["IncludedHouseConsignment_Id"] = Hawbrow;
-
-                                            drBolsegment["AssociatedStatusConsignment_Id"] = 0;
-
-                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
-
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["PieceQuantity"] =
-                                            //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["TotalPieceQuantity"] =
-                                            //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                            //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
-                                            //   Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"])
-
-                                            drs = xfsuDataSet.Tables["IncludedHouseConsignment"].
-                                                 Select("IncludedHouseConsignment_Id=" + Hawbrow);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["ManifestedPCS"]);
-                                                drs[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
-                                                drs[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBTransportSplitDescription"]);
-
-                                            }
-
-
-
-                                        }
-                                        if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
-                                        {
-                                            //if (Hawbrow == 0)
-                                            //{
-
-                                            //    //drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +Hawbrow);
-                                            //    drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +rowchild);
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                            //        drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                            //    }
-
-                                            //}
-                                            if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].
-                                            Select("IncludedHouseConsignment_Id=" + Hawbrow).Length > Hawbrow))
-                                            //if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
-                                            {
-
-                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
-                                                drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
-                                                drBolsegment["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["ManifestedWT"]); ;
-                                                drBolsegment["IncludedHouseConsignment_Id"] = Hawbrow;
-
-                                                xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                            }
-                                            drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                            }
-                                        }
-
-                                        if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
-                                        {
-                                            //if (Hawbrow == 0)
-                                            //{
-
-                                            //    drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id="+rowchild);
-                                            //    if (drs.Length > 0)
-                                            //    {
-                                            //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
-                                            //        drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
-                                            //    }
-
-                                            //}
-                                            if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].
-                                            Select("IncludedHouseConsignment_Id=" + Hawbrow).Length > Hawbrow))
-                                            // if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
-                                            {
-
-                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
-                                                drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                drBolsegment["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
-                                                drBolsegment["IncludedHouseConsignment_Id"] = +Hawbrow;
-
-                                                xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
-                                            }
-                                            drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
-                                                drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
-                                            }
-                                        }
-
-
-                                        if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
-                                        {
-                                            if (Hawbrow == 0)
-                                            {
-                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
-                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] =
-                                                    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
-                                            }
-                                            if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id="
-                                                + Hawbrow).Length > Hawbrow))
-                                            //if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
-                                            {
-
-                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
-                                                drBolsegment["ID"] = "";
-                                                drBolsegment["TypeCode"] = "";
-                                                drBolsegment["IncludedHouseConsignment_Id"] = +Hawbrow;
-
-                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
-
-
-
-                                            }
-                                            drs = xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
-                                                drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
-                                            }
-                                        }
-
-
-                                    }
-                                }
-                                else
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "KGM";
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "0";
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "KGM";
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "0";
-                                        }
-                                    }
-
-
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
-
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = "";
-                                            drs[0]["TypeCode"] = "";
-                                        }
-                                    }
-                                }
-                            }
-                            string generatMessage = xfsuDataSet.GetXml();
-                            xfsuDataSet.Dispose();
-                            sbgenerateXFSUMessage = new StringBuilder(generatMessage);
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                            sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
-
-                            //Replace Nodes
-                            sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
-
-                            sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
-                            sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-
-                        }
-                    }
-
-                }
-
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return Convert.ToString(sbgenerateXFSUMessage);
-
-
-        }
-        public string GenerateXFSUARRMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-          string flightNo, string flightDate, string doNumber = "", string EventDate = "1900-01-01")
-        {
-            StringBuilder sbgenerateXFSUMessage = new StringBuilder();
-
-            try
-            {
-                DataSet dsxfsuMessage = new DataSet();
-
-
-
-
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate.ToString(), 0, 0.00);
-
-                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                {
-                    var xfsuDataSet = new DataSet();
-                    DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
-                    if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
-                    {
-                        string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
-                        messageXML = ReplacingNodeNames(messageXML);
-                        var txMessage = new StringReader(messageXML);
-                        xfsuDataSet.ReadXml(txMessage);
-
-                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
-                        {
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
-
-                            //SenderParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
-                                }
-                            }
-                            //RecipientParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
-                                }
-                            }
-
-                            //BusinessHeaderDocument
-                            xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
-
-                            if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
-                            {
-                                xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
-                            }
-
-                            //MasterConsignment
-                            if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                            {
-                                if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
-                                        drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-
-                                // AWBNumber Section
-                                if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
-                                {
-                                    drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
-                                        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
-                                    }
-                                }
-
-                                // AWBNumber Origin Section
-                                if (xfsuDataSet.Tables.Contains("OriginLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                    }
-                                }
-
-                                //AWBNumber Destination Section
-                                if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
-                                    }
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
-                                {//LOOP
-                                    //AWBRouter Information
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
-
-                                }
-
-
-                                //AWBStatus Code
-                                xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
-
-
-                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
-                                {
-                                    if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
-                                    {
-                                        drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
-                                            drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["arrivedwt"]);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
-                                            drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
-                                        }
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
-                                        drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-
-                                if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
-                                {
-                                    xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] =
-                                        Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["arrivedpcs"]);
-
-
-                                }
-                                else
-                                {
-                                    xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
-                                }
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
-
-
-                                    xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
-
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
-
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
-
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-                                        }
-                                    }
-
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
-
-                                    //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
-
-                                }
-
-                                xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-                                xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-
-
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
-
-
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-                                }
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
-                                {
-                                    if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
-                                    {
-                                        for (int i = 0; i < dsxfsuMessage.Tables[5].Rows.Count; i++)
-                                        {
-                                            if (i == 0)
-                                            {
-                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-                                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                                {
-                                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                                    if (drs.Length > 0)
-                                                    {
-                                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                                    }
-                                                }
-                                            }
-                                            if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("UtilizedUnitLoadTransportEquipment_Id=" + i).Length > i))
-
-
-                                            {
-                                                DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
-                                                drBolsegment["ID"] = i;
-                                                drBolsegment["CharacteristicCode"] = i;
-                                                drBolsegment["OperationalStatusCode"] = i;
-
-                                                drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = i;
-
-                                                drBolsegment["AssociatedStatusConsignment_Id"] = 0;
-
-                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
-
-                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
-                                                //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
-                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
-                                                //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
-                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
-                                                //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
-                                                drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
-                                                    Select("UtilizedUnitLoadTransportEquipment_Id=" + i);
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDNumber"]);
-                                                    drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDType"]);
-                                                    drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDHeightIndicator"]);
-
-                                                }
-
-
-                                            }
-                                            if (xfsuDataSet.Tables.Contains("OperatingParty"))
-                                            {
-                                                //if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                                //{
-                                                //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                                //    if (drs.Length > 0)
-                                                //    {
-                                                //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                                //    }
-                                                //}
-                                                if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
-                                                    + i).Length > i))
-
-                                                // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
-                                                {
-                                                    DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
-                                                    drMaster["OperatingParty_Id"] = i;
-                                                    drMaster["UtilizedUnitLoadTransportEquipment_Id"] = i;
-
-                                                    xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
-
-                                                }
-                                                if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
-                                                   + i).Length > i))
-                                                //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
-                                                {
-                                                    DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
-                                                    drMaster["OperatingParty_Id"] = i;
-                                                    xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
-
-                                                }
-                                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + i);
-                                                if (drs.Length > 0)
-                                                {
-                                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_schemeAgencyID"]);
-                                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_PrimaryID_Text"]);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-                                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                        {
-                                            drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                            if (drs.Length > 0)
-                                            {
-                                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = "";
-                                            drs[0]["PrimaryID_Text"] = "";
-                                        }
-                                    }
-                                }
-
-                                ///House AWB s
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
-                                        }
-                                    }
-
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
-
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
-                                            drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
-
-
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
-
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = "";
-                                            drs[0]["TypeCode"] = "";
-                                        }
-                                    }
-                                }
-                            }
-                            string generatMessage = xfsuDataSet.GetXml();
-                            xfsuDataSet.Dispose();
-                            sbgenerateXFSUMessage = new StringBuilder(generatMessage);
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                            sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
-
-                            //Replace Nodes
-                            sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
-
-                            sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
-                            sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-
-                        }
-                    }
-                    else
-                    {
-                        sbgenerateXFSUMessage.Append("No Message format available in the system.");
-                    }
-                }
-                else
-                {
-                    sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-
-
-            return Convert.ToString(sbgenerateXFSUMessage);
-
-
-        }
+        /*Not in user*/
+        //public string GenerateXFSURCSMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //      string doNumber, string flightNo = "", string flightDate = "1900-01-01", string EventDate = "1900-01-01")
+        //{
+        //    StringBuilder sbgenerateXFSUMessage = new StringBuilder();
+        //    try
+        //    {
+        //        DataSet dsxfsuMessage = new DataSet();
+        //        dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, string.Empty, flightNo, "01/01/1900", 0, 0.00);
+
+        //        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //        {
+        //            var xfsuDataSet = new DataSet();
+        //            DataRow[] drs;
+        //            var xmlSchema =  genericFunction.GetXMLMessageData("XFSU");
+        //            if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
+        //            {
+        //                string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
+        //                messageXML = ReplacingNodeNames(messageXML);
+        //                var txMessage = new StringReader(messageXML);
+        //                xfsuDataSet.ReadXml(txMessage);
+
+        //                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
+        //                {
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ReferenceNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
+
+        //                    //SenderParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+        //                    //RecipientParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+
+        //                    //BusinessHeaderDocument
+        //                    xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+
+        //                    if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
+        //                    {
+        //                        xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
+        //                    }
+
+        //                    //MasterConsignment
+        //                    if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //                    {
+        //                        if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
+        //                            }
+        //                        }
+
+        //                        if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
+        //                                drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                            }
+        //                        }
+
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+
+        //                        // AWBNumber Section
+        //                        if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
+        //                                drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
+        //                            }
+        //                        }
+
+        //                        // AWBNumber Origin Section
+        //                        if (xfsuDataSet.Tables.Contains("OriginLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                            }
+        //                        }
+
+        //                        //AWBNumber Destination Section
+        //                        if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
+        //                            }
+        //                        }
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
+        //                        {//LOOP
+        //                            //AWBRouter Information
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
+
+        //                        }
+
+
+        //                        //AWBStatus Code
+        //                        xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
+
+
+        //                        if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
+        //                                drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
+        //                            }
+        //                        }
+
+        //                        if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
+        //                                drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
+        //                            }
+        //                        }
+
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
+
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
+
+        //                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
+
+        //                            xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
+
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
+
+
+        //                            xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
+
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
+
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
+
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+        //                                }
+        //                            }
+
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
+
+        //                            //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+
+        //                        }
+
+        //                        xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+        //                        xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
+
+
+
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
+
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+
+
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+        //                        }
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = "";
+        //                                    drs[0]["PrimaryID_Text"] = "";
+        //                                }
+        //                            }
+        //                        }
+
+        //                        ///House AWB s
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
+        //                                }
+        //                            }
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
+        //                                    drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = "";
+        //                                    drs[0]["TypeCode"] = "";
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                    string generatMessage = xfsuDataSet.GetXml();
+        //                    xfsuDataSet.Dispose();
+        //                    sbgenerateXFSUMessage = new StringBuilder(generatMessage);
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                    //Replace Nodes
+        //                    sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+
+        //                    sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
+        //                    sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+
+        //                }
+        //            }
+        //            //else
+        //            //{
+        //            //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
+        //            //}
+        //        }
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return sbgenerateXFSUMessage.ToString();
+        //}
+
+        //public string GenerateXFSUBKDMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //     string doNumber, string flightNo = "", string flightDate = "1900-01-01", string EventDate = "1900-01-01")
+        //{
+        //    StringBuilder sbgenerateXFSUMessage = new StringBuilder();
+
+        //    try
+        //    {
+        //        DataSet dsxfsuMessage = new DataSet();
+
+        //        dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, 0, 0.00);
+
+        //        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //        {
+        //            var xfsuDataSet = new DataSet();
+        //            DataRow[] drs;
+        //            var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
+
+        //            if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
+        //            {
+        //                string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
+        //                messageXML = ReplacingNodeNames(messageXML);
+        //                var txMessage = new StringReader(messageXML);
+        //                xfsuDataSet.ReadXml(txMessage);
+
+        //                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
+        //                {
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
+
+        //                    //SenderParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+        //                    //RecipientParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+
+        //                    //BusinessHeaderDocument
+        //                    if (xfsuDataSet.Tables.Contains("BusinessHeaderDocument"))
+        //                    {
+        //                        xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+
+        //                        if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
+        //                        {
+        //                            xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
+        //                        }
+        //                    }
+
+
+        //                    //MasterConsignment
+        //                    if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //                    {
+        //                        if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
+        //                            }
+        //                        }
+
+        //                        if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
+        //                                drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                            }
+        //                        }
+
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+
+        //                        // AWBNumber Section
+        //                        if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
+        //                                drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
+        //                            }
+        //                        }
+
+        //                        // AWBNumber Origin Section
+        //                        if (xfsuDataSet.Tables.Contains("OriginLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                            }
+        //                        }
+
+        //                        //AWBNumber Destination Section
+        //                        if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
+        //                            }
+        //                        }
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
+        //                        {//LOOP
+
+        //                            for (int row = 1; row < dsxfsuMessage.Tables[3].Rows.Count; row++)
+        //                            {
+        //                                //if (!(xfsuDataSet.Tables["MasterConsignment"].Rows.Count > row))
+        //                                //{
+        //                                //    DataRow drBolsegment = xfsuDataSet.Tables["MasterConsignment"].NewRow();
+        //                                //    drBolsegment["MasterConsignment_Id"] = row;
+
+        //                                //    xfsuDataSet.Tables["MasterConsignment"].Rows.Add(drBolsegment);
+        //                                //}
+        //                                if (row == 1)
+        //                                {
+        //                                    drs = xfsuDataSet.Tables["RoutingLocation"].Select("MasterConsignment_Id=0");
+        //                                    if (drs.Length > 0)
+        //                                    {
+        //                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
+        //                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["AirportName"]);
+        //                                    }
+        //                                }
+        //                                if (!(xfsuDataSet.Tables["RoutingLocation"].Rows.Count >= row))
+        //                                {
+
+        //                                    DataRow drBolsegment = xfsuDataSet.Tables["RoutingLocation"].NewRow();
+        //                                    drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
+        //                                    drBolsegment["Name"] = dsxfsuMessage.Tables[3].Rows[row]["AirportName"];
+        //                                    drBolsegment["MasterConsignment_Id"] = 0;
+        //                                    xfsuDataSet.Tables["RoutingLocation"].Rows.Add(drBolsegment);
+        //                                }
+
+        //                            }
+
+
+        //                            //AWBRouter Information
+        //                            //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                            //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
+
+
+        //                            for (int rowchild = 0; rowchild < dsxfsuMessage.Tables[3].Rows.Count; rowchild++)
+        //                            {
+
+
+        //                                //AWBStatus Code
+        //                                if (!(xfsuDataSet.Tables["ReportedStatus"].Rows.Count > rowchild))
+        //                                {
+        //                                    DataRow drMaster = xfsuDataSet.Tables["ReportedStatus"].NewRow();
+        //                                    drMaster["ReasonCode"] = rowchild;
+        //                                    drMaster["ReportedStatus_Id"] = rowchild;
+
+        //                                    drMaster["MasterConsignment_Id"] = 0;
+
+        //                                    xfsuDataSet.Tables["ReportedStatus"].Rows.Add(drMaster);
+        //                                }
+        //                                xfsuDataSet.Tables["ReportedStatus"].Rows[rowchild]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
+
+        //                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment"))
+        //                                {
+
+        //                                    if (rowchild == 0)
+        //                                    {
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["PCSonflight"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["AssociatedStatusConsignment"].NewRow();
+        //                                        drBolsegment["DensityGroupCode"] = rowchild;
+        //                                        drBolsegment["PieceQuantity"] = rowchild;
+        //                                        drBolsegment["TransportSplitDescription"] = rowchild;
+        //                                        drBolsegment["DiscrepancyDescriptionCode"] = rowchild;
+        //                                        drBolsegment["StatusDescription"] = rowchild;
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+        //                                        drBolsegment["ReportedStatus_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["PCSonflight"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[rowchild]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
+
+        //                                    }
+
+        //                                }
+
+
+        //                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))//AssociatedStatusGrossWeightMeasure
+        //                                {
+        //                                    if (rowchild == 0)
+        //                                    {
+
+        //                                        drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightUOM"]);
+        //                                            drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["WTonflight"]);
+        //                                        }
+
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Rows.Count > rowchild))
+        //                                    {
+
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].NewRow();
+        //                                        drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightUOM"]);
+        //                                        drBolsegment["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = dsxfsuMessage.Tables[2].Rows[rowchild]["WTonflight"];
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                    }
+        //                                }
+        //                                if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                                {
+
+        //                                    if (rowchild == 0)
+        //                                    {
+        //                                        drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["fltVolumeunit"]);
+        //                                            drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["fltVolume"]);
+        //                                        }
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["GrossVolumeMeasure"].Rows.Count > rowchild))
+        //                                    {
+
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["GrossVolumeMeasure"].NewRow();
+        //                                        drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["fltVolumeunit"]);
+        //                                        drBolsegment["GrossVolumeMeasure_Text"] = dsxfsuMessage.Tables[2].Rows[rowchild]["fltVolume"];
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["GrossVolumeMeasure"].Rows.Add(drBolsegment);
+        //                                    }
+
+
+        //                                }
+
+
+        //                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2
+        //                                    && dsxfsuMessage.Tables[2].Rows.Count > 0)
+        //                                {
+        //                                    if (xfsuDataSet.Tables.Contains("AssociatedManifestDocument"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
+
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["AssociatedManifestDocument"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["AssociatedManifestDocument"].NewRow();
+        //                                            drBolsegment["ID"] = rowchild;
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows.Add(drBolsegment);
+
+        //                                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[rowchild]["ID"]
+        //                                                = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
+
+        //                                        }
+        //                                    }
+        //                                    if (xfsuDataSet.Tables.Contains("ApplicableLogisticsServiceCharge"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
+
+        //                                        }
+
+        //                                        if (!(xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].NewRow();
+        //                                            drBolsegment["ServiceTypeCode"] = rowchild;
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows.Add(drBolsegment);
+
+        //                                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[rowchild]["ServiceTypeCode"]
+        //                                                = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
+
+        //                                        }
+
+        //                                    }
+
+
+        //                                    if (xfsuDataSet.Tables.Contains("SpecifiedLogisticsTransportMovement"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[rowchild]["ID"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightNumber"]);
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows.Count > rowchild))
+        //                                        {
+
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].NewRow();
+        //                                            drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+        //                                            drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightNumber"]);
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows.Add(drBolsegment);
+        //                                        }
+
+        //                                        if (xfsuDataSet.Tables.Contains("UsedLogisticsTransportMeans"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+
+        //                                                xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["UsedLogisticsTransportMeans"].NewRow();
+        //                                                drBolsegment["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["CarrierName"]); ;
+        //                                                drBolsegment["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["AirCraftTypeMaster"]);
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("ScheduledArrivalEvent"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+
+        //                                                xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["ScheduledArrivalEvent"].NewRow();
+        //                                                drBolsegment["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightScheduleArrivlaTime"]); ;
+
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("ArrivalEvent"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
+        //                                                xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["ArrivalEvent"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["ArrivalEvent"].NewRow();
+        //                                                drBolsegment["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightArriveTime"]); ;
+        //                                                drBolsegment["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["ScheduleArrivalIndicator"]); ;
+
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["ArrivalEvent"].Rows.Add(drBolsegment);
+        //                                            }
+
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("DepartureEvent"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
+        //                                                xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["DepartureEvent"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["DepartureEvent"].NewRow();
+        //                                                drBolsegment["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightScheduleDepartureTime"]); ;
+        //                                                drBolsegment["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["EstimatedDepTime"]); ;
+
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["DepartureEvent"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                        {
+        //                                            drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
+        //                                            if (drs.Length > 0)
+        //                                            {
+        //                                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
+        //                                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+        //                                            }
+        //                                        }
+
+        //                                        if (xfsuDataSet.Tables.Contains("SpecifiedLocation"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                                xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                                                xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
+        //                                                xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["SpecifiedLocation"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedLocation"].NewRow();
+        //                                                drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]); ;
+        //                                                drBolsegment["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]); ;
+        //                                                drBolsegment["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["LocationType"]); ;
+        //                                                drBolsegment["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["FlightStatusTypeCode"]); ;
+
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["SpecifiedLocation"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("SpecifiedEvent"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
+        //                                                xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                                                xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["SpecifiedEvent"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["SpecifiedEvent"].NewRow();
+        //                                                //drBolsegment["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["SpecifiedEvent"]);
+        //                                                drBolsegment["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                                                drBolsegment["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[rowchild]["DateTimeTypeCode"]);
+
+        //                                                drBolsegment["SpecifiedLogisticsTransportMovement_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["SpecifiedEvent"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                }
+
+        //                                if (xfsuDataSet.Tables.Contains("NotifiedParty"))
+        //                                {
+
+        //                                    if (rowchild == 0)
+        //                                    {
+        //                                        xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["NotifiedParty"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["NotifiedParty"].NewRow();
+        //                                        drBolsegment["Name"] = rowchild;
+
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["NotifiedParty"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["NotifiedParty"].Rows[rowchild]["Name"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+
+        //                                    }
+        //                                }
+        //                                if (xfsuDataSet.Tables.Contains("DeliveryParty"))
+        //                                {
+        //                                    if (rowchild == 0)
+        //                                    {
+        //                                        xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["DeliveryParty"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["DeliveryParty"].NewRow();
+        //                                        drBolsegment["Name"] = rowchild;
+
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["DeliveryParty"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["DeliveryParty"].Rows[rowchild]["Name"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
+        //                                    }
+        //                                }
+
+        //                                if (xfsuDataSet.Tables.Contains("AssociatedReceivedFromParty"))
+        //                                {
+        //                                    if (rowchild == 0)
+        //                                    {
+
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
+        //                                    }
+
+        //                                    if (!(xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["AssociatedReceivedFromParty"].NewRow();
+        //                                        drBolsegment["Name"] = rowchild;
+        //                                        drBolsegment["RoleCode"] = rowchild;
+        //                                        drBolsegment["Role"] = rowchild;
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["Name"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["RoleCode"] =
+        //                                           Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[rowchild]["Role"] =
+        //                                           Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
+
+        //                                    }
+        //                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                    {
+        //                                        //drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=" + rowchild);
+        //                                        //if (drs.Length > 0)
+        //                                        //{
+        //                                        //    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                        //    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                                        //}
+
+        //                                        if (!(xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0").Length > rowchild))
+        //                                        {
+        //                                            DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                            drMaster["AssociatedReceivedFromParty_Id"] = rowchild;
+        //                                            xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                        }
+        //                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=" + Convert.ToString(rowchild));
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                                        }
+        //                                    }
+
+        //                                }
+
+
+        //                                if (xfsuDataSet.Tables.Contains("AssociatedTransferredFromParty"))
+        //                                {
+        //                                    if (rowchild == 0)
+        //                                    {
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+        //                                    }
+
+        //                                    if (!(xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["AssociatedTransferredFromParty"].NewRow();
+        //                                        drBolsegment["Name"] = rowchild;
+        //                                        drBolsegment["RoleCode"] = rowchild;
+        //                                        drBolsegment["Role"] = rowchild;
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["Name"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["RoleCode"] =
+        //                                           Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[rowchild]["Role"] =
+        //                                           Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+
+        //                                    }
+
+        //                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                    {
+        //                                        if (!(xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0").Length > rowchild))
+        //                                        {
+        //                                            DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                            drMaster["AssociatedTransferredFromParty_Id"] = rowchild;
+        //                                            xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                        }
+        //                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=" + rowchild);
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
+        //                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
+        //                                        }
+
+        //                                    }
+
+        //                                }
+
+        //                                if (xfsuDataSet.Tables.Contains("HandlingOSIInstructions"))
+        //                                {
+        //                                    if (rowchild == 0)
+        //                                    {
+
+        //                                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["HandlingOSIInstructions"].Rows.Count > rowchild))
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["HandlingOSIInstructions"].NewRow();
+        //                                        drBolsegment["Description"] = rowchild;
+        //                                        drBolsegment["DescriptionCode"] = rowchild;
+
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows.Add(drBolsegment);
+        //                                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[rowchild]["Description"] =
+        //                                            Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[rowchild]["DescriptionCode"] =
+        //                                           Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+        //                                    }
+
+
+        //                                }
+
+        //                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
+        //                                {
+        //                                    if (xfsuDataSet.Tables.Contains("IncludedCustomsNote"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["IncludedCustomsNote"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["IncludedCustomsNote"].NewRow();
+        //                                            drBolsegment["ContentCode"] = rowchild;
+        //                                            drBolsegment["Content"] = rowchild;
+        //                                            drBolsegment["SubjectCode"] = rowchild;
+        //                                            drBolsegment["CountryID"] = rowchild;
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows.Add(drBolsegment);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["ContentCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["Content"] =
+        //                                               Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["SubjectCode"] =
+        //                                              Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[rowchild]["CountryID"] =
+        //                                              Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                                        }
+
+        //                                    }
+
+        //                                    if (xfsuDataSet.Tables.Contains("AssociatedConsignmentCustomsProcedure"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].NewRow();
+        //                                            drBolsegment["GoodsStatusCode"] = rowchild;
+
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows.Add(drBolsegment);
+        //                                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[rowchild]["GoodsStatusCode"] =
+        //                                                Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+
+        //                                        }
+
+        //                                    }
+        //                                }
+
+        //                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
+        //                                {
+        //                                    if (xfsuDataSet.Tables.Contains("UtilizedUnitLoadTransportEquipment"))
+        //                                    {
+        //                                        for (int uldrow = 0; dsxfsuMessage.Tables[5].Rows.Count > uldrow; uldrow++)
+        //                                        {
+        //                                            if (uldrow == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("AssociatedStatusConsignment_Id=" + rowchild).Length > uldrow))
+
+        //                                            //if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Count > uldrow))
+        //                                            {
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
+        //                                                drBolsegment["ID"] = uldrow;
+        //                                                drBolsegment["CharacteristicCode"] = uldrow;
+        //                                                drBolsegment["OperationalStatusCode"] = uldrow;
+
+        //                                                drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = rowchild + "" + uldrow;
+
+        //                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
+
+        //                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
+        //                                                //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
+        //                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
+        //                                                //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
+        //                                                //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
+        //                                                //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
+        //                                                drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
+        //                                                    Select("UtilizedUnitLoadTransportEquipment_Id=" + rowchild + "" + uldrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
+        //                                                    drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
+        //                                                    drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
+
+        //                                                }
+
+
+        //                                            }
+        //                                            if (xfsuDataSet.Tables.Contains("OperatingParty"))
+        //                                            {
+        //                                                //if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                                //{
+        //                                                //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                                //    if (drs.Length > 0)
+        //                                                //    {
+        //                                                //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                                //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                                //    }
+        //                                                //}
+        //                                                if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
+        //                                                    + rowchild + "" + uldrow).Length > uldrow))
+
+        //                                                // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
+        //                                                {
+        //                                                    DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
+        //                                                    drMaster["OperatingParty_Id"] = rowchild + "" + uldrow; ;
+        //                                                    drMaster["UtilizedUnitLoadTransportEquipment_Id"] = rowchild + "" + uldrow;
+
+        //                                                    xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
+
+        //                                                }
+        //                                                if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
+        //                                                   + rowchild + "" + uldrow).Length > uldrow))
+        //                                                //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
+        //                                                {
+        //                                                    DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                                    drMaster["OperatingParty_Id"] = rowchild + "" + uldrow; ;
+        //                                                    xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                                }
+        //                                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + rowchild + "" + uldrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["OperatingParty_schemeAgencyID"]);
+        //                                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["OperatingParty_PrimaryID_Text"]);
+        //                                                }
+        //                                            }
+        //                                        }
+        //                                    }
+
+        //                                }
+        //                                else
+        //                                {
+        //                                    if (xfsuDataSet.Tables.Contains("UtilizedUnitLoadTransportEquipment"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] =
+        //                                                "";
+
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
+        //                                            drBolsegment["ID"] = rowchild;
+        //                                            drBolsegment["CharacteristicCode"] = rowchild;
+        //                                            drBolsegment["OperationalStatusCode"] = rowchild;
+        //                                            drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = rowchild;
+
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
+
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["ID"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["CharacteristicCode"] =
+        //                                               "";
+        //                                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[rowchild]["OperationalStatusCode"] =
+        //                                               "";
+
+
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("OperatingParty"))
+        //                                        {
+        //                                            //if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                            //{
+        //                                            //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                            //    if (drs.Length > 0)
+        //                                            //    {
+        //                                            //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                            //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                            //    }
+        //                                            //}
+        //                                            if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id=0").Length > rowchild))
+        //                                            {
+
+
+        //                                                DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
+        //                                                drMaster["OperatingParty_Id"] = rowchild;
+        //                                                drMaster["UtilizedUnitLoadTransportEquipment_Id"] = rowchild;
+        //                                                xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
+
+        //                                            }
+
+        //                                            if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > rowchild))
+        //                                            {
+
+
+        //                                                DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                                drMaster["OperatingParty_Id"] = rowchild;
+        //                                                xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                            }
+        //                                            drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + rowchild);
+        //                                            if (drs.Length > 0)
+        //                                            {
+
+        //                                                drs[0]["schemeAgencyID"] = "";
+        //                                                drs[0]["PrimaryID_Text"] = "";
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                }
+
+
+        //                                ///House AWB s
+        //                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
+        //                                {
+        //                                    #region Comment
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
+        //                                    //        drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
+        //                                    //    }
+        //                                    //}
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
+        //                                    //        drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
+        //                                    //    }
+        //                                    //}
+
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
+
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
+        //                                    //        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
+        //                                    //    }
+        //                                    //} 
+        //                                    #endregion
+        //                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment"))
+        //                                    {
+        //                                        for (int Hawbrow = 0; Hawbrow < dsxfsuMessage.Tables[6].Rows.Count; Hawbrow++)
+        //                                        {
+        //                                            if (Hawbrow == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                                xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
+        //                                                    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                                xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
+        //                                                     Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"]);
+
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].
+        //                                                Select("AssociatedStatusConsignment_Id=" + rowchild).Length > Hawbrow))
+
+        //                                            //if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
+        //                                            {
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
+        //                                                drBolsegment["PieceQuantity"] = Hawbrow;
+        //                                                drBolsegment["TotalPieceQuantity"] = Hawbrow;
+        //                                                drBolsegment["TransportSplitDescription"] = Hawbrow;
+        //                                                drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
+
+        //                                                drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
+
+        //                                                //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["PieceQuantity"] =
+        //                                                //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
+        //                                                //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["TotalPieceQuantity"] =
+        //                                                //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                                //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
+        //                                                //   Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"])
+
+        //                                                drs = xfsuDataSet.Tables["IncludedHouseConsignment"].
+        //                                                     Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
+        //                                                    drs[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
+        //                                                    drs[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBTransportSplitDescription"]);
+
+        //                                                }
+
+
+
+        //                                            }
+        //                                            if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
+        //                                            {
+        //                                                //if (Hawbrow == 0)
+        //                                                //{
+
+        //                                                //    //drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +Hawbrow);
+        //                                                //    drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +rowchild);
+        //                                                //    if (drs.Length > 0)
+        //                                                //    {
+        //                                                //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                                //        drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                                //    }
+
+        //                                                //}
+        //                                                if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].
+        //                                                Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow).Length > Hawbrow))
+        //                                                //if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                                {
+
+        //                                                    DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
+        //                                                    drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
+        //                                                    drBolsegment["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                                    drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
+
+        //                                                    xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                                }
+        //                                                drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                                    drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                                }
+        //                                            }
+
+        //                                            if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
+        //                                            {
+        //                                                //if (Hawbrow == 0)
+        //                                                //{
+
+        //                                                //    drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id="+rowchild);
+        //                                                //    if (drs.Length > 0)
+        //                                                //    {
+        //                                                //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
+        //                                                //        drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
+        //                                                //    }
+
+        //                                                //}
+        //                                                if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].
+        //                                                Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow).Length > Hawbrow))
+        //                                                // if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                                {
+
+        //                                                    DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
+        //                                                    drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                                    drBolsegment["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
+        //                                                    drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
+
+        //                                                    xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                                }
+        //                                                drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                                    drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                                }
+        //                                            }
+
+
+        //                                            if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
+        //                                            {
+        //                                                if (Hawbrow == 0)
+        //                                                {
+        //                                                    xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] =
+        //                                                        Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
+        //                                                    xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] =
+        //                                                        Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
+        //                                                }
+        //                                                if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id="
+        //                                                    + rowchild + "" + Hawbrow).Length > Hawbrow))
+        //                                                //if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
+        //                                                {
+
+        //                                                    DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
+        //                                                    drBolsegment["ID"] = "";
+        //                                                    drBolsegment["TypeCode"] = "";
+        //                                                    drBolsegment["IncludedHouseConsignment_Id"] = rowchild + "" + Hawbrow;
+
+        //                                                    xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
+
+
+
+        //                                                }
+        //                                                drs = xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id=" + rowchild + "" + Hawbrow);
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
+        //                                                    drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
+        //                                                }
+        //                                            }
+
+
+        //                                        }
+        //                                    }
+
+        //                                }
+        //                                else
+        //                                {
+        //                                    #region comment
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["unitCode"] = "";
+        //                                    //        drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
+        //                                    //    }
+        //                                    //}
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["unitCode"] = "";
+        //                                    //        drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
+        //                                    //    }
+        //                                    //}
+
+
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
+        //                                    //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
+
+        //                                    //if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                                    //{
+        //                                    //    drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                    //    if (drs.Length > 0)
+        //                                    //    {
+        //                                    //        drs[0]["ID"] = "";
+        //                                    //        drs[0]["TypeCode"] = "";
+        //                                    //    }
+        //                                    //} 
+        //                                    #endregion
+        //                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment"))
+        //                                    {
+        //                                        if (rowchild == 0)
+        //                                        {
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
+        //                                                "";
+
+
+
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
+        //                                        {
+        //                                            DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
+        //                                            drBolsegment["PieceQuantity"] = rowchild;
+        //                                            drBolsegment["TotalPieceQuantity"] = rowchild;
+        //                                            drBolsegment["TransportSplitDescription"] = rowchild;
+        //                                            drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
+
+        //                                            drBolsegment["AssociatedStatusConsignment_Id"] = rowchild;
+
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
+
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["PieceQuantity"] =
+        //                                                "";
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TotalPieceQuantity"] =
+        //                                               "";
+        //                                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
+        //                                               "";
+
+
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+
+        //                                                drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["UnitCode"] = "";
+        //                                                    drs[0]["HouseGrossWeightMeasure_Text"] = "";
+        //                                                }
+
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
+        //                                                drBolsegment["UnitCode"] = "";
+        //                                                drBolsegment["HouseGrossWeightMeasure_Text"] = "";
+        //                                                drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        //----------------
+        //                                        if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+
+        //                                                drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                                if (drs.Length > 0)
+        //                                                {
+        //                                                    drs[0]["UnitCode"] = "";
+        //                                                    drs[0]["HouseTotalGrossWeightMeasure_Text"] = "";
+        //                                                }
+
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
+        //                                                drBolsegment["UnitCode"] = "";
+        //                                                drBolsegment["HouseTotalGrossWeightMeasure_Text"] = "";
+        //                                                drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                        if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
+        //                                        {
+        //                                            if (rowchild == 0)
+        //                                            {
+        //                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] = "";
+        //                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] = "";
+        //                                            }
+        //                                            if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
+        //                                            {
+
+        //                                                DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
+        //                                                drBolsegment["ID"] = "";
+        //                                                drBolsegment["TypeCode"] = "";
+        //                                                drBolsegment["IncludedHouseConsignment_Id"] = rowchild;
+
+        //                                                xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+
+        //                        }
+        //                    }
+        //                    string generatMessage = xfsuDataSet.GetXml();
+        //                    xfsuDataSet.Dispose();
+        //                    sbgenerateXFSUMessage = new StringBuilder(generatMessage);
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                    //Replace Nodes
+        //                    sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusGrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+
+        //                    sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
+        //                    sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+
+        //                }
+        //            }
+        //            //else
+        //            //{
+        //            //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
+        //            //}
+        //        }
+        //        //else
+        //        //{
+        //        //    sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
+        //        //}
+        //    }
+
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+
+        //    return sbgenerateXFSUMessage.ToString();
+        //}
+
+        /*Not in use*/
+        //     public string GenerateXFSUMANDEPMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //string flightNo, string flightDate, string doNumber = "", string EventDate = "1900-01-01")
+        //     {
+        //         StringBuilder sbgenerateXFSUMessage = new StringBuilder();
+
+
+        //         try
+        //         {
+        //             DataSet dsxfsuMessage = new DataSet();
+        //             dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, 0, 0.00);
+
+        //             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //             {
+        //                 var xfsuDataSet = new DataSet();
+        //                 DataRow[] drs;
+        //                 var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
+        //                 if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
+        //                 {
+        //                     string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
+        //                     messageXML = ReplacingNodeNames(messageXML);
+        //                     var txMessage = new StringReader(messageXML);
+        //                     xfsuDataSet.ReadXml(txMessage);
+
+        //                     if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
+        //                     {
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
+        //                         xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
+
+        //                         //SenderParty
+        //                         if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                         {
+        //                             drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                             if (drs.Length > 0)
+        //                             {
+        //                                 drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
+        //                                 drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                             }
+        //                         }
+        //                         //RecipientParty
+        //                         if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                         {
+        //                             drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                             if (drs.Length > 0)
+        //                             {
+        //                                 drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
+        //                                 drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                             }
+        //                         }
+
+        //                         //BusinessHeaderDocument
+        //                         xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+
+        //                         if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
+        //                         {
+        //                             xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
+        //                         }
+
+        //                         //MasterConsignment
+        //                         if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //                         {
+        //                             if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                     drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                                 }
+        //                             }
+
+        //                             if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                     drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                                 }
+        //                             }
+
+        //                             xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                             xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                             xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+
+        //                             // AWBNumber Section
+        //                             if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                                     drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
+        //                                     drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
+        //                                 }
+        //                             }
+
+        //                             // AWBNumber Origin Section
+        //                             if (xfsuDataSet.Tables.Contains("OriginLocation"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                     drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                                 }
+        //                             }
+
+        //                             //AWBNumber Destination Section
+        //                             if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
+        //                                     drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
+        //                                 }
+        //                             }
+
+        //                             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
+        //                             {//LOOP
+        //                                 //AWBRouter Information
+        //                                 //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                                 //xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
+        //                                 for (int row = 1; row < dsxfsuMessage.Tables[3].Rows.Count; row++)
+        //                                 {
+        //                                     //if (!(xfsuDataSet.Tables["MasterConsignment"].Rows.Count > row))
+        //                                     //{
+        //                                     //    DataRow drBolsegment = xfsuDataSet.Tables["MasterConsignment"].NewRow();
+        //                                     //    drBolsegment["MasterConsignment_Id"] = row;
+
+        //                                     //    xfsuDataSet.Tables["MasterConsignment"].Rows.Add(drBolsegment);
+        //                                     //}
+        //                                     if (row == 1)
+        //                                     {
+        //                                         drs = xfsuDataSet.Tables["RoutingLocation"].Select("MasterConsignment_Id=0");
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
+        //                                             drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["AirportName"]);
+        //                                         }
+        //                                     }
+        //                                     if (!(xfsuDataSet.Tables["RoutingLocation"].Rows.Count >= row))
+        //                                     {
+
+        //                                         DataRow drBolsegment = xfsuDataSet.Tables["RoutingLocation"].NewRow();
+        //                                         drBolsegment["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[row]["FltDestination"]);
+        //                                         drBolsegment["Name"] = dsxfsuMessage.Tables[3].Rows[row]["AirportName"];
+        //                                         drBolsegment["MasterConsignment_Id"] = 0;
+        //                                         xfsuDataSet.Tables["RoutingLocation"].Rows.Add(drBolsegment);
+        //                                     }
+
+        //                                 }
+
+        //                             }
+
+
+        //                             //AWBStatus Code
+        //                             xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
+
+
+        //                             if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                     drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["Manifestdweight"]);
+        //                                 }
+        //                             }
+
+        //                             if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
+        //                                     drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["VolumetricWeight"]);
+        //                                 }
+        //                             }
+
+        //                             xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+        //                             xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["manifestedpcs"]);
+        //                             xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                             xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                             xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
+
+
+        //                             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
+        //                             {
+        //                                 xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
+
+        //                                 xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
+
+        //                                 xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
+
+        //                                 xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+
+        //                                 xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
+
+
+        //                                 xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
+
+        //                                 xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
+        //                                 xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
+
+        //                                 xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
+        //                                 xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
+
+        //                                 if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                 {
+        //                                     drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
+        //                                     if (drs.Length > 0)
+        //                                     {
+        //                                         drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
+        //                                         drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+        //                                     }
+        //                                 }
+
+        //                                 xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightOrigin"]);
+        //                                 xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirportName"]);
+        //                                 xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
+        //                                 xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
+
+        //                                 //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
+        //                                 xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                                 xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+
+        //                             }
+
+        //                             xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+        //                             xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
+
+
+
+        //                             if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                     drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                                 }
+        //                             }
+        //                             xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                             xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                             xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
+
+        //                             if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                             {
+        //                                 drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
+        //                                 if (drs.Length > 0)
+        //                                 {
+        //                                     drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
+        //                                     drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
+        //                                 }
+        //                             }
+        //                             xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                             xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                             xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+
+
+        //                             xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                             xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+
+        //                             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
+        //                             {
+        //                                 xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                                 xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                                 xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                                 xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                                 xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+        //                             }
+
+        //                             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
+        //                             {
+        //                                 for (int i = 0; i < dsxfsuMessage.Tables[5].Rows.Count; i++)
+        //                                 {
+        //                                     if (i == 0)
+        //                                     {
+        //                                         xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                                         xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                                         xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+        //                                         if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                         {
+        //                                             drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                             if (drs.Length > 0)
+        //                                             {
+        //                                                 drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                                 drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                             }
+        //                                         }
+        //                                     }
+        //                                     if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("UtilizedUnitLoadTransportEquipment_Id=" + i).Length > i))
+
+
+        //                                     {
+        //                                         DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
+        //                                         drBolsegment["ID"] = i;
+        //                                         drBolsegment["CharacteristicCode"] = i;
+        //                                         drBolsegment["OperationalStatusCode"] = i;
+
+        //                                         drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = i;
+
+        //                                         drBolsegment["AssociatedStatusConsignment_Id"] = 0;
+
+        //                                         xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
+
+        //                                         //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
+        //                                         //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
+        //                                         //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
+        //                                         //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
+        //                                         //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
+        //                                         //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
+        //                                         drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
+        //                                             Select("UtilizedUnitLoadTransportEquipment_Id=" + i);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDNumber"]);
+        //                                             drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDType"]);
+        //                                             drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDHeightIndicator"]);
+
+        //                                         }
+
+
+        //                                     }
+        //                                     if (xfsuDataSet.Tables.Contains("OperatingParty"))
+        //                                     {
+        //                                         //if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                         //{
+        //                                         //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                         //    if (drs.Length > 0)
+        //                                         //    {
+        //                                         //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                         //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                         //    }
+        //                                         //}
+        //                                         if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
+        //                                             + i).Length > i))
+
+        //                                         // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
+        //                                         {
+        //                                             DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
+        //                                             drMaster["OperatingParty_Id"] = i;
+        //                                             drMaster["UtilizedUnitLoadTransportEquipment_Id"] = i;
+
+        //                                             xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
+
+        //                                         }
+        //                                         if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
+        //                                            + i).Length > i))
+        //                                         //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
+        //                                         {
+        //                                             DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                             drMaster["OperatingParty_Id"] = i;
+        //                                             xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                         }
+        //                                         drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + i);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_schemeAgencyID"]);
+        //                                             drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_PrimaryID_Text"]);
+        //                                         }
+        //                                     }
+        //                                 }
+        //                             }
+        //                             else
+        //                             {
+        //                                 xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
+        //                                 xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
+        //                                 xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
+        //                                 if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                 {
+        //                                     drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                     if (drs.Length > 0)
+        //                                     {
+        //                                         drs[0]["schemeAgencyID"] = "";
+        //                                         drs[0]["PrimaryID_Text"] = "";
+        //                                     }
+        //                                 }
+
+
+
+        //                             }
+
+        //                             ///House AWB s
+        //                             if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
+        //                             {
+        //                                 for (int Hawbrow = 0; Hawbrow < dsxfsuMessage.Tables[6].Rows.Count; Hawbrow++)
+        //                                 {
+        //                                     if (Hawbrow == 0)
+        //                                     {
+        //                                         xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] =
+        //                                             Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["ManifestedPCS"]);
+        //                                         xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] =
+        //                                             Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                         xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] =
+        //                                              Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"]);
+
+        //                                     }
+        //                                     if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].
+        //                                         Select("AssociatedStatusConsignment_Id=" + Hawbrow).Length > Hawbrow))
+
+        //                                     //if (!(xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Count > rowchild))
+        //                                     {
+        //                                         DataRow drBolsegment = xfsuDataSet.Tables["IncludedHouseConsignment"].NewRow();
+        //                                         drBolsegment["PieceQuantity"] = Hawbrow;
+        //                                         drBolsegment["TotalPieceQuantity"] = Hawbrow;
+        //                                         drBolsegment["TransportSplitDescription"] = Hawbrow;
+        //                                         drBolsegment["IncludedHouseConsignment_Id"] = Hawbrow;
+
+        //                                         drBolsegment["AssociatedStatusConsignment_Id"] = 0;
+
+        //                                         xfsuDataSet.Tables["IncludedHouseConsignment"].Rows.Add(drBolsegment);
+
+        //                                         //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["PieceQuantity"] =
+        //                                         //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
+        //                                         //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[Hawbrow]["TotalPieceQuantity"] =
+        //                                         //    Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                                         //xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[rowchild]["TransportSplitDescription"] =
+        //                                         //   Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBTransportSplitDescription"])
+
+        //                                         drs = xfsuDataSet.Tables["IncludedHouseConsignment"].
+        //                                              Select("IncludedHouseConsignment_Id=" + Hawbrow);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["ManifestedPCS"]);
+        //                                             drs[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBPcs"]);
+        //                                             drs[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBTransportSplitDescription"]);
+
+        //                                         }
+
+
+
+        //                                     }
+        //                                     if (xfsuDataSet.Tables.Contains("HouseGrossWeightMeasure"))
+        //                                     {
+        //                                         //if (Hawbrow == 0)
+        //                                         //{
+
+        //                                         //    //drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +Hawbrow);
+        //                                         //    drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" +rowchild);
+        //                                         //    if (drs.Length > 0)
+        //                                         //    {
+        //                                         //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                         //        drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                         //    }
+
+        //                                         //}
+        //                                         if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].
+        //                                         Select("IncludedHouseConsignment_Id=" + Hawbrow).Length > Hawbrow))
+        //                                         //if (!(xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                         {
+
+        //                                             DataRow drBolsegment = xfsuDataSet.Tables["HouseGrossWeightMeasure"].NewRow();
+        //                                             drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
+        //                                             drBolsegment["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["ManifestedWT"]); ;
+        //                                             drBolsegment["IncludedHouseConsignment_Id"] = Hawbrow;
+
+        //                                             xfsuDataSet.Tables["HouseGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                         }
+        //                                         drs = xfsuDataSet.Tables["HouseGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                             drs[0]["HouseGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                         }
+        //                                     }
+
+        //                                     if (xfsuDataSet.Tables.Contains("HouseTotalGrossWeightMeasure"))
+        //                                     {
+        //                                         //if (Hawbrow == 0)
+        //                                         //{
+
+        //                                         //    drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id="+rowchild);
+        //                                         //    if (drs.Length > 0)
+        //                                         //    {
+        //                                         //        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]);
+        //                                         //        drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
+        //                                         //    }
+
+        //                                         //}
+        //                                         if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].
+        //                                         Select("IncludedHouseConsignment_Id=" + Hawbrow).Length > Hawbrow))
+        //                                         // if (!(xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Count > rowchild))
+        //                                         {
+
+        //                                             DataRow drBolsegment = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].NewRow();
+        //                                             drBolsegment["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                             drBolsegment["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]);
+        //                                             drBolsegment["IncludedHouseConsignment_Id"] = +Hawbrow;
+
+        //                                             xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Rows.Add(drBolsegment);
+        //                                         }
+        //                                         drs = xfsuDataSet.Tables["HouseTotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["UnitofMeasurement"]); ;
+        //                                             drs[0]["HouseTotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBWt"]); ;
+        //                                         }
+        //                                     }
+
+
+        //                                     if (xfsuDataSet.Tables.Contains("HouseTransportContractDocument"))
+        //                                     {
+        //                                         if (Hawbrow == 0)
+        //                                         {
+        //                                             xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["ID"] =
+        //                                                 Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
+        //                                             xfsuDataSet.Tables["HouseTransportContractDocument"].Rows[0]["TypeCode"] =
+        //                                                 Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
+        //                                         }
+        //                                         if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id="
+        //                                             + Hawbrow).Length > Hawbrow))
+        //                                         //if (!(xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Count > rowchild))
+        //                                         {
+
+        //                                             DataRow drBolsegment = xfsuDataSet.Tables["HouseTransportContractDocument"].NewRow();
+        //                                             drBolsegment["ID"] = "";
+        //                                             drBolsegment["TypeCode"] = "";
+        //                                             drBolsegment["IncludedHouseConsignment_Id"] = +Hawbrow;
+
+        //                                             xfsuDataSet.Tables["HouseTransportContractDocument"].Rows.Add(drBolsegment);
+
+
+
+        //                                         }
+        //                                         drs = xfsuDataSet.Tables["HouseTransportContractDocument"].Select("IncludedHouseConsignment_Id=" + Hawbrow);
+        //                                         if (drs.Length > 0)
+        //                                         {
+        //                                             drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWBNo"]);
+        //                                             drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[Hawbrow]["HAWbTypeCode"]);
+        //                                         }
+        //                                     }
+
+
+        //                                 }
+        //                             }
+        //                             else
+        //                             {
+        //                                 if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                                 {
+        //                                     drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                     if (drs.Length > 0)
+        //                                     {
+        //                                         drs[0]["unitCode"] = "KGM";
+        //                                         drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "0";
+        //                                     }
+        //                                 }
+        //                                 if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                                 {
+        //                                     drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                     if (drs.Length > 0)
+        //                                     {
+        //                                         drs[0]["unitCode"] = "KGM";
+        //                                         drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "0";
+        //                                     }
+        //                                 }
+
+
+        //                                 xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
+        //                                 xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
+        //                                 xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
+
+        //                                 if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                                 {
+        //                                     drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                     if (drs.Length > 0)
+        //                                     {
+        //                                         drs[0]["ID"] = "";
+        //                                         drs[0]["TypeCode"] = "";
+        //                                     }
+        //                                 }
+        //                             }
+        //                         }
+        //                         string generatMessage = xfsuDataSet.GetXml();
+        //                         xfsuDataSet.Dispose();
+        //                         sbgenerateXFSUMessage = new StringBuilder(generatMessage);
+        //                         sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                         sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                         sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                         //Replace Nodes
+        //                         sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                         sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                         sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                         sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
+        //                         sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
+
+        //                         sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
+        //                         sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+
+        //                     }
+        //                 }
+
+        //             }
+
+        //         }
+        //         catch (Exception ex)
+        //         {
+        //             clsLog.WriteLogAzure(ex);
+        //         }
+        //         return Convert.ToString(sbgenerateXFSUMessage);
+
+
+        //     }
+        /*Not in use*/
+        //public string GenerateXFSUARRMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //  string flightNo, string flightDate, string doNumber = "", string EventDate = "1900-01-01")
+        //{
+        //    StringBuilder sbgenerateXFSUMessage = new StringBuilder();
+
+        //    try
+        //    {
+        //        DataSet dsxfsuMessage = new DataSet();
+
+
+
+
+        //        dsxfsuMessage = GetAWBRecordforGenerateXFSUMessage(AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate.ToString(), 0, 0.00);
+
+        //        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //        {
+        //            var xfsuDataSet = new DataSet();
+        //            DataRow[] drs;
+        //            var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
+        //            if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
+        //            {
+        //                string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
+        //                messageXML = ReplacingNodeNames(messageXML);
+        //                var txMessage = new StringReader(messageXML);
+        //                xfsuDataSet.ReadXml(txMessage);
+
+        //                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
+        //                {
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
+
+        //                    //SenderParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+        //                    //RecipientParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+
+        //                    //BusinessHeaderDocument
+        //                    xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+
+        //                    if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
+        //                    {
+        //                        xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
+        //                    }
+
+        //                    //MasterConsignment
+        //                    if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //                    {
+        //                        if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
+        //                            }
+        //                        }
+
+        //                        if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
+        //                                drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                            }
+        //                        }
+
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+
+        //                        // AWBNumber Section
+        //                        if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
+        //                                drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
+        //                            }
+        //                        }
+
+        //                        // AWBNumber Origin Section
+        //                        if (xfsuDataSet.Tables.Contains("OriginLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                            }
+        //                        }
+
+        //                        //AWBNumber Destination Section
+        //                        if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
+        //                            }
+        //                        }
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
+        //                        {//LOOP
+        //                            //AWBRouter Information
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
+
+        //                        }
+
+
+        //                        //AWBStatus Code
+        //                        xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
+
+
+        //                        if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
+        //                            {
+        //                                drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
+        //                                    drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["arrivedwt"]);
+        //                                }
+        //                            }
+        //                            else
+        //                            {
+        //                                drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
+        //                                    drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
+        //                                }
+        //                            }
+        //                        }
+
+        //                        if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
+        //                                drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
+        //                            }
+        //                        }
+
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+
+        //                        if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
+        //                        {
+        //                            xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] =
+        //                                Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["arrivedpcs"]);
+
+
+        //                        }
+        //                        else
+        //                        {
+        //                            xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
+
+        //                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
+
+        //                            xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
+
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
+
+
+        //                            xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
+
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
+
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
+
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+        //                                }
+        //                            }
+
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
+
+        //                            //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+
+        //                        }
+
+        //                        xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+        //                        xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
+
+
+
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
+
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+
+
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+        //                        }
+
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
+        //                        {
+        //                            if (Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]) == "ARR")
+        //                            {
+        //                                for (int i = 0; i < dsxfsuMessage.Tables[5].Rows.Count; i++)
+        //                                {
+        //                                    if (i == 0)
+        //                                    {
+        //                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+        //                                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                        {
+        //                                            drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                            if (drs.Length > 0)
+        //                                            {
+        //                                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                    if (!(xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Select("UtilizedUnitLoadTransportEquipment_Id=" + i).Length > i))
+
+
+        //                                    {
+        //                                        DataRow drBolsegment = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].NewRow();
+        //                                        drBolsegment["ID"] = i;
+        //                                        drBolsegment["CharacteristicCode"] = i;
+        //                                        drBolsegment["OperationalStatusCode"] = i;
+
+        //                                        drBolsegment["UtilizedUnitLoadTransportEquipment_Id"] = i;
+
+        //                                        drBolsegment["AssociatedStatusConsignment_Id"] = 0;
+
+        //                                        xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Add(drBolsegment);
+
+        //                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["ID"] =
+        //                                        //    Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDNumber"]);
+        //                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["CharacteristicCode"] =
+        //                                        //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDType"]);
+        //                                        //xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[uldrow]["OperationalStatusCode"] =
+        //                                        //   Convert.ToString(dsxfsuMessage.Tables[5].Rows[uldrow]["ULDHeightIndicator"]);
+        //                                        drs = xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].
+        //                                            Select("UtilizedUnitLoadTransportEquipment_Id=" + i);
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDNumber"]);
+        //                                            drs[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDType"]);
+        //                                            drs[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["ULDHeightIndicator"]);
+
+        //                                        }
+
+
+        //                                    }
+        //                                    if (xfsuDataSet.Tables.Contains("OperatingParty"))
+        //                                    {
+        //                                        //if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                        //{
+        //                                        //    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                        //    if (drs.Length > 0)
+        //                                        //    {
+        //                                        //        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                        //        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                        //    }
+        //                                        //}
+        //                                        if (!(xfsuDataSet.Tables["OperatingParty"].Select("UtilizedUnitLoadTransportEquipment_Id="
+        //                                            + i).Length > i))
+
+        //                                        // if (!(xfsuDataSet.Tables["OperatingParty"].Rows.Count > uldrow))
+        //                                        {
+        //                                            DataRow drMaster = xfsuDataSet.Tables["OperatingParty"].NewRow();
+        //                                            drMaster["OperatingParty_Id"] = i;
+        //                                            drMaster["UtilizedUnitLoadTransportEquipment_Id"] = i;
+
+        //                                            xfsuDataSet.Tables["OperatingParty"].Rows.Add(drMaster);
+
+        //                                        }
+        //                                        if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id="
+        //                                           + i).Length > i))
+        //                                        //if (!(xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0").Length > uldrow))
+        //                                        {
+        //                                            DataRow drMaster = xfsuDataSet.Tables["PrimaryID"].NewRow();
+        //                                            drMaster["OperatingParty_Id"] = i;
+        //                                            xfsuDataSet.Tables["PrimaryID"].Rows.Add(drMaster);
+
+        //                                        }
+        //                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=" + i);
+        //                                        if (drs.Length > 0)
+        //                                        {
+        //                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_schemeAgencyID"]);
+        //                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[i]["OperatingParty_PrimaryID_Text"]);
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+        //                            else
+        //                            {
+        //                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                                xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+        //                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                                {
+        //                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                    if (drs.Length > 0)
+        //                                    {
+        //                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                    }
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = "";
+        //                                    drs[0]["PrimaryID_Text"] = "";
+        //                                }
+        //                            }
+        //                        }
+
+        //                        ///House AWB s
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
+        //                                }
+        //                            }
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
+        //                                    drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = "";
+        //                                    drs[0]["TypeCode"] = "";
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                    string generatMessage = xfsuDataSet.GetXml();
+        //                    xfsuDataSet.Dispose();
+        //                    sbgenerateXFSUMessage = new StringBuilder(generatMessage);
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                    //Replace Nodes
+        //                    sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
+
+        //                    sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
+        //                    sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+
+        //                }
+        //            }
+        //            else
+        //            {
+        //                sbgenerateXFSUMessage.Append("No Message format available in the system.");
+        //            }
+        //        }
+        //        else
+        //        {
+        //            sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+
+
+        //    return Convert.ToString(sbgenerateXFSUMessage);
+
+
+        //}
         /// <summary>
         /// 
         /// </summary>
@@ -3928,418 +3953,432 @@ namespace QidWorkerRole
         /// <param name="EventStatus"></param>
         /// <returns></returns>
         /// 
-        public string GenerateXFSUDLVMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-        string doNumber, string flightNo, string flightDate, int DLVpcs, double DLVWt, string EventDate = "1900-01-01")
-        {
-            StringBuilder sbgenerateXFSUMessage = new StringBuilder();
+
+        /*Not in user*/
+        //public string GenerateXFSUDLVMessageofTheAWB(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //string doNumber, string flightNo, string flightDate, int DLVpcs, double DLVWt, string EventDate = "1900-01-01")
+        //{
+        //    StringBuilder sbgenerateXFSUMessage = new StringBuilder();
 
 
-            try
-            {
-                DataSet dsxfsuMessage = new DataSet();
-                dsxfsuMessage = GetAWBRecordforGenerateXFSUMDLVessage(AWBPrefix, AWBNumber, orgDest, messageType,
-                    doNumber, flightNo, flightDate, DLVpcs, DLVWt);
+        //    try
+        //    {
+        //        DataSet dsxfsuMessage = new DataSet();
+        //        dsxfsuMessage = GetAWBRecordforGenerateXFSUMDLVessage(AWBPrefix, AWBNumber, orgDest, messageType,
+        //            doNumber, flightNo, flightDate, DLVpcs, DLVWt);
 
-                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                {
-                    var xfsuDataSet = new DataSet();
-                    DataRow[] drs;
-                    var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
-                    if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
-                    {
-                        string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
-                        messageXML = ReplacingNodeNames(messageXML);
-                        var txMessage = new StringReader(messageXML);
-                        xfsuDataSet.ReadXml(txMessage);
+        //        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //        {
+        //            var xfsuDataSet = new DataSet();
+        //            DataRow[] drs;
+        //            var xmlSchema = genericFunction.GetXMLMessageData("XFSU");
+        //            if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
+        //            {
+        //                string messageXML = xmlSchema.Tables[0].Rows[0]["XMLMessageData"].ToString();
+        //                messageXML = ReplacingNodeNames(messageXML);
+        //                var txMessage = new StringReader(messageXML);
+        //                xfsuDataSet.ReadXml(txMessage);
 
-                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
-                        {
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ReferenceNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
-                            xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
+        //                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 0 && dsxfsuMessage.Tables[0].Rows.Count > 0)
+        //                {
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ReferenceNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageName"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageTypeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["MessageCreatedDate"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["PurposeCode"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["VersionNumber"]);
+        //                    xfsuDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["ConversionID"]);
 
-                            //SenderParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
-                                }
-                            }
-                            //RecipientParty
-                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                            {
-                                drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                                if (drs.Length > 0)
-                                {
-                                    drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
-                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
-                                }
-                            }
+        //                    //SenderParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                        }
+        //                    }
+        //                    //RecipientParty
+        //                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                    {
+        //                        drs = xfsuDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                        if (drs.Length > 0)
+        //                        {
+        //                            drs[0]["schemeID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryID"]);
+        //                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                        }
+        //                    }
 
-                            //BusinessHeaderDocument
-                            xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
+        //                    //BusinessHeaderDocument
+        //                    xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["NoofStatusUpdate"]);
 
-                            if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
-                            {
-                                xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
-                            }
+        //                    if (xfsuDataSet.Tables["BusinessHeaderDocument"].Columns.Contains("Reference"))
+        //                    {
+        //                        xfsuDataSet.Tables["BusinessHeaderDocument"].Rows[0]["Reference"] = Convert.ToString(dsxfsuMessage.Tables[0].Rows[0]["Reference"]);
+        //                    }
 
-                            //MasterConsignment
-                            if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
-                            {
-                                if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
-                                        drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
-                                    }
-                                }
+        //                    //MasterConsignment
+        //                    if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 1 && dsxfsuMessage.Tables[1].Rows.Count > 0)
+        //                    {
+        //                        if (xfsuDataSet.Tables.Contains("MasterConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["MasterConsignment_GrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedUOM"]);
+        //                                drs[0]["MasterConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedWeight"]);
+        //                            }
+        //                        }
 
-                                if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
-                                        drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
-                                    }
-                                }
+        //                        if (xfsuDataSet.Tables.Contains("TotalGrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TotalGrossWeightMeasure"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBUnitGrossWeight"]);
+        //                                drs[0]["TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBGrossWeight"]);
+        //                            }
+        //                        }
 
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
-                                xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AcceptedPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBPieces"]);
+        //                        xfsuDataSet.Tables["MasterConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
 
-                                // AWBNumber Section
-                                if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
-                                {
-                                    drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
-                                        drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
-                                    }
-                                }
+        //                        // AWBNumber Section
+        //                        if (xfsuDataSet.Tables.Contains("TransportContractDocument"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["TransportContractDocument"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBNumber"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AirwayBillDocumentName"]);
+        //                                drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDocumentTypeCode"]);
+        //                            }
+        //                        }
 
-                                // AWBNumber Origin Section
-                                if (xfsuDataSet.Tables.Contains("OriginLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
-                                    }
-                                }
+        //                        // AWBNumber Origin Section
+        //                        if (xfsuDataSet.Tables.Contains("OriginLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["OriginLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBOrigin"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["OriginAirportName"]);
+        //                            }
+        //                        }
 
-                                //AWBNumber Destination Section
-                                if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
-                                {
-                                    drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
-                                        drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
-                                    }
-                                }
+        //                        //AWBNumber Destination Section
+        //                        if (xfsuDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["FinalDestinationLocation"].Select("MasterConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWbDestination"]);
+        //                                drs[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DestinationAirportName"]);
+        //                            }
+        //                        }
 
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
-                                {//LOOP
-                                    //AWBRouter Information
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
-                                    xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 3 && dsxfsuMessage.Tables[3].Rows.Count > 0)
+        //                        {//LOOP
+        //                            //AWBRouter Information
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                            xfsuDataSet.Tables["RoutingLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[3].Rows[0]["AirportName"]);
 
-                                }
-
-
-                                //AWBStatus Code
-                                xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
+        //                        }
 
 
-                                if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
-                                        drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
-                                    }
-                                }
-
-                                if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
-                                {
-                                    drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
-                                        drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
-                                    }
-                                }
-
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
-                                xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
-
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
-
-                                    xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
-
-                                    xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-
-                                    xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
+        //                        //AWBStatus Code
+        //                        xfsuDataSet.Tables["ReportedStatus"].Rows[0]["ReasonCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["MessageCode"]);
 
 
-                                    xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
+        //                        if (xfsuDataSet.Tables.Contains("AssociatedStatusConsignment_GrossWeightMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["AssociatedStatusConsignment_GrossWeightMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredUOM"]);
+        //                                drs[0]["AssociatedStatusConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredWeight"]);
+        //                            }
+        //                        }
 
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
-                                    xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
+        //                        if (xfsuDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["GrossVolumeMeasure"].Select("AssociatedStatusConsignment_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["UnitCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolumeMeasue"]);
+        //                                drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBVolume"]);
+        //                            }
+        //                        }
 
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
-                                    xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DensityCode"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["DeliveredPieces"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["PartConsignment"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["DiscrepancyDescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AWBDiscrepancyCode"]);
+        //                        xfsuDataSet.Tables["AssociatedStatusConsignment"].Rows[0]["StatusDescription"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["StatusDescription"]);
 
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
-                                        }
-                                    }
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 2 && dsxfsuMessage.Tables[2].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["AssociatedManifestDocument"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ManifestNumber"]);
 
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
-                                    xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
+        //                            xfsuDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ProductType"]);
 
-                                    //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
-                                    xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+        //                            xfsuDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightNumber"]);
 
-                                }
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
 
-                                xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
-                                xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
-
-
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
-
-                                if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                {
-                                    drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
-                                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
-                                    }
-                                }
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
-                                xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
+        //                            xfsuDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Type"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["AirCraftTypeMaster"]);
 
 
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
-                                xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
+        //                            xfsuDataSet.Tables["ScheduledArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleArrivlaTime"]);
 
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
-                                    xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
-                                    xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
-                                }
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightArriveTime"]);
+        //                            xfsuDataSet.Tables["ArrivalEvent"].Rows[0]["ArrivalDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["ScheduleArrivalIndicator"]);
 
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
-                                    xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
-                                    if (xfsuDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = "";
-                                            drs[0]["PrimaryID_Text"] = "";
-                                        }
-                                    }
-                                }
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureOccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightScheduleDepartureTime"]);
+        //                            xfsuDataSet.Tables["DepartureEvent"].Rows[0]["DepartureDateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["EstimatedDepTime"]);
 
-                                ///House AWB s
-                                if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
-                                        }
-                                    }
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("CarrierParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierCode"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["CarrierName"]);
+        //                                }
+        //                            }
 
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightDestlocation"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightLocationAirportName"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["LocationType"]);
+        //                            xfsuDataSet.Tables["SpecifiedLocation"].Rows[0]["FlightStatusTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["FlightStatusTypeCode"]);
 
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
-                                            drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["unitCode"] = "";
-                                            drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
-                                        }
-                                    }
+        //                            //xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["SpecifiedEvent"]);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["OccurrenceDateTime"] = Convert.ToString(EventDate);
+        //                            xfsuDataSet.Tables["SpecifiedEvent"].Rows[0]["DateTimeTypeCode"] = Convert.ToString(dsxfsuMessage.Tables[2].Rows[0]["DateTimeTypeCode"]);
+
+        //                        }
+
+        //                        xfsuDataSet.Tables["NotifiedParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["NotifyName"]);
+        //                        xfsuDataSet.Tables["DeliveryParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["ConsigneeName"]);
 
 
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
-                                    xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
 
-                                    if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
-                                    {
-                                        drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["ID"] = "";
-                                            drs[0]["TypeCode"] = "";
-                                        }
-                                    }
-                                }
-                            }
-                            string generatMessage = xfsuDataSet.GetXml();
-                            xfsuDataSet.Dispose();
-                            sbgenerateXFSUMessage = new StringBuilder(generatMessage);
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                            sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                            sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedReceivedFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssociatedReceivedAirlineName"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedReceivedFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssRecFromParty_Role"]);
 
-                            //Replace Nodes
-                            sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
-                            sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
-                            sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
-
-                            sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
-                            sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-
-                        }
-                    }
-                    //else
-                    //{
-                    //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
-                    //}
-                }
+        //                        if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                        {
+        //                            drs = xfsuDataSet.Tables["PrimaryID"].Select("AssociatedTransferredFromParty_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_schemeAgencyID"]);
+        //                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_PrimaryID_Text"]);
+        //                            }
+        //                        }
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Name"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Name"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["RoleCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_RoleCode"]);
+        //                        xfsuDataSet.Tables["AssociatedTransferredFromParty"].Rows[0]["Role"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["AssTransferFromParty_Role"]);
 
 
-                //else
-                //{
-                //    sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
-                //}
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["HandlingInfo"]);
+        //                        xfsuDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsxfsuMessage.Tables[1].Rows[0]["SHCCodes"]);
 
-            return sbgenerateXFSUMessage.ToString();
-        }
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 4 && dsxfsuMessage.Tables[4].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["ContentCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["Content"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["SubjectCode"]);
+        //                            xfsuDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["CountryID"]);
+        //                            xfsuDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[4].Rows[0]["GoodsStatusCode"]);
+        //                        }
 
-        public DataSet GetAWBRecordforGenerateXFSUMessage(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 5 && dsxfsuMessage.Tables[5].Rows.Count > 0)
+        //                        {
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDNumber"]);
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDType"]);
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["ULDHeightIndicator"]);
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_schemeAgencyID"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsxfsuMessage.Tables[5].Rows[0]["OperatingParty_PrimaryID_Text"]);
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["ID"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = "";
+        //                            xfsuDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[0]["OperationalStatusCode"] = "";
+        //                            if (xfsuDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = "";
+        //                                    drs[0]["PrimaryID_Text"] = "";
+        //                                }
+        //                            }
+        //                        }
+
+        //                        ///House AWB s
+        //                        if (dsxfsuMessage != null && dsxfsuMessage.Tables != null && dsxfsuMessage.Tables.Count > 6 && dsxfsuMessage.Tables[6].Rows.Count > 0)
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["UnitofMeasurement"]);
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBWt"]);
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AcceptedUOM"]);
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["GrossWeight"]);
+        //                                }
+        //                            }
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBPcs"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["AWBPieces"]);
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["PiecesIndicator"]);
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWBNo"]);
+        //                                    drs[0]["TypeCode"] = Convert.ToString(dsxfsuMessage.Tables[6].Rows[0]["HAWbTypeCode"]);
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_GrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_GrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TotalGrossWeightMeasure"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TotalGrossWeightMeasure"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["unitCode"] = "";
+        //                                    drs[0]["IncludedHouseConsignment_TotalGrossWeightMeasure_Text"] = "";
+        //                                }
+        //                            }
+
+
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["PieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TotalPieceQuantity"] = "";
+        //                            xfsuDataSet.Tables["IncludedHouseConsignment"].Rows[0]["TransportSplitDescription"] = "";
+
+        //                            if (xfsuDataSet.Tables.Contains("IncludedHouseConsignment_TransportContractDocument"))
+        //                            {
+        //                                drs = xfsuDataSet.Tables["IncludedHouseConsignment_TransportContractDocument"].Select("IncludedHouseConsignment_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["ID"] = "";
+        //                                    drs[0]["TypeCode"] = "";
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                    string generatMessage = xfsuDataSet.GetXml();
+        //                    xfsuDataSet.Dispose();
+        //                    sbgenerateXFSUMessage = new StringBuilder(generatMessage);
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                    sbgenerateXFSUMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                    //Replace Nodes
+        //                    sbgenerateXFSUMessage.Replace("ram:MasterConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TransportContractDocument", "ram:TransportContractDocument");
+        //                    sbgenerateXFSUMessage.Replace("ram:IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:TotalGrossWeightMeasure");
+        //                    sbgenerateXFSUMessage.Replace("ram:AssociatedStatusConsignment_GrossWeightMeasure", "ram:GrossWeightMeasure");
+
+        //                    sbgenerateXFSUMessage.Insert(18, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:ccts=\"urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:8\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:statusmessage:1 StatusMessage_1.xsd\"");
+        //                    sbgenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+
+        //                }
+        //            }
+        //            //else
+        //            //{
+        //            //    sbgenerateXFSUMessage.Append("No Message format available in the system.");
+        //            //}
+        //        }
+
+
+        //        //else
+        //        //{
+        //        //    sbgenerateXFSUMessage.Append("No Data available in the system to generate message.");
+        //        //}
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+
+        //    return sbgenerateXFSUMessage.ToString();
+        //}
+
+        public async Task<DataSet> GetAWBRecordforGenerateXFSUMessage(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
     string doNumber, string flightNo, string flightDate, int DLVpcs, double DLVWt)
         {
-            DataSet dsmessage = new DataSet();
+            DataSet? dsmessage = new DataSet();
             try
             {
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "OrgDest", "MessageType", "DoNumber", "FlightNo", "FlightDate", "PC", "WT" };
-                object[] paramvalue = new object[] { AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                    SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime , SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Int, SqlDbType.Decimal};
-                dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateXFSUMessage", paramname, paramvalue, paramtype);
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "OrgDest", "MessageType", "DoNumber", "FlightNo", "FlightDate", "PC", "WT" };
+                //object[] paramvalue = new object[] { AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                //    SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime , SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Int, SqlDbType.Decimal};
+                SqlParameter[] sqlParameters = new SqlParameter[] {
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = AWBNumber },
+                    new SqlParameter("@OrgDest", SqlDbType.VarChar) { Value = orgDest },
+                    new SqlParameter("@MessageType", SqlDbType.VarChar) { Value = messageType },
+                    new SqlParameter("@DoNumber", SqlDbType.VarChar) { Value = doNumber },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = flightNo },
+                    new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightDate },
+                    new SqlParameter("@PC", SqlDbType.Int) { Value = DLVpcs },
+                    new SqlParameter("@WT", SqlDbType.Decimal) { Value = DLVWt }
+                };
+                //dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateXFSUMessage", paramname, paramvalue, paramtype);
+                dsmessage = await _readWriteDao.SelectRecords("uspGetAWBRecordToGenerateXFSUMessage", sqlParameters);
             }
             catch (Exception ex)
             {
@@ -4349,42 +4388,45 @@ namespace QidWorkerRole
             return dsmessage;
         }
 
-        public DataSet GetAWBRecordforGenerateXFSUMDLVessage(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
-            string doNumber, string flightNo, string flightDate, int DLVpcs, double DLVWt)
+        /*Not in use*/
+        //public DataSet GetAWBRecordforGenerateXFSUMDLVessage(string AWBPrefix, string AWBNumber, string orgDest, string messageType,
+        //    string doNumber, string flightNo, string flightDate, int DLVpcs, double DLVWt)
+        //{
+        //    DataSet dsmessage = new DataSet();
+        //    try
+        //    {
+        //        SQLServer da = new SQLServer();
+        //        string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "OrgDest", "MessageType", "DoNumber", "FlightNo", "FlightDate", "PC", "WT" };
+        //        object[] paramvalue = new object[] { AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt };
+        //        SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+        //            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime , SqlDbType.Int, SqlDbType.Decimal};
+        //        dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateAutoXFSUDLVMessage", paramname, paramvalue, paramtype);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        dsmessage = null;
+        //    }
+        //    return dsmessage;
+        //}
+        public async Task<DataSet> GetAWBDetailstoGenerateXFSUMessage(string AWBPrefix, string AWBNumber, string EventStatus)
         {
-            DataSet dsmessage = new DataSet();
-            try
-            {
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "OrgDest", "MessageType", "DoNumber", "FlightNo", "FlightDate", "PC", "WT" };
-                object[] paramvalue = new object[] { AWBPrefix, AWBNumber, orgDest, messageType, doNumber, flightNo, flightDate, DLVpcs, DLVWt };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                    SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime , SqlDbType.Int, SqlDbType.Decimal};
-                dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateAutoXFSUDLVMessage", paramname, paramvalue, paramtype);
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                dsmessage = null;
-            }
-            return dsmessage;
-        }
-        public DataSet GetAWBDetailstoGenerateXFSUMessage(string AWBPrefix, string AWBNumber, string EventStatus)
-        {
-            DataSet dsmessage = new DataSet();
+            DataSet? dsmessage = new DataSet();
             try
             {
                 //string strConnectionString = Global.GetConnectionString();
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "EventStatus" };
-                object[] paramvalue = new object[] { AWBPrefix, AWBNumber, EventStatus };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateAutoSendXFSUMessage", paramname, paramvalue, paramtype);
-
-
-
-
-
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "EventStatus" };
+                //object[] paramvalue = new object[] { AWBPrefix, AWBNumber, EventStatus };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                
+                SqlParameter[] sqlParameters = new SqlParameter[] { 
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = AWBNumber },
+                    new SqlParameter("@EventStatus", SqlDbType.VarChar) { Value = EventStatus }
+                };
+                //dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateAutoSendXFSUMessage", paramname, paramvalue, paramtype);
+                dsmessage = await _readWriteDao.SelectRecords( "uspGetAWBRecordToGenerateAutoSendXFSUMessage", sqlParameters);
             }
             catch (Exception ex)
             {
@@ -4747,8 +4789,9 @@ namespace QidWorkerRole
                                     if (recdata.pcsindicator.Trim().ToUpper() == "P")
                                     {
                                         flag = false;
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                        //GenericFunction genericFunction = new GenericFunction();
+
+                                        _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
                                     }
                                 }
                                 if (fsaXmlDataSet.Tables["AssociatedStatusConsignment"].Columns.Contains("PieceQuantity"))
@@ -6755,36 +6798,46 @@ namespace QidWorkerRole
         //    return flag;
         //} 
         #endregion
-        public bool SaveandUpdateXFSUMessage(string strMsg, ref MessageData.FSAInfo fsadata, ref MessageData.CommonStruct[] fsanodes,
-            ref MessageData.customsextrainfo[] customextrainfo, ref MessageData.ULDinfo[] ulddata, ref MessageData.otherserviceinfo[] othinfoarray,
-            int refNo, string strMessage, string strMessageFrom, string strFromID, string strStatus, out string ErrorMsg)
+        public async Task<(bool,  MessageData.FSAInfo fsadata,  MessageData.CommonStruct[] fsanodes,
+             MessageData.customsextrainfo[] customextrainfo,  MessageData.ULDinfo[] ulddata,  MessageData.otherserviceinfo[] othinfoarray, string ErrorMsg)> SaveandUpdateXFSUMessage(string strMsg, MessageData.FSAInfo fsadata,  MessageData.CommonStruct[] fsanodes,
+             MessageData.customsextrainfo[] customextrainfo,  MessageData.ULDinfo[] ulddata, MessageData.otherserviceinfo[] othinfoarray,
+            int refNo, string strMessage, string strMessageFrom, string strFromID, string strStatus, string ErrorMsg)
         {
-            SQLServer dtb = new SQLServer();
-
+            //SQLServer dtb = new SQLServer();
+            
             bool flag = false;
             string strFSUBooking = string.Empty;
-            Cls_BL objBL = new Cls_BL();
+            //Cls_BL objBL = new Cls_BL();
             bool isAWBPresent = false;
             try
             {
                 string awbnum = string.Empty, awbprefix = string.Empty;
                 string MessagePrefix = fsanodes.Length > 0 && fsanodes[0].messageprefix.Length > 0 ? "xFSU/" + fsanodes[0].messageprefix.ToUpper() : "xFSU";
-                GenericFunction genericfunction = new GenericFunction();
+                //GenericFunction genericfunction = new GenericFunction();
                 //genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, 
                 //    string.Empty, string.Empty, string.Empty, MessagePrefix, "xFSU", DateTime.Parse("1900-01-01"));
-                genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum,
+                
+                _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum,
                     fsanodes[0].flightnum, string.Empty, string.Empty, MessagePrefix, strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
 
 
                 #region Check AWB is present or not
 
-                DataSet dsCheck = new DataSet();
-                dtb = new SQLServer();
-                string[] parametername = new string[] { "AWBNumber", "AWBPrefix", "refNo" };
-                object[] AWBvalues = new object[] { fsadata.awbnum, fsadata.airlineprefix, refNo };
+                DataSet? dsCheck = new DataSet();
+                //dtb = new SQLServer();
+                //string[] parametername = new string[] { "AWBNumber", "AWBPrefix", "refNo" };
+                //object[] AWBvalues = new object[] { fsadata.awbnum, fsadata.airlineprefix, refNo };
 
-                SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-                dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
+
+                SqlParameter[] sqlParameters = new SqlParameter[] { 
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
+                    new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo }
+
+                };
+                //dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters);
                 if (dsCheck != null)
                 {
                     if (dsCheck.Tables.Count > 0)
@@ -6876,13 +6929,35 @@ namespace QidWorkerRole
                                 SqlDbType.DateTime,
                                 SqlDbType.VarChar
                             };
-                            if (dtb.InsertData("SpSaveFSUAWBDiscrepancy", sqlParameterName, sqlParameter, sqlParameterValue))
+                            SqlParameter[] parameters = new SqlParameter[]
+                            {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = fsadata.airlineprefix },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)   { Value = fsadata.awbnum },
+                                new SqlParameter("@AWBOrigin", SqlDbType.VarChar)   { Value = fsadata.origin },
+                                new SqlParameter("@AWBDestination", SqlDbType.VarChar) { Value = fsadata.dest },
+                                new SqlParameter("@AWBPieces", SqlDbType.Int)       { Value = int.Parse(string.IsNullOrEmpty(fsadata.pcscnt) ? "0" : fsadata.pcscnt) },
+                                new SqlParameter("@AWBGrossWeight", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsadata.weight) ? "0" : fsadata.weight) },
+                                new SqlParameter("@FlightNumber", SqlDbType.VarChar) { Value = fsanodes[i].flightnum },
+                                new SqlParameter("@DiscrepancyDate", SqlDbType.DateTime) { Value = strDiscrepancyDate },
+                                new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = fsanodes[0].fltorg },
+                                new SqlParameter("@DiscrepancyCode", SqlDbType.VarChar) { Value = fsanodes[0].infocode },
+                                new SqlParameter("@DiscrepancyPcsCode", SqlDbType.VarChar) { Value = fsanodes[i].pcsindicator },
+                                new SqlParameter("@DiscrepancyPcs", SqlDbType.Int)   { Value = int.Parse(string.IsNullOrEmpty(fsanodes[i].numofpcs) ? "0" : fsanodes[i].numofpcs) },
+                                new SqlParameter("@UOM", SqlDbType.VarChar)         { Value = fsanodes[i].weightcode },
+                                new SqlParameter("@Discrepancyweight", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsanodes[i].weight) ? "0" : fsanodes[i].weight) },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)    { Value = "FSU" },
+                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime)   { Value = DateTime.Now },
+                                new SqlParameter("@OtherServiceInformation", SqlDbType.VarChar ){Value = "" }
+                            };
+                            //if (dtb.InsertData("SpSaveFSUAWBDiscrepancy", sqlParameterName, sqlParameter, sqlParameterValue))
+                            if (await _readWriteDao.ExecuteNonQueryAsync("SpSaveFSUAWBDiscrepancy", parameters))
                                 flag = true;
                             else
                             {
                                 flag = false;
                                 ErrorMsg = "Error while saving Data";
-                                return flag;
+                                //return flag;
+                                return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                             }
                         }
                     }
@@ -6897,7 +6972,8 @@ namespace QidWorkerRole
                     if (!isAWBPresent)
                     {
                         ErrorMsg = "AWB is not present";
-                        return false;
+                        //return false;
+                        return (false, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                     }
                     if (fsanodes.Length > 0)
                     {
@@ -6909,68 +6985,94 @@ namespace QidWorkerRole
                                 string strdate = (fsanodes[i].fltday);
                                 DeliveryDate = DateTime.Parse(strdate);
                             }
-                            string[] sqlParameterName = new string[]
+                            //string[] sqlParameterName = new string[]
+                            //{
+                            //    "AWBPrefix",
+                            //    "AWBNo",
+                            //    "Origin",
+                            //    "Destination",
+                            //    "AWbPcs",
+                            //    "AWbGrossWt" ,
+                            //    "PieceCode",
+                            //    "Deliverypcs",
+                            //    "WeightCode",
+                            //    "DeliveryGross",
+                            //    "FlightDestination ",
+                            //    "Dname",
+                            //    "Deliverydate",
+                            //    "UpdatedBy",
+                            //    "updatedon",
+                            //    "Inboxsrno"
+
+                            //};
+                            //object[] sqlParameterValue = new object[]
+                            //{
+                            //    fsadata.airlineprefix,
+                            //    fsadata.awbnum,
+                            //    fsadata.origin,
+                            //    fsadata.dest,
+                            //    int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                            //    decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                            //    fsanodes[i].pcsindicator,
+                            //    int.Parse(fsanodes[i].numofpcs==""?fsadata.pcscnt==""?"0":fsadata.pcscnt:fsanodes[i].numofpcs),
+                            //    fsanodes[i].weightcode,
+                            //    //fsanodes[i].weight,
+                            //    //decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                            //    decimal.Parse(fsanodes[i].weight==""?fsadata.weight==""?"0":fsadata.weight:fsanodes[i].weight),
+                            //    fsanodes[0].fltdest== "" ?fsadata.dest:fsanodes[0].fltdest,
+                            //    fsanodes[0].name,
+                            //    DeliveryDate,
+                            //    "XFSU-DLV",
+                            //    fsanodes[i].updatedonday!="" ? fsanodes[i].updatedonday + " " + fsanodes[i].updatedontime : fsanodes[i].fltday +" "+ fsanodes[i].flttime,
+                            //    refNo,
+                            //};
+                            //SqlDbType[] sqlParameter = new SqlDbType[] {
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.Int,
+                            //    SqlDbType.Decimal,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.Int,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.Decimal,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.DateTime,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.VarChar,
+                            //    SqlDbType.Int,
+
+                            //};
+                            SqlParameter[] parameters = new SqlParameter[]
                             {
-                                "AWBPrefix",
-                                "AWBNo",
-                                "Origin",
-                                "Destination",
-                                "AWbPcs",
-                                "AWbGrossWt" ,
-                                "PieceCode",
-                                "Deliverypcs",
-                                "WeightCode",
-                                "DeliveryGross",
-                                "FlightDestination ",
-                                "Dname",
-                                "Deliverydate",
-                                "UpdatedBy",
-                                "updatedon",
-                                "Inboxsrno"
-
-                            };
-                            object[] sqlParameterValue = new object[]
-                            {
-                                fsadata.airlineprefix,
-                                fsadata.awbnum,
-                                fsadata.origin,
-                                fsadata.dest,
-                                int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                fsanodes[i].pcsindicator,
-                                int.Parse(fsanodes[i].numofpcs==""?fsadata.pcscnt==""?"0":fsadata.pcscnt:fsanodes[i].numofpcs),
-                                fsanodes[i].weightcode,
-                                //fsanodes[i].weight,
-                                //decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                decimal.Parse(fsanodes[i].weight==""?fsadata.weight==""?"0":fsadata.weight:fsanodes[i].weight),
-                                fsanodes[0].fltdest== "" ?fsadata.dest:fsanodes[0].fltdest,
-                                fsanodes[0].name,
-                                DeliveryDate,
-                                "XFSU-DLV",
-                                fsanodes[i].updatedonday!="" ? fsanodes[i].updatedonday + " " + fsanodes[i].updatedontime : fsanodes[i].fltday +" "+ fsanodes[i].flttime,
-                                refNo,
-                            };
-                            SqlDbType[] sqlParameter = new SqlDbType[] {
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = fsadata.airlineprefix },
+                                new SqlParameter("@AWBNo", SqlDbType.VarChar)       { Value = fsadata.awbnum },
+                                new SqlParameter("@Origin", SqlDbType.VarChar)      { Value = fsadata.origin },
+                                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
+                                new SqlParameter("@AWbPcs", SqlDbType.Int)          { Value = int.Parse(string.IsNullOrEmpty(fsadata.pcscnt) ? "0" : fsadata.pcscnt) },
+                                new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)  { Value = decimal.Parse(string.IsNullOrEmpty(fsadata.weight) ? "0" : fsadata.weight) },
+                                new SqlParameter("@PieceCode", SqlDbType.VarChar)   { Value = fsanodes[i].pcsindicator },
+                                new SqlParameter("@Deliverypcs", SqlDbType.Int)     { Value = int.Parse(string.IsNullOrEmpty(fsanodes[i].numofpcs)
+                                                                                                ? (string.IsNullOrEmpty(fsadata.pcscnt) ? "0" : fsadata.pcscnt)
+                                                                                                : fsanodes[i].numofpcs) },
+                                new SqlParameter("@WeightCode", SqlDbType.VarChar)  { Value = fsanodes[i].weightcode },
+                                new SqlParameter("@DeliveryGross", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsanodes[i].weight)
+                                                                                                ? (string.IsNullOrEmpty(fsadata.weight) ? "0" : fsadata.weight)
+                                                                                                : fsanodes[i].weight) },
+                                new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = string.IsNullOrEmpty(fsanodes[0].fltdest) ? fsadata.dest : fsanodes[0].fltdest },
+                                new SqlParameter("@Dname", SqlDbType.VarChar)        { Value = fsanodes[0].name },
+                                new SqlParameter("@Deliverydate", SqlDbType.DateTime){ Value = DeliveryDate },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)    { Value = "XFSU-DLV" },
+                                new SqlParameter("@updatedon", SqlDbType.VarChar)    { Value = !string.IsNullOrEmpty(fsanodes[i].updatedonday)
+                                                                                        ? fsanodes[i].updatedonday + " " + fsanodes[i].updatedontime
+                                                                                        : fsanodes[i].fltday + " " + fsanodes[i].flttime },
+                                new SqlParameter("@Inboxsrno", SqlDbType.Int)        { Value = refNo },
                             };
 
-                            DataSet dsdata = dtb.SelectRecords("Messaging.uspMakeAWBDeliveryorderofXFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
+                            //DataSet dsdata = dtb.SelectRecords("Messaging.uspMakeAWBDeliveryorderofXFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
+                            DataSet? dsdata = await _readWriteDao.SelectRecords("Messaging.uspMakeAWBDeliveryorderofXFSUMessage", parameters);
 
                             if (dsdata != null)
                             {
@@ -6980,7 +7082,9 @@ namespace QidWorkerRole
                                     {
                                         flag = false;
                                         ErrorMsg = dsdata.Tables[0].Rows[0]["Errormessage"].ToString();
-                                        return flag;
+                                        //return flag;
+                                        return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
+
                                     }
                                     else
                                     {
@@ -6988,7 +7092,8 @@ namespace QidWorkerRole
                                         {
                                             flag = true;
                                             ErrorMsg = "";
-                                            return flag;
+                                            //return flag;
+                                            return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                                         }
                                         else
                                         {
@@ -7002,7 +7107,8 @@ namespace QidWorkerRole
                                 {
                                     flag = false;
                                     ErrorMsg = "Error while saving Data";
-                                    return flag;
+                                    //return flag;
+                                    return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                                 }
 
                             }
@@ -7010,7 +7116,8 @@ namespace QidWorkerRole
                             {
                                 flag = false;
                                 ErrorMsg = "Error while saving Data";
-                                return flag;
+                                //return flag;
+                                return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                             }
 
                             //flag = dtb.InsertData("MakeAWBDeliveryorderofXFSUMessage", sqlParameterName, sqlParameter, sqlParameterValue);
@@ -7028,14 +7135,14 @@ namespace QidWorkerRole
                 ///Make  AWB Accepted Throgh  RCS Message 
                 bool isAcceptedbyFSURCS = false;
                 bool isAcceptedbyFSURCT = false;
-                if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
+                if (!string.IsNullOrEmpty( _genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
                 {
                     if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCS")
                     {
                         isAcceptedbyFSURCS = true;
                     }
                 }
-                if (!string.IsNullOrEmpty(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(genericfunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
+                if (!string.IsNullOrEmpty( _genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
                 {
                     if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCT")
                     {
@@ -7050,25 +7157,27 @@ namespace QidWorkerRole
                         if (!isAWBPresent)
                         {
                             ErrorMsg = "AWB is not present";
-                            return false;
+                            //return false;
+                            return (false, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                         }
 
                         for (int i = 0; i < fsanodes.Length; i++)
                         {
                             #region : Check AWB is accepted or not :
-                            FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
+                            //FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
                             DataSet dsAWBStatus = new DataSet();
-                            dsAWBStatus = ffrMessageProcessor.CheckValidateXFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
+                            dsAWBStatus = await _ffrMessageProcessor.CheckValidateXFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
                             for (int k = 0; k < dsAWBStatus.Tables.Count; k++)
                             {
                                 if (dsAWBStatus.Tables[k].Columns.Contains("MessageName") && dsAWBStatus.Tables[k].Columns.Contains("AWBSttus"))
                                 {
                                     if (dsAWBStatus.Tables[k].Rows[0]["AWBSttus"].ToString().ToUpper() == "ACCEPTED")
                                     {
-                                        GenericFunction genericFunction = new GenericFunction();
-                                        genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                        //GenericFunction genericFunction = new GenericFunction();
+                                        _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
                                         ErrorMsg = "AWB is already accepted";
-                                        return true;
+                                        //return true;
+                                        return (true, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                                     }
                                 }
                             }
@@ -7091,70 +7200,94 @@ namespace QidWorkerRole
                                     AcceptedTime = fsanodes[i].flttime;
 
                             }
-                            string[] sqlParameterName = new string[]
-                                            {
-                                                "AWBPrefix",
-                                                "AWBNo",
-                                                "Origin",
-                                                "Destination",
-                                                "AWbPcs",
-                                                "AWbGrossWt" ,
-                                                "PieceCode",
-                                                "AcceptPieces",
-                                                "WeightCode",
-                                                "AcceptedGrWeight",
-                                                "AccpetedOrigin",
-                                                "ShipperName",
-                                                "VolumeCode",
-                                                "VolumeAmount",
-                                                "UpdatedBy",
-                                                "AcceptedDate",
-                                                "AcceptedTime",
-                                                "refNo"
-                                            };
-                            object[] sqlParameterValue = new object[]
-                                                {
-                                                    fsadata.airlineprefix,
-                                                    fsadata.awbnum,
-                                                    fsadata.origin,
-                                                    fsadata.dest,
-                                                    int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                                    decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
-                                                    fsanodes[i].pcsindicator,
-                                                    int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
-                                                    fsanodes[i].weightcode,
-                                                    decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
-                                                    fsanodes[0].airportcode,
-                                                    fsanodes[0].name,
-                                                    fsanodes[0].volumecode,
-                                                    decimal.Parse(fsanodes[0].volumeamt==""?"0":fsanodes[0].volumeamt),
-                                                    MessagePrefix,
-                                                    AcceptedDate,
-                                                    AcceptedTime,
-                                                    refNo
-                                                };
-                            SqlDbType[] sqlParameter = new SqlDbType[]
-                                            {
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Decimal,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.DateTime,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int
-                                            };
-                            flag = dtb.ExecuteProcedure("MakeAWBAcceptenceThroughFSUMessage", sqlParameterName, sqlParameter, sqlParameterValue);
+                            //string[] sqlParameterName = new string[]
+                            //                {
+                            //                    "AWBPrefix",
+                            //                    "AWBNo",
+                            //                    "Origin",
+                            //                    "Destination",
+                            //                    "AWbPcs",
+                            //                    "AWbGrossWt" ,
+                            //                    "PieceCode",
+                            //                    "AcceptPieces",
+                            //                    "WeightCode",
+                            //                    "AcceptedGrWeight",
+                            //                    "AccpetedOrigin",
+                            //                    "ShipperName",
+                            //                    "VolumeCode",
+                            //                    "VolumeAmount",
+                            //                    "UpdatedBy",
+                            //                    "AcceptedDate",
+                            //                    "AcceptedTime",
+                            //                    "refNo"
+                            //                };
+                            //object[] sqlParameterValue = new object[]
+                            //                    {
+                            //                        fsadata.airlineprefix,
+                            //                        fsadata.awbnum,
+                            //                        fsadata.origin,
+                            //                        fsadata.dest,
+                            //                        int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                            //                        decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                            //                        fsanodes[i].pcsindicator,
+                            //                        int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
+                            //                        fsanodes[i].weightcode,
+                            //                        decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
+                            //                        fsanodes[0].airportcode,
+                            //                        fsanodes[0].name,
+                            //                        fsanodes[0].volumecode,
+                            //                        decimal.Parse(fsanodes[0].volumeamt==""?"0":fsanodes[0].volumeamt),
+                            //                        MessagePrefix,
+                            //                        AcceptedDate,
+                            //                        AcceptedTime,
+                            //                        refNo
+                            //                    };
+                            //SqlDbType[] sqlParameter = new SqlDbType[]
+                            //                {
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.Int,
+                            //                    SqlDbType.Decimal,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.Int,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.Decimal,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.Decimal,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.DateTime,
+                            //                    SqlDbType.VarChar,
+                            //                    SqlDbType.Int
+                            //                };
+                            SqlParameter[] sqlParameters1 = new SqlParameter[] { 
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = fsadata.airlineprefix },
+                                new SqlParameter("@AWBNo", SqlDbType.VarChar)       { Value = fsadata.awbnum },
+                                new SqlParameter("@Origin", SqlDbType.VarChar)      { Value = fsadata.origin },
+                                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
+                                new SqlParameter("@AWbPcs", SqlDbType.Int)          { Value = int.Parse(string.IsNullOrEmpty(fsadata.pcscnt) ? "0" : fsadata.pcscnt) },
+                                new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)  { Value = decimal.Parse(string.IsNullOrEmpty(fsadata.weight) ? "0" : fsadata.weight) },
+                                new SqlParameter("@PieceCode", SqlDbType.VarChar)   { Value = fsanodes[i].pcsindicator },
+                                new SqlParameter("@AcceptPieces", SqlDbType.Int)     { Value = int.Parse(string.IsNullOrEmpty(fsanodes[i].numofpcs) ? "0" : fsanodes[i].numofpcs) },
+                                new SqlParameter("@WeightCode", SqlDbType.VarChar)  { Value = fsanodes[i].weightcode },
+                                new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsanodes[i].weight) ? "0" : fsanodes[i].weight) },
+                                new SqlParameter("@AccpetedOrigin", SqlDbType.VarChar) { Value = fsanodes[0].airportcode },
+                                new SqlParameter("@ShipperName", SqlDbType.VarChar)  { Value = fsanodes[0].name },
+                                new SqlParameter("@VolumeCode", SqlDbType.VarChar)   { Value = fsanodes[0].volumecode },
+                                new SqlParameter("@VolumeAmount", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsanodes[0].volumeamt) ? "0" : fsanodes[0].volumeamt) },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)    { Value = MessagePrefix },
+                                new SqlParameter("@AcceptedDate", SqlDbType.DateTime){ Value = AcceptedDate },
+                                new SqlParameter("@AcceptedTime", SqlDbType.VarChar) { Value = AcceptedTime },
+                                new SqlParameter("@refNo", SqlDbType.Int)            { Value = refNo }
+
+
+
+                            };
+                            //flag = dtb.ExecuteProcedure("MakeAWBAcceptenceThroughFSUMessage", sqlParameterName, sqlParameter, sqlParameterValue);
+                            flag = await _readWriteDao.ExecuteNonQueryAsync("MakeAWBAcceptenceThroughFSUMessage", sqlParameters1);
                             if (flag)
                             {
                                 flag = true;
@@ -7162,8 +7295,12 @@ namespace QidWorkerRole
                                 string[] cparam = { "AWBPrefix", "AWBNumber" };
                                 SqlDbType[] cparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
                                 object[] cparamvalues = { fsadata.airlineprefix, fsadata.awbnum };
-
-                                if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
+                                SqlParameter[] parameters = new SqlParameter[] {
+                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
+                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum }
+                                };
+                                //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
+                                if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", parameters))
                                     clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
 
                                 #endregion
@@ -7172,18 +7309,20 @@ namespace QidWorkerRole
                             {
                                 flag = false;
                                 ErrorMsg = "Error while saving Data";
-                                return flag;
+                                //return flag;
+                                return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                             }
                             #region PRI message on FSU/FSR Access
                             if (flag == true)
                             {
 
 
-                                GenericFunction GF = new GenericFunction();
-                                CustomsImportBAL objCustoms = new CustomsImportBAL();
+                                //GenericFunction GF = new GenericFunction();
+                                //CustomsImportBAL objCustoms = new CustomsImportBAL();
                                 #region PRI Message
 
-                                dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                                //dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                                dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters);
                                 if (dsCheck != null && dsCheck.Tables.Count > 10 && dsCheck.Tables[10].Rows.Count > 0)
                                 {
                                     try
@@ -7227,12 +7366,12 @@ namespace QidWorkerRole
 
                                                         // if (dCust.Tables[14].Rows[0]["Validate"].ToString() == "True")
                                                         // {
-                                                        CustomsImportBAL.PRI sbPRI = objCustoms.EncodingPRIMessage(QueryValues);
+                                                        CustomsImportBAL.PRI sbPRI = await _objCustoms.EncodingPRIMessage(QueryValues);
 
                                                         object[] QueryVal = new object[101];
-                                                        objCustoms.readQueryValuesPRI(sbPRI, ref QueryVal, sbPRI.ToString().ToUpper(), FlightNo, FlightDate, "FSU/RCS", FlightDate);
+                                                        _objCustoms.readQueryValuesPRI(sbPRI, ref QueryVal, sbPRI.ToString().ToUpper(), FlightNo, FlightDate, "FSU/RCS", FlightDate);
 
-                                                        if (objCustoms.UpdateCustomsMessages(QueryVal, sbPRI.StandardMessageIdentifier.StandardMessageIdentifier))
+                                                        if (await _objCustoms.UpdateCustomsMessages(QueryVal, sbPRI.StandardMessageIdentifier.StandardMessageIdentifier))
                                                         {
                                                             if (sbPRI != null)
                                                             {
@@ -7243,14 +7382,14 @@ namespace QidWorkerRole
                                                                     {
                                                                         string AirlineCode = FlightNo.Substring(0, 2);
                                                                         //DataSet dsChecmMessageType = gf.GetRecordofSitaAddressandSitaMessageVersionandMessageType(AirlineCode, string.Empty, string.Empty, string.Empty, "PRI");
-                                                                        DataSet dsMsgCongig = GF.GetSitaAddressandMessageVersion("DY", "PRI", "AIR", string.Empty, string.Empty, string.Empty, string.Empty);
+                                                                        DataSet dsMsgCongig = await _genericFunction.GetSitaAddressandMessageVersion("DY", "PRI", "AIR", string.Empty, string.Empty, string.Empty, string.Empty);
                                                                         if (dsMsgCongig != null && dsMsgCongig.Tables[0].Rows.Count > 0)
                                                                         {
 
                                                                             string strSITAHeaderType = dsMsgCongig.Tables[0].Rows[0]["SITAHeaderType"].ToString();
-                                                                            string MessageHeader = GF.MakeMailMessageFormat(dsMsgCongig.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMsgCongig.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMsgCongig.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                                                                            string MessageHeader = _genericFunction.MakeMailMessageFormat(dsMsgCongig.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMsgCongig.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMsgCongig.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
 
-                                                                            GF.SaveMessageOutBox(sbPRI.StandardMessageIdentifier.StandardMessageIdentifier, MessageHeader + "\r\n" + sbPRI.ToString().ToUpper(), "SITAFTP", "SITAFTP", "", "", "", "", "");
+                                                                            _genericFunction.SaveMessageOutBox(sbPRI.StandardMessageIdentifier.StandardMessageIdentifier, MessageHeader + "\r\n" + sbPRI.ToString().ToUpper(), "SITAFTP", "SITAFTP", "", "", "", "", "");
                                                                         }
                                                                     }
                                                                     catch (Exception ex)
@@ -7307,7 +7446,8 @@ namespace QidWorkerRole
                     if (!isAWBPresent)
                     {
                         ErrorMsg = "AWB is not present";
-                        return false;
+                        //return false;
+                        return (false, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                     }
                     if (fsanodes.Length > 0)
                     {
@@ -7323,89 +7463,120 @@ namespace QidWorkerRole
                                     ReceivedTime = fsanodes[i].flttime.Substring(0, 2) + ":" + fsanodes[i].flttime.Substring(2) + ":00";
                             }
 
-                            string[] sqlParameterName = new string[]
-                              {
-                                 "AWBPrefix",
-                                 "AWBNo",
-                                 "Origin",
-                                 "Destination",
-                                 "AWbPcs",
-                                 "AWbWeightCode",
-                                 "AWbGrossWt" ,
-                                 "TransferCarrierCode",
-                                 "ReceivedShipmentDate",
-                                 "ReceivedOrigin",
-                                 "PieceCode",
-                                 "AcceptPieces",
-                                 "WeightCode",
-                                 "AcceptedGrWeight",
-                                 "ReceivedCarrier",
-                                 "Name",
-                                 "UpdatedBy",
-                                 "MessageType",
-                                 "ManifestNumber"
+                            //  string[] sqlParameterName = new string[]
+                            //    {
+                            //       "AWBPrefix",
+                            //       "AWBNo",
+                            //       "Origin",
+                            //       "Destination",
+                            //       "AWbPcs",
+                            //       "AWbWeightCode",
+                            //       "AWbGrossWt" ,
+                            //       "TransferCarrierCode",
+                            //       "ReceivedShipmentDate",
+                            //       "ReceivedOrigin",
+                            //       "PieceCode",
+                            //       "AcceptPieces",
+                            //       "WeightCode",
+                            //       "AcceptedGrWeight",
+                            //       "ReceivedCarrier",
+                            //       "Name",
+                            //       "UpdatedBy",
+                            //       "MessageType",
+                            //       "ManifestNumber"
 
-                              };
-                            object[] sqlParameterValue = new object[] {
+                            //    };
+                            //  object[] sqlParameterValue = new object[] {
 
-                                fsadata.airlineprefix,
-                                fsadata.awbnum,
-                                fsadata.origin,
-                                fsadata.dest,
+                            //      fsadata.airlineprefix,
+                            //      fsadata.awbnum,
+                            //      fsadata.origin,
+                            //      fsadata.dest,
 
-                                int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
-                                fsadata.weightcode,
-                                decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
+                            //      int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt),
+                            //      fsadata.weightcode,
+                            //      decimal.Parse(fsadata.weight==""?"0":fsadata.weight),
 
-                                fsanodes[i].carriercode,
-                                ReceivedDate,
-                                fsanodes[i].fltorg.Trim() == string.Empty ? fsanodes[i].airportcode.Trim() : fsanodes[i].fltorg.Trim(),
+                            //      fsanodes[i].carriercode,
+                            //      ReceivedDate,
+                            //      fsanodes[i].fltorg.Trim() == string.Empty ? fsanodes[i].airportcode.Trim() : fsanodes[i].fltorg.Trim(),
 
-                                fsanodes[i].pcsindicator,
-                                int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
-                                fsanodes[i].weightcode,
-                                decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
+                            //      fsanodes[i].pcsindicator,
+                            //      int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
+                            //      fsanodes[i].weightcode,
+                            //      decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight),
 
-                                fsanodes[0].seccarriercode,
-                                fsanodes[0].name,
-                                strUpdatedby,
-                                strMessageType,
-                                int.Parse(fsanodes[0].transfermanifestnumber==""?"0":fsanodes[0].transfermanifestnumber)
+                            //      fsanodes[0].seccarriercode,
+                            //      fsanodes[0].name,
+                            //      strUpdatedby,
+                            //      strMessageType,
+                            //      int.Parse(fsanodes[0].transfermanifestnumber==""?"0":fsanodes[0].transfermanifestnumber)
 
-                            };
-                            SqlDbType[] sqlParameter = new SqlDbType[]
+                            //  };
+                            //  SqlDbType[] sqlParameter = new SqlDbType[]
+                            //  {
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.VarChar,
+
+                            //      SqlDbType.Int,
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.Decimal,
+
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.DateTime,
+                            //      SqlDbType.VarChar,
+
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.Int,
+                            //      SqlDbType.VarChar,
+                            //      SqlDbType.Decimal,
+
+                            //     SqlDbType.VarChar,
+                            //     SqlDbType.VarChar,
+                            //     SqlDbType.VarChar,
+                            //     SqlDbType.VarChar,
+                            //     SqlDbType.Int
+                            //};
+                            SqlParameter[] parameters = new SqlParameter[]
                             {
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
-                                SqlDbType.VarChar,
+                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar)       { Value = fsadata.airlineprefix },
+                            new SqlParameter("@AWBNo", SqlDbType.VarChar)           { Value = fsadata.awbnum },
+                            new SqlParameter("@Origin", SqlDbType.VarChar)          { Value = fsadata.origin },
+                            new SqlParameter("@Destination", SqlDbType.VarChar)     { Value = fsadata.dest },
 
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
+                            new SqlParameter("@AWbPcs", SqlDbType.Int)              { Value = int.Parse(string.IsNullOrEmpty(fsadata.pcscnt) ? "0" : fsadata.pcscnt) },
+                            new SqlParameter("@AWbWeightCode", SqlDbType.VarChar)   { Value = fsadata.weightcode },
+                            new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)      { Value = decimal.Parse(string.IsNullOrEmpty(fsadata.weight) ? "0" : fsadata.weight) },
 
-                                SqlDbType.VarChar,
-                                SqlDbType.DateTime,
-                                SqlDbType.VarChar,
+                            new SqlParameter("@TransferCarrierCode", SqlDbType.VarChar) { Value = fsanodes[i].carriercode },
+                            new SqlParameter("@ReceivedShipmentDate", SqlDbType.DateTime) { Value = ReceivedDate },
+                            new SqlParameter("@ReceivedOrigin", SqlDbType.VarChar)   { Value = string.IsNullOrEmpty(fsanodes[i].fltorg?.Trim()) ? fsanodes[i].airportcode.Trim() : fsanodes[i].fltorg.Trim() },
 
-                                SqlDbType.VarChar,
-                                SqlDbType.Int,
-                                SqlDbType.VarChar,
-                                SqlDbType.Decimal,
+                            new SqlParameter("@PieceCode", SqlDbType.VarChar)        { Value = fsanodes[i].pcsindicator },
+                            new SqlParameter("@AcceptPieces", SqlDbType.Int)         { Value = int.Parse(string.IsNullOrEmpty(fsanodes[i].numofpcs) ? "0" : fsanodes[i].numofpcs) },
+                            new SqlParameter("@WeightCode", SqlDbType.VarChar)       { Value = fsanodes[i].weightcode },
+                            new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal) { Value = decimal.Parse(string.IsNullOrEmpty(fsanodes[i].weight) ? "0" : fsanodes[i].weight) },
 
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.VarChar,
-                               SqlDbType.Int
-                          };
-                            if (dtb.InsertData("uspSaveAWBThroughFSURCTTFDMessage", sqlParameterName, sqlParameter, sqlParameterValue))
+                            new SqlParameter("@ReceivedCarrier", SqlDbType.VarChar)  { Value = fsanodes[0].seccarriercode },
+                            new SqlParameter("@Name", SqlDbType.VarChar)             { Value = fsanodes[0].name },
+                            new SqlParameter("@UpdatedBy", SqlDbType.VarChar)        { Value = strUpdatedby },
+                            new SqlParameter("@MessageType", SqlDbType.VarChar)      { Value = strMessageType },
+                            new SqlParameter("@ManifestNumber", SqlDbType.Int)       { Value = int.Parse(string.IsNullOrEmpty(fsanodes[0].transfermanifestnumber) ? "0" : fsanodes[0].transfermanifestnumber) },
+                            };
+
+                            //if (dtb.InsertData("uspSaveAWBThroughFSURCTTFDMessage", sqlParameterName, sqlParameter, sqlParameterValue))
+                            if (await _readWriteDao.ExecuteNonQueryAsync("uspSaveAWBThroughFSURCTTFDMessage", parameters))
+                            {
                                 flag = true;
+                            }
                             else
                             {
                                 flag = false;
                                 ErrorMsg = "Error while saving Data";
-                                return flag;
+                                //return flag;
+                                return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                             }
 
 
@@ -7449,12 +7620,30 @@ namespace QidWorkerRole
                             string[] ParaNames = new string[] { "AWBPrefix", "AWBNumber", "Destination", "ConsignmentType", "Pieces", "Weight", "FlighNumber", "ArrivedDate", "WTCode", "RefNo", "FltOrigin", "FltDestination", "FlightDate" };
                             SqlDbType[] ParaTypes = new System.Data.SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
                             object[] ParaValues = new object[] { fsadata.airlineprefix, fsadata.awbnum, string.Empty, fsanodes[i].pcsindicator, fsanodes[i].numofpcs, (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight)), fsanodes[i].flightnum, DateTime.Now, fsanodes[i].weightcode, refNo, fsanodes[i].fltorg, fsanodes[i].fltdest, fsanodes[i].fltday };
+                            SqlParameter[] parameters = new SqlParameter[] {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = fsadata.airlineprefix },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)    { Value = fsadata.awbnum },
+                                new SqlParameter("@Destination", SqlDbType.VarChar)   { Value = string.Empty },
+                                new SqlParameter("@ConsignmentType", SqlDbType.VarChar){ Value = fsanodes[i].pcsindicator },
+                                new SqlParameter("@Pieces", SqlDbType.Int)           { Value = fsanodes[i].numofpcs },
+                                new SqlParameter("@Weight", SqlDbType.VarChar)       { Value = ((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight) },
+                                new SqlParameter("@FlighNumber", SqlDbType.VarChar)  { Value = fsanodes[i].flightnum },
+                                new SqlParameter("@ArrivedDate", SqlDbType.DateTime) { Value = DateTime.Now },
+                                new SqlParameter("@WTCode", SqlDbType.VarChar)       { Value = fsanodes[i].weightcode },
+                                new SqlParameter("@RefNo", SqlDbType.Int)            { Value = refNo },
+                                new SqlParameter("@FltOrigin", SqlDbType.VarChar)    { Value = fsanodes[i].fltorg },
+                                new SqlParameter("@FltDestination", SqlDbType.VarChar){ Value = fsanodes[i].fltdest },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime)  { Value = fsanodes[i].fltday }
+                            };
+                            
                             //if (!dtb.ExecuteProcedure("USPUpdateRCForARRRecord", ParaNames, ParaTypes, ParaValues))
                             //{
                             //    clsLog.WriteLogAzure("Error on RCF -Arrived Falied :" + awbnum);
                             //}
-                            DataSet dsRCFARR = new DataSet();
-                            dsRCFARR = dtb.SelectRecords("USPUpdateRCForARRRecord", ParaNames, ParaValues, ParaTypes);
+                            DataSet? dsRCFARR = new DataSet();
+                            //dsRCFARR = dtb.SelectRecords("USPUpdateRCForARRRecord", ParaNames, ParaValues, ParaTypes);
+                            //dsRCFARR = await _readWriteDao.SelectRecords("USPUpdateRCForARRRecord", ParaNames, ParaValues, ParaTypes);
+                            dsRCFARR = await _readWriteDao.SelectRecords("USPUpdateRCForARRRecord", parameters);
                             if (dsRCFARR != null && dsRCFARR.Tables.Count > 0)
                             {
                                 for (int j = 0; j < dsRCFARR.Tables.Count; j++)
@@ -7462,7 +7651,8 @@ namespace QidWorkerRole
                                     if (dsRCFARR.Tables[j].Columns.Contains("IsFlightDeparted") && dsRCFARR.Tables[j].Rows[0]["IsFlightDeparted"].ToString() == "False")
                                     {
                                         ErrorMsg = "";
-                                        return true;
+                                        //return true;
+                                        return (true, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
                                     }
                                 }
                             }
@@ -7612,7 +7802,7 @@ namespace QidWorkerRole
 
 
 
-                dtb = new SQLServer();
+                //dtb = new SQLServer();
                 if (fsadata.awbnum.Length > 0)
                 {
                     awbnum = fsadata.awbnum;
@@ -7728,13 +7918,32 @@ namespace QidWorkerRole
                             if (fsanodes[i].weight != "")
                                 Wt = Convert.ToDecimal(fsanodes[i].weight);
 
-                            string[] PName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno",
-                                "FlightNo","FlightDate","PCS","WT","UOM","UpdatedBy","UpdatedOn","StnCode"};
-                            object[] PValues = new object[] { awbprefix, awbnum, fsanodes[i].messageprefix, splitStr[2 + i], date, fsanodes[i].flttime, 0,
-                            FlightNo,FlightDate,PCS,Wt,UOM,UpdatedBy,UpdatedON,StnCode};
-                            SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
-                            SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar};
-                            if (dtb.InsertData("spInsertAWBMessageStatus", PName, PType, PValues))
+                            //string[] PName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno",
+                            //    "FlightNo","FlightDate","PCS","WT","UOM","UpdatedBy","UpdatedOn","StnCode"};
+                            //object[] PValues = new object[] { awbprefix, awbnum, fsanodes[i].messageprefix, splitStr[2 + i], date, fsanodes[i].flttime, 0,
+                            //FlightNo,FlightDate,PCS,Wt,UOM,UpdatedBy,UpdatedON,StnCode};
+                            //SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
+                            //SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.VarChar};
+                            SqlParameter[] parameters = new SqlParameter[] {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = awbprefix },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)    { Value = awbnum },
+                                new SqlParameter("@MType", SqlDbType.VarChar)        { Value = fsanodes[i].messageprefix },
+                                new SqlParameter("@desc", SqlDbType.VarChar)         { Value = splitStr[2 + i] },
+                                new SqlParameter("@date", SqlDbType.VarChar)         { Value = date },
+                                new SqlParameter("@time", SqlDbType.VarChar)         { Value = fsanodes[i].flttime },
+                                new SqlParameter("@refno", SqlDbType.Int)            { Value = 0 },
+                                new SqlParameter("@FlightNo", SqlDbType.VarChar)     { Value = FlightNo },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime)  { Value = FlightDate },
+                                new SqlParameter("@PCS", SqlDbType.Int)              { Value = PCS },
+                                new SqlParameter("@WT", SqlDbType.Decimal)           { Value = Wt },
+                                new SqlParameter("@UOM", SqlDbType.VarChar)          { Value = UOM },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)    { Value = UpdatedBy },
+                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime)   { Value = UpdatedON },
+                                new SqlParameter("@StnCode", SqlDbType.VarChar)      { Value = StnCode }
+                            };
+
+                            //if (dtb.InsertData("spInsertAWBMessageStatus", PName, PType, PValues))
+                            if (await _readWriteDao.ExecuteNonQueryAsync("spInsertAWBMessageStatus", parameters))
                                 flag = true;
                         }
                     }
@@ -8070,18 +8279,37 @@ namespace QidWorkerRole
                             }
 
 
-                            dtb = new SQLServer();
-                            string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
-                                "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy",
-                                "UpdatedOn", "Public" };
-                            SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit };
-                            object[] CValues = new object[] { awbprefix, awbnum, fsadata.origin, fsadata.dest, fsanodes[k].numofpcs,
-                                Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight), fltno, Date, origin, dest,
-                                strAction, messageStatus, strDescription, Updatedby, strDepartureTime == "" ? UpdatedON.ToString() : strDepartureTime, 1 };
-
-                            if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                            //dtb = new SQLServer();
+                            //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
+                            //    "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy",
+                            //    "UpdatedOn", "Public" };
+                            //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit };
+                            //object[] CValues = new object[] { awbprefix, awbnum, fsadata.origin, fsadata.dest, fsanodes[k].numofpcs,
+                            //    Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight), fltno, Date, origin, dest,
+                            //    strAction, messageStatus, strDescription, Updatedby, strDepartureTime == "" ? UpdatedON.ToString() : strDepartureTime, 1 };
+                            SqlParameter[] parametersAudit = new SqlParameter[] {
+                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = awbprefix },
+                                new SqlParameter("@AWBNumber", SqlDbType.VarChar)    { Value = awbnum },
+                                new SqlParameter("@Origin", SqlDbType.VarChar)       { Value = fsadata.origin },
+                                new SqlParameter("@Destination", SqlDbType.VarChar)  { Value = fsadata.dest },
+                                new SqlParameter("@Pieces", SqlDbType.VarChar)       { Value = fsanodes[k].numofpcs },
+                                new SqlParameter("@Weight", SqlDbType.VarChar)       { Value = Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight) },
+                                new SqlParameter("@FlightNo", SqlDbType.VarChar)     { Value = fltno },
+                                new SqlParameter("@FlightDate", SqlDbType.DateTime)  { Value = Date },
+                                new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = origin },
+                                new SqlParameter("@FlightDestination", SqlDbType.VarChar){ Value = dest },
+                                new SqlParameter("@Action", SqlDbType.VarChar)       { Value = strAction },
+                                new SqlParameter("@Message", SqlDbType.VarChar)      { Value = messageStatus },
+                                new SqlParameter("@Description", SqlDbType.VarChar)  { Value = strDescription },
+                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar)    { Value = Updatedby },
+                                new SqlParameter("@UpdatedOn", SqlDbType.VarChar)    { Value = strDepartureTime == "" ? UpdatedON.ToString() : strDepartureTime },
+                                new SqlParameter("@Public", SqlDbType.Bit)           { Value = 1 }
+                            };
+                            //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                            if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAudit))
                             {
-                                clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                //clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
                             }
                         }
                     }
@@ -8098,7 +8326,8 @@ namespace QidWorkerRole
 
             ErrorMsg = "";
 
-            return flag;
+            //return flag;
+            return (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
         }
 
         #endregion

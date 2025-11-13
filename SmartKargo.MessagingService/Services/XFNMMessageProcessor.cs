@@ -12,12 +12,10 @@
       * Description          :   
      */
 #endregion
-using System;
-using System.Linq;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using System.IO;
 using System.Text;
 using System.Xml;
 
@@ -36,21 +34,38 @@ namespace QidWorkerRole
         /// <param name="awbNumber"></param>
         /// <param name="awbPrefix"></param>
         /// <returns></returns>
-        public void GenerateXFNMMessage(string strMessage, string strErrorMessage, string awbPrefix = "", string awbNumber = "", string strMessageFrom = "", string commType = "", string conditionCode = "", string msgName = "")
+        /// 
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<XFNMMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public XFNMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFNMMessageProcessor> logger,
+            GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
+        #endregion
+        public async Task GenerateXFNMMessage(string strMessage, string strErrorMessage, string awbPrefix = "", string awbNumber = "", string strMessageFrom = "", string commType = "", string conditionCode = "", string msgName = "")
         {
             StringBuilder sbgenerateXFNMMessage = new StringBuilder();
-            GenericFunction generalFunction = new GenericFunction();
+            //GenericFunction generalFunction = new GenericFunction();
+
             //int sequence = 0;
             try
             {
                 DataSet dsxfnmMessage = new DataSet();
                 DataRow[] drs;
-                dsxfnmMessage = GetRecordtoGenerateXFNMMessage(awbPrefix, awbNumber, "XFNM");
+                dsxfnmMessage = await GetRecordtoGenerateXFNMMessage(awbPrefix, awbNumber, "XFNM");
 
                 if (dsxfnmMessage != null && dsxfnmMessage.Tables != null && dsxfnmMessage.Tables.Count > 0 && dsxfnmMessage.Tables[0].Rows.Count > 0)
                 {
                     var xfnmDataSet = new DataSet();
-                    var xmlSchema = generalFunction.GetXMLMessageData("XFNM");
+                    var xmlSchema = await _genericFunction.GetXMLMessageData("XFNM");
+                    
                     if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
                     {
                         string messageXML = Convert.ToString(xmlSchema.Tables[0].Rows[0]["XMLMessageData"]);
@@ -149,10 +164,11 @@ namespace QidWorkerRole
                         xfnmDataSet.Dispose();
 
 
-                        GenericFunction GF = new GenericFunction();
+                        //GenericFunction GF = new GenericFunction();
+                        
                         string SitaMessageHeader = string.Empty, Emailaddress = string.Empty, FNAMessageVersion = string.Empty, messageid = string.Empty;
 
-                        DataSet dscheckconfiguration = GF.GetSitaAddressandMessageVersion("", "XFNM", "AIR", "", "", "", string.Empty, awbPrefix);
+                        DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion("", "XFNM", "AIR", "", "", "", string.Empty, awbPrefix);
                         if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                         {
                             Emailaddress = Convert.ToString(dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"]);
@@ -164,15 +180,15 @@ namespace QidWorkerRole
                         {
                             if (commType.Contains("SITA"))
                             {
-                                SitaMessageHeader = GF.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                GF.SaveMessageOutBox("XFNM", SitaMessageHeader + "\r\n" + Convert.ToString(sbgenerateXFNMMessage), "SITAFTP", "SITAFTP", "", "", "", "", awbPrefix + "-" + awbNumber);
+                                SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                                _genericFunction.SaveMessageOutBox("XFNM", SitaMessageHeader + "\r\n" + Convert.ToString(sbgenerateXFNMMessage), "SITAFTP", "SITAFTP", "", "", "", "", awbPrefix + "-" + awbNumber);
                             }
                         }
                         else
                         {
                             string ToEmailAddress = (strMessageFrom == string.Empty ? Emailaddress : strMessageFrom + "," + Emailaddress);
                             ToEmailAddress = (ToEmailAddress == string.Empty ? "priyanka@smartkargo.com" : ToEmailAddress);
-                            GF.SaveMessageOutBox("XFNM", Convert.ToString(sbgenerateXFNMMessage).ToString(), string.Empty, ToEmailAddress, "", "", "", "", awbPrefix + "-" + awbNumber);
+                            _genericFunction.SaveMessageOutBox("XFNM", Convert.ToString(sbgenerateXFNMMessage).ToString(), string.Empty, ToEmailAddress, "", "", "", "", awbPrefix + "-" + awbNumber);
                         }
                     }
                     else
@@ -237,21 +253,32 @@ namespace QidWorkerRole
         /// <param name="refno"></param>
         /// <param name="fnadata"></param>
         /// <returns>bool</returns>
-        public bool SaveAndValidateFNAMessage(int refno, MessageData.FNA fnadata)
+        public async Task<bool> SaveAndValidateFNAMessage(int refno, MessageData.FNA fnadata)
         {
 
             bool flag = true;
             try
             {
-                SQLServer dtb = new SQLServer();
-                string[] pnames = new string[] { "Acknowledgement", "OrignlMsg", "MsgId", "AWBnumber", "AWBPrefix", "Origin", "Destination", "UpdatedOn", "MessageType" };
-                SqlDbType[] ptypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
-                object[] pvalues = new object[] { fnadata.AckInfo, fnadata.originalmessage, refno, fnadata.AWBnumber, fnadata.AWBPrefix, fnadata.Origin, fnadata.Destination, System.DateTime.Now, fnadata.MessageType };
-                if (!dtb.UpdateData("spUpdateFNAMessageError", pnames, ptypes, pvalues))
+                //SQLServer dtb = new SQLServer();
+                //string[] pnames = new string[] { "Acknowledgement", "OrignlMsg", "MsgId", "AWBnumber", "AWBPrefix", "Origin", "Destination", "UpdatedOn", "MessageType" };
+                //SqlDbType[] ptypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
+                //object[] pvalues = new object[] { fnadata.AckInfo, fnadata.originalmessage, refno, fnadata.AWBnumber, fnadata.AWBPrefix, fnadata.Origin, fnadata.Destination, System.DateTime.Now, fnadata.MessageType };
+                
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@Acknowledgement", fnadata.AckInfo),
+                    new SqlParameter("@OrignlMsg", fnadata.originalmessage),
+                    new SqlParameter("@MsgId", refno),
+                    new SqlParameter("@AWBnumber", fnadata.AWBnumber),
+                    new SqlParameter("@AWBPrefix", fnadata.AWBPrefix),
+                    new SqlParameter("@Origin", fnadata.Origin),
+                    new SqlParameter("@Destination", fnadata.Destination),
+                    new SqlParameter("@UpdatedOn", System.DateTime.Now),
+                    new SqlParameter("@MessageType", fnadata.MessageType)
+                };
+                //if (!dtb.UpdateData("spUpdateFNAMessageError", pnames, ptypes, pvalues))
+                if (!await _readWriteDao.ExecuteNonQueryAsync("spUpdateFNAMessageError", sqlParameters))
                     flag = false;
-
-
-
             }
             catch (Exception)
             {
@@ -270,17 +297,24 @@ namespace QidWorkerRole
         /// <param name="AwbPrefix"></param>
         /// <param name="AWBNo"></param>
         /// <returns></returns>
-        public DataSet GetRecordtoGenerateXFNMMessage(string AwbPrefix, string AWBNo, string msgtype)
+        public async Task<DataSet> GetRecordtoGenerateXFNMMessage(string AwbPrefix, string AWBNo, string msgtype)
         {
-            DataSet dsmessage = new DataSet();
+            DataSet? dsmessage = new DataSet();
             try
             {
 
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBPrefix", "AWBNo", "Msgtype" };
-                object[] paramvalue = new object[] { AwbPrefix, AWBNo, msgtype };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                dsmessage = da.SelectRecords("Messaging.uspGetRecordToGenerateXFNMMessage", paramname, paramvalue, paramtype);
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "AWBPrefix", "AWBNo", "Msgtype" };
+                //object[] paramvalue = new object[] { AwbPrefix, AWBNo, msgtype };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBPrefix", AwbPrefix),
+                    new SqlParameter("@AWBNo", AWBNo),
+                    new SqlParameter("@Msgtype", msgtype)
+                };
+                //dsmessage = da.SelectRecords("Messaging.uspGetRecordToGenerateXFNMMessage", paramname, paramvalue, paramtype);
+                dsmessage = await _readWriteDao.SelectRecords("Messaging.uspGetRecordToGenerateXFNMMessage", sqlParameters);
             }
             catch (Exception ex)
             {
