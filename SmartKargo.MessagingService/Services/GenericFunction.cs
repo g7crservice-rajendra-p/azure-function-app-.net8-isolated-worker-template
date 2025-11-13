@@ -13,22 +13,18 @@
      */
 #endregion
 
-using Azure.Storage.Blobs;
 using Azure.Storage;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using QidWorkerRole.UploadMasters;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
+using SmartKargo.MessagingService.Services;
 using System.Data;
 using System.Net;
 using System.Text;
-using SmartKargo.MessagingService.Services;
-using System.Reflection.Metadata;
-using static System.Reflection.Metadata.BlobBuilder;
-using Azure.Storage.Blobs.Models;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.Data.SqlTypes;
 
 
 //using Azure.Identity;
@@ -58,7 +54,8 @@ namespace QidWorkerRole
         private readonly ILogger<GenericFunction> _logger;
 
         #region Constructor
-        public GenericFunction(ISqlDataHelperFactory sqlDataHelperFactory,
+        public GenericFunction(
+            ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<GenericFunction> logger,
             GenericFunction genericFunction)
         {
@@ -67,7 +64,7 @@ namespace QidWorkerRole
         }
         #endregion
 
-        public bool SaveMessageToOutbox(string subject, string message, string toEmailID, string sitaMessageHeader, string sftpHeaderSITAddress, string type = ""
+        public async Task<bool> SaveMessageToOutbox(string subject, string message, string toEmailID, string sitaMessageHeader, string sftpHeaderSITAddress, string type = ""
             , string awbNumber = "", string flightNumber = "", string flightDate = "", string flightOrigin = "", string flightDestination = "", string carrierCode = ""
             , string error = "", string fromAddress = "", string msgCategory = "")
         {
@@ -75,13 +72,13 @@ namespace QidWorkerRole
             try
             {
                 if (sitaMessageHeader.Trim().Length > 0 && message.Trim().Length > 3)
-                    SaveMessageOutBox("SITA:" + type.Trim().ToUpper(), sitaMessageHeader.Trim() + "\r\n" + message.Trim(), "", "SITAFTP", flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
+                    await SaveMessageOutBox("SITA:" + type.Trim().ToUpper(), sitaMessageHeader.Trim() + "\r\n" + message.Trim(), "", "SITAFTP", flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
 
                 if (sftpHeaderSITAddress.Trim().Length > 0 && message.Trim().Length > 3)
-                    SaveMessageOutBox("SITA:" + type.Trim().ToUpper(), sftpHeaderSITAddress.Trim() + "\r\n" + message.Trim(), "", "SFTP", flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
+                    await SaveMessageOutBox("SITA:" + type.Trim().ToUpper(), sftpHeaderSITAddress.Trim() + "\r\n" + message.Trim(), "", "SFTP", flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
 
                 if (toEmailID.Trim().Length > 0 && message.Trim().Length > 3)
-                    SaveMessageOutBox(type.Trim().ToUpper(), message.Trim(), "", toEmailID.Trim(), flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
+                    await SaveMessageOutBox(type.Trim().ToUpper(), message.Trim(), "", toEmailID.Trim(), flightOrigin, flightDestination, flightNumber, flightDate.ToString(), awbNumber);
 
                 flag = true;
             }
@@ -823,44 +820,44 @@ namespace QidWorkerRole
             return dsSitaMessage;
         }
 
+        /*Not in use*/
+        //private string GetMessageBodyData(string msg)
+        //{
+        //    try
+        //    {
+        //        int indexOfbodyStart = 0;
+        //        int indexOfbodyEnd = 0;
+        //        if (((msg.Contains("<body") || (msg.Contains("<BODY"))) ||
+        //             ((msg.Contains("</body>")) || (msg.Contains("</BODY>")))))
+        //        {
+        //            if (msg.Contains("<body"))
+        //            {
+        //                indexOfbodyStart = msg.IndexOf("<body");
+        //                indexOfbodyEnd = msg.LastIndexOf("</body>");
+        //            }
+        //            else
+        //            {
 
-        private string GetMessageBodyData(string msg)
-        {
-            try
-            {
-                int indexOfbodyStart = 0;
-                int indexOfbodyEnd = 0;
-                if (((msg.Contains("<body") || (msg.Contains("<BODY"))) ||
-                     ((msg.Contains("</body>")) || (msg.Contains("</BODY>")))))
-                {
-                    if (msg.Contains("<body"))
-                    {
-                        indexOfbodyStart = msg.IndexOf("<body");
-                        indexOfbodyEnd = msg.LastIndexOf("</body>");
-                    }
-                    else
-                    {
+        //                indexOfbodyStart = msg.IndexOf("<BODY");
+        //                if (msg.Contains("BODY>"))
+        //                    indexOfbodyEnd = msg.LastIndexOf("BODY>");
+        //                else
+        //                    indexOfbodyEnd = msg.LastIndexOf("</BODY>");
+        //            }
 
-                        indexOfbodyStart = msg.IndexOf("<BODY");
-                        if (msg.Contains("BODY>"))
-                            indexOfbodyEnd = msg.LastIndexOf("BODY>");
-                        else
-                            indexOfbodyEnd = msg.LastIndexOf("</BODY>");
-                    }
-
-                    msg = msg.Substring(indexOfbodyStart, (indexOfbodyEnd - indexOfbodyStart) - 1);
-                    msg = Regex.Replace(msg, @"<(.|\n)*?>", String.Empty);
-                    msg = Regex.Replace(msg, @"\r\n\r\n", Environment.NewLine);
-                    msg = Regex.Replace(msg, @"&nbsp;", String.Empty);
-                    msg = Regex.Replace(msg, @"&amp;", String.Empty);
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure("Error :", ex);
-            }
-            return msg;
-        }
+        //            msg = msg.Substring(indexOfbodyStart, (indexOfbodyEnd - indexOfbodyStart) - 1);
+        //            msg = Regex.Replace(msg, @"<(.|\n)*?>", String.Empty);
+        //            msg = Regex.Replace(msg, @"\r\n\r\n", Environment.NewLine);
+        //            msg = Regex.Replace(msg, @"&nbsp;", String.Empty);
+        //            msg = Regex.Replace(msg, @"&amp;", String.Empty);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure("Error :", ex);
+        //    }
+        //    return msg;
+        //}
 
         /// <summary>
         /// 
@@ -1390,26 +1387,62 @@ namespace QidWorkerRole
             bool IsMoveSuccess = false;
             try
             {
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+                //CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
+                //blobContainer.CreateIfNotExist();
+
+                //foreach (var srcPath in Directory.GetFiles(sourcePath))
+                //{
+                //    using (var fileStream = System.IO.File.OpenRead(srcPath))
+                //    {
+                //        int LastIndex = srcPath.LastIndexOf("\\");
+                //        CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(srcPath.Substring(LastIndex + 1));
+                //        blockBlob.UploadFromStream(fileStream);
+                //    }
+                //}
+                //IsMoveSuccess = true;
+
+                // Set TLS 1.2 for compatibility
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
-                blobContainer.CreateIfNotExist();
+
+                string storageAccountName = GetStorageName();
+                string storageKey = GetStorageKey();
+
+                // Create BlobServiceClient with account key
+                string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new StorageSharedKeyCredential(storageAccountName, storageKey)
+                );
+
+                // Get container and ensure it exists
+                BlobContainerClient blobContainer = blobServiceClient.GetBlobContainerClient(containerName);
+                blobContainer.CreateIfNotExists();
 
                 foreach (var srcPath in Directory.GetFiles(sourcePath))
                 {
-                    using (var fileStream = System.IO.File.OpenRead(srcPath))
+                    using (var fileStream = File.OpenRead(srcPath))
                     {
                         int LastIndex = srcPath.LastIndexOf("\\");
-                        CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(srcPath.Substring(LastIndex + 1));
-                        blockBlob.UploadFromStream(fileStream);
+                        string fileName = srcPath.Substring(LastIndex + 1);
+
+                        BlobClient blobClient = blobContainer.GetBlobClient(fileName);
+
+                        // Upload from stream
+                        fileStream.Position = 0;
+                        blobClient.Upload(fileStream, overwrite: true);
                     }
                 }
+
                 IsMoveSuccess = true;
+
             }
             catch (Exception ex)
             {
+                IsMoveSuccess = false;
                 clsLog.WriteLogAzure(ex);
             }
             return IsMoveSuccess;
@@ -1419,22 +1452,58 @@ namespace QidWorkerRole
         {
             try
             {
+                //containerName = containerName.ToLower();
+
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+                //CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
+                //blobContainer.CreateIfNotExist();
+                //CloudBlob blob = blobContainer.GetBlobReference(fileName);
+                //BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+                //containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+                //blobContainer.SetPermissions(containerPermissions);
+                //blob.Properties.ContentType = "";
+                //blob.UploadFromStream(stream);
+
+                //return "https://" + GetStorageName() + ".blob.core.windows.net/" + containerName + "/" + fileName;
+
                 containerName = containerName.ToLower();
 
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+                // Set TLS 1.2
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
-                blobContainer.CreateIfNotExist();
-                CloudBlob blob = blobContainer.GetBlobReference(fileName);
-                BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
-                blobContainer.SetPermissions(containerPermissions);
-                blob.Properties.ContentType = "";
-                blob.UploadFromStream(stream);
 
-                return "https://" + GetStorageName() + ".blob.core.windows.net/" + containerName + "/" + fileName;
+                // Create BlobServiceClient with shared key
+                string storageName = GetStorageName();
+                string storageKey = GetStorageKey();
+                string accountUrl = $"https://{storageName}.blob.core.windows.net";
+
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new Azure.Storage.StorageSharedKeyCredential(storageName, storageKey)
+                );
+
+                // Get container and create if not exists
+                BlobContainerClient blobContainer = blobServiceClient.GetBlobContainerClient(containerName);
+                blobContainer.CreateIfNotExists();
+
+                // Set container to public (full read access)
+                blobContainer.SetAccessPolicy(accessType: PublicAccessType.BlobContainer);
+
+                // Get blob client
+                BlobClient blob = blobContainer.GetBlobClient(fileName);
+
+                // Set ContentType = "" (explicitly empty)
+                blob.SetHttpHeaders(new BlobHttpHeaders { ContentType = "" });
+
+                // Upload from stream
+                stream.Position = 0;
+                blob.Upload(stream, overwrite: true);
+
+                // Return public blob URL
+                //return blob.Uri.ToString();
+                return $"https://{storageName}.blob.core.windows.net/{containerName}/{fileName}";
             }
             catch (Exception ex)
             {
@@ -1518,7 +1587,7 @@ namespace QidWorkerRole
                 //object[] paramvalue = new object[] { FlightNo, strFlightOrigin, strFlightDestination, FlightDate };
 
                 //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
-                
+
                 SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("FlightNo", SqlDbType.VarChar) { Value = FlightNo },
                     new SqlParameter("FlightOrigin", SqlDbType.VarChar) { Value = strFlightOrigin },
@@ -1763,7 +1832,7 @@ namespace QidWorkerRole
                     drMasterDetails["FieldName"] = MasterFields[count];
                     drMasterDetails["OldValue"] = String.Empty;
                     // New Value
-                    
+
                     try
                     {
                         if (dtNewValues.Rows[0][MasterFields[count]] is DateTime)
@@ -1972,7 +2041,7 @@ namespace QidWorkerRole
                 //Values.SetValue(MasterInfo.GetValue(i), i);
                 //i++;
 
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
+                SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("@Master", SqlDbType.VarChar) { Value = MasterInfo.GetValue(0) },
                     new SqlParameter("@MasterValue", SqlDbType.VarChar) { Value = MasterInfo.GetValue(1) },
                     new SqlParameter("@Action", SqlDbType.VarChar) { Value = MasterInfo.GetValue(2) },
@@ -2051,7 +2120,7 @@ namespace QidWorkerRole
                 //dsDisabled = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
                 dsDisabled = await _readWriteDao.SelectRecords("Messaging.uspFlightDisable", sqlParameters);
 
-                if (dsDisabled!=null && dsDisabled.Tables[0].Rows.Count >= 1)
+                if (dsDisabled != null && dsDisabled.Tables[0].Rows.Count >= 1)
                 {
                     return true;
                 }
@@ -2100,7 +2169,7 @@ namespace QidWorkerRole
                 //string[] paramname = new string[] { "ExchangeRates", "ExchangeDate", "UpdatedOn" };
                 //object[] paramvalue = new object[] { ExchangeRates, ExchangeDate, TimeStamp };
                 //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.DateTime };
-                
+
                 SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("ExchangeRates", SqlDbType.VarChar) { Value = ExchangeRates },
                     new SqlParameter("ExchangeDate", SqlDbType.DateTime) { Value = ExchangeDate },
@@ -2345,7 +2414,7 @@ namespace QidWorkerRole
             SqlParameter[] sqlParameters = new SqlParameter[] {
                 new SqlParameter("Origin", SqlDbType.VarChar) { Value = origin },
                 new SqlParameter("Destination", SqlDbType.VarChar) { Value = destination }
-            };  
+            };
             try
             {
                 //ds = da.SelectRecords("sp_GetShipmentTypeNew", pName, pValue, pType);
@@ -2497,17 +2566,25 @@ namespace QidWorkerRole
 
             return awbStatus;
         }
-        public DataSet GetAWBRateLog(string awbPrefix, string awbNumber, bool isAsAgreed, string curRole)
+        public async Task<DataSet?> GetAWBRateLog(string awbPrefix, string awbNumber, bool isAsAgreed, string curRole)
         {
             try
             {
-                SQLServer da = new SQLServer();
+                //SQLServer da = new SQLServer();
 
                 string[] paramname1 = { "AWBPrefix", "AWBNumber", "IsAsAgreed", "CurRole" };
                 object[] paramvalue1 = { awbPrefix, awbNumber, isAsAgreed, curRole };
                 SqlDbType[] paramtype1 = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
 
-                return da.SelectRecords("uspGetAWBRateLogForPrint", paramname1, paramvalue1, paramtype1);
+                SqlParameter[] sqlParameters = new SqlParameter[] {
+                    new SqlParameter("AWBPrefix", SqlDbType.VarChar) { Value = awbPrefix },
+                    new SqlParameter("AWBNumber", SqlDbType.VarChar) { Value = awbNumber },
+                    new SqlParameter("IsAsAgreed", SqlDbType.Bit) { Value = isAsAgreed },
+                    new SqlParameter("CurRole", SqlDbType.VarChar) { Value = curRole }
+                };
+
+                //return da.SelectRecords("uspGetAWBRateLogForPrint", paramname1, paramvalue1, paramtype1);
+                return await _readWriteDao.SelectRecords("uspGetAWBRateLogForPrint", sqlParameters);
             }
             catch (Exception ex)
             {
@@ -2549,15 +2626,39 @@ namespace QidWorkerRole
                     filenameOrUrl = filenameOrUrl.Substring(filenameOrUrl.LastIndexOf('/') + 1);
                 }
                 containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //string sas = GetSASUrl(containerName, storageAccount);
+                //StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
+                //CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
+                //new StorageCredentialsSharedAccessSignature(sas));
+                //CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+                //return "https://" + getStorageName() + ".blob.core.windows.net/" + containerName + "/" + filenameOrUrl + sas;
+
+                // Enforce TLS 1.2
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                string sas = GetSASUrl(containerName, storageAccount);
-                StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
-                CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
-                new StorageCredentialsSharedAccessSignature(sas));
-                CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
-                return "https://" + getStorageName() + ".blob.core.windows.net/" + containerName + "/" + filenameOrUrl + sas;
+
+                // Get storage account details
+                string storageName = getStorageName();
+                string storageKey = getStorageKey();
+
+                // Create BlobServiceClient with shared key (to generate SAS)
+                string accountUrl = $"https://{storageName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new StorageSharedKeyCredential(storageName, storageKey)
+                );
+
+                // Generate SAS token (using your updated GetSASUrl)
+                string sasToken = GetSASUrl(containerName, blobServiceClient); // Returns "?sv=..."
+
+                // Construct full blob URL with SAS
+                string blobUrlWithSas = $"{accountUrl}/{containerName}/{filenameOrUrl}{sasToken}";
+
+                return blobUrlWithSas;
+
             }
             catch (Exception ex)
             {
@@ -2566,37 +2667,96 @@ namespace QidWorkerRole
             return "";
         }
 
-        public static string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+        /*Deprecated*/
+        //public static string GetSASUrl(string containerName, CloudStorageAccount storageAccount)
+        //{
+        //    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+        //    CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+        //    container.CreateIfNotExist();
+
+        //    BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+
+        //    string sasactivetime = getSettingFromDB("BlobStorageactiveSASTime");
+        //    double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+        //    containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+        //    {
+        //        SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
+        //        SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
+        //        Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
+        //    });
+
+        //    string IsBlobPrivate = getSettingFromDB("IsBlobPrivate");
+        //    IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
+        //    if (IsBlobPrivate == "1")
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+        //    }
+        //    else
+        //    {
+        //        containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+        //    }
+        //    container.SetPermissions(containerPermissions);
+        //    string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
+        //    return sas;
+        //}
+
+        public string GetSASUrl(string containerName, BlobServiceClient blobServiceClient)
         {
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExist();
-
-            BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
-
-            string sasactivetime = getSettingFromDB("BlobStorageactiveSASTime");
-            double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
-
-            containerPermissions.SharedAccessPolicies.Add("defaultpolicy", new SharedAccessPolicy()
+            try
             {
-                SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-1),
-                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(_SaSactiveTime),
-                Permissions = SharedAccessPermissions.Write | SharedAccessPermissions.Read | SharedAccessPermissions.List
-            });
+                // 1. Get (or create) the container
+                BlobContainerClient container = blobServiceClient.GetBlobContainerClient(containerName);
+                container.CreateIfNotExists();               // same as container.CreateIfNotExist()
 
-            string IsBlobPrivate = getSettingFromDB("IsBlobPrivate");
-            IsBlobPrivate = string.IsNullOrWhiteSpace(sasactivetime) ? "NA" : IsBlobPrivate.Trim();
-            if (IsBlobPrivate == "1")
-            {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Off;
+                // 2. Read configuration values
+                string sasactivetime = ConfigCache.Get("BlobStorageactiveSASTime");
+                double _SaSactiveTime = string.IsNullOrWhiteSpace(sasactivetime) ? 5 : Convert.ToDouble(sasactivetime);
+
+                string isBlobPrivate = ConfigCache.Get("IsBlobPrivate");
+                isBlobPrivate = string.IsNullOrWhiteSpace(isBlobPrivate) ? "NA" : isBlobPrivate.Trim();
+
+                // 3. Build the shared-access-policy
+                var policy = new BlobSignedIdentifier
+                {
+                    Id = "defaultpolicy",
+                    AccessPolicy = new BlobAccessPolicy
+                    {
+                        StartsOn = DateTimeOffset.UtcNow.AddMinutes(-1),
+                        ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(_SaSactiveTime),
+                        Permissions = "rwl" // CORRECT: string with r=read, w=write, l=list
+                    }
+                };
+
+                // 4. Apply public-access setting
+                PublicAccessType publicAccess = (isBlobPrivate == "1")
+                    ? PublicAccessType.None
+                    : PublicAccessType.BlobContainer;   // Container = full public read
+
+                // 5. Set permissions + policy in ONE call
+                container.SetAccessPolicy(
+                    permissions: new[] { policy },
+                    accessType: publicAccess);
+
+                // 6. Generate the SAS token for the *container* using the stored policy
+                BlobSasBuilder sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    Resource = "c",                     // container-level SAS
+                    Identifier = "defaultpolicy"        // use the stored policy
+                };
+
+                // The SDK adds the leading '?' – we strip it to match the old behaviour
+                string sas = container.GenerateSasUri(sasBuilder).Query.TrimStart('?');
+                return sas;
             }
-            else
+            catch (Exception ex)
             {
-                containerPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
             }
-            container.SetPermissions(containerPermissions);
-            string sas = container.GetSharedAccessSignature(new SharedAccessPolicy(), "defaultpolicy");
-            return sas;
+
         }
 
         private static string getStorageName()
@@ -2728,23 +2888,60 @@ namespace QidWorkerRole
                 }
                 byte[] downloadStream = null;
                 containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+
+                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+                //string sas = GetSASUrl(containerName, storageAccount);
+                //StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
+                //CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
+                //new StorageCredentialsSharedAccessSignature(sas));
+                //CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+                //try
+                //{
+                //    downloadStream = blob.DownloadByteArray();
+                //}
+                //catch (Exception ex)
+                //{
+                //    clsLog.WriteLogAzure(ex);
+                //    return null;
+                //}
+
+                // Enforce TLS 1.2
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                string sas = GetSASUrl(containerName, storageAccount);
-                StorageCredentialsSharedAccessSignature sasCreds = new StorageCredentialsSharedAccessSignature(sas);
-                CloudBlobClient sasBlobClient = new CloudBlobClient(storageAccount.BlobEndpoint,
-                new StorageCredentialsSharedAccessSignature(sas));
-                CloudBlob blob = sasBlobClient.GetBlobReference(containerName + @"/" + filenameOrUrl);
+
+                // Get storage credentials
+                string storageName = getStorageName();
+                string storageKey = getStorageKey();
+
+                // Create BlobServiceClient with shared key (to generate SAS)
+                string accountUrl = $"https://{storageName}.blob.core.windows.net";
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri(accountUrl),
+                    new StorageSharedKeyCredential(storageName, storageKey)
+                );
+
+                // Generate SAS token (your existing updated GetSASUrl)
+                string sasToken = GetSASUrl(containerName, blobServiceClient); // Returns "?sv=..."
+
+                // Construct full SAS URI for the blob
+                Uri blobSasUri = new Uri($"{accountUrl}/{containerName}/{filenameOrUrl}{sasToken}");
+
+                // Create BlobClient using SAS URI
+                BlobClient blob = new BlobClient(blobSasUri);
+
                 try
                 {
-                    downloadStream = blob.DownloadByteArray();
+                    // Download entire blob as byte array
+                    BlobDownloadResult result = blob.DownloadContent();
+                    downloadStream = result.Content.ToArray();
                 }
                 catch (Exception ex)
                 {
                     clsLog.WriteLogAzure(ex);
                     return null;
                 }
+
                 return downloadStream;
 
             }
@@ -2755,18 +2952,30 @@ namespace QidWorkerRole
             }
 
         }
-        public DataSet GetFlightNotification(string AWBPrefix, string AWBNumber, string Type, int Pices, decimal Weight, string FLTOrigin, string FLTDestination, string Status)
+        public async Task<DataSet?> GetFlightNotification(string AWBPrefix, string AWBNumber, string Type, int Pices, decimal Weight, string FLTOrigin, string FLTDestination, string Status)
         {
-            SQLServer da = new SQLServer();
-            DataSet ds;
+            //SQLServer da = new SQLServer();
+            DataSet? ds = null;
 
-            string[] pName = new string[] { "AWBPrefix", "AWBNumber", "Type", "Pices", "Weight", "FLTOrigin", "FLTDestination", "Status" };
-            object[] pValue = new object[] { AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status };
-            SqlDbType[] pType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+            //string[] pName = new string[] { "AWBPrefix", "AWBNumber", "Type", "Pices", "Weight", "FLTOrigin", "FLTDestination", "Status" };
+            //object[] pValue = new object[] { AWBPrefix, AWBNumber, Type, Pices, Weight, FLTOrigin, FLTDestination, Status };
+            //SqlDbType[] pType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+
+            SqlParameter[] sqlParameters = new SqlParameter[] {
+                new SqlParameter("AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                new SqlParameter("AWBNumber", SqlDbType.VarChar) { Value = AWBNumber },
+                new SqlParameter("Type", SqlDbType.VarChar) { Value = Type },
+                new SqlParameter("Pices", SqlDbType.Int) { Value = Pices },
+                new SqlParameter("Weight", SqlDbType.Decimal) { Value = Weight },
+                new SqlParameter("FLTOrigin", SqlDbType.VarChar) { Value = FLTOrigin },
+                new SqlParameter("FLTDestination", SqlDbType.VarChar) { Value = FLTDestination },
+                new SqlParameter("Status", SqlDbType.VarChar) { Value = Status }
+            };
 
             try
             {
-                ds = da.SelectRecords("uspSendNotification", pName, pValue, pType);
+                //ds = da.SelectRecords("uspSendNotification", pName, pValue, pType);
+                ds = await _readWriteDao.SelectRecords("uspSendNotification", sqlParameters);
             }
             catch (Exception ex)
             {
