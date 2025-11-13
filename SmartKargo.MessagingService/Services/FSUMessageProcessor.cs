@@ -45,6 +45,7 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FSUMessageProcessor> _logger;
+        private static ILogger<FSUMessageProcessor> _staticLogger;
         private readonly GenericFunction _genericFunction;
         private readonly Cls_BL _clsBL;
         private readonly FFRMessageProcessor _fFRMessageProcessor;
@@ -60,6 +61,7 @@ namespace QidWorkerRole
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _staticLogger = logger;
             _genericFunction = genericFunction;
             _clsBL = clsBL;
             _fFRMessageProcessor = fFRMessageProcessor;
@@ -195,7 +197,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                         #endregion Line 2 awb consigment details
 
@@ -257,7 +260,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -402,7 +406,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                             fsanodes[fsanodes.Length - 1] = recdata;
@@ -500,7 +505,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -632,7 +638,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                             fsanodes[fsanodes.Length - 1] = recdata;
@@ -689,7 +696,8 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex)
                                                         {
-                                                            clsLog.WriteLogAzure(ex);
+                                                            // clsLog.WriteLogAzure(ex);
+                                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                         }
                                                     }
                                                     if (msg.Length > 4)
@@ -699,7 +707,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -746,7 +755,8 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex)
                                                         {
-                                                            clsLog.WriteLogAzure(ex);
+                                                            // clsLog.WriteLogAzure(ex);
+                                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                         }
                                                     }
                                                     //4 PCS Indicator
@@ -765,7 +775,8 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex)
                                                         {
-                                                            clsLog.WriteLogAzure(ex);
+                                                            // clsLog.WriteLogAzure(ex);
+                                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                         }
                                                     }
                                                     try
@@ -792,7 +803,8 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex)
                                                             {
-                                                                clsLog.WriteLogAzure(ex);
+                                                                // clsLog.WriteLogAzure(ex);
+                                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                             }
                                                         }
                                                         if (msg.Length > 6)
@@ -817,19 +829,22 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex)
                                                             {
-                                                                clsLog.WriteLogAzure(ex);
+                                                                // clsLog.WriteLogAzure(ex);
+                                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                             }
                                                         }
                                                     }
                                                     catch (Exception ex)
                                                     {
-                                                        clsLog.WriteLogAzure(ex);
+                                                        // clsLog.WriteLogAzure(ex);
+                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                     }
 
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -1005,7 +1020,8 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex)
                                         {
-                                            clsLog.WriteLogAzure(ex);
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                         fsanodes[fsanodes.Length - 1] = recdata;
@@ -1143,7 +1159,8 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex)
                                         {
-                                            clsLog.WriteLogAzure(ex);
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                         fsanodes[fsanodes.Length - 1] = recdata;
@@ -1371,7 +1388,8 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex)
                                         {
-                                            clsLog.WriteLogAzure(ex);
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                         fsanodes[fsanodes.Length - 1] = recdata;
@@ -1397,7 +1415,8 @@ namespace QidWorkerRole
                                                     }
                                                     catch (Exception ex)
                                                     {
-                                                        clsLog.WriteLogAzure(ex);
+                                                        // clsLog.WriteLogAzure(ex);
+                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                     }
 
                                                     recdata.fltorg = msg[3].Substring(0, 3);
@@ -1424,7 +1443,7 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex)
                                                             {
-                                                                clsLog.WriteLogAzure(ex);
+                                                                // clsLog.WriteLogAzure(ex);_logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                             }
                                                         }
                                                         else
@@ -1465,7 +1484,8 @@ namespace QidWorkerRole
                                                     }
                                                     catch (Exception ex)
                                                     {
-                                                        clsLog.WriteLogAzure(ex);
+                                                        // clsLog.WriteLogAzure(ex);
+                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                     }
                                                     if (msg.Length > 7)
                                                     {
@@ -1481,7 +1501,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -1555,7 +1576,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                             fsanodes[fsanodes.Length - 1] = recdata;
@@ -1649,7 +1671,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                             fsanodes[fsanodes.Length - 1] = recdata;
@@ -1694,7 +1717,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -1726,7 +1750,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref custominfo, custominfo.Length + 1);
                                                 custominfo[custominfo.Length - 1] = custom;
@@ -1765,7 +1790,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             #endregion
                                         }
@@ -1784,7 +1810,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             #endregion
                                         }
@@ -1884,7 +1911,8 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex)
                                         {
-                                            clsLog.WriteLogAzure(ex);
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                         fsanodes[fsanodes.Length - 1] = recdata;
@@ -1933,7 +1961,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                             }
                                             #endregion
@@ -1949,7 +1978,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 flag = false;
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return flag;
         }
@@ -2014,10 +2044,10 @@ namespace QidWorkerRole
                     {
                   new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum },
                   new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
-                  new SqlParameter("@refNo", SqlDbType.VarChar) { Value = refNo },
+                  new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo },
 
                     };
-                    DataSet dsCheck = await _readWriteDao.SelectRecords("Messaging.uspRelayFSAOnFSR", sqlParameters);
+                    DataSet dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters); //name mismatch
                     if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0)
                     {
                         if (dsCheck.Tables[0].Rows[0]["AWBNumber"].ToString().Equals(fsadata.awbnum, StringComparison.OrdinalIgnoreCase))
@@ -2138,7 +2168,7 @@ namespace QidWorkerRole
                                 },
                                 new SqlParameter("@AWBGrossWeight", SqlDbType.Decimal)
                                 {
-                                    Value = decimal.TryParse(fsadata.weight, out var wt) ? wt : 0
+                                    Value = decimal.Parse(fsadata.weight==""?"0":fsadata.weight)
                                 },
                                 new SqlParameter("@FlightNumber", SqlDbType.VarChar)
                                 {
@@ -2162,7 +2192,8 @@ namespace QidWorkerRole
                                 },
                                 new SqlParameter("@DiscrepancyPcs", SqlDbType.Int)
                                 {
-                                    Value = int.TryParse(fsanodes[i].numofpcs, out var np) ? np : 0
+                                    // Value = int.TryParse(fsanodes[i].numofpcs, out var np) ? np : 0
+                                    Value = int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs),
                                 },
                                 new SqlParameter("@UOM", SqlDbType.VarChar)
                                 {
@@ -2170,10 +2201,11 @@ namespace QidWorkerRole
                                 },
                                 new SqlParameter("@DiscrepancyWeight", SqlDbType.Decimal)
                                 {
-                                    Value = decimal.TryParse(fsanodes[i].weight, out var dw) ? dw : 0
+                                    // Value = decimal.TryParse(fsanodes[i].weight, out var dw) ? dw : 0
+                                    Value = decimal.Parse(fsanodes[i].weight == "" ? "0" : fsanodes[i].weight),
                                 },
                                 new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FSU" },
-                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.UtcNow },
+                                new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.Now },
                                 new SqlParameter("@OtherServiceInformation", SqlDbType.VarChar)
                                 {
                                     Value = othinfoarray.Length > 0
@@ -2272,12 +2304,12 @@ namespace QidWorkerRole
                               new SqlParameter("@AWBNo", SqlDbType.VarChar) { Value = fsadata.awbnum },
                               new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fsadata.origin  },
                               new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest  },
-                              new SqlParameter("@AWbPcs", SqlDbType.Int) { Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0 },
-                              new SqlParameter("@AWbGrossWt", SqlDbType.Decimal) { Value = decimal.TryParse(fsadata.weight, out var awbWeight) ? awbWeight : 0 },
+                              new SqlParameter("@AWbPcs", SqlDbType.Int) { Value = int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt) },
+                              new SqlParameter("@AWbGrossWt", SqlDbType.Decimal) { Value = decimal.Parse(fsadata.weight==""?"0":fsadata.weight) },
                               new SqlParameter("@PieceCode", SqlDbType.VarChar) { Value = fsanodes[i].pcsindicator  },
-                              new SqlParameter("@Deliverypcs", SqlDbType.Int) { Value = int.TryParse(fsanodes[i].numofpcs, out var delPcs) ? delPcs : 0 },
+                              new SqlParameter("@Deliverypcs", SqlDbType.Int) { Value = fsanodes[i].numofpcs},
                               new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = fsanodes[i].weightcode  },
-                              new SqlParameter("@DeliveryGross", SqlDbType.Decimal) { Value = decimal.TryParse(fsanodes[i].weight, out var delWeight) ? delWeight : 0 },
+                              new SqlParameter("@DeliveryGross", SqlDbType.Decimal) { Value = decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight) },
                               new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fsanodes[0].fltdest  },
                               new SqlParameter("@Dname", SqlDbType.VarChar) { Value = fsanodes[0].name  },
                               new SqlParameter("@Deliverydate", SqlDbType.DateTime) { Value = DeliveryDate },
@@ -2475,28 +2507,28 @@ namespace QidWorkerRole
                                 new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
                                 new SqlParameter("@AWbPcs", SqlDbType.Int)
                                 {
-                                    Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0
+                                    Value = int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt)
                                 },
                                 new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)
                                 {
-                                    Value = decimal.TryParse(fsadata.weight, out var grossWt) ? grossWt : 0
+                                    Value = decimal.Parse(fsadata.weight==""?"0":fsadata.weight)
                                 },
                                 new SqlParameter("@PieceCode", SqlDbType.VarChar) { Value = fsanodes[i].pcsindicator },
                                 new SqlParameter("@AcceptPieces", SqlDbType.Int)
                                 {
-                                    Value = int.TryParse(fsanodes[i].numofpcs, out var acceptPcs) ? acceptPcs : 0
+                                    Value = int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs)
                                 },
                                 new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = fsanodes[i].weightcode },
                                 new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal)
                                 {
-                                    Value = decimal.TryParse(fsanodes[i].weight, out var acceptedWeight) ? acceptedWeight : 0
+                                    Value =  decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight)
                                 },
                                 new SqlParameter("@AccpetedOrigin", SqlDbType.VarChar) { Value = fsanodes[0].airportcode },
                                 new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fsanodes[0].name },
                                 new SqlParameter("@VolumeCode", SqlDbType.VarChar) { Value = fsanodes[0].volumecode },
                                 new SqlParameter("@VolumeAmount", SqlDbType.Decimal)
                                 {
-                                    Value = decimal.TryParse(fsanodes[0].volumeamt, out var volumeAmt) ? volumeAmt : 0
+                                    Value = decimal.Parse(fsanodes[0].volumeamt==""?"0":fsanodes[0].volumeamt)
                                 },
                                 new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = MessagePrefix },
                                 new SqlParameter("@AcceptedDate", SqlDbType.DateTime)
@@ -2504,7 +2536,7 @@ namespace QidWorkerRole
                                     Value = AcceptedDate == default ? DateTime.UtcNow : AcceptedDate
                                 },
                                 new SqlParameter("@AcceptedTime", SqlDbType.VarChar) { Value = AcceptedTime },
-                                new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
+                                new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo }
                             };
 
                                     DataSet dsFSURCS = new DataSet();
@@ -2575,7 +2607,8 @@ namespace QidWorkerRole
                                                     }
                                                     catch
                                                     {
-                                                        clsLog.WriteLogAzure("Error while save FSU/RCS OCI information Message:" + awbnum);
+                                                        // clsLog.WriteLogAzure("Error while save FSU/RCS OCI information Message:" + awbnum);
+                                                        _logger.LogError("Error while save FSU/RCS OCI information Message: {0}" , awbnum);
                                                     }
                                                 }
                                                 #region : Auto generate FWB and FHL  :
@@ -2672,7 +2705,8 @@ namespace QidWorkerRole
                                         };
                                         //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
                                         if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", cparam))
-                                            clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                                            // clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                                            _logger.LogWarning("Error  on Update capacity Plan : {0}" , awbnum);
 
                                         #endregion
                                     }
@@ -2812,7 +2846,7 @@ namespace QidWorkerRole
                               },
                               new SqlParameter("@AWbPcs", SqlDbType.Int)
                               {
-                                  Value = int.TryParse(fsadata.pcscnt, out var pcs) ? pcs : 0
+                                  Value = int.Parse(fsadata.pcscnt==""?"0":fsadata.pcscnt)
                               },
                               new SqlParameter("@AWbWeightCode", SqlDbType.VarChar)
                               {
@@ -2820,7 +2854,7 @@ namespace QidWorkerRole
                               },
                               new SqlParameter("@AWbGrossWt", SqlDbType.Decimal)
                               {
-                                  Value = decimal.TryParse(fsadata.weight, out var wt) ? wt : 0
+                                  Value = decimal.Parse(fsadata.weight==""?"0":fsadata.weight)
                               },
                               new SqlParameter("@TransferCarrierCode", SqlDbType.VarChar)
                               {
@@ -2842,7 +2876,7 @@ namespace QidWorkerRole
                               },
                               new SqlParameter("@AcceptPieces", SqlDbType.Int)
                               {
-                                  Value = int.TryParse(fsanodes[i].numofpcs, out var acceptPieces) ? acceptPieces : 0
+                                  Value = int.Parse(fsanodes[i].numofpcs==""?"0":fsanodes[i].numofpcs)
                               },
                               new SqlParameter("@WeightCode", SqlDbType.VarChar)
                               {
@@ -2850,7 +2884,7 @@ namespace QidWorkerRole
                               },
                               new SqlParameter("@AcceptedGrWeight", SqlDbType.Decimal)
                               {
-                                  Value = decimal.TryParse(fsanodes[i].weight, out var acceptedWt) ? acceptedWt : 0
+                                  Value = decimal.Parse(fsanodes[i].weight==""?"0":fsanodes[i].weight)
                               },
                               new SqlParameter("@ReceivedCarrier", SqlDbType.VarChar)
                               {
@@ -2870,7 +2904,7 @@ namespace QidWorkerRole
                               },
                               new SqlParameter("@ManifestNumber", SqlDbType.Int)
                               {
-                                  Value = int.TryParse(fsanodes[0].transfermanifestnumber, out var manifestNo) ? manifestNo : 0
+                                  Value = int.Parse(fsanodes[0].transfermanifestnumber==""?"0":fsanodes[0].transfermanifestnumber)
                               }
                             };
 
@@ -2931,11 +2965,11 @@ namespace QidWorkerRole
                                 },
                                 new SqlParameter("@Pieces", SqlDbType.Int)
                                 {
-                                    Value = int.TryParse(fsanodes[i].numofpcs, out var pcs) ? pcs : 0
+                                    Value = fsanodes[i].numofpcs
                                 },
                                 new SqlParameter("@Weight", SqlDbType.VarChar)
                                 {
-                                    Value = string.IsNullOrEmpty(fsanodes[i].weight) ? "0" : fsanodes[i].weight
+                                    Value = (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight))
                                 },
                                 new SqlParameter("@FlighNumber", SqlDbType.VarChar)
                                 {
@@ -3326,7 +3360,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch
                                                 {
-                                                    clsLog.WriteLogAzure("Error while save FSU OCI information Message:" + awbnum);
+                                                    // clsLog.WriteLogAzure("Error while save FSU OCI information Message:" + awbnum);
+                                                    _logger.LogError("Error while save FSU OCI information Message: {0}" , awbnum);
                                                 }
                                             }
                                         }
@@ -3591,11 +3626,11 @@ namespace QidWorkerRole
                                         new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fsadata.dest },
                                         new SqlParameter("@Pieces", SqlDbType.VarChar)
                                         {
-                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].numofpcs) ? "0" : fsanodes[k].numofpcs
+                                            Value = fsanodes[k].numofpcs
                                         },
                                         new SqlParameter("@Weight", SqlDbType.VarChar)
                                         {
-                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].weight) ? "0" : fsanodes[k].weight
+                                            Value = Convert.ToDouble(fsanodes[k].weight == "" ? "0" : fsanodes[k].weight)
                                         },
                                         new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltno },
                                         new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = Date },
@@ -3611,11 +3646,11 @@ namespace QidWorkerRole
                                                 ? UpdatedON.ToString()
                                                 : strDepartureTime
                                         },
-                                        new SqlParameter("@Public", SqlDbType.Bit) { Value = true },
+                                        new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
                                         new SqlParameter("@ShipmentType", SqlDbType.VarChar) { Value = fsanodes[k].pcsindicator },
                                         new SqlParameter("@Volume", SqlDbType.VarChar)
                                         {
-                                            Value = string.IsNullOrWhiteSpace(fsanodes[k].volumeamt) ? "0" : fsanodes[k].volumeamt
+                                            Value = fsanodes[k].volumeamt.Trim() == "" ? "0" : fsanodes[k].volumeamt
                                         },
                                         new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
                                     };
@@ -3624,7 +3659,8 @@ namespace QidWorkerRole
                                     {
                                         //clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
                                         //Fix the error dtb.LastErrorDescription while logging, currently removed + dtb.LastErrorDescription  , needs to add
-                                        clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: ");
+                                        // clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: ");
+                                        _logger.LogWarning("AWB Audit log  for: {0}", awbnum + Environment.NewLine + "Error: ");
 
                                     }
                                 }
@@ -3636,7 +3672,8 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     flag = false;
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on SaveandUpdateFSUMessage");
                 }
                 //return flag;
                 return (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
@@ -3678,7 +3715,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 strarr = null;
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return strarr;
         }
