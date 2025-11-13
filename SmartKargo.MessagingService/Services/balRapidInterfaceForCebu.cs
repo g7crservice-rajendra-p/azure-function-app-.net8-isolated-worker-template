@@ -9,7 +9,7 @@ using QidWorkerRole.SIS.DAL;
 
 namespace QidWorkerRole
 {
-    class balRapidInterfaceForCebu
+    public class balRapidInterfaceForCebu
     {
         public static Dictionary<string, string> objDictionary = null;
         public static Dictionary<string, string> objUploadDictionary = null;

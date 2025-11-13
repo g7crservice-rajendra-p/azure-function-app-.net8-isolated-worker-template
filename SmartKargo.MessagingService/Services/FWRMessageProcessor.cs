@@ -12,12 +12,11 @@
       * Description           :   
      */
 #endregion
-using System;
-using System.Linq;
-using System.IO;
-using System.Data;
-using QID.DataAccess;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Configuration;
+using System.Data;
 
 namespace QidWorkerRole
 {
@@ -31,11 +30,17 @@ namespace QidWorkerRole
         const string PAGE_NAME = "FWRMessageProcessor";
         SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
 
-        public FWRMessageProcessor()
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FWRMessageProcessor> _logger;
+
+        #region Constructor
+        public FWRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FWRMessageProcessor> logger)
         {
-
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
         }
-
+        #endregion
         #region FWR Message Decoding for Update Dateabse
         /// <summary>
         /// Created By:Badiuz khan
@@ -137,43 +142,43 @@ namespace QidWorkerRole
             }
             return flag;
         }
+        /*Not in Use*/
+        //private string ReadFile(string tagName, string strMessage)
+        //{
+        //    var fsbLine = new StringReader(strMessage);
+        //    string lineText;
+        //    var tagText = string.Empty;
+        //    var readLine = false;
+        //    try
+        //    {
 
-        private string ReadFile(string tagName, string strMessage)
-        {
-            var fsbLine = new StringReader(strMessage);
-            string lineText;
-            var tagText = string.Empty;
-            var readLine = false;
-            try
-            {
-
-                while ((lineText = fsbLine.ReadLine()) != null)
-                {
-                    if (readLine)
-                    {
-                        if (lineText.Trim().Length > 0)
-                            if (lineText.Substring(0, 1) == "/")
-                                tagText += "#" + lineText;
-                            else
-                                break;
-                    }
-                    if (lineText.Trim().Length > 2)
-                        if (lineText.Substring(0, 3) == tagName)
-                        {
-                            tagText = lineText;
-                            readLine = true;
-                        }
-                }
+        //        while ((lineText = fsbLine.ReadLine()) != null)
+        //        {
+        //            if (readLine)
+        //            {
+        //                if (lineText.Trim().Length > 0)
+        //                    if (lineText.Substring(0, 1) == "/")
+        //                        tagText += "#" + lineText;
+        //                    else
+        //                        break;
+        //            }
+        //            if (lineText.Trim().Length > 2)
+        //                if (lineText.Substring(0, 3) == tagName)
+        //                {
+        //                    tagText = lineText;
+        //                    readLine = true;
+        //                }
+        //        }
 
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
 
-            }
-            return tagText;
-        }
+        //    }
+        //    return tagText;
+        //}
 
         #endregion
 
@@ -190,9 +195,9 @@ namespace QidWorkerRole
         /// <param name="Dimensionformation"></param>
         /// <param name="bublistinformation"></param>
         /// <returns></returns>
-        public bool ValidateAndSendFWBMessage(MessageData.FWRInformation fwrInformation, int messgeId, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+        public async Task<bool> ValidateAndSendFWBMessage(MessageData.FWRInformation fwrInformation, int messgeId, string strMessage, string strMessageFrom, string strFromID, string strStatus)
         {
-            SQLServer dtb = new SQLServer();
+            //SQLServer dtb = new SQLServer();
 
             bool MessageStatus = false;
             try
@@ -233,7 +238,7 @@ namespace QidWorkerRole
                 }
 
 
-                DataSet dsFWB = GetAWBRecordForGenerateFWBMessage(fwrInformation.AWBNo, fwrInformation.AirlinePrefix);
+                DataSet? dsFWB = await GetAWBRecordForGenerateFWBMessage(fwrInformation.AWBNo, fwrInformation.AirlinePrefix);
                 string Error = "";
                 //string FWBMessage= EncodeFWB(dsFWB, ref Error, FWBMessageversion);
 
@@ -284,17 +289,25 @@ namespace QidWorkerRole
         /// </summary>
         /// <param name="sitaMessage"></param>
         /// <returns></returns>
-        public DataSet GetAWBRecordForGenerateFWBMessage(string strAWBNumber, string strAwbPrefix)
+        public async Task<DataSet> GetAWBRecordForGenerateFWBMessage(string strAWBNumber, string strAwbPrefix)
         {
-            DataSet dssitaMessage = new DataSet();
+            DataSet? dssitaMessage = new DataSet();
             try
             {
 
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBNumber", "AWBPrefix" };
-                object[] paramvalue = new object[] { strAWBNumber, strAwbPrefix };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                dssitaMessage = da.SelectRecords("SP_GetAWBRecordForFWB", paramname, paramvalue, paramtype);
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "AWBNumber", "AWBPrefix" };
+                //object[] paramvalue = new object[] { strAWBNumber, strAwbPrefix };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                //SqlParameter[] sqlParameters = new SqlParameter[{ }];
+
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = strAWBNumber },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = strAwbPrefix }
+                };
+                //dssitaMessage = da.SelectRecords("SP_GetAWBRecordForFWB", paramname, paramvalue, paramtype);
+                dssitaMessage = await _readWriteDao.SelectRecords( "SP_GetAWBRecordForFWB", sqlParameters);
             }
             catch (Exception)
             {

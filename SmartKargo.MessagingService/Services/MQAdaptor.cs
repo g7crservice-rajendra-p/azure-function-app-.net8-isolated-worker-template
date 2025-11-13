@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using IBM.WMQ;
-using System.IO;
+﻿using IBM.WMQ;
 using QidWorkerRole;
+using System.Text;
 
 
 namespace QueueManager
@@ -80,9 +75,10 @@ namespace QueueManager
                     qMgr = new MQQueueManager(strQueManager, properties);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                clsLog.WriteLogAzure(ex);
+                throw;
+                //clsLog.WriteLogAzure(ex);
             }
         }
         #endregion Constructor
@@ -122,7 +118,8 @@ namespace QueueManager
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                ErrorMessage = ex.Message;
+                //clsLog.WriteLogAzure(ex);
             }
             finally
             {
@@ -182,7 +179,8 @@ namespace QueueManager
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                ErrorMessage = ex.Message;
+                //clsLog.WriteLogAzure(ex);
             }
             return string.Empty;
         }
@@ -198,7 +196,8 @@ namespace QueueManager
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                throw;
+                //clsLog.WriteLogAzure(ex);
             }
         }
         #endregion
@@ -212,7 +211,8 @@ namespace QueueManager
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                throw;
+                //clsLog.WriteLogAzure(ex);
             }
         }
         #endregion

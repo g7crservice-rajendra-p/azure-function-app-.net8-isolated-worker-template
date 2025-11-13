@@ -1,17 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System.Data;
-using System.Data.SqlClient;
 
 
 namespace QidWorkerRole
 {
     public class RapidException
     {
-        public void RapidExceptionCEBU()
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<RapidException> _logger;
+        private readonly balRapidInterfaceForCebu _balRapidInterfaceForCebu;  
+
+        #region Constructor
+        public RapidException(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<RapidException> logger,
+            balRapidInterfaceForCebu balRapidInterfaceForCebu)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _balRapidInterfaceForCebu = balRapidInterfaceForCebu;
+        }
+        #endregion
+        public async Task RapidExceptionCEBU()
         {
             clsLog.WriteLogAzure("Calling start RapidExceptionCEBU");
             String TimeZone = System.Configuration.ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
@@ -33,19 +45,23 @@ namespace QidWorkerRole
                 ToDate = ExecutedOn;
 
             }
-            balRapidInterfaceForCebu objBAL = new balRapidInterfaceForCebu();
+            //balRapidInterfaceForCebu objBAL = new balRapidInterfaceForCebu();
 
             #region MissingAWBFlown Data
 
             DataSet dsRapidException = new DataSet();
-            dsRapidException = objBAL.GetMissingAWBFlownDetails(Convert.ToDateTime(ExecutedOn), FromDate, ToDate);
+            dsRapidException = await _balRapidInterfaceForCebu.GetMissingAWBFlownDetails(Convert.ToDateTime(ExecutedOn), FromDate, ToDate);
             if (dsRapidException != null & dsRapidException.Tables.Count > 0)
             {
                 clsLog.WriteLogAzure("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
                 DataTable dtAWB = dsRapidException.Tables[0];
                 DataTable dtFlown = dsRapidException.Tables[1];
-                string toId = GetConfigurationValue("ToEmailIDForRapidException");
-                string fromID = GetConfigurationValue("msgService_OutEmailId");
+                //string toId = GetConfigurationValue("ToEmailIDForRapidException");
+                //string fromID = GetConfigurationValue("msgService_OutEmailId");
+                
+                string toId = ConfigCache.Get("ToEmailIDForRapidException");
+                string fromID = ConfigCache.Get("msgService_OutEmailId");
+
                 string ToEmailID = string.Empty;
                 string strSubject = "SK to RAPID Interface: Missing AWBs from: " + DateTime.Today.ToString("MMddyyyy");
 
@@ -117,56 +133,56 @@ namespace QidWorkerRole
 
             #endregion
         }
-        public static string GetConfigurationValue(string Key)
-        {
-            SqlDataAdapter objDA = null;
-            DataSet objDs = null;
-            string FileName = string.Empty;
-            try
-            {
+        //public static string GetConfigurationValue(string Key)
+        //{
+        //    SqlDataAdapter objDA = null;
+        //    DataSet objDs = null;
+        //    string FileName = string.Empty;
+        //    try
+        //    {
 
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //        string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
 
-                string Command = "Exec [dbo].[uspGetTblConfiguration] '" + Key + "'";
-                objDA = new SqlDataAdapter(Command, connectionString);
-                objDA.SelectCommand.CommandTimeout = 0;
-                objDs = new DataSet();
-                objDA.Fill(objDs);
+        //        string Command = "Exec [dbo].[uspGetTblConfiguration] '" + Key + "'";
+        //        objDA = new SqlDataAdapter(Command, connectionString);
+        //        objDA.SelectCommand.CommandTimeout = 0;
+        //        objDs = new DataSet();
+        //        objDA.Fill(objDs);
 
-                if (objDs != null && objDs.Tables.Count > 0 && objDs.Tables[0].Rows.Count > 0)
-                {
-                    FileName = objDs.Tables[0].Rows[0]["values"].ToString();
+        //        if (objDs != null && objDs.Tables.Count > 0 && objDs.Tables[0].Rows.Count > 0)
+        //        {
+        //            FileName = objDs.Tables[0].Rows[0]["values"].ToString();
 
-                }
-                return FileName;
+        //        }
+        //        return FileName;
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return "";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return "";
 
-            }
-            finally
-            {
-                objDA = null;
-                objDs = null;
-            }
-        }
+        //    }
+        //    finally
+        //    {
+        //        objDA = null;
+        //        objDs = null;
+        //    }
+        //}
 
-        public static bool addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
+        public async Task<bool> addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
         {
             bool flag = false;
             try
             {
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-                SqlConnection con = new SqlConnection(connectionString);
-                con.Open();
-                SqlCommand cmd = new SqlCommand();
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                //SqlConnection con = new SqlConnection(connectionString);
+                //con.Open();
+                //SqlCommand cmd = new SqlCommand();
 
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandText = "spInsertMsgToOutbox";
-                cmd.Connection = con;
+                //cmd.CommandType = CommandType.StoredProcedure;
+                //cmd.CommandText = "spInsertMsgToOutbox";
+                //cmd.Connection = con;
                 SqlParameter[] prm = new SqlParameter[] {
                     new SqlParameter("@Subject",subject)
                     ,new SqlParameter("@Body",Msg)
@@ -176,8 +192,9 @@ namespace QidWorkerRole
                     ,new SqlParameter("@IsHTML",isHTML)
                 };
 
-                cmd.Parameters.AddRange(prm);
-                cmd.ExecuteNonQuery();
+                //cmd.Parameters.AddRange(prm);
+                //cmd.ExecuteNonQuery();
+                await _readWriteDao.ExecuteNonQueryAsync("spInsertMsgToOutbox", prm);
             }
             catch (Exception ex)
             {
