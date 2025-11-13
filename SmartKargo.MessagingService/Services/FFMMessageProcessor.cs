@@ -156,7 +156,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -218,7 +219,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -261,7 +263,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref unloadingPort, unloadingPort.Length + 1);
                                                 unloadingPort[unloadingPort.Length - 1] = unloading;
@@ -324,7 +327,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
 
                                             if (!DecodeConsigmentDetails(RefNo, str[i], ref consinfo, ref AWBPrefix, ref AWBNumber, out errorMessage))
@@ -348,7 +352,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         continue;
                                     }
                                 }
@@ -386,7 +391,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -417,7 +423,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                     Array.Resize(ref uld, uld.Length + 1);
                                     uld[uld.Length - 1] = ulddata;
@@ -446,7 +453,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -497,7 +505,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -539,7 +548,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                                 Array.Resize(ref movementInfo, movementInfo.Length + 1);
                                                 movementInfo[movementInfo.Length - 1] = movement;
@@ -557,7 +567,8 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex)
                                         {
-                                            clsLog.WriteLogAzure(ex);
+                                            // clsLog.WriteLogAzure(ex);
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         }
                                         #endregion
 
@@ -612,7 +623,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                // clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                             }
                                             lastrec = "NA";
                                         }
@@ -642,7 +654,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                     }
                                 }
                                 #endregion
@@ -656,13 +669,15 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on DecodeReceiveFFMMessage");
                     flag = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             //return flag;
@@ -1253,7 +1268,8 @@ namespace QidWorkerRole
 
                                                             if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAWB))
                                                                 //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
-                                                                clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine );
+                                                                // clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine );
+                                                                _logger.LogWarning("AWB Audit log  for: {0}" , consinfo[i].awbnum + Environment.NewLine );
 
                                                         }
                                                     }
@@ -1339,11 +1355,13 @@ namespace QidWorkerRole
 
                                                 if (!await ExportManifestDetails(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0.01" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight,
                                                     consinfo[i].manifestdesc, flightdate, ManifestID, flightnum, consinfo[i].airlineprefix, consinfo[i].weightcode == "" ? "L" : consinfo[i].weightcode, ffmSequenceNo, TotalAWBPcs, UNID, REFNo, consinfo[i].IsBup == "true" ? true : false, consinfo[i].densityindicator, consinfo[i].consigntype, ffmdata.endmesgcode))
-                                                    clsLog.WriteLogAzure("Error in FFM Manifest Details:" + consinfo[i].awbnum);
+                                                    // clsLog.WriteLogAzure("Error in FFM Manifest Details:" + consinfo[i].awbnum);
+                                                    _logger.LogWarning("Error in FFM Manifest Details: {0}" , consinfo[i].awbnum);
                                                 else
                                                 {
                                                     if (!await ExportManifestULDAWBAssociation(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(',') == "" ? "GEN" : consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, consinfo[i].airlineprefix, ffmdata.carriercode + ffmdata.fltnum, consinfo[i].numshp, consinfo[i].weight, consinfo[i].consigntype, TotalAWBPcs, ffmSequenceNo, consinfo[i].weightcode, REFNo, consinfo[i].IsBup == "true" ? true : false))
-                                                        clsLog.WriteLogAzure("Error in FFM Manifest Details:" + consinfo[i].awbnum);
+                                                        // clsLog.WriteLogAzure("Error in FFM Manifest Details:" + consinfo[i].awbnum);
+                                                        _logger.LogWarning("Error in FFM Manifest Details:{0}" , consinfo[i].awbnum);
 
                                                     //sqlServer = new SQLServer();
                                                     //string[] PVName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno", "FlightNo", "FlightDate", "PCS", "WT", "UOM", "UpdatedBy", "UpdatedOn", "StnCode" };
@@ -1406,7 +1424,8 @@ namespace QidWorkerRole
                                                     if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersOrg, 120000))
                                                     {
                                                         //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
-                                                        clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine );
+                                                        // clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine );
+                                                        _logger.LogWarning("AWB Audit log  for: {0}" , consinfo[i].awbnum + Environment.NewLine );
                                                     }
                                                 }
                                             }
@@ -1487,7 +1506,8 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    clsLog.WriteLogAzure(ex);
+                                                    // clsLog.WriteLogAzure(ex);
+                                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                                 }
                                             }
                                         }
@@ -1532,7 +1552,8 @@ namespace QidWorkerRole
                                             };
 
                                             if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_uspUpdateShipmentDestinationthroughFFM", parametersChangeAWB))
-                                                clsLog.WriteLogAzure("Error in Update AWB Destination");
+                                                // clsLog.WriteLogAzure("Error in Update AWB Destination");
+                                                _logger.LogWarning("Error in Update AWB Destination");
 
                                             decimal ChargeableWeight = 0, TotalChargeableWeight = 0;
                                             ChargeableWeight = Convert.ToDecimal(dtWeightUpdate.Rows[route]["GrossWt"].ToString() == "" ? "0" : dtWeightUpdate.Rows[route]["GrossWt"]);
@@ -1746,7 +1767,8 @@ namespace QidWorkerRole
                                                             };
 
                                                             if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_spSaveFFMAWBRoute", routeParameters))
-                                                                clsLog.WriteLogAzure("Error in Save AWB Route FFM " );
+                                                                // clsLog.WriteLogAzure("Error in Save AWB Route FFM " );
+                                                                _logger.LogWarning("Error in Save AWB Route FFM " );
 
 
                                                         }
@@ -1849,7 +1871,8 @@ namespace QidWorkerRole
 
 
                                                     if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_uSpUpdateAWBRouteInformationthroughFFM", routeParams))
-                                                        clsLog.WriteLogAzure("Error in Save AWB Route FFM ");
+                                                        // clsLog.WriteLogAzure("Error in Save AWB Route FFM ");
+                                                        _logger.LogWarning("Error in Save AWB Route FFM ");
                                                     #endregion Update AWB Route Information
                                                 }
                                             }
@@ -1905,7 +1928,8 @@ namespace QidWorkerRole
                                             {
                                                 if (!lstAcceptedAWB.Contains(strAWB))
                                                 {
-                                                    clsLog.WriteLogAzure("Billing Entry for AC :" + auditconsinfo[i].airlineprefix + "-" + auditconsinfo[i].awbnum);
+                                                    // clsLog.WriteLogAzure("Billing Entry for AC :" + auditconsinfo[i].airlineprefix + "-" + auditconsinfo[i].awbnum);
+                                                    _logger.LogInformation("Billing Entry for AC : {0} - {1}" , auditconsinfo[i].airlineprefix , auditconsinfo[i].awbnum);
                                                     FFMPiecesCode = FFMPiecesCode == string.Empty ? "T" : FFMPiecesCode;
                                                     #region Prepare Parameters
                                                     object[] AWBInfo = new object[11];
@@ -1987,7 +2011,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Lying List Error: " + ex.ToString());
+                    // clsLog.WriteLogAzure("Lying List Error: " + ex.ToString());
+                    _logger.LogError("Lying List Error: {0}" , ex);
                 }
                 #endregion
 
@@ -2027,7 +2052,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Sub sequent leg update error: " + ex.ToString());
+                    // clsLog.WriteLogAzure("Sub sequent leg update error: " + ex.ToString());
+                    _logger.LogError("Sub sequent leg update error: {0}" , ex);
                 }
                 #endregion
 
@@ -2048,7 +2074,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
                     try
                     {
@@ -2056,7 +2083,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
                     //string[] paramname = new string[]
                     //{
@@ -2125,7 +2153,8 @@ namespace QidWorkerRole
                     
                     if (!await _readWriteDao.ExecuteNonQueryAsync("spUpdateviaUCMMsgFFM", parametersUL))
                     {
-                        clsLog.WriteLogAzure("Error in FFM ULD:");
+                        // clsLog.WriteLogAzure("Error in FFM ULD:");
+                        _logger.LogWarning("Error in FFM ULD:");
                     }
                 }
                 #endregion
@@ -2139,7 +2168,8 @@ namespace QidWorkerRole
                         {
                             if (!lstDeliveredAWB.Contains(auditconsinfo[i].awbnum))
                             {
-                                clsLog.WriteLogAzure("Billing Entry for DP :" + auditconsinfo[i].airlineprefix + "-" + auditconsinfo[i].awbnum);
+                                // clsLog.WriteLogAzure("Billing Entry for DP :" + auditconsinfo[i].airlineprefix + "-" + auditconsinfo[i].awbnum);
+                                _logger.LogInformation("Billing Entry for DP :{0} - {1}" , auditconsinfo[i].airlineprefix , auditconsinfo[i].awbnum);
                                 #region Prepare Parameters
 
                                 object[] AWBInfo = new object[11];
@@ -2274,7 +2304,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Create Allotment Error: " + ex.ToString());
+                    // clsLog.WriteLogAzure("Create Allotment Error: " + ex.ToString());
+                    _logger.LogError("Create Allotment Error: {0}",ex);
                 }
                 #endregion
 
@@ -2282,7 +2313,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 ErrorMsg = ex.Message.ToString();
                 flag = false;
             }
@@ -2317,7 +2349,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -2360,7 +2393,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 strarr = null;
             }
             return strarr;
@@ -2418,7 +2452,8 @@ namespace QidWorkerRole
                     {
                         if (IsAutoGenerateCustomMessage)
                         {
-                            clsLog.WriteLog("IsAutoGenerateCustomMessage: " + genericFunction.GetConfigurationValues("IsAutoGenerateCustomMessage"));
+                            // clsLog.WriteLog("IsAutoGenerateCustomMessage: " + genericFunction.GetConfigurationValues("IsAutoGenerateCustomMessage"));
+                            _logger.LogInformation("IsAutoGenerateCustomMessage: {0}", genericFunction.GetConfigurationValues("IsAutoGenerateCustomMessage"));
                             GenericFunction generalFunction = new GenericFunction();
                             
                             //CustomsMessageProcessor customsMessageProcessor = new CustomsMessageProcessor();
@@ -2426,7 +2461,8 @@ namespace QidWorkerRole
                             string PartnerCodeOri = generalFunction.GetCountryCode(source);
                             string PartnerCodeDest = generalFunction.GetCountryCode(dest);
 
-                            clsLog.WriteLog("GenerateCustomMessageXML() Parameters: " + PartnerCodeOri + ":" + PartnerCodeDest + ":" + flightnum + ":" + flightdate.ToString() + ":" + source + ":" + dest);
+                            // clsLog.WriteLog("GenerateCustomMessageXML() Parameters: " + PartnerCodeOri + ":" + PartnerCodeDest + ":" + flightnum + ":" + flightdate.ToString() + ":" + source + ":" + dest);
+                            _logger.LogInformation("GenerateCustomMessageXML() Parameters: {0}:{1}:{2}:{3}:{4}:{5}" , PartnerCodeOri, PartnerCodeDest, flightnum, flightdate.ToString(), source, dest);
 
                             if (PartnerCodeOri != "PH" && PartnerCodeDest == "PH")
                             {
@@ -2532,7 +2568,8 @@ namespace QidWorkerRole
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure(ex);
+                                // clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             }
 
                             if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
@@ -2648,7 +2685,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -2690,7 +2728,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -2721,7 +2760,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -2770,7 +2810,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                     }
                     else
@@ -2783,7 +2824,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                         }
                     }
                 }
@@ -2836,7 +2878,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            // clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                             errorMessage = " invalid consignment line";
                             isConsignmentLineValid = false;
                         }
@@ -2871,7 +2914,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                                         errorMessage = " invalid consignment line";
                                         isConsignmentLineValid = false;
                                     }
@@ -2903,7 +2947,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
 
                 }
@@ -2915,7 +2960,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
 
                 }
@@ -2929,7 +2975,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        // clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                     }
                 }
                 try
@@ -2941,7 +2988,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 }
                 awbprefix = consig.airlineprefix;
                 awbnumber = consig.awbnum;
@@ -2954,7 +3002,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
             return isConsignmentLineValid;
         }
@@ -2996,7 +3045,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
             }
         }
 
@@ -3080,7 +3130,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 ds = null;
             }
             finally
@@ -3126,12 +3177,14 @@ namespace QidWorkerRole
                 ID = await _readWriteDao.GetIntegerByProcedureAsync("spExpManifestSummaryFFM", sqlParameters);
                 if (ID < 1)
                 {
-                    clsLog.WriteLogAzure("Error saving ExportFFM:");
+                    // clsLog.WriteLogAzure("Error saving ExportFFM:");
+                    _logger.LogWarning("Error saving ExportFFM:");
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 ID = 0;
             }
             return ID;
@@ -3194,13 +3247,15 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno);
+                    // clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno);
+                    _logger.LogWarning("Failes ManifDetails Save:{0}" , AWBno);
                     res = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 res = false;
             }
             return res;
@@ -3276,13 +3331,15 @@ namespace QidWorkerRole
                     res = true;
                 else
                 {
-                    clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno);
+                    // clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno);
+                    _logger.LogWarning("Failes ManifDetails Save:{0}" , AWBno);
                     res = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 res = false;
             }
             return res;
@@ -3337,14 +3394,16 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    clsLog.WriteLog("Failes ManifDetails Save:" + AWBno );
+                    // clsLog.WriteLog("Failes ManifDetails Save:" + AWBno );
+                    _logger.LogWarning("Failes ManifDetails Save:{0}" , AWBno );
                     res = false;
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 res = false;
             }
             return res;
@@ -3398,14 +3457,16 @@ namespace QidWorkerRole
                     res = true;
                 else
                 {
-                    clsLog.WriteLog("Failes ManifDetails Save:" + AWBno );
+                    // clsLog.WriteLog("Failes ManifDetails Save:" + AWBno );
+                    _logger.LogWarning("Failes ManifDetails Save: {0}" , AWBno );
                     res = false;
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 res = false;
             }
             return res;
@@ -3461,14 +3522,16 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Failes ULDAWBAssociation Save:" + AWBno);
+                    // clsLog.WriteLogAzure("Failes ULDAWBAssociation Save:" + AWBno);
+                    _logger.LogWarning("Failes ULDAWBAssociation Save:{0}" , AWBno);
                     res = false;
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 res = false;
             }
             return res;
@@ -3563,7 +3626,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "error";
             }
         }
@@ -3614,7 +3678,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "error";
             }
         }
@@ -3664,7 +3729,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "error";
             }
         }
@@ -3761,7 +3827,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 AwbStatus = string.Empty;
                 AWBDeliveryStatus = string.Empty;
                 OriginCode = string.Empty;
@@ -3799,7 +3866,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
 
             }
 
@@ -3852,7 +3920,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 return "error";
             }
         }
@@ -3860,304 +3929,328 @@ namespace QidWorkerRole
 
         public async Task GenerateXFWB(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate)
         {
-            string FlightDestination = string.Empty, customsName = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
-            //cls_SCMBL _SCMBL = new cls_SCMBL();
-            string MessageVersion = "8", SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, xfwbMessage = string.Empty, SFTPMessageHeader = string.Empty, messagetype = string.Empty;
-            DataSet dsData = new DataSet();
-            XFWBMessageProcessor xfwbMessageProcessor = new XFWBMessageProcessor();
-            GenericFunction generalfunction = new GenericFunction();
-            DataSet ds = new DataSet();
-            DataSet? dsdata1 = new DataSet();
-            // DataSet dsData = new DataSet();
-            dsdata1 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
-            if (dsdata1 != null && dsdata1.Tables.Count > 1 && dsdata1.Tables[1].Rows.Count > 0)
-            {
-                customsName = dsdata1.Tables[1].Rows[0]["CustomsName"].ToString();
-            }
-            ds = generalfunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
-            SitaMessageHeader = string.Empty;
-
-            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
-            {
-                strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
-                MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
-
-                if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
-                {
-                    SitaMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
-                }
-
-
-                if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                {
-                    if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
-                    {
-                        SFTPMessageHeader = messagetype;
-                    }
-                    else
-                    {
-                        SFTPMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
-                            ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
-                            ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
-                    }
-                }
-                DataTable dt = new DataTable();
-                if (dsdata1 != null && dsdata1.Tables[0].Rows.Count > 0)
-                {
-                    foreach (DataRow drdestination in dsdata1.Tables[0].Rows)
-                    {
-                        MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                        dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
-                        if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
-                            dt.Merge(dsData.Tables[3]);
-                    }
-                }
-                if (dt != null && dt.Rows.Count > 0)
-                {
-                    dt = GenericFunction.SelectDistinct(dt, "AWBNumber");
-
-                    // dt = SelectDistinct(dsData.Tables[3], "AWBNumber");
-
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
-                        {
-
-                            xfwbMessage = xfwbMessageProcessor.GenerateXFWBMessageV3(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), customsName);
-
-                            //ds = GF.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
-
-                            if (xfwbMessage != string.Empty && xfwbMessage.Length > 0)
-                            {
-                                Dictionary<string, string> Params = new Dictionary<string, string>();
-                                if (customsName.ToUpper() == "DAKAR")
-                                {
-                                    Params.Add("xfwb", xfwbMessage);
-                                }
-                                else
-                                {
-                                    xfwbMessage = "<![CDATA[" + xfwbMessage + "]]>";
-                                    Params.Add("airline", FlightNo.Substring(0, 2).ToString());
-                                    Params.Add("xfwb", xfwbMessage);
-                                }
-
-                                xfwbMessage = GenerateSoapXMLRequest(Params, "sendMessageXFWB", customsName);
-
-                                if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
-                                {
-                                    generalfunction.SaveMessageOutBox("SITA:XFWB", SitaMessageHeader.ToString() + "\r\n" + xfwbMessage, "", "SITAFTP", username, "", "XFWB", "", FlightNo);
-                                }
-                                if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
-                                {
-                                    generalfunction.SaveMessageOutBox("SITA:XFWB", SFTPMessageHeader.ToString() + "\r\n" + xfwbMessage, "", "SFTP", username, "", "XFWB", "", FlightNo);
-                                }
-                                if (strEmailid != "")
-                                {
-                                    generalfunction.SaveMessageOutBox("XFWB", xfwbMessage, string.Empty, strEmailid, "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
-                                }
-                                if (ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
-                                {
-                                    generalfunction.SaveMessageOutBox("XFWB", xfwbMessage, string.Empty, "WEBSERVICE", "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+           try
+           {
+             string FlightDestination = string.Empty, customsName = string.Empty;
+             GenericFunction genericFunction = new GenericFunction();
+             //cls_SCMBL _SCMBL = new cls_SCMBL();
+             string MessageVersion = "8", SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, xfwbMessage = string.Empty, SFTPMessageHeader = string.Empty, messagetype = string.Empty;
+             DataSet dsData = new DataSet();
+             XFWBMessageProcessor xfwbMessageProcessor = new XFWBMessageProcessor();
+             GenericFunction generalfunction = new GenericFunction();
+             DataSet ds = new DataSet();
+             DataSet? dsdata1 = new DataSet();
+             // DataSet dsData = new DataSet();
+             dsdata1 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+             if (dsdata1 != null && dsdata1.Tables.Count > 1 && dsdata1.Tables[1].Rows.Count > 0)
+             {
+                 customsName = dsdata1.Tables[1].Rows[0]["CustomsName"].ToString();
+             }
+             ds = generalfunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
+             SitaMessageHeader = string.Empty;
+ 
+             if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+             {
+                 strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                 messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
+                 MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
+ 
+                 if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
+                 {
+                     SitaMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
+                 }
+ 
+ 
+                 if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                 {
+                     if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
+                     {
+                         SFTPMessageHeader = messagetype;
+                     }
+                     else
+                     {
+                         SFTPMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
+                             ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
+                             ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                     }
+                 }
+                 DataTable dt = new DataTable();
+                 if (dsdata1 != null && dsdata1.Tables[0].Rows.Count > 0)
+                 {
+                     foreach (DataRow drdestination in dsdata1.Tables[0].Rows)
+                     {
+                         MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
+                         dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                         if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
+                             dt.Merge(dsData.Tables[3]);
+                     }
+                 }
+                 if (dt != null && dt.Rows.Count > 0)
+                 {
+                     dt = GenericFunction.SelectDistinct(dt, "AWBNumber");
+ 
+                     // dt = SelectDistinct(dsData.Tables[3], "AWBNumber");
+ 
+                     for (int i = 0; i < dt.Rows.Count; i++)
+                     {
+                         if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
+                         {
+ 
+                             xfwbMessage = xfwbMessageProcessor.GenerateXFWBMessageV3(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), customsName);
+ 
+                             //ds = GF.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
+ 
+                             if (xfwbMessage != string.Empty && xfwbMessage.Length > 0)
+                             {
+                                 Dictionary<string, string> Params = new Dictionary<string, string>();
+                                 if (customsName.ToUpper() == "DAKAR")
+                                 {
+                                     Params.Add("xfwb", xfwbMessage);
+                                 }
+                                 else
+                                 {
+                                     xfwbMessage = "<![CDATA[" + xfwbMessage + "]]>";
+                                     Params.Add("airline", FlightNo.Substring(0, 2).ToString());
+                                     Params.Add("xfwb", xfwbMessage);
+                                 }
+ 
+                                 xfwbMessage = GenerateSoapXMLRequest(Params, "sendMessageXFWB", customsName);
+ 
+                                 if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
+                                 {
+                                     generalfunction.SaveMessageOutBox("SITA:XFWB", SitaMessageHeader.ToString() + "\r\n" + xfwbMessage, "", "SITAFTP", username, "", "XFWB", "", FlightNo);
+                                 }
+                                 if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
+                                 {
+                                     generalfunction.SaveMessageOutBox("SITA:XFWB", SFTPMessageHeader.ToString() + "\r\n" + xfwbMessage, "", "SFTP", username, "", "XFWB", "", FlightNo);
+                                 }
+                                 if (strEmailid != "")
+                                 {
+                                     generalfunction.SaveMessageOutBox("XFWB", xfwbMessage, string.Empty, strEmailid, "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
+                                 }
+                                 if (ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
+                                 {
+                                     generalfunction.SaveMessageOutBox("XFWB", xfwbMessage, string.Empty, "WEBSERVICE", "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+           }
+           catch (System.Exception ex)
+           {
+            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
         public async Task GenerateXFZBMessage(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBnumbers)
         {
-            string FlightDestination = string.Empty;
-            string hawbNumber = string.Empty;
-            //cls_SCMBL _SCMBL = new cls_SCMBL();
-            XFZBMessageProcessor xfhlMessageProcessor = new XFZBMessageProcessor();
-            string xfzbMessage = string.Empty, partnerCode = string.Empty, flightorigin = string.Empty, flightDestination = string.Empty, messageHeader = string.Empty, SFTPMessageHeader = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
-            string SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, awbPrefix = string.Empty, awbNumber = string.Empty, messagetype = string.Empty, MessageVersion = "4";
-            DataSet dsdata2 = new DataSet();
-            DataSet dsData = new DataSet();
-            DataTable dt = new DataTable();
-            DataSet? dthwb = new DataSet();
-            DataSet? ds = new DataSet();
-            dsdata2 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
-            if (DepartureAirport == "DAC" || ArrivalAirport == "DAC")
+            try
             {
-                if (dsdata2 != null && dsdata2.Tables[0].Rows.Count > 0)
+                string FlightDestination = string.Empty;
+                string hawbNumber = string.Empty;
+                //cls_SCMBL _SCMBL = new cls_SCMBL();
+                XFZBMessageProcessor xfhlMessageProcessor = new XFZBMessageProcessor();
+                string xfzbMessage = string.Empty, partnerCode = string.Empty, flightorigin = string.Empty, flightDestination = string.Empty, messageHeader = string.Empty, SFTPMessageHeader = string.Empty;
+                GenericFunction genericFunction = new GenericFunction();
+                string SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, awbPrefix = string.Empty, awbNumber = string.Empty, messagetype = string.Empty, MessageVersion = "4";
+                DataSet dsdata2 = new DataSet();
+                DataSet dsData = new DataSet();
+                DataTable dt = new DataTable();
+                DataSet? dthwb = new DataSet();
+                DataSet? ds = new DataSet();
+                dsdata2 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+                if (DepartureAirport == "DAC" || ArrivalAirport == "DAC")
                 {
-                    foreach (DataRow drdestination in dsdata2.Tables[0].Rows)
+                    if (dsdata2 != null && dsdata2.Tables[0].Rows.Count > 0)
                     {
-                        MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                        dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
-                        if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
-                            dt.Merge(dsData.Tables[3]);
-                    }
-                }
-
-                if (dt != null && dt.Rows.Count > 0)
-                {
-                    dt = GenericFunction.SelectDistinct(dt, "AWBNumber");
-                    bool IsXFZB = true;
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
+                        foreach (DataRow drdestination in dsdata2.Tables[0].Rows)
                         {
-                            dthwb = await _cls_SCMBL.GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
-                           FlightDate, true, "", IsXFZB);
-
-                            if (dthwb != null && dthwb.Tables[0].Rows.Count > 0)
+                            MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
+                            dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                            if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
+                                dt.Merge(dsData.Tables[3]);
+                        }
+                    }
+    
+                    if (dt != null && dt.Rows.Count > 0)
+                    {
+                        dt = GenericFunction.SelectDistinct(dt, "AWBNumber");
+                        bool IsXFZB = true;
+                        for (int i = 0; i < dt.Rows.Count; i++)
+                        {
+                            if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
                             {
-                                foreach (DataRow dr in dthwb.Tables[0].Rows)
+                                dthwb = await _cls_SCMBL.GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
+                               FlightDate, true, "", IsXFZB);
+    
+                                if (dthwb != null && dthwb.Tables[0].Rows.Count > 0)
                                 {
-                                    hawbNumber = dr["HAWBNo"].ToString();
-
-                                    xfzbMessage = xfhlMessageProcessor.GenerateXFZBMessage(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), hawbNumber);
-
-
-                                    //xfzbMessage = fwbManagement.GenerateXFWBMessageV3(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8));
-
-                                    //ds = GF.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
-
-                                    if (xfzbMessage != string.Empty && xfzbMessage.Length > 0 && xfzbMessage.ToString().Contains("<rsm:"))
+                                    foreach (DataRow dr in dthwb.Tables[0].Rows)
                                     {
-                                        ds = genericFunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFZB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
-                                        SitaMessageHeader = string.Empty;
-
-                                        if (ds != null && ds.Tables[0].Rows.Count > 0)
+                                        hawbNumber = dr["HAWBNo"].ToString();
+    
+                                        xfzbMessage = xfhlMessageProcessor.GenerateXFZBMessage(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), hawbNumber);
+    
+    
+                                        //xfzbMessage = fwbManagement.GenerateXFWBMessageV3(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8));
+    
+                                        //ds = GF.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
+    
+                                        if (xfzbMessage != string.Empty && xfzbMessage.Length > 0 && xfzbMessage.ToString().Contains("<rsm:"))
                                         {
-
-                                            strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                                            messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
-                                            MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
-
-                                            if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
+                                            ds = genericFunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFZB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
+                                            SitaMessageHeader = string.Empty;
+    
+                                            if (ds != null && ds.Tables[0].Rows.Count > 0)
                                             {
-                                                SitaMessageHeader = genericFunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
-                                            }
-
-
-                                            if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                                            {
-                                                if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
+    
+                                                strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                                                messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
+                                                MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
+    
+                                                if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
                                                 {
-                                                    SFTPMessageHeader = messagetype;
+                                                    SitaMessageHeader = genericFunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
                                                 }
-                                                else
+    
+    
+                                                if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                                                 {
-                                                    SFTPMessageHeader = genericFunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
-                                                        ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
-                                                        ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                                                    if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
+                                                    {
+                                                        SFTPMessageHeader = messagetype;
+                                                    }
+                                                    else
+                                                    {
+                                                        SFTPMessageHeader = genericFunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
+                                                            ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
+                                                            ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                                                    }
+    
                                                 }
-
+    
                                             }
-
+    
                                         }
-
+                                        xfzbMessage = "<![CDATA[" + xfzbMessage + "]]>";
+    
+                                        Dictionary<string, string> Params = new Dictionary<string, string>();
+                                        Params.Add("airline", FlightNo.Substring(0, 2).ToString());
+                                        Params.Add("xfzb", xfzbMessage);
+                                        xfzbMessage = GenerateSoapXMLRequest(Params, "sendMessageXFZB");
+    
+                                        if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
+                                            genericFunction.SaveMessageOutBox("SITA:XFZB", SitaMessageHeader.ToString() + "\r\n" + xfzbMessage, "", "SITAFTP", "", "", "FlightNo", "", "");
+                                        if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
+                                            genericFunction.SaveMessageOutBox("SITA:XFZB", SFTPMessageHeader.ToString() + "\r\n" + xfzbMessage, "", "SFTP", "", "", "FlightNo", "", "");
+                                        if (strEmailid != "")
+                                            genericFunction.SaveMessageOutBox("XFZB", xfzbMessage, string.Empty, strEmailid, "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
+                                        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 &&
+                                            ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
+                                            genericFunction.SaveMessageOutBox("XFZB", xfzbMessage, string.Empty, "WEBSERVICE", "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
+    
                                     }
-                                    xfzbMessage = "<![CDATA[" + xfzbMessage + "]]>";
-
-                                    Dictionary<string, string> Params = new Dictionary<string, string>();
-                                    Params.Add("airline", FlightNo.Substring(0, 2).ToString());
-                                    Params.Add("xfzb", xfzbMessage);
-                                    xfzbMessage = GenerateSoapXMLRequest(Params, "sendMessageXFZB");
-
-                                    if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
-                                        genericFunction.SaveMessageOutBox("SITA:XFZB", SitaMessageHeader.ToString() + "\r\n" + xfzbMessage, "", "SITAFTP", "", "", "FlightNo", "", "");
-                                    if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
-                                        genericFunction.SaveMessageOutBox("SITA:XFZB", SFTPMessageHeader.ToString() + "\r\n" + xfzbMessage, "", "SFTP", "", "", "FlightNo", "", "");
-                                    if (strEmailid != "")
-                                        genericFunction.SaveMessageOutBox("XFZB", xfzbMessage, string.Empty, strEmailid, "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
-                                    if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 &&
-                                        ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
-                                        genericFunction.SaveMessageOutBox("XFZB", xfzbMessage, string.Empty, "WEBSERVICE", "", "", FlightNo, "", Convert.ToString(dt.Rows[i]["AWBNumber"]));
-
                                 }
                             }
                         }
                     }
                 }
+            
             }
-        }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                throw;
+            }}
 
         public void GenerateXFFM(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate)
 
         {
-            string strEmailid = string.Empty, strSITAHeaderType = string.Empty, MessageVersion = string.Empty, SitaMessageHeader = string.Empty;
-
-            string xffmMessage = string.Empty, partnerCode = string.Empty, flightorigin = string.Empty, flightDestination = string.Empty, messageHeader = string.Empty;
-            string SFTPMessageHeader = string.Empty, messagetype = string.Empty, customsName = string.Empty;
-
-            XFFMMessageProcessor xffmMessageProcessor = new XFFMMessageProcessor();
-            xffmMessage = xffmMessageProcessor.GenerateXFFMMessage(FlightNo, FlightDate, DepartureAirport, out customsName);
-
-            GenericFunction generalfunction = new GenericFunction();
-            DataSet ds = new DataSet();
-            if (xffmMessage != string.Empty && xffmMessage.Length > 0)
-            {
-                ds = generalfunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFFM", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
-
-                SitaMessageHeader = string.Empty;
-
-                if (ds != null && ds.Tables[0].Rows.Count > 0)
-                {
-
-                    strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
-                    messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
-                    MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
-
-                    if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
-                    {
-                        SitaMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
-                    }
-
-
-                    if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                    {
-                        if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
-                        {
-                            SFTPMessageHeader = messagetype;
-                        }
-                        else
-                        {
-                            SFTPMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
-                                ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
-                                ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
-                        }
-                    }
-
-                    Dictionary<string, string> Params = new Dictionary<string, string>();
-                    if (customsName.ToUpper() == "DAKAR")
-                    {
-                        Params.Add("xffm", xffmMessage);
-                    }
-                    else
-                    {
-                        xffmMessage = "<![CDATA[" + xffmMessage + "]]>";
-                        Params.Add("airline", FlightNo.Substring(0, 2).ToString());
-                        Params.Add("xffm", xffmMessage);
-                    }
-
-                    xffmMessage = GenerateSoapXMLRequest(Params, "sendMessageXFFM", customsName);
-                    if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
-                    {
-                        generalfunction.SaveMessageOutBox("SITA:XFFM", SitaMessageHeader.ToString() + "\r\n" + xffmMessage, "", "SITAFTP", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
-                    }
-                    if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
-                    {
-                        generalfunction.SaveMessageOutBox("SITA:XFFM", SFTPMessageHeader.ToString() + "\r\n" + xffmMessage, "", "SFTP", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
-                    }
-                    if (strEmailid != "")
-                    {
-                        generalfunction.SaveMessageOutBox("XFFM", xffmMessage, "", strEmailid, "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
-                    }
-                    if (ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
-                    {
-                        generalfunction.SaveMessageOutBox("XFFM", xffmMessage, "", "WEBSERVICE", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
-                    }
-                }
-            }
-
+           try
+           {
+             string strEmailid = string.Empty, strSITAHeaderType = string.Empty, MessageVersion = string.Empty, SitaMessageHeader = string.Empty;
+ 
+             string xffmMessage = string.Empty, partnerCode = string.Empty, flightorigin = string.Empty, flightDestination = string.Empty, messageHeader = string.Empty;
+             string SFTPMessageHeader = string.Empty, messagetype = string.Empty, customsName = string.Empty;
+ 
+             XFFMMessageProcessor xffmMessageProcessor = new XFFMMessageProcessor();
+             xffmMessage = xffmMessageProcessor.GenerateXFFMMessage(FlightNo, FlightDate, DepartureAirport, out customsName);
+ 
+             GenericFunction generalfunction = new GenericFunction();
+             DataSet ds = new DataSet();
+             if (xffmMessage != string.Empty && xffmMessage.Length > 0)
+             {
+                 ds = generalfunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "XFFM", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty);
+ 
+                 SitaMessageHeader = string.Empty;
+ 
+                 if (ds != null && ds.Tables[0].Rows.Count > 0)
+                 {
+ 
+                     strEmailid = ds.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
+                     messagetype = ds.Tables[0].Rows[0]["MsgCommType"].ToString();
+                     MessageVersion = ds.Tables[0].Rows[0]["MessageVersion"].ToString();
+ 
+                     if (ds.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
+                     {
+                         SitaMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["PatnerSitaID"].ToString(), ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(), ds.Tables[0].Rows[0]["SITAHeaderType"].ToString());
+                     }
+ 
+ 
+                     if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
+                     {
+                         if (ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString() == ds.Tables[0].Rows[0]["SFTPAddress"].ToString())
+                         {
+                             SFTPMessageHeader = messagetype;
+                         }
+                         else
+                         {
+                             SFTPMessageHeader = generalfunction.MakeMailMessageFormat(ds.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(),
+                                 ds.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), ds.Tables[0].Rows[0]["MessageID"].ToString(),
+                                 ds.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                         }
+                     }
+ 
+                     Dictionary<string, string> Params = new Dictionary<string, string>();
+                     if (customsName.ToUpper() == "DAKAR")
+                     {
+                         Params.Add("xffm", xffmMessage);
+                     }
+                     else
+                     {
+                         xffmMessage = "<![CDATA[" + xffmMessage + "]]>";
+                         Params.Add("airline", FlightNo.Substring(0, 2).ToString());
+                         Params.Add("xffm", xffmMessage);
+                     }
+ 
+                     xffmMessage = GenerateSoapXMLRequest(Params, "sendMessageXFFM", customsName);
+                     if (SitaMessageHeader != "" && SitaMessageHeader.Length > 0)
+                     {
+                         generalfunction.SaveMessageOutBox("SITA:XFFM", SitaMessageHeader.ToString() + "\r\n" + xffmMessage, "", "SITAFTP", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
+                     }
+                     if (SFTPMessageHeader != "" && SFTPMessageHeader.Length > 0)
+                     {
+                         generalfunction.SaveMessageOutBox("SITA:XFFM", SFTPMessageHeader.ToString() + "\r\n" + xffmMessage, "", "SFTP", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
+                     }
+                     if (strEmailid != "")
+                     {
+                         generalfunction.SaveMessageOutBox("XFFM", xffmMessage, "", strEmailid, "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
+                     }
+                     if (ds.Tables[0].Rows[0]["WebServiceURL"].ToString().Length > 0)
+                     {
+                         generalfunction.SaveMessageOutBox("XFFM", xffmMessage, "", "WEBSERVICE", "", "", FlightNo, FlightDate.ToString("yyyy-MM-dd"), "");
+                     }
+                 }
+             }
+ 
+           }
+           catch (System.Exception ex)
+           {
+            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
 
 
@@ -4189,49 +4282,57 @@ namespace QidWorkerRole
 
         public string GenerateSoapXMLRequest(Dictionary<string, string> Params, string MethodName, string customsName)
         {
-            string soapStr = string.Empty, postValues = string.Empty;
-
-            if (customsName.ToUpper() == "DAKAR")
-            {
-                soapStr = @"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:flig=""http://flightmanifest.iata/"">
-                    <soapenv:Header/> 
-                        <soapenv:Body>  
-                            <flig:envoyerManifeste>   
-                                <arg0>
-                                    {0}
-                                </arg0>    
-                            </flig:envoyerManifeste>     
-                        </soapenv:Body>
-                    </soapenv:Envelope>";
-
-                foreach (var param in Params)
-                {
-                    postValues += string.Format(soapStr, param.Value);
-                }
-
-                soapStr = postValues;
-            }
-            else
-            {
-                soapStr =
-                    @"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:api2=""http://www.asycuda.org/api2"">
-             <soapenv:Header/>
-              <soapenv:Body>
-                <api2:{0}>
-                  {1}
-                </api2:{0}>
-              </soapenv:Body>
-            </soapenv:Envelope>";
-
-
-                foreach (var param in Params)
-                {
-                    postValues += string.Format("<api2:{0}>{1}</api2:{0}>", param.Key, param.Value);
-                }
-
-                soapStr = string.Format(soapStr, MethodName, postValues);
-            }
-            return soapStr;
+           try
+           {
+             string soapStr = string.Empty, postValues = string.Empty;
+ 
+             if (customsName.ToUpper() == "DAKAR")
+             {
+                 soapStr = @"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:flig=""http://flightmanifest.iata/"">
+                     <soapenv:Header/> 
+                         <soapenv:Body>  
+                             <flig:envoyerManifeste>   
+                                 <arg0>
+                                     {0}
+                                 </arg0>    
+                             </flig:envoyerManifeste>     
+                         </soapenv:Body>
+                     </soapenv:Envelope>";
+ 
+                 foreach (var param in Params)
+                 {
+                     postValues += string.Format(soapStr, param.Value);
+                 }
+ 
+                 soapStr = postValues;
+             }
+             else
+             {
+                 soapStr =
+                     @"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:api2=""http://www.asycuda.org/api2"">
+              <soapenv:Header/>
+               <soapenv:Body>
+                 <api2:{0}>
+                   {1}
+                 </api2:{0}>
+               </soapenv:Body>
+             </soapenv:Envelope>";
+ 
+ 
+                 foreach (var param in Params)
+                 {
+                     postValues += string.Format("<api2:{0}>{1}</api2:{0}>", param.Key, param.Value);
+                 }
+ 
+                 soapStr = string.Format(soapStr, MethodName, postValues);
+             }
+             return soapStr;
+           }
+           catch (System.Exception ex)
+           {
+            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            throw;
+           }
         }
     }
 
