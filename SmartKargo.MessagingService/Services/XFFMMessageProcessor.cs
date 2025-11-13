@@ -12,21 +12,34 @@
       * Description          :   
      */
 #endregion
-using System;
-using System.Linq;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using OpenPop.Mime;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
-using System.Data.SqlClient;
-using System.IO;
-using System.Xml;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
+using static Google.Protobuf.Reflection.FieldOptions.Types;
 
 namespace QidWorkerRole
 {
     public class XFFMMessageProcessor
     {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<XFFMMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public XFFMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFFMMessageProcessor> logger, GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+        }
+        #endregion
         #region :: Variable Declaration ::
         static string unloadingportsequence = "";
         static string uldsequencenum = "";
@@ -368,7 +381,18 @@ namespace QidWorkerRole
         /// <param name="strMessageFrom">Updated By</param>
         /// <param name="strFromID">From emailID</param>
         /// <param name="strStatus">Message status</param>
-        public void SaveValidateFFMMessage(ref MessageData.ffminfo ffmdata, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+        //public void SaveValidateFFMMessage(ref MessageData.ffminfo ffmdata, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
+       public async Task SaveValidateFFMMessageAsync(
+        MessageData.ffminfo ffmdata,
+        MessageData.consignmnetinfo[] consinfo,
+        MessageData.unloadingport[] unloadingport,
+        MessageData.dimensionnfo[] objDimension,
+        MessageData.ULDinfo[] uld,
+        int REFNo,
+        string strMessage,
+        string strMessageFrom,
+        string strFromID,
+        string strStatus)
         {
             string source = string.Empty, dest = string.Empty;
             int ffmSequenceNo = 1, ManifestID = 0;
@@ -376,17 +400,23 @@ namespace QidWorkerRole
             DateTime flightdate = new DateTime();
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 string flightnum = ffmdata.carriercode + ffmdata.fltnum;
 
                 flightdate = Convert.ToDateTime(Convert.ToDateTime(ffmdata.fltdate).ToString("MM/dd/yyyy"));
                 //DateTime.ParseExact(ffmdata.fltdate, "MM/dd/yyyy", null);                 
                 //DateTime.Parse(DateTime.Parse("1." + ffmdata.month + " 2008").Month.ToString().PadLeft(2, '0') + "/" + ffmdata.fltdate.PadLeft(2, '0') + "/" + +System.DateTime.Today.Year);
 
-                string[] PName = new string[] { "flightnum", "date" };
-                SqlDbType[] PType = new SqlDbType[] { SqlDbType.NVarChar, SqlDbType.DateTime };
-                object[] PValue = new object[] { flightnum, flightdate };
-                DataSet ds = sqlServer.SelectRecords("spGetDestCodeForFFM", PName, PValue, PType);
+                //string[] PName = new string[] { "flightnum", "date" };
+                //SqlDbType[] PType = new SqlDbType[] { SqlDbType.NVarChar, SqlDbType.DateTime };
+                //object[] PValue = new object[] { flightnum, flightdate };
+                //DataSet ds = sqlServer.SelectRecords("spGetDestCodeForFFM", PName, PValue, PType);
+                var parameters = new SqlParameter[]
+                {
+                    new("@flightnum", SqlDbType.NVarChar) { Value = flightnum },
+                    new("@date", SqlDbType.DateTime)      { Value = flightdate }
+                };
+                DataSet ds = await _readWriteDao.SelectRecords("spGetDestCodeForFFM", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     source = ds.Tables[0].Rows[0]["source"].ToString();
@@ -395,31 +425,39 @@ namespace QidWorkerRole
                 if (ffmdata.fltairportcode != "")
                     source = ffmdata.fltairportcode;
 
-                string[] Pname = new string[5];
-                object[] Pvalue = new object[5];
-                SqlDbType[] Ptype = new SqlDbType[5];
+                //string[] Pname = new string[5];
+                //object[] Pvalue = new object[5];
+                //SqlDbType[] Ptype = new SqlDbType[5];
 
-                Pname[0] = "FLTNo";
-                Pname[1] = "FltDate";
-                Pname[2] = "TailNo";
-                Pname[3] = "FlightOrigin";
-                Pname[4] = "FlightDestination";
+                //Pname[0] = "FLTNo";
+                //Pname[1] = "FltDate";
+                //Pname[2] = "TailNo";
+                //Pname[3] = "FlightOrigin";
+                //Pname[4] = "FlightDestination";
 
-                Ptype[0] = SqlDbType.VarChar;
-                Ptype[1] = SqlDbType.DateTime;
-                Ptype[2] = SqlDbType.VarChar;
-                Ptype[3] = SqlDbType.VarChar;
-                Ptype[4] = SqlDbType.VarChar;
+                //Ptype[0] = SqlDbType.VarChar;
+                //Ptype[1] = SqlDbType.DateTime;
+                //Ptype[2] = SqlDbType.VarChar;
+                //Ptype[3] = SqlDbType.VarChar;
+                //Ptype[4] = SqlDbType.VarChar;
 
-                Pvalue[0] = ffmdata.carriercode + ffmdata.fltnum;
-                Pvalue[1] = flightdate;
-                Pvalue[2] = ffmdata.aircraftregistration;
-                Pvalue[3] = source;
-                Pvalue[4] = dest;
+                //Pvalue[0] = ffmdata.carriercode + ffmdata.fltnum;
+                //Pvalue[1] = flightdate;
+                //Pvalue[2] = ffmdata.aircraftregistration;
+                //Pvalue[3] = source;
+                //Pvalue[4] = dest;
 
-                sqlServer = new SQLServer();
-                sqlServer.InsertData("SPSaveTailNumber", Pname, Ptype, Pvalue);
-
+                //sqlServer = new SQLServer();
+                //sqlServer.InsertData("SPSaveTailNumber", Pname, Ptype, Pvalue);
+                var parametersSTN = new SqlParameter[]
+                {
+                    new("@FLTNo", SqlDbType.VarChar)           { Value = ffmdata.carriercode + ffmdata.fltnum },
+                    new("@FltDate", SqlDbType.DateTime)        { Value = flightdate },
+                    new("@TailNo", SqlDbType.VarChar)          { Value = ffmdata.aircraftregistration },
+                    new("@FlightOrigin", SqlDbType.VarChar)    { Value = source },
+                    new("@FlightDestination", SqlDbType.VarChar){ Value = dest }
+                };
+                await _readWriteDao.ExecuteNonQueryAsync("SPSaveTailNumber", parametersSTN);
                 if (unloadingport.Length > 0)
                 {
                     for (int k = 0; k < unloadingport.Length; k++)
@@ -428,19 +466,30 @@ namespace QidWorkerRole
                         {
 
                             dest = unloadingport[k].unloadingairport;
-                            GenericFunction genericFunction = new GenericFunction();
-                            genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
+                            //GenericFunction genericFunction = new GenericFunction();
+                            //genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
+                            _genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
 
-                            ManifestID = ExportManifestSummary(ffmdata.carriercode + ffmdata.fltnum, ffmdata.fltairportcode, unloadingport[k].unloadingairport, flightdate, ffmdata.aircraftregistration, REFNo);
+                            ManifestID = await ExportManifestSummary(ffmdata.carriercode + ffmdata.fltnum, ffmdata.fltairportcode, unloadingport[k].unloadingairport, flightdate, ffmdata.aircraftregistration, REFNo);
                             if (ManifestID > 0)
                             {
-                                sqlServer = new SQLServer();
-                                ffmSequenceNo = int.Parse(ffmdata.messagesequencenum == "" ? "0" : ffmdata.messagesequencenum);
-                                string[] PStatusName = new string[] { "ManifestID", "FFMStatus", "FlightNumber", "FlightDate", "FlightOrigin", "FlightDestination", "FFMSequenceNo" };
-                                object[] PStatusValues = new object[] { ManifestID, ffmdata.endmesgcode, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, ffmSequenceNo };
-                                SqlDbType[] sqlStatusType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-                                sqlServer.InsertData("MSG_uSPCheckFFMFlightStatus", PStatusName, sqlStatusType, PStatusValues);
-
+                                //sqlServer = new SQLServer();
+                                //ffmSequenceNo = int.Parse(ffmdata.messagesequencenum == "" ? "0" : ffmdata.messagesequencenum);
+                                //string[] PStatusName = new string[] { "ManifestID", "FFMStatus", "FlightNumber", "FlightDate", "FlightOrigin", "FlightDestination", "FFMSequenceNo" };
+                                //object[] PStatusValues = new object[] { ManifestID, ffmdata.endmesgcode, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, ffmSequenceNo };
+                                //SqlDbType[] sqlStatusType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
+                                //sqlServer.InsertData("MSG_uSPCheckFFMFlightStatus", PStatusName, sqlStatusType, PStatusValues);
+                                var parametersFFMFS = new SqlParameter[]
+                                {
+                                    new("@ManifestID", SqlDbType.VarChar)         { Value = ManifestID },
+                                    new("@FFMStatus", SqlDbType.VarChar)          { Value = ffmdata.endmesgcode },
+                                    new("@FlightNumber", SqlDbType.VarChar)       { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                    new("@FlightDate", SqlDbType.DateTime)        { Value = flightdate },
+                                    new("@FlightOrigin", SqlDbType.VarChar)       { Value = ffmdata.fltairportcode },
+                                    new("@FlightDestination", SqlDbType.VarChar)  { Value = unloadingport[k].unloadingairport },
+                                    new("@FFMSequenceNo", SqlDbType.Int)          { Value = ffmSequenceNo }
+                                };
+                                await _readWriteDao.ExecuteNonQueryAsync("MSG_uSPCheckFFMFlightStatus", parametersFFMFS);
                                 MessageData.consignmnetinfo[] ReceivedConsigInfo = new MessageData.consignmnetinfo[consinfo.Length];
                                 Array.Copy(consinfo, ReceivedConsigInfo, consinfo.Length);
 
@@ -606,19 +655,61 @@ namespace QidWorkerRole
                                             string ConsignmentType = consinfo[i].consigntype;
 
                                             #region Add AWB details and Audit Log
-                                            if (!IsAWBPresent(AWBNum, AWBPrefix))
+                                            if (!await IsAWBPresent(AWBNum, AWBPrefix))
                                             {
-                                                string[] paramname = new string[] { "AirlinePrefix", "AWBNum", "Origin", "Dest", "PcsCount", "Weight", "Volume", "ComodityCode", "ComodityDesc", "CarrierCode", "FlightNum", "FlightDate", "FlightOrigin", "FlightDest", "ShipperName", "ShipperAddr", "ShipperPlace", "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ConsName", "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo", "CustAccNo", "IATACargoAgentCode", "CustName", "SystemDate", "MeasureUnit", "Length", "Breadth", "Height", "PartnerStatus", "REFNo", "UpdatedBy", "WeightCode" };
+                                                //string[] paramname = new string[] { "AirlinePrefix", "AWBNum", "Origin", "Dest", "PcsCount", "Weight", "Volume", "ComodityCode", "ComodityDesc", "CarrierCode", "FlightNum", "FlightDate", "FlightOrigin", "FlightDest", "ShipperName", "ShipperAddr", "ShipperPlace", "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ConsName", "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo", "CustAccNo", "IATACargoAgentCode", "CustName", "SystemDate", "MeasureUnit", "Length", "Breadth", "Height", "PartnerStatus", "REFNo", "UpdatedBy", "WeightCode" };
 
-                                                object[] paramvalue = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].volumeamt, "9999", consinfo[i].manifestdesc, "", flightnum, flightdate.ToString("dd/MM/yyyy"), source, dest, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", DateTime.UtcNow.ToString("yyyy-MM-dd"), "", "", "", "", "", REFNo, "XFFM", consinfo[i].weightcode };
+                                                //object[] paramvalue = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].volumeamt, "9999", consinfo[i].manifestdesc, "", flightnum, flightdate.ToString("dd/MM/yyyy"), source, dest, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", DateTime.UtcNow.ToString("yyyy-MM-dd"), "", "", "", "", "", REFNo, "XFFM", consinfo[i].weightcode };
 
-                                                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                                              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                                              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.Int,SqlDbType.VarChar,SqlDbType.VarChar };
-                                                sqlServer = new SQLServer();
+                                                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                                //              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                                //              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.Int,SqlDbType.VarChar,SqlDbType.VarChar };
+                                                var parametersBDFFR = new SqlParameter[]
+                                                {
+                                                    new("@AirlinePrefix", SqlDbType.VarChar)       { Value = consinfo[i].airlineprefix },
+                                                    new("@AWBNum", SqlDbType.VarChar)              { Value = consinfo[i].awbnum },
+                                                    new("@Origin", SqlDbType.VarChar)              { Value = consinfo[i].origin },
+                                                    new("@Dest", SqlDbType.VarChar)                { Value = consinfo[i].dest },
+                                                    new("@PcsCount", SqlDbType.VarChar)            { Value = consinfo[i].pcscnt },
+                                                    new("@Weight", SqlDbType.VarChar)              { Value = consinfo[i].weight },
+                                                    new("@Volume", SqlDbType.VarChar)              { Value = consinfo[i].volumeamt },
+                                                    new("@ComodityCode", SqlDbType.VarChar)        { Value = "9999" },
+                                                    new("@ComodityDesc", SqlDbType.VarChar)        { Value = consinfo[i].manifestdesc },
+                                                    new("@CarrierCode", SqlDbType.VarChar)         { Value = "" },
+                                                    new("@FlightNum", SqlDbType.VarChar)           { Value = flightnum },
+                                                    new("@FlightDate", SqlDbType.VarChar)          { Value = flightdate.ToString("dd/MM/yyyy") },
+                                                    new("@FlightOrigin", SqlDbType.VarChar)        { Value = source },
+                                                    new("@FlightDest", SqlDbType.VarChar)          { Value = dest },
+                                                    new("@ShipperName", SqlDbType.VarChar)         { Value = "" },
+                                                    new("@ShipperAddr", SqlDbType.VarChar)         { Value = "" },
+                                                    new("@ShipperPlace", SqlDbType.VarChar)        { Value = "" },
+                                                    new("@ShipperState", SqlDbType.VarChar)        { Value = "" },
+                                                    new("@ShipperCountryCode", SqlDbType.VarChar)  { Value = "" },
+                                                    new("@ShipperContactNo", SqlDbType.VarChar)    { Value = "" },
+                                                    new("@ConsName", SqlDbType.VarChar)            { Value = "" },
+                                                    new("@ConsAddr", SqlDbType.VarChar)            { Value = "" },
+                                                    new("@ConsPlace", SqlDbType.VarChar)           { Value = "" },
+                                                    new("@ConsState", SqlDbType.VarChar)           { Value = "" },
+                                                    new("@ConsCountryCode", SqlDbType.VarChar)     { Value = "" },
+                                                    new("@ConsContactNo", SqlDbType.VarChar)       { Value = "" },
+                                                    new("@CustAccNo", SqlDbType.VarChar)           { Value = "" },
+                                                    new("@IATACargoAgentCode", SqlDbType.VarChar)  { Value = "" },
+                                                    new("@CustName", SqlDbType.VarChar)            { Value = "" },
+                                                    new("@SystemDate", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
+                                                    new("@MeasureUnit", SqlDbType.VarChar)         { Value = "" },
+                                                    new("@Length", SqlDbType.VarChar)              { Value = "" },
+                                                    new("@Breadth", SqlDbType.VarChar)             { Value = "" },
+                                                    new("@Height", SqlDbType.VarChar)              { Value = "" },
+                                                    new("@PartnerStatus", SqlDbType.VarChar)       { Value = "" },
+                                                    new("@REFNo", SqlDbType.Int)                   { Value = REFNo },
+                                                    new("@UpdatedBy", SqlDbType.VarChar)           { Value = "XFFM" },
+                                                    new("@WeightCode", SqlDbType.VarChar)          { Value = consinfo[i].weightcode }
+                                                };
+                                                //sqlServer = new SQLServer();
                                                 string procedure = "spInsertBookingDataFromFFR";
 
-                                                if (!sqlServer.InsertData(procedure, paramname, paramtype, paramvalue))
+                                                //if (!sqlServer.InsertData(procedure, paramname, paramtype, paramvalue))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync(procedure, parametersBDFFR))
                                                     clsLog.WriteLogAzure("Error in XFFM AWB Add Error for:" + consinfo[i].awbnum);
 
                                                 else
@@ -628,18 +719,41 @@ namespace QidWorkerRole
                                                     {
                                                         if (AWBNum == auditconsinfo[j].awbnum && AWBPrefix == auditconsinfo[j].airlineprefix)
                                                         {
-                                                            sqlServer = new SQLServer();
+                                                            //sqlServer = new SQLServer();
                                                             string[] arrMilestone = new string[3] { "Booked", "Executed", "Accepted" };
                                                             for (int z = 0; z < arrMilestone.Length; z++)
                                                             {
-                                                                string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination"
-                                                                        , "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
-                                                                SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar
-                                                                        , SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                                                                object[] CValues = new object[] { auditconsinfo[j].airlineprefix, auditconsinfo[j].awbnum, auditconsinfo[j].origin, auditconsinfo[j].dest, auditconsinfo[j].pcscnt, auditconsinfo[j].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, arrMilestone[z], "AWB " +arrMilestone[z],
-                                                                                      "AWB " +arrMilestone[z] + " through XFFM", "XFFM", DateTime.UtcNow.ToString(), 1, string.Empty };
-                                                                if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
-                                                                    clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                                //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination"
+                                                                //        , "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
+                                                                //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar
+                                                                //        , SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                                                                //object[] CValues = new object[] { auditconsinfo[j].airlineprefix, auditconsinfo[j].awbnum, auditconsinfo[j].origin, auditconsinfo[j].dest, auditconsinfo[j].pcscnt, auditconsinfo[j].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, arrMilestone[z], "AWB " +arrMilestone[z],
+                                                                //                      "AWB " +arrMilestone[z] + " through XFFM", "XFFM", DateTime.UtcNow.ToString(), 1, string.Empty };
+                                                                var parametersAWBAL = new SqlParameter[]
+                                                                {
+                                                                    new("@AWBPrefix", SqlDbType.VarChar)          { Value = auditconsinfo[j].airlineprefix },
+                                                                    new("@AWBNumber", SqlDbType.VarChar)          { Value = auditconsinfo[j].awbnum },
+                                                                    new("@Origin", SqlDbType.VarChar)             { Value = auditconsinfo[j].origin },
+                                                                    new("@Destination", SqlDbType.VarChar)        { Value = auditconsinfo[j].dest },
+                                                                    new("@Pieces", SqlDbType.VarChar)             { Value = auditconsinfo[j].pcscnt },
+                                                                    new("@Weight", SqlDbType.VarChar)             { Value = auditconsinfo[j].weight },
+                                                                    new("@FlightNo", SqlDbType.VarChar)           { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                                                    new("@FlightDate", SqlDbType.DateTime)        { Value = flightdate },
+                                                                    new("@FlightOrigin", SqlDbType.VarChar)       { Value = ffmdata.fltairportcode },
+                                                                    new("@FlightDestination", SqlDbType.VarChar)  { Value = unloadingport[k].unloadingairport },
+                                                                    new("@Action", SqlDbType.VarChar)             { Value = arrMilestone[z] },
+                                                                    new("@Message", SqlDbType.VarChar)            { Value = "AWB " + arrMilestone[z] },
+                                                                    new("@Description", SqlDbType.VarChar)        { Value = "AWB " + arrMilestone[z] + " through XFFM" },
+                                                                    new("@UpdatedBy", SqlDbType.VarChar)          { Value = "XFFM" },
+                                                                    new("@UpdatedOn", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
+                                                                    new("@Public", SqlDbType.Bit)                 { Value = true },
+                                                                    new("@ULDNo", SqlDbType.VarChar)              { Value = string.Empty }
+                                                                };
+                                                                //if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                                                if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAWBAL))
+                                                                    //removed sqlServer.LastErrorDescription not required
+                                                                    //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                             }
                                                         }
                                                     }
@@ -649,14 +763,36 @@ namespace QidWorkerRole
                                             else
                                             {
                                                 #region Save AWBNO On Audit Log for acceptance
-                                                sqlServer = new SQLServer();
-                                                string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
-                                                SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                                                object[] CValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, "Accepted", "AWB Accepted", "AWB Accepted by XFFM", "XFFM", DateTime.UtcNow.ToString(), 1, string.Empty };
-
-                                                if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                                //sqlServer = new SQLServer();
+                                                //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
+                                                //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                                                //object[] CValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, "Accepted", "AWB Accepted", "AWB Accepted by XFFM", "XFFM", DateTime.UtcNow.ToString(), 1, string.Empty };
+                                                SqlParameter[] cnParameters = new SqlParameter[]
                                                 {
-                                                    clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = consinfo[i].airlineprefix },
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = consinfo[i].awbnum },
+                                                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = consinfo[i].origin },
+                                                    new SqlParameter("@Destination", SqlDbType.VarChar) { Value = consinfo[i].dest },
+                                                    new SqlParameter("@Pieces", SqlDbType.VarChar) { Value = consinfo[i].pcscnt },
+                                                    new SqlParameter("@Weight", SqlDbType.VarChar) { Value = consinfo[i].weight },
+                                                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                                    new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightdate },
+                                                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = ffmdata.fltairportcode },
+                                                    new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = unloadingport[k].unloadingairport },
+                                                    new SqlParameter("@Action", SqlDbType.VarChar) { Value = "Accepted" },
+                                                    new SqlParameter("@Message", SqlDbType.VarChar) { Value = "AWB Accepted" },
+                                                    new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Accepted by XFFM" },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "XFFM" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.UtcNow },
+                                                    new SqlParameter("@Public", SqlDbType.Bit) { Value = true },
+                                                    new SqlParameter("@ULDNo", SqlDbType.VarChar) { Value = string.Empty }
+                                                };
+
+                                                //if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", cnParameters))
+                                                {
+                                                    //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                 }
                                                 #endregion Save AWBNO On Audit Log for acceptance
                                             }
@@ -692,30 +828,71 @@ namespace QidWorkerRole
                                                     ULDNo = uld[ULDRef - 1].uldno;
                                             }
 
-                                            if (!ExportManifestDetails(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0.01" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, flightnum, consinfo[i].airlineprefix, consinfo[i].weightcode == "" ? "L" : consinfo[i].weightcode, ffmSequenceNo, TotalAWBPcs, REFNo, consinfo[i].IsBup == "true" ? true : false))
-                                                clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                            if (!await ExportManifestDetails(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0.01" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, flightnum, consinfo[i].airlineprefix, consinfo[i].weightcode == "" ? "L" : consinfo[i].weightcode, ffmSequenceNo, TotalAWBPcs, REFNo, consinfo[i].IsBup == "true" ? true : false))
+                                                //clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                                _logger.LogWarning("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
                                             else
                                             {
-                                                if (!ExportManifestULDAWBAssociation(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(',') == "" ? "GEN" : consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, consinfo[i].airlineprefix, ffmdata.carriercode + ffmdata.fltnum, consinfo[i].numshp, consinfo[i].weight, consinfo[i].consigntype, TotalAWBPcs, ffmSequenceNo, consinfo[i].weightcode, REFNo, consinfo[i].IsBup == "true" ? true : false))
-                                                    clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                                if (!await ExportManifestULDAWBAssociation(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(',') == "" ? "GEN" : consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, consinfo[i].airlineprefix, ffmdata.carriercode + ffmdata.fltnum, consinfo[i].numshp, consinfo[i].weight, consinfo[i].consigntype, TotalAWBPcs, ffmSequenceNo, consinfo[i].weightcode, REFNo, consinfo[i].IsBup == "true" ? true : false))
+                                                    //clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                                    _logger.LogWarning("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
 
                                                 #region Status Message in Table
-                                                sqlServer = new SQLServer();
-                                                string[] PVName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno", "FlightNo", "FlightDate", "PCS", "WT", "UOM", "UpdatedBy", "UpdatedOn" };
-                                                object[] PValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, "XFFM", ffmdata.fltairportcode + "-" + flightnum + "-" + flightdate, "", "", 0, ffmdata.carriercode + ffmdata.fltnum, flightdate, TotalAWBPcs, consinfo[i].weight == "" ? "0" : consinfo[i].weight, consinfo[i].weightcode, "XFFM", flightdate };
-                                                SqlDbType[] sqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.NVarChar, SqlDbType.NVarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
-                                                sqlServer.InsertData("spInsertAWBMessageStatus", PVName, sqlType, PValues);
+                                                //sqlServer = new SQLServer();
+                                                //string[] PVName = new string[] { "AWBPrefix", "AWBNumber", "MType", "desc", "date", "time", "refno", "FlightNo", "FlightDate", "PCS", "WT", "UOM", "UpdatedBy", "UpdatedOn" };
+                                                //object[] PValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, "XFFM", ffmdata.fltairportcode + "-" + flightnum + "-" + flightdate, "", "", 0, ffmdata.carriercode + ffmdata.fltnum, flightdate, TotalAWBPcs, consinfo[i].weight == "" ? "0" : consinfo[i].weight, consinfo[i].weightcode, "XFFM", flightdate };
+                                                //SqlDbType[] sqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.NVarChar, SqlDbType.NVarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
+                                                //sqlServer.InsertData("spInsertAWBMessageStatus", PVName, sqlType, PValues);
+                                                var statusParameters = new SqlParameter[]
+                                                {
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = consinfo[i].airlineprefix },
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)   { Value =  consinfo[i].awbnum },
+                                                    new SqlParameter("@MType", SqlDbType.VarChar)       { Value = "XFFM" },
+                                                    new SqlParameter("@desc", SqlDbType.VarChar)        { Value = ffmdata.fltairportcode + "-" + flightnum + "-" + flightdate },
+                                                    new SqlParameter("@date", SqlDbType.NVarChar)       { Value = "" },
+                                                    new SqlParameter("@time", SqlDbType.NVarChar)       { Value = "" },
+                                                    new SqlParameter("@refno", SqlDbType.Int)           { Value = 0 },
+                                                    new SqlParameter("@FlightNo", SqlDbType.VarChar)    { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                                    new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightdate },
+                                                    new SqlParameter("@PCS", SqlDbType.Int)             { Value = TotalAWBPcs },
+                                                    new SqlParameter("@WT", SqlDbType.Decimal)          { Value = consinfo[i].weight == "" ? "0" : consinfo[i].weight },
+                                                    new SqlParameter("@UOM", SqlDbType.VarChar)        { Value = consinfo[i].weightcode },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar)   { Value = "XFFM" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)  { Value = flightdate }
+                                                };
                                                 #endregion Status Message in Table
 
                                                 #region Save AWBNO On Audit Log
-                                                sqlServer = new SQLServer();
-                                                string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
-                                                SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                                                object[] CValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, "Departed", "AWB Departed", "AWB Departed In (" + ULDNo.ToUpper() + ")", "XFFM", DateTime.UtcNow.ToString(), 1, ULDNo.ToUpper() };
-
-                                                if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                                //sqlServer = new SQLServer();
+                                                //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public", "ULDNo" };
+                                                //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                                                //object[] CValues = new object[] { consinfo[i].airlineprefix, consinfo[i].awbnum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, "Departed", "AWB Departed", "AWB Departed In (" + ULDNo.ToUpper() + ")", "XFFM", DateTime.UtcNow.ToString(), 1, ULDNo.ToUpper() };
+                                                var CValues = new SqlParameter[]
                                                 {
-                                                    clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)          { Value = consinfo[i].airlineprefix },
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)          { Value = consinfo[i].awbnum },
+                                                    new SqlParameter("@Origin", SqlDbType.VarChar)             { Value = consinfo[i].origin },
+                                                    new SqlParameter("@Destination", SqlDbType.VarChar)        { Value = consinfo[i].dest },
+                                                    new SqlParameter("@Pieces", SqlDbType.VarChar)             { Value = consinfo[i].pcscnt },
+                                                    new SqlParameter("@Weight", SqlDbType.VarChar)             { Value = consinfo[i].weight },
+                                                    new SqlParameter("@FlightNo", SqlDbType.VarChar)           { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                                    new SqlParameter("@FlightDate", SqlDbType.DateTime)        { Value = flightdate },
+                                                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar)       { Value = ffmdata.fltairportcode },
+                                                    new SqlParameter("@FlightDestination", SqlDbType.VarChar)  { Value = unloadingport[k].unloadingairport },
+                                                    new SqlParameter("@Action", SqlDbType.VarChar)             { Value = "Departed" },
+                                                    new SqlParameter("@Message", SqlDbType.VarChar)            { Value = "AWB Departed" },
+                                                    new SqlParameter("@Description", SqlDbType.VarChar)        { Value = "AWB Departed In (" + ULDNo.ToUpper() + ")" },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar)          { Value = "XFFM" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
+                                                    new SqlParameter("@Public", SqlDbType.Bit)                 { Value = true },
+                                                    new SqlParameter("@ULDNo", SqlDbType.VarChar)              { Value = ULDNo.ToUpper() }
+                                                };
+
+                                                //if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", CValues))
+                                                {
+                                                    //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
+                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                 }
                                                 #endregion Save AWBNO On Audit Log
                                             }
@@ -753,7 +930,7 @@ namespace QidWorkerRole
                                                 int row = 0;
                                                 if (objDimension.Length > 0 || uld.Length > 0)
                                                 {
-                                                    DataSet dsDimension = GenertateAWBDimensions(AWBNum, strAwbPcs, null, Convert.ToDecimal(consinfo[i].weight), "XFFM", DateTime.Now, false, AWBPrefix);
+                                                    DataSet dsDimension = await GenertateAWBDimensions(AWBNum, strAwbPcs, null, Convert.ToDecimal(consinfo[i].weight), "XFFM", DateTime.Now, false, AWBPrefix);
                                                     if (dsDimension != null && dsDimension.Tables.Count > 0 && dsDimension.Tables[0].Rows.Count > 0)
                                                     {
                                                         for (int j = 0; j < objDimension.Length; j++)
@@ -793,13 +970,14 @@ namespace QidWorkerRole
                                                                 row = row + Convert.ToInt16(objDimension[j].piecenum);
                                                             }
                                                         }
-                                                        GenertateAWBDimensions(AWBNum, Convert.ToInt16(consinfo[i].pcscnt), dsDimension, Convert.ToDecimal(consinfo[i].weight), "XFFM", System.DateTime.Now, true, AWBPrefix);
+                                                        await GenertateAWBDimensions(AWBNum, Convert.ToInt16(consinfo[i].pcscnt), dsDimension, Convert.ToDecimal(consinfo[i].weight), "XFFM", System.DateTime.Now, true, AWBPrefix);
                                                     }
                                                 }
                                             }
                                             catch (Exception ex)
                                             {
                                                 clsLog.WriteLogAzure(ex);
+                                                
                                             }
                                             #endregion AWB Dimensions
                                         }
@@ -809,21 +987,38 @@ namespace QidWorkerRole
 
                                     for (int route = 0; route < dtWeightUpdate.Rows.Count; route++)
                                     {
-                                        sqlServer = new SQLServer();
-                                        string[] pchangeAWB = new string[] { "AWBNumber", "AWBPrefix", "AWBOrigin", "AWBDestination" };
-                                        SqlDbType[] PchangeAWBtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                                        object[] pchangeAWbValue = new object[] { dtWeightUpdate.Rows[route]["AWBNo"].ToString(), dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(), dtWeightUpdate.Rows[route]["Origin"].ToString(), dtWeightUpdate.Rows[route]["Destination"].ToString() };
-                                        if (!sqlServer.UpdateData("MSG_uspUpdateShipmentDestinationthroughFFM", pchangeAWB, PchangeAWBtype, pchangeAWbValue))
-                                            clsLog.WriteLogAzure("Error in Update AWB Destination" + sqlServer.LastErrorDescription);
+                                        //sqlServer = new SQLServer();
+                                        //string[] pchangeAWB = new string[] { "AWBNumber", "AWBPrefix", "AWBOrigin", "AWBDestination" };
+                                        //SqlDbType[] PchangeAWBtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+                                        //object[] pchangeAWbValue = new object[] { dtWeightUpdate.Rows[route]["AWBNo"].ToString(), dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(), dtWeightUpdate.Rows[route]["Origin"].ToString(), dtWeightUpdate.Rows[route]["Destination"].ToString() };
+                                        var pchangeAWB = new SqlParameter[]
+                                        {
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar)    { Value = dtWeightUpdate.Rows[route]["AWBNo"].ToString() },
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() },
+                                            new SqlParameter("@AWBOrigin", SqlDbType.VarChar)    { Value = dtWeightUpdate.Rows[route]["Origin"].ToString() },
+                                            new SqlParameter("@AWBDestination", SqlDbType.VarChar) { Value = dtWeightUpdate.Rows[route]["Destination"].ToString() }
+                                        };
+                                        //if (!sqlServer.UpdateData("MSG_uspUpdateShipmentDestinationthroughFFM", pchangeAWB, PchangeAWBtype, pchangeAWbValue))
+                                        if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_uspUpdateShipmentDestinationthroughFFM", pchangeAWB))
+                                            //clsLog.WriteLogAzure("Error in Update AWB Destination" + sqlServer.LastErrorDescription);
+                                            _logger.LogWarning("Error in Update AWB Destination");
 
                                         decimal ChargeableWeight = 0, TotalChargeableWeight = 0;
                                         ChargeableWeight = Convert.ToDecimal(dtWeightUpdate.Rows[route]["GrossWt"].ToString() == "" ? "0" : dtWeightUpdate.Rows[route]["GrossWt"]);
 
-                                        sqlServer = new SQLServer();
-                                        string[] cPname = new string[] { "AWBNumber", "AWBPrefix" };
-                                        SqlDbType[] checkPtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                                        object[] ccheckpavlue = new object[] { dtWeightUpdate.Rows[route]["AWBNo"].ToString(), dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() };
-                                        DataSet dscheckawbn = sqlServer.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname, ccheckpavlue, checkPtype);
+                                        //sqlServer = new SQLServer();
+                                        //string[] cPname = new string[] { "AWBNumber", "AWBPrefix" };
+                                        //SqlDbType[] checkPtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                                        //object[] ccheckpavlue = new object[] { dtWeightUpdate.Rows[route]["AWBNo"].ToString(), dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() };
+                                        var cPname = new SqlParameter[]
+                                        {
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = dtWeightUpdate.Rows[route]["AWBNo"].ToString() },
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() }
+                                        };
+
+                                        //DataSet dscheckawbn = sqlServer.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname, ccheckpavlue, checkPtype);
+                                        DataSet dscheckawbn = await _readWriteDao.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname );
+
                                         if (dscheckawbn != null && dscheckawbn.Tables.Count > 0 && dscheckawbn.Tables[0].Rows.Count > 0)
                                         {
                                             if (dscheckawbn.Tables[0].Rows[0]["AWBCreatedStatus"].ToString() == "1")
@@ -916,32 +1111,65 @@ namespace QidWorkerRole
                                                         {
                                                             strManifestPcs = int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString());
                                                         }
-                                                        sqlServer = new SQLServer();
-                                                        string[] RName = new string[]
-                                                        {
-                                                              "AWBNumber", "FltOrigin","FltDestination","FltNumber","FltDate","Status","UpdatedBy","UpdatedOn","IsFFR", "REFNo"
-                                                              ,"date","AWBPrefix",  "MftPcs","MftWt", "ConsignmentType","FFMFlightOrigin","FFMFlightDestination","RemainingPcs"
-                                                              ,"FFMPiecesCode","TotalAWBPcs","ManifestID", "FFMSequenceNo","ChargeableWeight","AWBOrigin", "AWBDestination","Volume","VolumeUnit"
-                                                        };
-                                                        SqlDbType[] RType = new SqlDbType[]
-                                                        {
+                                                        //sqlServer = new SQLServer();
+                                                        //string[] RName = new string[]
+                                                        //{
+                                                        //      "AWBNumber", "FltOrigin","FltDestination","FltNumber","FltDate","Status","UpdatedBy","UpdatedOn","IsFFR", "REFNo"
+                                                        //      ,"date","AWBPrefix",  "MftPcs","MftWt", "ConsignmentType","FFMFlightOrigin","FFMFlightDestination","RemainingPcs"
+                                                        //      ,"FFMPiecesCode","TotalAWBPcs","ManifestID", "FFMSequenceNo","ChargeableWeight","AWBOrigin", "AWBDestination","Volume","VolumeUnit"
+                                                        //};
+                                                        //SqlDbType[] RType = new SqlDbType[]
+                                                        //{
 
-                                                        SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime,  SqlDbType.Bit, SqlDbType.Int
-                                                        ,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int
-                                                        ,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Int,SqlDbType.Int, SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar
-                                                        , SqlDbType.Decimal,SqlDbType.VarChar
+                                                        //SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime,  SqlDbType.Bit, SqlDbType.Int
+                                                        //,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int
+                                                        //,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Int,SqlDbType.Int, SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar
+                                                        //, SqlDbType.Decimal,SqlDbType.VarChar
+                                                        //};
+                                                        //object[] RValue = new object[]
+                                                        //{
+                                                        //      dtWeightUpdate.Rows[route ]["AWBNo"].ToString(), fltroute[row].fltdept, fltroute[row].fltarrival,fltroute[row].fltnum, fltroute[row].date, "C",  "XFFM",  DateTime.Now, 1,   0
+                                                        //      , flightdate, dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(),strManifestPcs,Convert.ToDecimal(dtWeightUpdate.Rows[route]["GrossWt"].ToString()),dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString(), source,dest,RemainingPcs
+                                                        //      , dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString(),int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()),ManifestID,ffmSequenceNo,ChargeableWeight, dtWeightUpdate.Rows[route]["Origin"].ToString(), dtWeightUpdate.Rows[route]["Destination"].ToString()
+                                                        //      , Convert.ToDecimal(dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim() == string.Empty ? "0" : dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim())
+                                                        //      , dtWeightUpdate.Rows[route]["VolumeCode"].ToString()
+                                                        //};
+                                                        var RParameters = new SqlParameter[] {
+                                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar)         { Value = dtWeightUpdate.Rows[route ]["AWBNo"].ToString() },
+                                                            new SqlParameter("@FltOrigin", SqlDbType.VarChar)        { Value = fltroute[row].fltdept },
+                                                            new SqlParameter("@FltDestination", SqlDbType.VarChar)   { Value = fltroute[row].fltarrival },
+                                                            new SqlParameter("@FltNumber", SqlDbType.VarChar)        { Value = fltroute[row].fltnum },
+                                                            new SqlParameter("@FltDate", SqlDbType.VarChar)          { Value = fltroute[row].date },
+                                                            new SqlParameter("@Status", SqlDbType.VarChar)           { Value = "C" },
+                                                            new SqlParameter("@UpdatedBy", SqlDbType.VarChar)        { Value = "XFFM" },
+                                                            new SqlParameter("@UpdatedOn", SqlDbType.DateTime)       { Value = DateTime.Now },
+                                                            new SqlParameter("@IsFFR", SqlDbType.Bit)                { Value = 1 },
+                                                            new SqlParameter("@REFNo", SqlDbType.Int)                { Value = 0 },
+                                                            new SqlParameter("@date", SqlDbType.VarChar)             { Value = flightdate },
+                                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar)        { Value = dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() },
+                                                            new SqlParameter("@MftPcs", SqlDbType.VarChar)          { Value = strManifestPcs },
+                                                            new SqlParameter("@MftWt", SqlDbType.VarChar)           { Value = Convert.ToDecimal(dtWeightUpdate.Rows[route]["GrossWt"].ToString()) },
+                                                            new SqlParameter("@ConsignmentType", SqlDbType.VarChar)  { Value = dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString() },
+                                                            new SqlParameter("@FFMFlightOrigin", SqlDbType.VarChar) { Value = source },
+                                                            new SqlParameter("@FFMFlightDestination", SqlDbType.VarChar) { Value = dest },
+                                                            new SqlParameter("@RemainingPcs", SqlDbType.Int)         { Value = RemainingPcs },
+                                                            new SqlParameter("@FFMPiecesCode", SqlDbType.VarChar)    { Value = dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString () },
+                                                            new SqlParameter("@TotalAWBPcs", SqlDbType.Int)         { Value = int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()) },
+                                                            new SqlParameter("@ManifestID", SqlDbType.Int)          { Value = ManifestID },
+                                                            new SqlParameter("@FFMSequenceNo", SqlDbType.Int)       { Value = ffmSequenceNo },
+                                                            new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = ChargeableWeight },
+                                                            new SqlParameter("@AWBOrigin", SqlDbType.VarChar)       { Value = dtWeightUpdate.Rows[route]["Origin"].ToString() },
+                                                            new SqlParameter("@AWBDestination", SqlDbType.VarChar)  { Value = dtWeightUpdate.Rows[route]["Destination"].ToString() },
+                                                            new SqlParameter("@Volume", SqlDbType.Decimal)          { Value = Convert.ToDecimal(dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim() == string.Empty ? "0" : dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim()) },
+                                                            new SqlParameter("@VolumeUnit", SqlDbType.VarChar)      { Value = dtWeightUpdate.Rows[route]["VolumeCode"].ToString() }
+
                                                         };
-                                                        object[] RValue = new object[]
-                                                        {
-                                                              dtWeightUpdate.Rows[route ]["AWBNo"].ToString(), fltroute[row].fltdept, fltroute[row].fltarrival,fltroute[row].fltnum, fltroute[row].date, "C",  "XFFM",  DateTime.Now, 1,   0
-                                                              , flightdate, dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(),strManifestPcs,Convert.ToDecimal(dtWeightUpdate.Rows[route]["GrossWt"].ToString()),dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString(), source,dest,RemainingPcs
-                                                              , dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString(),int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()),ManifestID,ffmSequenceNo,ChargeableWeight, dtWeightUpdate.Rows[route]["Origin"].ToString(), dtWeightUpdate.Rows[route]["Destination"].ToString()
-                                                              , Convert.ToDecimal(dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim() == string.Empty ? "0" : dtWeightUpdate.Rows[route]["VolumeWt"].ToString().Trim())
-                                                              , dtWeightUpdate.Rows[route]["VolumeCode"].ToString()
-                                                        };
-                                                        sqlServer = new SQLServer();
-                                                        if (!sqlServer.UpdateData("MSG_spSaveFFMAWBRoute", RName, RType, RValue))
-                                                            clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
+                                                        
+                                                        //sqlServer = new SQLServer();
+                                                        //if (!sqlServer.UpdateData("MSG_spSaveFFMAWBRoute", RName, RType, RValue))
+                                                        if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_spSaveFFMAWBRoute", RParameters))
+                                                        //clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
+                                                        _logger.LogWarning("Error in Save AWB Route XFFM ");
                                                     }
                                                 }
                                                 #endregion Make AWB Route through XFFM Message
@@ -967,33 +1195,78 @@ namespace QidWorkerRole
                                                                "AWBPrefix","AWBNumber","FltOrigin","FltDestination","FltNumber","FltDate","Status","MftPcs","MftWt","ConsignmentType",
                                                                "UpdatedBy","UpdatedOn","RemainingPcs","FFMPiecesCode","Date","TotalAWBPcs","ManifestID", "FFMSequenceNo","ChargeableWeight","REFNo","Volume","VolumeUnit","AWBOrigin"
                                                       };
-                                                SqlDbType[] RType = new SqlDbType[]
+                                                //SqlDbType[] RType = new SqlDbType[]
+                                                //{
+                                                //       SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,
+                                                //       SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.DateTime,SqlDbType.Int,
+                                                //       SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Int,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.Decimal ,SqlDbType.VarChar,SqlDbType.VarChar
+                                                //};
+
+                                                //object[] RValue = new object[]
+                                                //{
+                                                //         dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(),dtWeightUpdate.Rows[route]["AWBNo"].ToString(),source, dest,flightnum,flightdate, "C",  strManifestPcs
+                                                //         ,decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()), dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString()
+                                                //         ,"XFFM",DateTime.Now,RemainingPcs,dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString(),flightdate
+                                                //         ,int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()),ManifestID,ffmSequenceNo,ChargeableWeight,REFNo
+                                                //         ,decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()),dtWeightUpdate.Rows[route]["VolumeCode"].ToString(),dtWeightUpdate.Rows[route]["Origin"].ToString()
+                                                // };
+                                                var RValue = new SqlParameter[]
                                                 {
-                                                       SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,
-                                                       SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.DateTime,SqlDbType.Int,
-                                                       SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.Int,SqlDbType.Int,SqlDbType.Int,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.Decimal ,SqlDbType.VarChar,SqlDbType.VarChar
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)        { Value = dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() },
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)        { Value = dtWeightUpdate.Rows[route]["AWBNo"].ToString() },
+                                                    new SqlParameter("@FltOrigin", SqlDbType.VarChar)       { Value = source },
+                                                    new SqlParameter("@FltDestination", SqlDbType.VarChar)  { Value = dest },
+                                                    new SqlParameter("@FltNumber", SqlDbType.VarChar)       { Value = flightnum },
+                                                    new SqlParameter("@FltDate", SqlDbType.VarChar)         { Value = flightdate },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar)          { Value = "C" },
+                                                    new SqlParameter("@MftPcs", SqlDbType.Int)              { Value = strManifestPcs },
+                                                    new SqlParameter("@MftWt", SqlDbType.Decimal)           { Value = decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()) },
+                                                    new SqlParameter("@ConsignmentType", SqlDbType.VarChar) { Value = dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString() },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar)       { Value = "XFFM" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)      { Value = DateTime.Now },
+                                                    new SqlParameter("@RemainingPcs", SqlDbType.Int)        { Value = RemainingPcs },
+                                                    new SqlParameter("@FFMPiecesCode", SqlDbType.VarChar)   { Value = dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString() },
+                                                    new SqlParameter("@Date", SqlDbType.VarChar)            { Value = flightdate },
+                                                    new SqlParameter("@TotalAWBPcs", SqlDbType.Int)         { Value = int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()) },
+                                                    new SqlParameter("@ManifestID", SqlDbType.Int)          { Value = ManifestID },
+                                                    new SqlParameter("@FFMSequenceNo", SqlDbType.Int)       { Value = ffmSequenceNo },
+                                                    new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = ChargeableWeight },
+                                                    new SqlParameter("@REFNo", SqlDbType.VarChar)           { Value = REFNo },
+                                                    new SqlParameter("@Volume", SqlDbType.Decimal)          { Value = decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()) },
+                                                    new SqlParameter("@VolumeUnit", SqlDbType.VarChar)      { Value = dtWeightUpdate.Rows[route]["VolumeCode"].ToString() },
+                                                    new SqlParameter("@AWBOrigin", SqlDbType.VarChar)       { Value = dtWeightUpdate.Rows[route]["Origin"].ToString() }
                                                 };
 
-                                                object[] RValue = new object[]
-                                                {
-                                                         dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(),dtWeightUpdate.Rows[route]["AWBNo"].ToString(),source, dest,flightnum,flightdate, "C",  strManifestPcs
-                                                         ,decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()), dtWeightUpdate.Rows[route]["AWbPieceCode"].ToString()
-                                                         ,"XFFM",DateTime.Now,RemainingPcs,dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString(),flightdate
-                                                         ,int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()),ManifestID,ffmSequenceNo,ChargeableWeight,REFNo
-                                                         ,decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()),dtWeightUpdate.Rows[route]["VolumeCode"].ToString(),dtWeightUpdate.Rows[route]["Origin"].ToString()
-                                                 };
-                                                sqlServer = new SQLServer();
-                                                if (!sqlServer.UpdateData("MSG_uSpUpdateAWBRouteInformationthroughFFM", RName, RType, RValue))
-                                                    clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
+                                                //sqlServer = new SQLServer();
+                                                //if (!sqlServer.UpdateData("MSG_uSpUpdateAWBRouteInformationthroughFFM", RName, RType, RValue))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_uSpUpdateAWBRouteInformationthroughFFM", RValue))
+                                                    //clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
+                                                    _logger.LogWarning("Error in Save AWB Route XFFM ");
                                                 #endregion Update AWB Route Information
                                             }
                                         }
                                         #region Update Weight and Pieces in Awbsummarymaster and AWBRoutemaster
-                                        string[] PVName = new string[] { "AWBPrefix", "AWBNumber", "TotalAWBPcs", "TotalAWBWeight", "VolumeCode", "VolumeWeight", "ManifestID", "ConsignmentType", "ChargeableWeight", "SystemDate" };
-                                        object[] PValues = new object[] { dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(), dtWeightUpdate.Rows[route]["AWBNo"].ToString(), int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()), decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()), dtWeightUpdate.Rows[route]["VolumeCode"].ToString(), decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()), ManifestID, (dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString() == "" ? "T" : dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString()), TotalChargeableWeight, DateTime.UtcNow };
-                                        SqlDbType[] sqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.DateTime };
-                                        sqlServer = new SQLServer();
-                                        sqlServer.InsertData("MSG_spUpdateTotalWeightAndPiecesfromFFM", PVName, sqlType, PValues);
+                                        //string[] PVName = new string[] { "AWBPrefix", "AWBNumber", "TotalAWBPcs", "TotalAWBWeight", "VolumeCode", "VolumeWeight", "ManifestID", "ConsignmentType", "ChargeableWeight", "SystemDate" };
+                                        //object[] PValues = new object[] { dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString(), dtWeightUpdate.Rows[route]["AWBNo"].ToString(), int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()), decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()), dtWeightUpdate.Rows[route]["VolumeCode"].ToString(), decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()), ManifestID, (dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString() == "" ? "T" : dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString()), TotalChargeableWeight, DateTime.UtcNow };
+                                        //SqlDbType[] sqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.DateTime };
+                                        var pvValues = new SqlParameter[]
+                                        {
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar)        { Value = dtWeightUpdate.Rows[route]["AirlinePrefix"].ToString() },
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar)        { Value = dtWeightUpdate.Rows[route]["AWBNo"].ToString() },
+                                            new SqlParameter("@TotalAWBPcs", SqlDbType.Int)         { Value = int.Parse(dtWeightUpdate.Rows[route]["AWBPieces"].ToString()) },
+                                            new SqlParameter("@TotalAWBWeight", SqlDbType.Decimal)   { Value = decimal.Parse(dtWeightUpdate.Rows[route]["GrossWt"].ToString()) },
+                                            new SqlParameter("@VolumeCode", SqlDbType.VarChar)      { Value = dtWeightUpdate.Rows[route]["VolumeCode"].ToString() },
+                                            new SqlParameter("@VolumeWeight", SqlDbType.Decimal)    { Value = decimal.Parse(dtWeightUpdate.Rows[route]["VolumeWt"].ToString()) },
+                                            new SqlParameter("@ManifestID", SqlDbType.Int)          { Value = ManifestID },
+                                            new SqlParameter("@ConsignmentType", SqlDbType.VarChar) { Value = (dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString() == "" ? "T" : dtWeightUpdate.Rows[route]["FFMPiecesCode"].ToString()) },
+                                            new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = TotalChargeableWeight },
+                                            new SqlParameter("@SystemDate", SqlDbType.DateTime)     { Value = DateTime.UtcNow }
+                                        };
+                                        
+                                        //sqlServer = new SQLServer();
+                                           
+                                        //sqlServer.InsertData("MSG_spUpdateTotalWeightAndPiecesfromFFM", PVName, sqlType, PValues);
+                                        await _readWriteDao.ExecuteNonQueryAsync("MSG_spUpdateTotalWeightAndPiecesfromFFM", pvValues);
                                         #endregion
 
                                         #region Billing on Acceptance
@@ -1001,7 +1274,8 @@ namespace QidWorkerRole
                                         {
                                             for (int i = 0; i < consinfo.Length; i++)
                                             {
-                                                clsLog.WriteLogAzure("Billing Entry for :" + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum);
+                                                //clsLog.WriteLogAzure("Billing Entry for :" + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum);
+                                                _logger.LogWarning("Billing Entry for :" + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum);
                                                 #region Prepare Parameters
                                                 object[] AWBInfo = new object[7];
                                                 int irow = 0;
@@ -1021,7 +1295,7 @@ namespace QidWorkerRole
                                                 AWBInfo.SetValue(DateTime.UtcNow, irow);
                                                 #endregion Prepare Parameters
                                                 string res = "";
-                                                res = InsertAWBDataInBilling(AWBInfo);
+                                                res = await InsertAWBDataInBilling(AWBInfo);
                                             }
                                         }
                                         #endregion
@@ -1032,15 +1306,25 @@ namespace QidWorkerRole
                         else
                         {
                             #region NIL Flight
-                            ManifestID = ExportManifestSummary(ffmdata.carriercode + ffmdata.fltnum, ffmdata.fltairportcode, unloadingport[k].unloadingairport, flightdate, ffmdata.aircraftregistration, REFNo);
+                            ManifestID = await ExportManifestSummary(ffmdata.carriercode + ffmdata.fltnum, ffmdata.fltairportcode, unloadingport[k].unloadingairport, flightdate, ffmdata.aircraftregistration, REFNo);
                             if (ManifestID > 0)
                             {
-                                sqlServer = new SQLServer();
-                                ffmSequenceNo = int.Parse(ffmdata.messagesequencenum == "" ? "0" : ffmdata.messagesequencenum);
-                                string[] PStatusName = new string[] { "ManifestID", "FFMStatus", "FlightNumber", "FlightDate", "FlightOrigin", "FlightDestination", "FFMSequenceNo" };
-                                object[] PStatusValues = new object[] { ManifestID, ffmdata.endmesgcode, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, ffmSequenceNo };
-                                SqlDbType[] sqlStatusType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-                                sqlServer.InsertData("MSG_uSPCheckFFMFlightStatus", PStatusName, sqlStatusType, PStatusValues);
+                                //sqlServer = new SQLServer();
+                                //ffmSequenceNo = int.Parse(ffmdata.messagesequencenum == "" ? "0" : ffmdata.messagesequencenum);
+                                //string[] PStatusName = new string[] { "ManifestID", "FFMStatus", "FlightNumber", "FlightDate", "FlightOrigin", "FlightDestination", "FFMSequenceNo" };
+                                //object[] PStatusValues = new object[] { ManifestID, ffmdata.endmesgcode, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, ffmSequenceNo };
+                                //SqlDbType[] sqlStatusType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
+
+                                var psValues = new SqlParameter[]
+                                {
+                                    new SqlParameter("@ManifestID", SqlDbType.VarChar)        { Value = ManifestID },
+                                    new SqlParameter("@FFMStatus", SqlDbType.VarChar)        { Value = ffmdata.endmesgcode },
+                                    new SqlParameter("@FlightNumber", SqlDbType.VarChar)     { Value = ffmdata.carriercode + ffmdata.fltnum },
+                                    new SqlParameter("@FlightDate", SqlDbType.DateTime)      { Value = flightdate },
+                                };
+
+                                //sqlServer.InsertData("MSG_uSPCheckFFMFlightStatus", PStatusName, sqlStatusType, PStatusValues);
+                                await _readWriteDao.ExecuteNonQueryAsync("MSG_uSPCheckFFMFlightStatus", psValues);
                             }
                             #endregion NIL Flight
                         }
@@ -1073,54 +1357,70 @@ namespace QidWorkerRole
                     {
                         clsLog.WriteLogAzure(ex);
                     }
-                    string[] paramname = new string[]
-                    {   "ULDNo",
-                            "LocatedOn",
-                            "MovType",
-                            "CargoIndic",
-                            "Ori",
-                            "dest",
-                            "FltNo",
-                            "UpdateBy",
-                             "IsBUP",
-                            "AWBNumber",
-                            "AWBPrefix"
-                    };
+                    //string[] paramname = new string[]
+                    //{   "ULDNo",
+                    //        "LocatedOn",
+                    //        "MovType",
+                    //        "CargoIndic",
+                    //        "Ori",
+                    //        "dest",
+                    //        "FltNo",
+                    //        "UpdateBy",
+                    //         "IsBUP",
+                    //        "AWBNumber",
+                    //        "AWBPrefix"
+                    //};
 
-                    object[] paramvalue = new object[]
-                    {   uld[i].uldno.Trim(),
-                            flightdate,
-                            movement,
-                            loading,
-                            origin,
-                            destination,
-                            ffmdata.carriercode+ffmdata.fltnum,
-                            "XFFM",
-                            uld[i].IsBUP.Length>0? Convert.ToBoolean(uld[i].IsBUP):false,
-                           uld[i].AWBNumber.ToString(),
-                           uld[i].AWBPrefix.ToString()
+                    //object[] paramvalue = new object[]
+                    //{   uld[i].uldno.Trim(),
+                    //        flightdate,
+                    //        movement,
+                    //        loading,
+                    //        origin,
+                    //        destination,
+                    //        ffmdata.carriercode+ffmdata.fltnum,
+                    //        "XFFM",
+                    //        uld[i].IsBUP.Length>0? Convert.ToBoolean(uld[i].IsBUP):false,
+                    //       uld[i].AWBNumber.ToString(),
+                    //       uld[i].AWBPrefix.ToString()
 
-                    };
+                    //};
 
-                    SqlDbType[] paramtype = new SqlDbType[]
+                    //SqlDbType[] paramtype = new SqlDbType[]
+                    //{
+                    //        SqlDbType.NVarChar,
+                    //         SqlDbType.DateTime,
+                    //         SqlDbType.NVarChar,
+                    //         SqlDbType.NVarChar,
+                    //         SqlDbType.NVarChar,
+                    //         SqlDbType.NVarChar,
+                    //        SqlDbType.NVarChar,
+                    //        SqlDbType.NVarChar,
+                    //         SqlDbType.Bit,
+                    //       SqlDbType.VarChar,
+                    //       SqlDbType.VarChar
+                    //};
+                    var paramvalue = new SqlParameter[]
                     {
-                            SqlDbType.NVarChar,
-                             SqlDbType.DateTime,
-                             SqlDbType.NVarChar,
-                             SqlDbType.NVarChar,
-                             SqlDbType.NVarChar,
-                             SqlDbType.NVarChar,
-                            SqlDbType.NVarChar,
-                            SqlDbType.NVarChar,
-                             SqlDbType.Bit,
-                           SqlDbType.VarChar,
-                           SqlDbType.VarChar
+                        new SqlParameter("@ULDNo", SqlDbType.NVarChar)        { Value = uld[i].uldno.Trim() },
+                        new SqlParameter("@LocatedOn", SqlDbType.DateTime)    { Value = flightdate },
+                        new SqlParameter("@MovType", SqlDbType.NVarChar)      { Value = movement },
+                        new SqlParameter("@CargoIndic", SqlDbType.NVarChar)   { Value = loading },
+                        new SqlParameter("@Ori", SqlDbType.NVarChar)          { Value = origin },
+                        new SqlParameter("@dest", SqlDbType.NVarChar)         { Value = destination },
+                        new SqlParameter("@FltNo", SqlDbType.NVarChar)       { Value = ffmdata.carriercode + ffmdata.fltnum },
+                        new SqlParameter("@UpdateBy", SqlDbType.NVarChar)     { Value = "XFFM" },
+                        new SqlParameter("@IsBUP", SqlDbType.Bit)             { Value = uld[i].IsBUP.Length > 0 ? Convert.ToBoolean(uld[i].IsBUP) : false },
+                        new SqlParameter("@AWBNumber", SqlDbType.VarChar)     { Value = uld[i].AWBNumber.ToString() },
+                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar)     { Value = uld[i].AWBPrefix.ToString() }
                     };
-                    sqlServer = new SQLServer();
+                    //sqlServer = new SQLServer();
                     string procedure = "spUpdateviaUCMMsgFFM";
-                    if (!sqlServer.InsertData(procedure, paramname, paramtype, paramvalue))
+                    //if (!sqlServer.InsertData(procedure, paramname, paramtype, paramvalue))
+                    if (!await _readWriteDao.ExecuteNonQueryAsync(procedure, paramvalue))
                     {
-                        clsLog.WriteLogAzure("Error in XFFM ULD:" + sqlServer.LastErrorDescription);
+                        //clsLog.WriteLogAzure("Error in XFFM ULD:" + sqlServer.LastErrorDescription);
+                        _logger.LogWarning("Error in XFFM ULD:");
                     }
                 }
                 #endregion
@@ -1159,7 +1459,7 @@ namespace QidWorkerRole
 
                         string res = "";
                         ///Normal Billing
-                        res = InsertAWBDataInBilling(AWBInfo);
+                        res = await InsertAWBDataInBilling(AWBInfo);
                     }
                 }
                 #endregion
@@ -1167,13 +1467,20 @@ namespace QidWorkerRole
                 #region : Refresh Capacity :
                 if ((ffmdata.carriercode + ffmdata.fltnum).Trim() != string.Empty && flightdate != null && source.Trim() != string.Empty)
                 {
-                    sqlServer = new SQLServer();
-                    SqlParameter[] sqlParameter = new SqlParameter[]{
-                    new SqlParameter("@FlightID",ffmdata.carriercode + ffmdata.fltnum)
-                        , new SqlParameter("@FlightDate",flightdate)
-                        , new SqlParameter("@Source",source)
+                    //sqlServer = new SQLServer();
+                    //SqlParameter[] sqlParameter = new SqlParameter[]{
+                    //new SqlParameter("@FlightID",ffmdata.carriercode + ffmdata.fltnum)
+                    //    , new SqlParameter("@FlightDate",flightdate)
+                    //    , new SqlParameter("@Source",source)
+                    //};
+                    var sqlParameter = new SqlParameter[]
+                    {
+                        new SqlParameter("@FlightID", SqlDbType.VarChar)    { Value = (ffmdata.carriercode + ffmdata.fltnum).Trim() },
+                        new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightdate },
+                        new SqlParameter("@Source", SqlDbType.VarChar)      { Value = source.Trim() }
                     };
-                    DataSet dsRefreshCapacity = sqlServer.SelectRecords("uspRefreshCapacity", sqlParameter);
+                    //DataSet dsRefreshCapacity = sqlServer.SelectRecords("uspRefreshCapacity", sqlParameter);
+                    DataSet? dsRefreshCapacity = await _readWriteDao.SelectRecords("uspRefreshCapacity", sqlParameter);
                 }
                 #endregion Refresh Capacity
             }
@@ -1404,9 +1711,9 @@ namespace QidWorkerRole
         /// <param name="IsCreate">To create dimentions or not</param>
         /// <param name="AWBPrefix">AWB Prefix</param>
         /// <returns></returns>
-        private DataSet GenertateAWBDimensions(string AWBNumber, int AWBPieces, DataSet Dimensions, decimal AWBWt, string UserName, DateTime TimeStamp, bool IsCreate, string AWBPrefix)
+        private async Task<DataSet> GenertateAWBDimensions(string AWBNumber, int AWBPieces, DataSet Dimensions, decimal AWBWt, string UserName, DateTime TimeStamp, bool IsCreate, string AWBPrefix)
         {
-            SQLServer da = new SQLServer();
+            //SQLServer da = new SQLServer();
             DataSet ds = null;
             try
             {
@@ -1448,23 +1755,35 @@ namespace QidWorkerRole
                     }
                 }
 
-                string[] PName = new string[] { "AWBNumber", "Pieces", "PieceInfo", "UserName", "TimeStamp", "IsCreate", "AWBWeight", "AWBPrefix" };
-                object[] PValue = new object[] { AWBNumber, AWBPieces, strDimensions.ToString(), UserName, TimeStamp, IsCreate, AWBWt, AWBPrefix };
-                SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Decimal, SqlDbType.VarChar };
-                ds = da.SelectRecords("sp_StoreCourierDetails", PName, PValue, PType);
+                //string[] PName = new string[] { "AWBNumber", "Pieces", "PieceInfo", "UserName", "TimeStamp", "IsCreate", "AWBWeight", "AWBPrefix" };
+                //object[] PValue = new object[] { AWBNumber, AWBPieces, strDimensions.ToString(), UserName, TimeStamp, IsCreate, AWBWt, AWBPrefix };
+                //SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Decimal, SqlDbType.VarChar };
+                var PName = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar)   { Value = AWBNumber },
+                    new SqlParameter("@Pieces", SqlDbType.Int)          { Value = AWBPieces },
+                    new SqlParameter("@PieceInfo", SqlDbType.VarChar)   { Value = strDimensions.ToString() },
+                    new SqlParameter("@UserName", SqlDbType.VarChar)    { Value = UserName },
+                    new SqlParameter("@TimeStamp", SqlDbType.DateTime)  { Value = TimeStamp },
+                    new SqlParameter("@IsCreate", SqlDbType.Bit)        { Value = IsCreate },
+                    new SqlParameter("@AWBWeight", SqlDbType.Decimal)   { Value = AWBWt },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = AWBPrefix }
+                };
+                //ds = da.SelectRecords("sp_StoreCourierDetails", PName, PValue, PType);
+                ds = await _readWriteDao.SelectRecords("sp_StoreCourierDetails", PName);
                 PName = null;
-                PValue = null;
-                PType = null;
+                //PValue = null;
+                //PType = null;
             }
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
                 ds = null;
             }
-            finally
-            {
-                da = null;
-            }
+            //finally
+            //{
+            //    //da = null;
+            //}
             return ds;
         }
 
@@ -1478,25 +1797,39 @@ namespace QidWorkerRole
         /// <param name="AircraftRegistration">Aircraft ragistration</param>
         /// <param name="REFNo">Message SrNo from tblInbox</param>
         /// <returns>Manifest ID</returns>
-        private int ExportManifestSummary(string FlightNo, string POL, string POU, DateTime FltDate, string AircraftRegistration, int REFNo)
+        private async Task<int> ExportManifestSummary(string FlightNo, string POL, string POU, DateTime FltDate, string AircraftRegistration, int REFNo)
         {
             int ID = 0;
             try
             {
-                SQLServer slqServer = new SQLServer();
-                string[] param = { "FLTno", "POL", "POU", "FLTDate", "TailNo", "REFNo" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int };
-                object[] values = { FlightNo, POL, POU, FltDate, AircraftRegistration, REFNo };
+                //SQLServer slqServer = new SQLServer();
+                //string[] param = { "FLTno", "POL", "POU", "FLTDate", "TailNo", "REFNo" };
+                //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int };
+                //object[] values = { FlightNo, POL, POU, FltDate, AircraftRegistration, REFNo };
+               var param = new SqlParameter[]
+                {
+                    new SqlParameter("@FLTno", SqlDbType.VarChar)        { Value = FlightNo },
+                    new SqlParameter("@POL", SqlDbType.VarChar)          { Value = POL },
+                    new SqlParameter("@POU", SqlDbType.VarChar)          { Value = POU },
+                    new SqlParameter("@FLTDate", SqlDbType.DateTime)     { Value = FltDate },
+                    new SqlParameter("@TailNo", SqlDbType.VarChar)       { Value = AircraftRegistration },
+                    new SqlParameter("@REFNo", SqlDbType.Int)           { Value = REFNo }
+                };
 
-                ID = slqServer.GetIntegerByProcedure("spExpManifestSummaryFFM", param, values, sqldbtypes);
+                //ID = slqServer.GetIntegerByProcedure("spExpManifestSummaryFFM", param, values, sqldbtypes);
+                ID = await _readWriteDao.GetIntegerByProcedureAsync("spExpManifestSummaryFFM", param);
+
+
                 if (ID < 1)
                 {
-                    clsLog.WriteLogAzure("Error saving ExportFFM:" + slqServer.LastErrorDescription);
+                    //clsLog.WriteLogAzure("Error saving ExportFFM:" + slqServer.LastErrorDescription);
+                    _logger.LogWarning("Error saving ExportFFM:");
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Exception in ExportManifestSummary");
                 ID = 0;
             }
             return ID;
@@ -1518,32 +1851,33 @@ namespace QidWorkerRole
         /// <param name="FltDate">Flight date</param>
         /// <param name="ManifestID">Flight manifest ID</param>
         /// <returns>If record saved successfully returns true</returns>
-        private bool ExportManifestDetails(string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID)
-        {
-            bool res;
-            try
-            {
-                SQLServer db = new SQLServer();
-                string[] param = { "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int };
-                object[] values = { POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID };
-                if (db.InsertData("spExpManifestDetailsFFM", param, sqldbtypes, values))
-                {
-                    res = true;
-                }
-                else
-                {
-                    clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
-                    res = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                res = false;
-            }
-            return res;
-        }
+        /// No reference found for this method, commented out.
+        //private bool ExportManifestDetails(string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID)
+        //{
+        //    bool res;
+        //    try
+        //    {
+        //        SQLServer db = new SQLServer();
+        //        string[] param = { "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID" };
+        //        SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int };
+        //        object[] values = { POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID };
+        //        if (db.InsertData("spExpManifestDetailsFFM", param, sqldbtypes, values))
+        //        {
+        //            res = true;
+        //        }
+        //        else
+        //        {
+        //            clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+        //            res = false;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        res = false;
+        //    }
+        //    return res;
+        //}
 
         /// <summary>
         /// Method to save the flight manifest details
@@ -1568,21 +1902,45 @@ namespace QidWorkerRole
         /// <param name="AwbPcs">AWB Pices</param>
         /// <param name="REFNo">Message SrNo from tblInbox</param>
         /// <returns>If record saved successfully returns true</returns>
-        private bool ExportManifestDetails(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID, string FlightNo, string AWBPrefix, string weightcode, int fffmSequenceSNo, int AwbPcs, int REFNo = 0, bool IsBUP = false)
+        private async Task<bool> ExportManifestDetails(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID, string FlightNo, string AWBPrefix, string weightcode, int fffmSequenceSNo, int AwbPcs, int REFNo = 0, bool IsBUP = false)
         {
             bool res;
             try
             {
-                SQLServer db = new SQLServer();
-                string[] param = { "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "ULDNo", "TotalAWBPcs", "UOM", "FFMSequenceSNo", "REFNo", "IsBUP" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Int, SqlDbType.Bit };
-                object[] values = { POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, AWBPrefix, FlightNo, ULDNo, AwbPcs, weightcode, fffmSequenceSNo, REFNo, IsBUP };
+                //SQLServer db = new SQLServer();
+                //string[] param = { "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "ULDNo", "TotalAWBPcs", "UOM", "FFMSequenceSNo", "REFNo", "IsBUP" };
+                //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Int, SqlDbType.Bit };
+                //object[] values = { POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, AWBPrefix, FlightNo, ULDNo, AwbPcs, weightcode, fffmSequenceSNo, REFNo, IsBUP };
+                var param = new SqlParameter[] {
+                    new SqlParameter("@POL", SqlDbType.VarChar)        { Value = POL },
+                    new SqlParameter("@POU", SqlDbType.VarChar)        { Value = POU },
+                    new SqlParameter("@ORG", SqlDbType.VarChar)        { Value = ORG },
+                    new SqlParameter("@DES", SqlDbType.VarChar)        { Value = DES },
+                    new SqlParameter("@AWBno", SqlDbType.VarChar)      { Value = AWBno },
+                    new SqlParameter("@SCC", SqlDbType.VarChar)        { Value = SCC },
+                    new SqlParameter("@VOL", SqlDbType.VarChar)        { Value = VOL },
+                    new SqlParameter("@PCS", SqlDbType.VarChar)        { Value = PCS },
+                    new SqlParameter("@WGT", SqlDbType.VarChar)        { Value = WGT },
+                    new SqlParameter("@Desc", SqlDbType.VarChar)       { Value = Desc },
+                    new SqlParameter("@FLTDate", SqlDbType.DateTime)   { Value = FltDate },
+                    new SqlParameter("@ManifestID", SqlDbType.Int)     { Value = ManifestID },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)  { Value = AWBPrefix },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar)   { Value = FlightNo },
+                    new SqlParameter("@ULDNo", SqlDbType.VarChar)      { Value = ULDNo },
+                    new SqlParameter("@TotalAWBPcs", SqlDbType.Int)    { Value = AwbPcs },
+                    new SqlParameter("@UOM", SqlDbType.VarChar)        { Value = weightcode },
+                    new SqlParameter("@FFMSequenceSNo", SqlDbType.Int) { Value = fffmSequenceSNo },
+                    new SqlParameter("@REFNo", SqlDbType.Int)          { Value = REFNo },
+                    new SqlParameter("@IsBUP", SqlDbType.Bit)          { Value = IsBUP }
+                };
 
-                if (db.InsertData("spExpManifestDetailsFFM", param, sqldbtypes, values))
+                //if (db.InsertData("spExpManifestDetailsFFM", param, sqldbtypes, values))
+                if (await _readWriteDao.ExecuteNonQueryAsync("spExpManifestDetailsFFM", param))
                     res = true;
                 else
                 {
-                    clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    //clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
                     res = false;
                 }
             }
@@ -1594,24 +1952,49 @@ namespace QidWorkerRole
             return res;
         }
 
-        private bool ExportManifestULDAWBAssociation(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, string FltDate, int ManifestID, string awbprefix, string flightno, string BkdPcs, string BkdWt, string ConsignmentType)
+        private async Task<bool> ExportManifestULDAWBAssociation(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, string FltDate, int ManifestID, string awbprefix, string flightno, string BkdPcs, string BkdWt, string ConsignmentType)
         {
             bool res;
             try
             {
-                SQLServer db = new SQLServer();
-                string[] param = { "ULDNo", "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "BkdPcs", "BkdWt", "Source", "ConsignmentType" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                             SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.BigInt, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar };
-                object[] values = { ULDNo, POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, awbprefix, flightno, BkdPcs, BkdWt, "M", ConsignmentType };
+                //SQLServer db = new SQLServer();
+                //string[] param = { "ULDNo", "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "BkdPcs", "BkdWt", "Source", "ConsignmentType" };
+                //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                //                             SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.BigInt, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar };
+                //object[] values = { ULDNo, POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, awbprefix, flightno, BkdPcs, BkdWt, "M", ConsignmentType };
+                var param = new SqlParameter[]
+                {
+                    new SqlParameter("@ULDNo", SqlDbType.VarChar)        { Value = ULDNo },
+                    new SqlParameter("@POL", SqlDbType.VarChar)          { Value = POL },
+                    new SqlParameter("@POU", SqlDbType.VarChar)          { Value = POU },
+                    new SqlParameter("@ORG", SqlDbType.VarChar)          { Value = ORG },
+                    new SqlParameter("@DES", SqlDbType.VarChar)          { Value = DES },
+                    new SqlParameter("@AWBno", SqlDbType.VarChar)        { Value = AWBno },
+                    new SqlParameter("@SCC", SqlDbType.VarChar)          { Value = SCC },
+                    new SqlParameter("@VOL", SqlDbType.VarChar)          { Value = VOL },
+                    new SqlParameter("@PCS", SqlDbType.VarChar)          { Value = PCS },
+                    new SqlParameter("@WGT", SqlDbType.VarChar)          { Value = WGT },
+                    new SqlParameter("@Desc", SqlDbType.VarChar)         { Value = Desc },
+                    new SqlParameter("@FLTDate", SqlDbType.VarChar)     { Value = FltDate },
+                    new SqlParameter("@ManifestID", SqlDbType.BigInt)    { Value = ManifestID },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = awbprefix },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar)     { Value = flightno },
+                    new SqlParameter("@BkdPcs", SqlDbType.VarChar)       { Value = BkdPcs },
+                    new SqlParameter("@BkdWt", SqlDbType.VarChar)        { Value = BkdWt },
+                    new SqlParameter("@Source", SqlDbType.VarChar)       { Value = "M" },
+                    new SqlParameter("@ConsignmentType", SqlDbType.VarChar) { Value = ConsignmentType }
+                };
 
-                if (db.InsertData("spExpManifestULDAWBFFM", param, sqldbtypes, values))
+                //if (db.InsertData("spExpManifestULDAWBFFM", param, sqldbtypes, values))
+                if ( await _readWriteDao.ExecuteNonQueryAsync("spExpManifestULDAWBFFM", param))
                 {
                     res = true;
                 }
                 else
                 {
-                    clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    //clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
+
                     res = false;
                 }
             }
@@ -1623,20 +2006,49 @@ namespace QidWorkerRole
             return res;
         }
 
-        private bool ExportManifestULDAWBAssociation(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID, string awbprefix, string flightno, string BkdPcs, string BkdWt, string ConsignmentType, int TotalAWBPcs, int ffmSequenceSNo, string WeightCode, int REFNo = 0, bool IsBUP = false)
+        private async Task<bool> ExportManifestULDAWBAssociation(string ULDNo, string POL, string POU, string ORG, string DES, string AWBno, string SCC, string VOL, string PCS, string WGT, string Desc, DateTime FltDate, int ManifestID, string awbprefix, string flightno, string BkdPcs, string BkdWt, string ConsignmentType, int TotalAWBPcs, int ffmSequenceSNo, string WeightCode, int REFNo = 0, bool IsBUP = false)
         {
             bool res;
             try
             {
-                SQLServer db = new SQLServer();
-                string[] param = { "ULDNo", "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "BkdPcs", "BkdWt", "Source", "ConsignmentType", "TotalAWBPcs", "FFMSequenceSNo", "Uom", "REFNo", "IsBUP" };
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.BigInt, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Bit };
-                object[] values = { ULDNo, POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, awbprefix, flightno, BkdPcs, BkdWt, "M", ConsignmentType, TotalAWBPcs, ffmSequenceSNo, WeightCode, REFNo, IsBUP };
-                if (db.InsertData("spExpManifestULDAWBFFM", param, sqldbtypes, values))
+                //SQLServer db = new SQLServer();
+                //string[] param = { "ULDNo", "POL", "POU", "ORG", "DES", "AWBno", "SCC", "VOL", "PCS", "WGT", "Desc", "FLTDate", "ManifestID", "AWBPrefix", "FlightNo", "BkdPcs", "BkdWt", "Source", "ConsignmentType", "TotalAWBPcs", "FFMSequenceSNo", "Uom", "REFNo", "IsBUP" };
+                //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.BigInt, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Bit };
+                //object[] values = { ULDNo, POL, POU, ORG, DES, AWBno, SCC, VOL, PCS, WGT, Desc, FltDate, ManifestID, awbprefix, flightno, BkdPcs, BkdWt, "M", ConsignmentType, TotalAWBPcs, ffmSequenceSNo, WeightCode, REFNo, IsBUP };
+                var param = new SqlParameter[]
+                {
+                    new SqlParameter("@ULDNo", SqlDbType.VarChar)        { Value = ULDNo },
+                    new SqlParameter("@POL", SqlDbType.VarChar)          { Value = POL },
+                    new SqlParameter("@POU", SqlDbType.VarChar)          { Value = POU },
+                    new SqlParameter("@ORG", SqlDbType.VarChar)          { Value = ORG },
+                    new SqlParameter("@DES", SqlDbType.VarChar)          { Value = DES },
+                    new SqlParameter("@AWBno", SqlDbType.VarChar)        { Value = AWBno },
+                    new SqlParameter("@SCC", SqlDbType.VarChar)          { Value = SCC },
+                    new SqlParameter("@VOL", SqlDbType.VarChar)          { Value = VOL },
+                    new SqlParameter("@PCS", SqlDbType.VarChar)          { Value = PCS },
+                    new SqlParameter("@WGT", SqlDbType.VarChar)          { Value = WGT },
+                    new SqlParameter("@Desc", SqlDbType.VarChar)         { Value = Desc },
+                    new SqlParameter("@FLTDate", SqlDbType.DateTime)     { Value = FltDate },
+                    new SqlParameter("@ManifestID", SqlDbType.BigInt)    { Value = ManifestID },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = awbprefix },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar)     { Value = flightno },
+                    new SqlParameter("@BkdPcs", SqlDbType.VarChar)       { Value = BkdPcs },
+                    new SqlParameter("@BkdWt", SqlDbType.VarChar)        { Value = BkdWt },
+                    new SqlParameter("@Source", SqlDbType.VarChar)       { Value = "M" },
+                    new SqlParameter("@ConsignmentType", SqlDbType.VarChar) { Value = ConsignmentType },
+                    new SqlParameter("@TotalAWBPcs", SqlDbType.Int)      { Value = TotalAWBPcs },
+                    new SqlParameter("@FFMSequenceSNo", SqlDbType.Int)   { Value = ffmSequenceSNo },
+                    new SqlParameter("@Uom", SqlDbType.VarChar)          { Value = WeightCode },
+                    new SqlParameter("@REFNo", SqlDbType.Int)            { Value = REFNo },
+                    new SqlParameter("@IsBUP", SqlDbType.Bit)            { Value = IsBUP }
+                };
+                //if (db.InsertData("spExpManifestULDAWBFFM", param, sqldbtypes, values))
+                if (await _readWriteDao.ExecuteNonQueryAsync("spExpManifestULDAWBFFM", param))
                     res = true;
                 else
                 {
-                    clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    //clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
+                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
                     res = false;
                 }
             }
@@ -1647,87 +2059,98 @@ namespace QidWorkerRole
             }
             return res;
         }
+        //No reference found for this method, commented out.
+        //private bool ULDawbAssociation(string FltNo, string POL, string POU, string AWBno, string PCS, string WGT, DateTime FltDate, string ULDNo)
+        //{
+        //    bool res;
+        //    try
+        //    {
+        //        SQLServer db = new SQLServer();
+        //        string[] param = { "ULDtripid", "ULDNo", "AWBNumber", "POL", "POU", "FltNo", "Pcs", "Wgt", "AvlPcs", "AvlWgt", "Updatedon", "Updatedby", "Status", "Manifested", "FltDate" };
 
-        private bool ULDawbAssociation(string FltNo, string POL, string POU, string AWBno, string PCS, string WGT, DateTime FltDate, string ULDNo)
+        //        int _pcs = int.Parse(PCS);
+        //        float _wgt = float.Parse(WGT);
+        //        SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar
+        //                                     , SqlDbType.Int, SqlDbType.Float, SqlDbType.Int, SqlDbType.Float,SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Bit,SqlDbType.Bit, SqlDbType.DateTime };
+        //        object[] values = { "", ULDNo, AWBno, POL, POU, FltNo, 0, 0, _pcs, _wgt, DateTime.Now, "XFFM", false, false, FltDate };
+
+
+        //        if (db.InsertData("SPImpManiSaveUldAwbAssociation", param, sqldbtypes, values))
+        //        {
+        //            res = true;
+        //        }
+        //        else
+        //        {
+        //            clsLog.WriteLogAzure("Failes ULDAWBAssociation Save:" + AWBno + " Error: " + db.LastErrorDescription);
+        //            res = false;
+        //        }
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        res = false;
+        //    }
+        //    return res;
+        //}
+
+        private async Task<string> InsertAWBDataInBilling(object[] AWBInfo)
         {
-            bool res;
+            //SQLServer da = new SQLServer();
             try
             {
-                SQLServer db = new SQLServer();
-                string[] param = { "ULDtripid", "ULDNo", "AWBNumber", "POL", "POU", "FltNo", "Pcs", "Wgt", "AvlPcs", "AvlWgt", "Updatedon", "Updatedby", "Status", "Manifested", "FltDate" };
+                //string[] ColumnNames = new string[7];
+                //SqlDbType[] DataType = new SqlDbType[7];
+                //Object[] Values = new object[7];
+                //int i = 0;
 
-                int _pcs = int.Parse(PCS);
-                float _wgt = float.Parse(WGT);
-                SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar
-                                             , SqlDbType.Int, SqlDbType.Float, SqlDbType.Int, SqlDbType.Float,SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Bit,SqlDbType.Bit, SqlDbType.DateTime };
-                object[] values = { "", ULDNo, AWBno, POL, POU, FltNo, 0, 0, _pcs, _wgt, DateTime.Now, "XFFM", false, false, FltDate };
+                //ColumnNames.SetValue("EventFlag", i);
+                //DataType.SetValue(SqlDbType.VarChar, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
 
+                //ColumnNames.SetValue("AWBPrefixNumberList", i);
+                //DataType.SetValue(SqlDbType.VarChar, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
 
-                if (db.InsertData("SPImpManiSaveUldAwbAssociation", param, sqldbtypes, values))
+                //ColumnNames.SetValue("FlightNumber", i);
+                //DataType.SetValue(SqlDbType.VarChar, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
+
+                //ColumnNames.SetValue("FlightDate", i);
+                //DataType.SetValue(SqlDbType.DateTime, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
+
+                //ColumnNames.SetValue("StationCode", i);
+                //DataType.SetValue(SqlDbType.VarChar, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
+
+                //ColumnNames.SetValue("UserName", i);
+                //DataType.SetValue(SqlDbType.VarChar, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+                //i++;
+
+                //ColumnNames.SetValue("UpdatedOn", i);
+                //DataType.SetValue(SqlDbType.DateTime, i);
+                //Values.SetValue(AWBInfo.GetValue(i), i);
+
+                var PName = new SqlParameter[7]
                 {
-                    res = true;
-                }
-                else
-                {
-                    clsLog.WriteLogAzure("Failes ULDAWBAssociation Save:" + AWBno + " Error: " + db.LastErrorDescription);
-                    res = false;
-                }
+                    new SqlParameter("@EventFlag", SqlDbType.VarChar)            { Value = AWBInfo.GetValue(0) },
+                    new SqlParameter("@AWBPrefixNumberList", SqlDbType.VarChar)  { Value = AWBInfo.GetValue(1) },
+                    new SqlParameter("@FlightNumber", SqlDbType.VarChar)         { Value = AWBInfo.GetValue(2) },
+                    new SqlParameter("@FlightDate", SqlDbType.DateTime)          { Value = AWBInfo.GetValue(3) },
+                    new SqlParameter("@StationCode", SqlDbType.VarChar)          { Value = AWBInfo.GetValue(4) },
+                    new SqlParameter("@UserName", SqlDbType.VarChar)             { Value = AWBInfo.GetValue(5) },
+                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)           { Value = AWBInfo.GetValue(6) }
+                };
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                res = false;
-            }
-            return res;
-        }
-
-        private string InsertAWBDataInBilling(object[] AWBInfo)
-        {
-            SQLServer da = new SQLServer();
-            try
-            {
-                string[] ColumnNames = new string[7];
-                SqlDbType[] DataType = new SqlDbType[7];
-                Object[] Values = new object[7];
-                int i = 0;
-
-                ColumnNames.SetValue("EventFlag", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("AWBPrefixNumberList", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("FlightNumber", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("FlightDate", i);
-                DataType.SetValue(SqlDbType.DateTime, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("StationCode", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("UserName", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
-
-                ColumnNames.SetValue("UpdatedOn", i);
-                DataType.SetValue(SqlDbType.DateTime, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-
-
-                string res = da.GetStringByProcedure("USP_InsertBulkAWBDataInBilling", ColumnNames, Values, DataType);
+                //string res = da.GetStringByProcedure("USP_InsertBulkAWBDataInBilling", ColumnNames, Values, DataType);
+                string res = await _readWriteDao.GetStringByProcedureAsync("USP_InsertBulkAWBDataInBilling", PName);
                 return res;
 
             }
@@ -1738,88 +2161,88 @@ namespace QidWorkerRole
                 return "error";
             }
         }
+        //No reference found for this method, commented out.
+        //private string InsertAWBDataInInterlineInvoice(object[] AWBInfo)
+        //{
+        //    SQLServer da = new SQLServer();
+        //    try
+        //    {
+        //        string[] ColumnNames = new string[4];
+        //        SqlDbType[] DataType = new SqlDbType[4];
+        //        Object[] Values = new object[4];
+        //        int i = 0;
 
-        private string InsertAWBDataInInterlineInvoice(object[] AWBInfo)
-        {
-            SQLServer da = new SQLServer();
-            try
-            {
-                string[] ColumnNames = new string[4];
-                SqlDbType[] DataType = new SqlDbType[4];
-                Object[] Values = new object[4];
-                int i = 0;
+        //        ColumnNames.SetValue("AWBNumber", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-                ColumnNames.SetValue("AWBNumber", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        ColumnNames.SetValue("BillingFlag", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-                ColumnNames.SetValue("BillingFlag", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        ColumnNames.SetValue("UserName", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-                ColumnNames.SetValue("UserName", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        ColumnNames.SetValue("UpdatedOn", i);
+        //        DataType.SetValue(SqlDbType.DateTime, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
 
-                ColumnNames.SetValue("UpdatedOn", i);
-                DataType.SetValue(SqlDbType.DateTime, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
+        //        string res = da.GetStringByProcedure("SP_InsertAWBDataInInterlineInvoice", ColumnNames, Values, DataType);
+        //        return res;
 
-                string res = da.GetStringByProcedure("SP_InsertAWBDataInInterlineInvoice", ColumnNames, Values, DataType);
-                return res;
+        //    }
 
-            }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return "error";
+        //    }
+        //}
+        //No reference found for this method, commented out.
+        //private string InsertAWBDataInInterlineCreditNote(object[] AWBInfo)
+        //{
+        //    SQLServer da = new SQLServer();
+        //    try
+        //    {
+        //        string[] ColumnNames = new string[4];
+        //        SqlDbType[] DataType = new SqlDbType[4];
+        //        Object[] Values = new object[4];
+        //        int i = 0;
 
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return "error";
-            }
-        }
+        //        ColumnNames.SetValue("AWBNumber", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-        private string InsertAWBDataInInterlineCreditNote(object[] AWBInfo)
-        {
-            SQLServer da = new SQLServer();
-            try
-            {
-                string[] ColumnNames = new string[4];
-                SqlDbType[] DataType = new SqlDbType[4];
-                Object[] Values = new object[4];
-                int i = 0;
+        //        ColumnNames.SetValue("BillingFlag", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-                ColumnNames.SetValue("AWBNumber", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        ColumnNames.SetValue("UserName", i);
+        //        DataType.SetValue(SqlDbType.VarChar, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
+        //        i++;
 
-                ColumnNames.SetValue("BillingFlag", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        ColumnNames.SetValue("UpdatedOn", i);
+        //        DataType.SetValue(SqlDbType.DateTime, i);
+        //        Values.SetValue(AWBInfo.GetValue(i), i);
 
-                ColumnNames.SetValue("UserName", i);
-                DataType.SetValue(SqlDbType.VarChar, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
-                i++;
+        //        string res = da.GetStringByProcedure("SP_InsertAWBDataInInterlineCreditNote", ColumnNames, Values, DataType);
+        //        return res;
 
-                ColumnNames.SetValue("UpdatedOn", i);
-                DataType.SetValue(SqlDbType.DateTime, i);
-                Values.SetValue(AWBInfo.GetValue(i), i);
+        //    }
 
-                string res = da.GetStringByProcedure("SP_InsertAWBDataInInterlineCreditNote", ColumnNames, Values, DataType);
-                return res;
-
-            }
-
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                return "error";
-            }
-        }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        return "error";
+        //    }
+        //}
 
         /// <summary>
         /// Check whether the awb is present or not
@@ -1827,17 +2250,23 @@ namespace QidWorkerRole
         /// <param name="AWBNum">AWB Number</param>
         /// <param name="AWBPrefix">Airline Prefix</param>
         /// <returns>Return true if AWB is present</returns>
-        private bool IsAWBPresent(string AWBNum, string AWBPrefix)
+        private async Task<bool> IsAWBPresent(string AWBNum, string AWBPrefix)
         {
             bool isAWBPresent = false;
             try
             {
                 DataSet dsCheck = new DataSet();
-                SQLServer sqlServer = new SQLServer();
-                string[] pname = new string[] { "AWBNumber", "AWBPrefix" };
-                object[] values = new object[] { AWBNum, AWBPrefix };
-                SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                dsCheck = sqlServer.SelectRecords("sp_getawbdetails", pname, values, ptype);
+                //SQLServer sqlServer = new SQLServer();
+                //string[] pname = new string[] { "AWBNumber", "AWBPrefix" };
+                //object[] values = new object[] { AWBNum, AWBPrefix };
+                //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                var pname = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = AWBNum },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                };
+                //dsCheck = sqlServer.SelectRecords("sp_getawbdetails", pname, values, ptype);
+                dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", pname);
                 if (dsCheck != null)
                 {
                     if (dsCheck.Tables.Count > 0)
@@ -1860,15 +2289,14 @@ namespace QidWorkerRole
             return isAWBPresent;
         }
         #endregion Private Methods
-        public String GenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin, out string customsName)
+        public async Task<(string Message, string CustomsName)> GenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
         {
-
             StringBuilder sbXFFMMessage = new StringBuilder();
-            customsName = string.Empty;
+            string customsName = string.Empty;
             try
             {
-                GenericFunction generalfunction = new GenericFunction();
-                DataSet dsFfMessage = GetRecordForAWBToGenerateXFFMMessage(flightNo, flightDate, flightOrigin);
+                //GenericFunction generalfunction = new GenericFunction();
+                DataSet dsFfMessage = await GetRecordForAWBToGenerateXFFMMessage(flightNo, flightDate, flightOrigin);
                 if (dsFfMessage != null && dsFfMessage.Tables.Count > 0 && dsFfMessage.Tables[0].Rows.Count > 0)
                 {
                     if (dsFfMessage.Tables.Count > 6)
@@ -2505,19 +2933,27 @@ namespace QidWorkerRole
                 sbXFFMMessage.Append("Error Occured while generating: " + ex.Message);
                 clsLog.WriteLogAzure("Error on Generate XFFMB Message Method:" + ex.ToString());
             }
-            return sbXFFMMessage.ToString();
+            //return sbXFFMMessage.ToString();
+            return (sbXFFMMessage.ToString(),customsName);
+
         }
 
-        private DataSet GetRecordForAWBToGenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
+        private async  Task<DataSet> GetRecordForAWBToGenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
         {
             DataSet dsFfm = new DataSet();
             try
             {
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "FlightNo", "FlightDate", "FlightOrigin" };
-                object[] paramvalue = new object[] { flightNo, flightDate, flightOrigin };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
-                dsFfm = da.SelectRecords("Messaging.GetRecordMakeXFFMMessage", paramname, paramvalue, paramtype);
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "FlightNo", "FlightDate", "FlightOrigin" };
+                //object[] paramvalue = new object[] { flightNo, flightDate, flightOrigin };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
+                var paramname = new SqlParameter[] {
+                    new SqlParameter("FlightNo", flightNo),
+                    new SqlParameter("FlightDate", flightDate),
+                    new SqlParameter("FlightOrigin", flightOrigin)
+                };
+                //dsFfm = da.SelectRecords("Messaging.GetRecordMakeXFFMMessage", paramname, paramvalue, paramtype);
+                dsFfm = await _readWriteDao.SelectRecords("Messaging.GetRecordMakeXFFMMessage", paramname);
             }
             catch (Exception ex)
             {
