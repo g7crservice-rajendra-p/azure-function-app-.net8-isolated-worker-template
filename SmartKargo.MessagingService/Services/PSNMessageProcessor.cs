@@ -1,20 +1,27 @@
-﻿using System;
-using System.Linq;
-using System.IO;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Configuration;
 using System.Text;
-using QidWorkerRole;
 
 namespace QidWorkerRole
 {
     public class PSNMessageProcessor
     {
-        public PSNMessageProcessor()
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<PSNMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public PSNMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<PSNMessageProcessor> logger,
+            GenericFunction genericFunction)
         {
-            
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
         }
+        #endregion
         //public PSN objPSN = null;
         //SQLServer db = new SQLServer();
 
@@ -828,200 +835,293 @@ namespace QidWorkerRole
         #endregion
 
         #region Updating Customs Messages
-        public bool UpdateCustomsMessages(object[] QueryValues, string MessageType)
+        public async Task<bool> UpdateCustomsMessages(object[] QueryValues, string MessageType)
         {
             try
             {
-                string[] QueryNames = new string[87];
-                SqlDbType[] QueryTypes = new SqlDbType[87];
-                int i = 0;
-                QueryNames[i++] = "AWBPrefix";
-                QueryNames[i++] = "AWBNumber";
-                QueryNames[i++] = "MessageType";
-                QueryNames[i++] = "HAWBNumber";
-                QueryNames[i++] = "ConsolidationIdentifier";
-                QueryNames[i++] = "PackageTrackingIdentifier";
-                QueryNames[i++] = "AWBPartArrivalReference";
-                QueryNames[i++] = "ArrivalAirport";
-                QueryNames[i++] = "AirCarrier";
-                QueryNames[i++] = "Origin";
-                QueryNames[i++] = "DestinionCode";
-                QueryNames[i++] = "WBLNumberOfPieces";
-                QueryNames[i++] = "WBLWeightIndicator";
-                QueryNames[i++] = "WBLWeight";
-                QueryNames[i++] = "WBLCargoDescription";
-                QueryNames[i++] = "ArrivalDate";
-                QueryNames[i++] = "PartArrivalReference";
-                QueryNames[i++] = "BoardedQuantityIdentifier";
-                QueryNames[i++] = "BoardedPieceCount";
-                QueryNames[i++] = "BoardedWeight";
-                QueryNames[i++] = "ARRWeightCode";
-                QueryNames[i++] = "ImportingCarrier";
-                QueryNames[i++] = "FlightNumber";
-                QueryNames[i++] = "ARRPartArrivalReference";
-                QueryNames[i++] = "RequestType";
-                QueryNames[i++] = "RequestExplanation";
-                QueryNames[i++] = "EntryType";
-                QueryNames[i++] = "EntryNumber";
-                QueryNames[i++] = "AMSParticipantCode";
-                QueryNames[i++] = "ShipperName";
-                QueryNames[i++] = "ShipperAddress";
-                QueryNames[i++] = "ShipperCity";
-                QueryNames[i++] = "ShipperState";
-                QueryNames[i++] = "ShipperCountry";
-                QueryNames[i++] = "ShipperPostalCode";
-                QueryNames[i++] = "ConsigneeName";
-                QueryNames[i++] = "ConsigneeAddress";
-                QueryNames[i++] = "ConsigneeCity";
-                QueryNames[i++] = "ConsigneeState";
-                QueryNames[i++] = "ConsigneeCountry";
-                QueryNames[i++] = "ConsigneePostalCode";
-                QueryNames[i++] = "TransferDestAirport";
-                QueryNames[i++] = "DomesticIdentifier";
-                QueryNames[i++] = "BondedCarrierID";
-                QueryNames[i++] = "OnwardCarrier";
-                QueryNames[i++] = "BondedPremisesIdentifier";
-                QueryNames[i++] = "InBondControlNumber";
-                QueryNames[i++] = "OriginOfGoods";
-                QueryNames[i++] = "DeclaredValue";
-                QueryNames[i++] = "CurrencyCode";
-                QueryNames[i++] = "CommodityCode";
-                QueryNames[i++] = "LineIdentifier";
-                QueryNames[i++] = "AmendmentCode";
-                QueryNames[i++] = "AmendmentExplanation";
-                QueryNames[i++] = "DeptImportingCarrier";
-                QueryNames[i++] = "DeptFlightNumber";
-                QueryNames[i++] = "DeptScheduledArrivalDate";
-                QueryNames[i++] = "LiftoffDate";
-                QueryNames[i++] = "LiftoffTime";
-                QueryNames[i++] = "DeptActualImportingCarrier";
-                QueryNames[i++] = "DeptActualFlightNumber";
-                QueryNames[i++] = "ASNStatusCode";
-                QueryNames[i++] = "ASNActionExplanation";
-                QueryNames[i++] = "CSNActionCode";
-                QueryNames[i++] = "CSNPieces";
-                QueryNames[i++] = "TransactionDate";
-                QueryNames[i++] = "TransactionTime";
-                QueryNames[i++] = "CSNEntryType";
-                QueryNames[i++] = "CSNEntryNumber";
-                QueryNames[i++] = "CSNRemarks";
-                QueryNames[i++] = "ErrorCode";
-                QueryNames[i++] = "ErrorMessage";
-                QueryNames[i++] = "StatusRequestCode";
-                QueryNames[i++] = "StatusAnswerCode";
-                QueryNames[i++] = "Information";
-                QueryNames[i++] = "ERFImportingCarrier";
-                QueryNames[i++] = "ERFFlightNumber";
-                QueryNames[i++] = "ERFDate";
-                QueryNames[i++] = "Message";
-                QueryNames[i++] = "UpdatedOn";
-                QueryNames[i++] = "UpdatedBy";
-                QueryNames[i++] = "CreatedOn";
-                QueryNames[i++] = "CreatedBy";
-                QueryNames[i++] = "FlightNo";
-                QueryNames[i++] = "FlightDate";
-                QueryNames[i++] = "ControlLocation";
-                QueryNames[i++] = "WBLArrivalDatePermitToProceed";
+                //string[] QueryNames = new string[87];
+                //SqlDbType[] QueryTypes = new SqlDbType[87];
+                //int i = 0;
+                //QueryNames[i++] = "AWBPrefix";
+                //QueryNames[i++] = "AWBNumber";
+                //QueryNames[i++] = "MessageType";
+                //QueryNames[i++] = "HAWBNumber";
+                //QueryNames[i++] = "ConsolidationIdentifier";
+                //QueryNames[i++] = "PackageTrackingIdentifier";
+                //QueryNames[i++] = "AWBPartArrivalReference";
+                //QueryNames[i++] = "ArrivalAirport";
+                //QueryNames[i++] = "AirCarrier";
+                //QueryNames[i++] = "Origin";
+                //QueryNames[i++] = "DestinionCode";
+                //QueryNames[i++] = "WBLNumberOfPieces";
+                //QueryNames[i++] = "WBLWeightIndicator";
+                //QueryNames[i++] = "WBLWeight";
+                //QueryNames[i++] = "WBLCargoDescription";
+                //QueryNames[i++] = "ArrivalDate";
+                //QueryNames[i++] = "PartArrivalReference";
+                //QueryNames[i++] = "BoardedQuantityIdentifier";
+                //QueryNames[i++] = "BoardedPieceCount";
+                //QueryNames[i++] = "BoardedWeight";
+                //QueryNames[i++] = "ARRWeightCode";
+                //QueryNames[i++] = "ImportingCarrier";
+                //QueryNames[i++] = "FlightNumber";
+                //QueryNames[i++] = "ARRPartArrivalReference";
+                //QueryNames[i++] = "RequestType";
+                //QueryNames[i++] = "RequestExplanation";
+                //QueryNames[i++] = "EntryType";
+                //QueryNames[i++] = "EntryNumber";
+                //QueryNames[i++] = "AMSParticipantCode";
+                //QueryNames[i++] = "ShipperName";
+                //QueryNames[i++] = "ShipperAddress";
+                //QueryNames[i++] = "ShipperCity";
+                //QueryNames[i++] = "ShipperState";
+                //QueryNames[i++] = "ShipperCountry";
+                //QueryNames[i++] = "ShipperPostalCode";
+                //QueryNames[i++] = "ConsigneeName";
+                //QueryNames[i++] = "ConsigneeAddress";
+                //QueryNames[i++] = "ConsigneeCity";
+                //QueryNames[i++] = "ConsigneeState";
+                //QueryNames[i++] = "ConsigneeCountry";
+                //QueryNames[i++] = "ConsigneePostalCode";
+                //QueryNames[i++] = "TransferDestAirport";
+                //QueryNames[i++] = "DomesticIdentifier";
+                //QueryNames[i++] = "BondedCarrierID";
+                //QueryNames[i++] = "OnwardCarrier";
+                //QueryNames[i++] = "BondedPremisesIdentifier";
+                //QueryNames[i++] = "InBondControlNumber";
+                //QueryNames[i++] = "OriginOfGoods";
+                //QueryNames[i++] = "DeclaredValue";
+                //QueryNames[i++] = "CurrencyCode";
+                //QueryNames[i++] = "CommodityCode";
+                //QueryNames[i++] = "LineIdentifier";
+                //QueryNames[i++] = "AmendmentCode";
+                //QueryNames[i++] = "AmendmentExplanation";
+                //QueryNames[i++] = "DeptImportingCarrier";
+                //QueryNames[i++] = "DeptFlightNumber";
+                //QueryNames[i++] = "DeptScheduledArrivalDate";
+                //QueryNames[i++] = "LiftoffDate";
+                //QueryNames[i++] = "LiftoffTime";
+                //QueryNames[i++] = "DeptActualImportingCarrier";
+                //QueryNames[i++] = "DeptActualFlightNumber";
+                //QueryNames[i++] = "ASNStatusCode";
+                //QueryNames[i++] = "ASNActionExplanation";
+                //QueryNames[i++] = "CSNActionCode";
+                //QueryNames[i++] = "CSNPieces";
+                //QueryNames[i++] = "TransactionDate";
+                //QueryNames[i++] = "TransactionTime";
+                //QueryNames[i++] = "CSNEntryType";
+                //QueryNames[i++] = "CSNEntryNumber";
+                //QueryNames[i++] = "CSNRemarks";
+                //QueryNames[i++] = "ErrorCode";
+                //QueryNames[i++] = "ErrorMessage";
+                //QueryNames[i++] = "StatusRequestCode";
+                //QueryNames[i++] = "StatusAnswerCode";
+                //QueryNames[i++] = "Information";
+                //QueryNames[i++] = "ERFImportingCarrier";
+                //QueryNames[i++] = "ERFFlightNumber";
+                //QueryNames[i++] = "ERFDate";
+                //QueryNames[i++] = "Message";
+                //QueryNames[i++] = "UpdatedOn";
+                //QueryNames[i++] = "UpdatedBy";
+                //QueryNames[i++] = "CreatedOn";
+                //QueryNames[i++] = "CreatedBy";
+                //QueryNames[i++] = "FlightNo";
+                //QueryNames[i++] = "FlightDate";
+                //QueryNames[i++] = "ControlLocation";
+                //QueryNames[i++] = "WBLArrivalDatePermitToProceed";
 
-                int j = 0;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Int;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Decimal;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.Int;
-                QueryTypes[j++] = SqlDbType.Decimal;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.BigInt;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.DateTime;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.DateTime;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
-                QueryTypes[j++] = SqlDbType.VarChar;
+                //int j = 0;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Int;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Decimal;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.Int;
+                //QueryTypes[j++] = SqlDbType.Decimal;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.BigInt;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.DateTime;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.DateTime;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+                //QueryTypes[j++] = SqlDbType.VarChar;
+
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = QueryValues[0] },
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = QueryValues[1] },
+                    new SqlParameter("@MessageType", SqlDbType.VarChar) { Value = QueryValues[2] },
+                    new SqlParameter("@HAWBNumber", SqlDbType.VarChar) { Value = QueryValues[3] },
+                    new SqlParameter("@ConsolidationIdentifier", SqlDbType.VarChar) { Value = QueryValues[4] },
+                    new SqlParameter("@PackageTrackingIdentifier", SqlDbType.VarChar) { Value = QueryValues[5] },
+                    new SqlParameter("@AWBPartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[6] },
+                    new SqlParameter("@ArrivalAirport", SqlDbType.VarChar) { Value = QueryValues[7] },
+                    new SqlParameter("@AirCarrier", SqlDbType.VarChar) { Value = QueryValues[8] },
+                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = QueryValues[9] },
+                    new SqlParameter("@DestinionCode", SqlDbType.VarChar) { Value = QueryValues[10] },
+                    new SqlParameter("@WBLNumberOfPieces", SqlDbType.Int) { Value = QueryValues[11] },
+                    new SqlParameter("@WBLWeightIndicator", SqlDbType.VarChar) { Value = QueryValues[12] },
+                    new SqlParameter("@WBLWeight", SqlDbType.Decimal) { Value = QueryValues[13] },
+                    new SqlParameter("@WBLCargoDescription", SqlDbType.VarChar) { Value = QueryValues[14] },
+                    new SqlParameter("@ArrivalDate", SqlDbType.VarChar) { Value = QueryValues[15] },
+                    new SqlParameter("@PartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[16] },
+                    new SqlParameter("@BoardedQuantityIdentifier", SqlDbType.VarChar) { Value = QueryValues[17] },
+                    new SqlParameter("@BoardedPieceCount", SqlDbType.Int) { Value = QueryValues[18] },
+                    new SqlParameter("@BoardedWeight", SqlDbType.Decimal) { Value = QueryValues[19] },
+                    new SqlParameter("@ARRWeightCode", SqlDbType.VarChar) { Value = QueryValues[20] },
+                    new SqlParameter("@ImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[21] },
+                    new SqlParameter("@FlightNumber", SqlDbType.VarChar) { Value = QueryValues[22] },
+                    new SqlParameter("@ARRPartArrivalReference", SqlDbType.VarChar) { Value = QueryValues[23] },
+                    new SqlParameter("@RequestType", SqlDbType.VarChar) { Value = QueryValues[24] },
+                    new SqlParameter("@RequestExplanation", SqlDbType.VarChar) { Value = QueryValues[25] },
+                    new SqlParameter("@EntryType", SqlDbType.VarChar) { Value = QueryValues[26] },
+                    new SqlParameter("@EntryNumber", SqlDbType.VarChar) { Value = QueryValues[27] },
+                    new SqlParameter("@AMSParticipantCode", SqlDbType.VarChar) { Value = QueryValues[28] },
+                    new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = QueryValues[29] },
+                    new SqlParameter("@ShipperAddress", SqlDbType.VarChar) { Value = QueryValues[30] },
+                    new SqlParameter("@ShipperCity", SqlDbType.VarChar) { Value = QueryValues[31] },
+                    new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = QueryValues[32] },
+                    new SqlParameter("@ShipperCountry", SqlDbType.VarChar) { Value = QueryValues[33] },
+                    new SqlParameter("@ShipperPostalCode", SqlDbType.VarChar) { Value = QueryValues[34] },
+                    new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = QueryValues[35] },
+                    new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = QueryValues[36] },
+                    new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = QueryValues[37] },
+                    new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = QueryValues[38] },
+                    new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = QueryValues[39] },
+                    new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = QueryValues[40] },
+                    new SqlParameter("@TransferDestAirport", SqlDbType.VarChar) { Value = QueryValues[41] },
+                    new SqlParameter("@DomesticIdentifier", SqlDbType.VarChar) { Value = QueryValues[42] },
+                    new SqlParameter("@BondedCarrierID", SqlDbType.VarChar) { Value = QueryValues[43] },
+                    new SqlParameter("@OnwardCarrier", SqlDbType.VarChar) { Value = QueryValues[44] },
+                    new SqlParameter("@BondedPremisesIdentifier", SqlDbType.VarChar) { Value = QueryValues[45] },
+                    new SqlParameter("@InBondControlNumber", SqlDbType.VarChar) { Value = QueryValues[46] },
+                    new SqlParameter("@OriginOfGoods", SqlDbType.VarChar) { Value = QueryValues[47] },
+                    new SqlParameter("@DeclaredValue", SqlDbType.VarChar) { Value = QueryValues[48] },
+                    new SqlParameter("@CurrencyCode", SqlDbType.VarChar) { Value = QueryValues[49] },
+                    new SqlParameter("@CommodityCode", SqlDbType.VarChar) { Value = QueryValues[50] },
+                    new SqlParameter("@LineIdentifier", SqlDbType.VarChar) { Value = QueryValues[51] },
+                    new SqlParameter("@AmendmentCode", SqlDbType.VarChar) { Value = QueryValues[52] },
+                    new SqlParameter("@AmendmentExplanation", SqlDbType.VarChar) { Value = QueryValues[53] },
+                    new SqlParameter("@DeptImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[54] },
+                    new SqlParameter("@DeptFlightNumber", SqlDbType.VarChar) { Value = QueryValues[55] },
+                    new SqlParameter("@DeptScheduledArrivalDate", SqlDbType.VarChar) { Value = QueryValues[56] },
+                    new SqlParameter("@LiftoffDate", SqlDbType.VarChar) { Value = QueryValues[57] },
+                    new SqlParameter("@LiftoffTime", SqlDbType.VarChar) { Value = QueryValues[58] },
+                    new SqlParameter("@DeptActualImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[59] },
+                    new SqlParameter("@DeptActualFlightNumber", SqlDbType.VarChar) { Value = QueryValues[60] },
+                    new SqlParameter("@ASNStatusCode", SqlDbType.VarChar) { Value = QueryValues[61] },
+                    new SqlParameter("@ASNActionExplanation", SqlDbType.VarChar) { Value = QueryValues[62] },
+                    new SqlParameter("@CSNActionCode", SqlDbType.VarChar) { Value = QueryValues[63] },
+                    new SqlParameter("@CSNPieces", SqlDbType.BigInt) { Value = QueryValues[64] },
+                    new SqlParameter("@TransactionDate", SqlDbType.VarChar) { Value = QueryValues[65] },
+                    new SqlParameter("@TransactionTime", SqlDbType.VarChar) { Value = QueryValues[66] },
+                    new SqlParameter("@CSNEntryType", SqlDbType.VarChar) { Value = QueryValues[67] },
+                    new SqlParameter("@CSNEntryNumber", SqlDbType.VarChar) { Value = QueryValues[68] },
+                    new SqlParameter("@CSNRemarks", SqlDbType.VarChar) { Value = QueryValues[69] },
+                    new SqlParameter("@ErrorCode", SqlDbType.VarChar) { Value = QueryValues[70] },
+                    new SqlParameter("@ErrorMessage", SqlDbType.VarChar) { Value = QueryValues[71] },
+                    new SqlParameter("@StatusRequestCode", SqlDbType.VarChar) { Value = QueryValues[72] },
+                    new SqlParameter("@StatusAnswerCode", SqlDbType.VarChar) { Value = QueryValues[73] },
+                    new SqlParameter("@Information", SqlDbType.VarChar) { Value = QueryValues[74] },
+                    new SqlParameter("@ERFImportingCarrier", SqlDbType.VarChar) { Value = QueryValues[75] },
+                    new SqlParameter("@ERFFlightNumber", SqlDbType.VarChar) { Value = QueryValues[76] },
+                    new SqlParameter("@ERFDate", SqlDbType.VarChar) { Value = QueryValues[77] },
+                    new SqlParameter("@Message", SqlDbType.VarChar) { Value = QueryValues[78] },
+                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = QueryValues[79] },
+                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = QueryValues[80] },
+                    new SqlParameter("@CreatedOn", SqlDbType.DateTime) { Value = QueryValues[81] },
+                    new SqlParameter("@CreatedBy", SqlDbType.VarChar) { Value = QueryValues[82] },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[83] },
+                    new SqlParameter("@FlightDate", SqlDbType.VarChar) { Value = QueryValues[84] },
+                    new SqlParameter("@ControlLocation", SqlDbType.VarChar) { Value = QueryValues[85] },
+                    new SqlParameter("@WBLArrivalDatePermitToProceed", SqlDbType.VarChar) { Value = QueryValues[86] }
+                };
 
                 if (MessageType == "FRI" || MessageType == "FXI" || MessageType == "FRC" || MessageType == "FXC" || MessageType == "FRX" || MessageType == "FXX" || MessageType == "FDM" || MessageType == "FER" || MessageType == "FSQ" || MessageType == "FSN" || MessageType == "PSN" || MessageType == "PER" || MessageType == "PRI")
                 {
-                    if (db.InsertData("SP_UpdateOutboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    //if (db.InsertData("SP_UpdateOutboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    if (await _readWriteDao.ExecuteNonQueryAsync("SP_UpdateOutboxCustomsMessage", sqlParameters))
                     { return true; }
                     else
                     { return false; }
                 }
                 else
                 {
-                    if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    //if (db.InsertData("SP_UpdateInboxCustomsMessage", QueryNames, QueryTypes, QueryValues))
+                    if (await _readWriteDao.ExecuteNonQueryAsync("SP_UpdateInboxCustomsMessage", sqlParameters))
                     { return true; }
                     else
                     { return false; }
@@ -1037,16 +1137,22 @@ namespace QidWorkerRole
         #endregion
 
         #region Encoding PSN Message
-        public PSN EncodingPSNMessage(object[] QueryValues)
+        public async Task<PSN> EncodingPSNMessage(object[] QueryValues)
         {
             try
             {
-                string[] QueryNames = { "AWBNumber", "HAWBNumber" };
-                SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                StringBuilder sb = new StringBuilder();
-                SQLServer db = new SQLServer();
-                DataSet Dset = new DataSet("Dset_CustomsImportBAL_EncodingPSNMessage");
-                Dset = db.SelectRecords("sp_GetPSNDataAutoMsg_HAWB", QueryNames, QueryValues, QueryTypes);
+                //string[] QueryNames = { "AWBNumber", "HAWBNumber" };
+                //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                //StringBuilder sb = new StringBuilder();
+                SqlParameter[] sqlParameters = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = QueryValues[0] },
+                    new SqlParameter("@HAWBNumber", SqlDbType.VarChar) { Value = QueryValues[1] }
+                };
+                //SQLServer db = new SQLServer();
+                DataSet? Dset = new DataSet("Dset_CustomsImportBAL_EncodingPSNMessage");
+                //Dset = db.SelectRecords("sp_GetPSNDataAutoMsg_HAWB", QueryNames, QueryValues, QueryTypes);
+                Dset = await _readWriteDao.SelectRecords("sp_GetPSNDataAutoMsg_HAWB", sqlParameters);
                 if (Dset != null)
                 {
                     if (Dset.Tables.Count > 0)
@@ -1057,14 +1163,14 @@ namespace QidWorkerRole
                     }
                     else
                     {
-                        db = null;
+                        //db = null;
                         Dset.Dispose();
                         return null;
                     }
                 }
                 else
                 {
-                    db = null;
+                    //db = null;
                     Dset = null;
                     return null;
                 }
@@ -1072,20 +1178,21 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 clsLog.WriteLogAzure(ex);
-                db = null;
+                //db = null;
                 return null;
 
             }
         }
         #endregion
 
-        public bool GeneratePSNMessage(string AWBNumber, string HAWBNumber)
+        public async Task<bool> GeneratePSNMessage(string AWBNumber, string HAWBNumber)
         {
             try
             {
                 string AutoPSN = string.Empty;
-                GenericFunction genericFunction = new GenericFunction();
-                AutoPSN = genericFunction.ReadValueFromDb("AutoPSN");
+                //GenericFunction genericFunction = new GenericFunction();
+                
+                AutoPSN = _genericFunction.ReadValueFromDb("AutoPSN");
 
                 if (AutoPSN != string.Empty && AutoPSN == "false")
                     return false;
@@ -1095,10 +1202,10 @@ namespace QidWorkerRole
                 object[] QueryVal = { AWBNumber, HAWBNumber };
 
                 object[] QueryValues = new object[87];
-                PSN sbPSN = EncodingPSNMessage(QueryVal);
+                PSN sbPSN = await EncodingPSNMessage(QueryVal);
 
                 readQueryValuesPSN(sbPSN, ref QueryValues, sbPSN.ToString(), string.Empty, DateTime.MinValue, "AutoGeneratedMessage", DateTime.UtcNow);
-                if (UpdateCustomsMessages(QueryValues, sbPSN.StandardMessageIdentifier.StandardMessageIdentifier))
+                if (await UpdateCustomsMessages(QueryValues, sbPSN.StandardMessageIdentifier.StandardMessageIdentifier))
                 {
 
                     if (sbPSN != null)
@@ -1107,9 +1214,9 @@ namespace QidWorkerRole
                         {
                             #region Wrap SITA Address
 
-                            GenericFunction GF = new GenericFunction();
+                            //GenericFunction GF = new GenericFunction();
                             string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, FWBMessageversion = string.Empty, Emailaddress = string.Empty, error = string.Empty;
-                            DataSet dsmessage = GF.GetSitaAddressandMessageVersion(string.Empty, "PSN", "AIR", string.Empty, string.Empty, string.Empty, string.Empty);
+                            DataSet? dsmessage = await _genericFunction.GetSitaAddressandMessageVersion(string.Empty, "PSN", "AIR", string.Empty, string.Empty, string.Empty, string.Empty);
 
                             //DataSet dsChecmMessageType = GF.GetRecordofSitaAddressandSitaMessageVersionandMessageType("", "", "", "", "FDM");
                             //DataSet dsMsgCongig = GF.GetSitaAddressandMessageVersion(AirlineCode, "FDM", "AIR", "", "", "", string.Empty);
@@ -1123,27 +1230,27 @@ namespace QidWorkerRole
                                     FWBMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
 
                                     if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Trim().Length > 0)
-                                        SitaMessageHeader = GF.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
 
                                     if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Trim().Length > 0)
-                                        SFTPHeaderSITAddress = GF.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                                 }
 
                             }
 
                             if (SitaMessageHeader != "")
                             {
-                                GF.SaveMessageOutBox("PSN", SitaMessageHeader + "\r\n" + sbPSN.ToString().ToUpper(), "SITAFTP", "SITAFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                _genericFunction.SaveMessageOutBox("PSN", SitaMessageHeader + "\r\n" + sbPSN.ToString().ToUpper(), "SITAFTP", "SITAFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
                             }
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
                             {
-                                GF.SaveMessageOutBox("PSN", SFTPHeaderSITAddress + "\r\n" + sbPSN.ToString().ToUpper(), "SFTP", "SFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                _genericFunction.SaveMessageOutBox("PSN", SFTPHeaderSITAddress + "\r\n" + sbPSN.ToString().ToUpper(), "SFTP", "SFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
                             }
                             if (Emailaddress.Trim().Length > 0)
                             {
-                                GF.SaveMessageOutBox("PSN", sbPSN.ToString().ToUpper(), string.Empty, Emailaddress, string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                _genericFunction.SaveMessageOutBox("PSN", sbPSN.ToString().ToUpper(), string.Empty, Emailaddress, string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 clsLog.WriteLogAzure("PSN message in SaveMessageOutBox Email" + DateTime.Now);
                             }
 
