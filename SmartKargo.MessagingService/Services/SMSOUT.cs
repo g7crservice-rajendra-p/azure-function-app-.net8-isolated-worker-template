@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Configuration;
-using System.IO;
+﻿using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Net;
+using System.Text;
 
 namespace QidWorkerRole
 {
@@ -12,12 +9,19 @@ namespace QidWorkerRole
     {
 
         #region variables
-        GenericFunction genericFunction = new GenericFunction();
+        //GenericFunction genericFunction = new GenericFunction();
+        private readonly GenericFunction _genericFunction;
+        private readonly ILogger<SMSOUT> _logger;
         #endregion
 
         #region Constructor
-        public SMSOUT()
-        { }
+        public SMSOUT(GenericFunction genericFunction,
+                ILogger<SMSOUT> logger)
+        {
+            _genericFunction = genericFunction;
+            _logger = logger;
+        }
+
         #endregion
 
         #region Send SMS
@@ -40,7 +44,7 @@ namespace QidWorkerRole
                 byte[] buf = new byte[8192];
                 # endregion
 
-                HttpWebRequest Request = (HttpWebRequest)WebRequest.Create("http://www.smscountry.com/SMSCwebservice.asp?User=" + Convert.ToString(genericFunction.ReadValueFromDb("SMSUN")) + "&passwd=" + Convert.ToString(genericFunction.ReadValueFromDb("SMSPASS")) + "&mobilenumber=" + mobileno + "&message=" + message + "&sid=QIDAlert&mtype=N&DR=Y");
+                HttpWebRequest Request = (HttpWebRequest)WebRequest.Create("http://www.smscountry.com/SMSCwebservice.asp?User=" + Convert.ToString(_genericFunction.ReadValueFromDb("SMSUN")) + "&passwd=" + Convert.ToString(_genericFunction.ReadValueFromDb("SMSPASS")) + "&mobilenumber=" + mobileno + "&message=" + message + "&sid=QIDAlert&mtype=N&DR=Y");
                 HttpWebResponse Reponse = (HttpWebResponse)Request.GetResponse();
                 Stream Response_Stream = Reponse.GetResponseStream();
 

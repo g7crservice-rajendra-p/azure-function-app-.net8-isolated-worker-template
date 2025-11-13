@@ -122,7 +122,7 @@ namespace QidWorkerRole
                     body += "</table>";
 
                     clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports sending");
-                    addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPIDEXCEPTIONREPORT");
+                    await addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPIDEXCEPTIONREPORT");
                     clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports Sent");
                 }
             }
