@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QidWorkerRole;
-using QID.DataAccess;
-using System.Configuration;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Web;
-using System.Data.SqlClient;
 
 namespace QidWorkerRole
 {
@@ -44,6 +37,25 @@ namespace QidWorkerRole
         public string[] arrTIM = new string[] { "TIM", "TIM/ADM" };
         public string[] arrFLT = new string[] { "FLT" };
 
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<SSM> _logger;
+        private readonly GenericFunction _genericFunction;
+        private readonly ASM _asm;
+
+
+        #region Constructor
+        public SSM(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<SSM> logger,
+            GenericFunction genericFunction,
+            ASM asm)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+            _asm = asm;
+        }
+        #endregion
         public void ToSSM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom, out bool isProcessFlag)
         {
             isProcessFlag = false;
@@ -81,8 +93,9 @@ namespace QidWorkerRole
                 }
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported SSM Message", "SSM", true, originalMessage);
+                    //GenericFunction genericFunction = new GenericFunction();
+                    
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported SSM Message", "SSM", true, originalMessage);
                     return;
                 }
                 isProcessFlag = true;
@@ -93,7 +106,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseNEW(string[] arrLine, int srno)
+        private async Task parseNEW(string[] arrLine, int srno)
         {
             try
             {
@@ -253,8 +266,8 @@ namespace QidWorkerRole
                     depDate = DateTime.ParseExact(Convert.ToDateTime(dtUniqueFlightInfo.Rows[i]["DepDate"]).ToString("yyyy-MM-dd"), "yyyy-MM-dd", null).ToString();
                     legDepDayDiff = Convert.ToInt32(dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString() == "" ? "0" : dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString());
                     orgDepTime = dtUniqueFlightInfo.Rows[i]["OrgDepTime"].ToString();
-                    DataSet dsScheduleDetails = new DataSet();
-                    dsScheduleDetails = SaveSSMDetails(srno, scheduleID, isLastLeg, scheduleIDs, POL, depDate, orgDepTime);
+                    DataSet? dsScheduleDetails = new DataSet();
+                    dsScheduleDetails = await SaveSSMDetails(srno, scheduleID, isLastLeg, scheduleIDs, POL, depDate, orgDepTime);
                     //if (dsScheduleDetails != null && dsScheduleDetails.Tables.Count > 0 && dsScheduleDetails.Tables[0].Rows.Count > 0 && dsScheduleDetails.Tables[0].Columns.Contains("ScheduleID"))
                     //{
                     //    scheduleIDs = dsScheduleDetails.Tables[0].Rows[0]["ScheduleIDs"].ToString();
@@ -271,228 +284,229 @@ namespace QidWorkerRole
             }
         }
 
-
-        private void parseNEWRevised(string[] arrLine, int srno, string messageBody)
-        {
-            try
-            {
-                SetVariablesToDefaultValues();
-                //legNumber = 1;
-                //int scheduleID = 0;
+        /*Not in use*/
+        //private void parseNEWRevised(string[] arrLine, int srno, string messageBody)
+        //{
+        //    try
+        //    {
+        //        SetVariablesToDefaultValues();
+        //        //legNumber = 1;
+        //        //int scheduleID = 0;
                 
-                int rowIncrement = 0;
-                string thirdLine = string.Empty, scheduleIDs = string.Empty;
-                int indxFlightInfo = 0;
-                messageIdentifier = "NEW";
+        //        int rowIncrement = 0;
+        //        string thirdLine = string.Empty, scheduleIDs = string.Empty;
+        //        int indxFlightInfo = 0;
+        //        messageIdentifier = "NEW";
 
-                for (int i = 0; i < arrLine.Length; i++)
-                {
-                    if (arrLine[i].Trim() == "LT")
-                        messageTimeMode = "LT";
-                    if (arrNEW.Contains(arrLine[i].Trim()))
-                    {
-                        indxFlightInfo = i + 1;
-                        break;
-                    }
-                }
-                flightNo = arrLine[indxFlightInfo].Split(' ')[0];
-                DataTable dtFlightInfo = new DataTable();
-                dtFlightInfo = CreateNewFlightDataTable();
-                DataTable dtPeriodFrequency = new DataTable();
-                dtPeriodFrequency = CreatePeriodFreqDataTable();
+        //        for (int i = 0; i < arrLine.Length; i++)
+        //        {
+        //            if (arrLine[i].Trim() == "LT")
+        //                messageTimeMode = "LT";
+        //            if (arrNEW.Contains(arrLine[i].Trim()))
+        //            {
+        //                indxFlightInfo = i + 1;
+        //                break;
+        //            }
+        //        }
+        //        flightNo = arrLine[indxFlightInfo].Split(' ')[0];
+        //        DataTable dtFlightInfo = new DataTable();
+        //        dtFlightInfo = CreateNewFlightDataTable();
+        //        DataTable dtPeriodFrequency = new DataTable();
+        //        dtPeriodFrequency = CreatePeriodFreqDataTable();
 
-                ///12NOV 30NOV 1234567/W2 6/SQ103C/1
-                ///01DEC 31DEC 1234567/W2 6/SQ103C/1
-                for (int i = indxFlightInfo + 1; i < arrLine.Length; i++)
-                {
-                    string[] strMessages = arrLine[i].Trim().Split(' ');
+        //        ///12NOV 30NOV 1234567/W2 6/SQ103C/1
+        //        ///01DEC 31DEC 1234567/W2 6/SQ103C/1
+        //        for (int i = indxFlightInfo + 1; i < arrLine.Length; i++)
+        //        {
+        //            string[] strMessages = arrLine[i].Trim().Split(' ');
 
-                    if (strMessages[0].Trim().Length == 1)
-                        break;
-                    if (ValidatePeriodRequencyLine(arrLine[i].Trim()))
-                    {
-                        schedDateOfDepart = strMessages[0];
-                        schedDateOfArrival = strMessages[1];
-                        frequency = strMessages[2].Split('/')[0];
-                        dtPeriodFrequency.Rows.Add(
-                            flightNo
-                            , schedDateOfDepart
-                            , schedDateOfArrival
-                            , frequency
-                        );
-                    }
-                    indxFlightInfo++;
-                }
-                //int flightInfoRowIndex = 0;
-                for (int i = 0; i < dtPeriodFrequency.Rows.Count; i++)
-                {
-                    legNumber = 1;
-                    //bool isNewRowAddedToFlightInfoTable = false;
-                    for (int j = indxFlightInfo + 1; j < arrLine.Length; j++)
-                    {
-                        //DataRow drNewFlightInfo = dtFlightInfo.NewRow();
-                        string[] strMessages = arrLine[j].Trim().Split(' ');
-                        if (strMessages[0] == "SI" || strMessages[0] == "//")
-                            break;
-                        int orgInfoLen = 0, destInfoLen = 0;
-                        ///SIN0730/0/0735 KUL0820/0/0820
-                        if (strMessages.Length > 1)
-                        {
-                            orgInfoLen = strMessages[0].Split('/')[0].Length;
-                            destInfoLen = strMessages[1].Split('/')[0].Length;
-                        }
-                        if (orgInfoLen == 7 && destInfoLen == 7)
-                        {
-                            //if (isNewRowAddedToFlightInfoTable)
-                            //    isNewRowAddedToFlightInfoTable = false;
-                            //else
-                            //{
-                            //    //dtFlightInfo.Rows.Add(drNewFlightInfo);
-                            //    flightInfoRowIndex++;
-                            //}
+        //            if (strMessages[0].Trim().Length == 1)
+        //                break;
+        //            if (ValidatePeriodRequencyLine(arrLine[i].Trim()))
+        //            {
+        //                schedDateOfDepart = strMessages[0];
+        //                schedDateOfArrival = strMessages[1];
+        //                frequency = strMessages[2].Split('/')[0];
+        //                dtPeriodFrequency.Rows.Add(
+        //                    flightNo
+        //                    , schedDateOfDepart
+        //                    , schedDateOfArrival
+        //                    , frequency
+        //                );
+        //            }
+        //            indxFlightInfo++;
+        //        }
+        //        //int flightInfoRowIndex = 0;
+        //        for (int i = 0; i < dtPeriodFrequency.Rows.Count; i++)
+        //        {
+        //            legNumber = 1;
+        //            //bool isNewRowAddedToFlightInfoTable = false;
+        //            for (int j = indxFlightInfo + 1; j < arrLine.Length; j++)
+        //            {
+        //                //DataRow drNewFlightInfo = dtFlightInfo.NewRow();
+        //                string[] strMessages = arrLine[j].Trim().Split(' ');
+        //                if (strMessages[0] == "SI" || strMessages[0] == "//")
+        //                    break;
+        //                int orgInfoLen = 0, destInfoLen = 0;
+        //                ///SIN0730/0/0735 KUL0820/0/0820
+        //                if (strMessages.Length > 1)
+        //                {
+        //                    orgInfoLen = strMessages[0].Split('/')[0].Length;
+        //                    destInfoLen = strMessages[1].Split('/')[0].Length;
+        //                }
+        //                if (orgInfoLen == 7 && destInfoLen == 7)
+        //                {
+        //                    //if (isNewRowAddedToFlightInfoTable)
+        //                    //    isNewRowAddedToFlightInfoTable = false;
+        //                    //else
+        //                    //{
+        //                    //    //dtFlightInfo.Rows.Add(drNewFlightInfo);
+        //                    //    flightInfoRowIndex++;
+        //                    //}
 
-                            dateVariationDep = dateVariationArr = 0;
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["STDDateVariation"] = 0;
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["STADateVariation"] = 0;
+        //                    dateVariationDep = dateVariationArr = 0;
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["STDDateVariation"] = 0;
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["STADateVariation"] = 0;
 
-                            string[] source = strMessages[0].Split('/');
-                            airportOfDepart = strMessages[0].Substring(0, 3);
-                            schedTimeOfDepart = strMessages[0].Split('/')[0].Substring(3);
+        //                    string[] source = strMessages[0].Split('/');
+        //                    airportOfDepart = strMessages[0].Substring(0, 3);
+        //                    schedTimeOfDepart = strMessages[0].Split('/')[0].Substring(3);
 
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["Source"] = strMessages[0].Substring(0, 3);
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["SchDepTime"] = strMessages[0].Split('/')[0].Substring(3);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["Source"] = strMessages[0].Substring(0, 3);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["SchDepTime"] = strMessages[0].Split('/')[0].Substring(3);
 
-                            if (source.Length > 1 && (source[1].Length == 1 || source[1].Length == 2))
-                            {
-                                dateVariationDep = Convert.ToInt32(source[1].Substring(source[1].Length - 1));
-                                dateVariationDep = source[1].Substring(0, 1) == "M" ? -dateVariationDep : dateVariationDep;
-                                //dtFlightInfo.Rows[flightInfoRowIndex]["STDDateVariation"] = dateVariationDep;
-                            }
-                            string[] dest = strMessages[1].Split('/');
-                            airportOfArrival = strMessages[1].Substring(0, 3);
-                            schedTimeOfArrival = strMessages[1].Split('/')[0].Substring(3);
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["Dest"] = strMessages[0].Substring(0, 3);
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["SchArrTime"] = strMessages[1].Split('/')[0].Substring(3);
-                            if (dest.Length > 1 && (dest[1].Length == 1 || dest[1].Length == 2))
-                            {
-                                dateVariationArr = Convert.ToInt32(dest[1].Substring(dest[1].Length - 1));
-                                dateVariationArr = dest[1].Substring(0, 1) == "M" ? -dateVariationArr : dateVariationArr;
-                                //dtFlightInfo.Rows[flightInfoRowIndex]["STADateVariation"] = dateVariationArr;
-                            }
+        //                    if (source.Length > 1 && (source[1].Length == 1 || source[1].Length == 2))
+        //                    {
+        //                        dateVariationDep = Convert.ToInt32(source[1].Substring(source[1].Length - 1));
+        //                        dateVariationDep = source[1].Substring(0, 1) == "M" ? -dateVariationDep : dateVariationDep;
+        //                        //dtFlightInfo.Rows[flightInfoRowIndex]["STDDateVariation"] = dateVariationDep;
+        //                    }
+        //                    string[] dest = strMessages[1].Split('/');
+        //                    airportOfArrival = strMessages[1].Substring(0, 3);
+        //                    schedTimeOfArrival = strMessages[1].Split('/')[0].Substring(3);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["Dest"] = strMessages[0].Substring(0, 3);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["SchArrTime"] = strMessages[1].Split('/')[0].Substring(3);
+        //                    if (dest.Length > 1 && (dest[1].Length == 1 || dest[1].Length == 2))
+        //                    {
+        //                        dateVariationArr = Convert.ToInt32(dest[1].Substring(dest[1].Length - 1));
+        //                        dateVariationArr = dest[1].Substring(0, 1) == "M" ? -dateVariationArr : dateVariationArr;
+        //                        //dtFlightInfo.Rows[flightInfoRowIndex]["STADateVariation"] = dateVariationArr;
+        //                    }
 
-                            schedDateOfDepart = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
-                            schedDateOfArrival = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
-                            frequency = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["FromDate"] = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["ToDate"] = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["Frequency"] = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
+        //                    schedDateOfDepart = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
+        //                    schedDateOfArrival = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
+        //                    frequency = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["FromDate"] = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["ToDate"] = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["Frequency"] = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
 
-                            dtFlightInfo.Rows.Add(
-                                ++rowIncrement
-                                , srno
-                                , legNumber
-                                , messageType
-                                , messageIdentifier
-                                , flightNo
-                                , schedDateOfDepart
-                                , schedDateOfArrival
-                                , airportOfDepart
-                                , airportOfArrival
-                                , frequency
-                                , schedTimeOfDepart
-                                , schedTimeOfArrival
-                                , messageTimeMode
-                                , dateVariationDep
-                                , dateVariationArr
-                                , ""
-                                , ""
-                                , serviceType
-                                , aircraftType
-                                , ""
-                                , ""
-                                , messageBody
-                            );
-                            legNumber++;
-                        }
-                        ///C 330 F10Y100/FO.F10Y120
-                        else if (strMessages[0].Trim().Length == 1)
-                        {
-                            //dtFlightInfo.Rows.Add(drNewFlightInfo);
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["FlightType"] = strMessages[0];
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["AircraftType"] = strMessages[1];
-                            serviceType = strMessages[0];
-                            aircraftType = strMessages[1];
-                            //isNewRowAddedToFlightInfoTable = true;
-                        }
-                    }
-                }
+        //                    dtFlightInfo.Rows.Add(
+        //                        ++rowIncrement
+        //                        , srno
+        //                        , legNumber
+        //                        , messageType
+        //                        , messageIdentifier
+        //                        , flightNo
+        //                        , schedDateOfDepart
+        //                        , schedDateOfArrival
+        //                        , airportOfDepart
+        //                        , airportOfArrival
+        //                        , frequency
+        //                        , schedTimeOfDepart
+        //                        , schedTimeOfArrival
+        //                        , messageTimeMode
+        //                        , dateVariationDep
+        //                        , dateVariationArr
+        //                        , ""
+        //                        , ""
+        //                        , serviceType
+        //                        , aircraftType
+        //                        , ""
+        //                        , ""
+        //                        , messageBody
+        //                    );
+        //                    legNumber++;
+        //                }
+        //                ///C 330 F10Y100/FO.F10Y120
+        //                else if (strMessages[0].Trim().Length == 1)
+        //                {
+        //                    //dtFlightInfo.Rows.Add(drNewFlightInfo);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["FlightType"] = strMessages[0];
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["AircraftType"] = strMessages[1];
+        //                    serviceType = strMessages[0];
+        //                    aircraftType = strMessages[1];
+        //                    //isNewRowAddedToFlightInfoTable = true;
+        //                }
+        //            }
+        //        }
 
-               DataTable dtUniqueFlightInfo = RemoveDuplicatesRecords(dtFlightInfo);
-                SQLServer sqlServer = new SQLServer();
-                SqlParameter[] sqlParameter = new SqlParameter []{ 
-                    new  SqlParameter("@FlightInfoTableType", dtUniqueFlightInfo)
-                };
-                DataSet dsFlightinfo = new DataSet();
-                dsFlightinfo = sqlServer.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
-                /* 
-                DataTable dtRearrangeFlightInfo = dtUniqueFlightInfo;
-                dtUniqueFlightInfo = null;
-                dtUniqueFlightInfo = RearrangeFlightInfo(dtRearrangeFlightInfo);
-                flightNo = string.Empty;
-                schedDateOfDepart = string.Empty;
-                string POL = string.Empty, freqRotated = string.Empty, depDate = string.Empty, arrDate = string.Empty, orgDepTime = string.Empty;
-                int legDepDayDiff = 0;
-                for (int i = 0; i < dtUniqueFlightInfo.Rows.Count; i++)
-                {
-                    bool isLastLeg = false;
-                    if ((flightNo == string.Empty && schedDateOfDepart == string.Empty) ||
-                        flightNo != dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString().Trim()
-                        || schedDateOfDepart != dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString().Trim())
-                    {
-                        isLastLeg = false;
-                        scheduleIDs = string.Empty;
-                        frequency = string.Empty;
-                        legNumber = 1;
-                    }
-                    if ((i == dtUniqueFlightInfo.Rows.Count - 1)
-                    || (dtUniqueFlightInfo.Rows.Count - 1 > i && (dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString() != dtUniqueFlightInfo.Rows[i + 1]["FlightNumber"].ToString()
-                    || dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString() != dtUniqueFlightInfo.Rows[i + 1]["SchDateOfDeparture"].ToString())))
-                        isLastLeg = true;
+        //       DataTable dtUniqueFlightInfo = RemoveDuplicatesRecords(dtFlightInfo);
+        //        SQLServer sqlServer = new SQLServer();
+        //        SqlParameter[] sqlParameter = new SqlParameter []{ 
+        //            new  SqlParameter("@FlightInfoTableType", dtUniqueFlightInfo)
+        //        };
+        //        DataSet? dsFlightinfo = new DataSet();
+        //        dsFlightinfo = await _readWriteDao.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
+                
+        //        /* 
+        //        DataTable dtRearrangeFlightInfo = dtUniqueFlightInfo;
+        //        dtUniqueFlightInfo = null;
+        //        dtUniqueFlightInfo = RearrangeFlightInfo(dtRearrangeFlightInfo);
+        //        flightNo = string.Empty;
+        //        schedDateOfDepart = string.Empty;
+        //        string POL = string.Empty, freqRotated = string.Empty, depDate = string.Empty, arrDate = string.Empty, orgDepTime = string.Empty;
+        //        int legDepDayDiff = 0;
+        //        for (int i = 0; i < dtUniqueFlightInfo.Rows.Count; i++)
+        //        {
+        //            bool isLastLeg = false;
+        //            if ((flightNo == string.Empty && schedDateOfDepart == string.Empty) ||
+        //                flightNo != dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString().Trim()
+        //                || schedDateOfDepart != dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString().Trim())
+        //            {
+        //                isLastLeg = false;
+        //                scheduleIDs = string.Empty;
+        //                frequency = string.Empty;
+        //                legNumber = 1;
+        //            }
+        //            if ((i == dtUniqueFlightInfo.Rows.Count - 1)
+        //            || (dtUniqueFlightInfo.Rows.Count - 1 > i && (dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString() != dtUniqueFlightInfo.Rows[i + 1]["FlightNumber"].ToString()
+        //            || dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString() != dtUniqueFlightInfo.Rows[i + 1]["SchDateOfDeparture"].ToString())))
+        //                isLastLeg = true;
 
-                    flightNo = dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString();
-                    airportOfDepart = dtUniqueFlightInfo.Rows[i]["AirportOfDepart"].ToString();
-                    airportOfArrival = dtUniqueFlightInfo.Rows[i]["AirportOfArrival"].ToString();
-                    schedDateOfDepart = dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString();
-                    schedDateOfArrival = dtUniqueFlightInfo.Rows[i]["SchDateOfArrival"].ToString();
-                    schedTimeOfDepart = dtUniqueFlightInfo.Rows[i]["SchedTimeOfDepart"].ToString();
-                    schedTimeOfArrival = dtUniqueFlightInfo.Rows[i]["SchedTimeOfArrival"].ToString();
-                    dateVariationDep = Convert.ToInt32(dtUniqueFlightInfo.Rows[i]["DateVariationDep"].ToString());
-                    dateVariationArr = Convert.ToInt32(dtUniqueFlightInfo.Rows[i]["dateVariationArr"].ToString());
-                    //frequency = freqRotated == string.Empty ? dtUniqueFlightInfo.Rows[i]["Frequency"].ToString() : freqRotated;
-                    frequency = dtUniqueFlightInfo.Rows[i]["Frequency"].ToString();
-                    serviceType = dtUniqueFlightInfo.Rows[i]["ServiceType"].ToString();
-                    aircraftType = dtUniqueFlightInfo.Rows[i]["AircraftType"].ToString();
-                    POL = dtUniqueFlightInfo.Rows[i]["POL"].ToString();
-                    depDate = DateTime.ParseExact(Convert.ToDateTime(dtUniqueFlightInfo.Rows[i]["DepDate"]).ToString("yyyy-MM-dd"), "yyyy-MM-dd", null).ToString();
-                    legDepDayDiff = Convert.ToInt32(dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString() == "" ? "0" : dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString());
-                    orgDepTime = dtUniqueFlightInfo.Rows[i]["OrgDepTime"].ToString();
-                    DataSet dsScheduleDetails = new DataSet();
-                    dsScheduleDetails = SaveSSMDetails(srno, scheduleID, isLastLeg, scheduleIDs, POL, depDate, orgDepTime);
-                    if (dsScheduleDetails != null && dsScheduleDetails.Tables.Count > 0 && dsScheduleDetails.Tables[0].Rows.Count > 0 && dsScheduleDetails.Tables[0].Columns.Contains("ScheduleID"))
-                    {
-                        scheduleIDs = dsScheduleDetails.Tables[0].Rows[0]["ScheduleIDs"].ToString();
-                        freqRotated = dsScheduleDetails.Tables[0].Rows[0]["Frequency"].ToString();
-                    }
-                    legNumber += 1;
-                }
+        //            flightNo = dtUniqueFlightInfo.Rows[i]["FlightNumber"].ToString();
+        //            airportOfDepart = dtUniqueFlightInfo.Rows[i]["AirportOfDepart"].ToString();
+        //            airportOfArrival = dtUniqueFlightInfo.Rows[i]["AirportOfArrival"].ToString();
+        //            schedDateOfDepart = dtUniqueFlightInfo.Rows[i]["SchDateOfDeparture"].ToString();
+        //            schedDateOfArrival = dtUniqueFlightInfo.Rows[i]["SchDateOfArrival"].ToString();
+        //            schedTimeOfDepart = dtUniqueFlightInfo.Rows[i]["SchedTimeOfDepart"].ToString();
+        //            schedTimeOfArrival = dtUniqueFlightInfo.Rows[i]["SchedTimeOfArrival"].ToString();
+        //            dateVariationDep = Convert.ToInt32(dtUniqueFlightInfo.Rows[i]["DateVariationDep"].ToString());
+        //            dateVariationArr = Convert.ToInt32(dtUniqueFlightInfo.Rows[i]["dateVariationArr"].ToString());
+        //            //frequency = freqRotated == string.Empty ? dtUniqueFlightInfo.Rows[i]["Frequency"].ToString() : freqRotated;
+        //            frequency = dtUniqueFlightInfo.Rows[i]["Frequency"].ToString();
+        //            serviceType = dtUniqueFlightInfo.Rows[i]["ServiceType"].ToString();
+        //            aircraftType = dtUniqueFlightInfo.Rows[i]["AircraftType"].ToString();
+        //            POL = dtUniqueFlightInfo.Rows[i]["POL"].ToString();
+        //            depDate = DateTime.ParseExact(Convert.ToDateTime(dtUniqueFlightInfo.Rows[i]["DepDate"]).ToString("yyyy-MM-dd"), "yyyy-MM-dd", null).ToString();
+        //            legDepDayDiff = Convert.ToInt32(dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString() == "" ? "0" : dtRearrangeFlightInfo.Rows[i]["LegDepDayDiff"].ToString());
+        //            orgDepTime = dtUniqueFlightInfo.Rows[i]["OrgDepTime"].ToString();
+        //            DataSet dsScheduleDetails = new DataSet();
+        //            dsScheduleDetails = SaveSSMDetails(srno, scheduleID, isLastLeg, scheduleIDs, POL, depDate, orgDepTime);
+        //            if (dsScheduleDetails != null && dsScheduleDetails.Tables.Count > 0 && dsScheduleDetails.Tables[0].Rows.Count > 0 && dsScheduleDetails.Tables[0].Columns.Contains("ScheduleID"))
+        //            {
+        //                scheduleIDs = dsScheduleDetails.Tables[0].Rows[0]["ScheduleIDs"].ToString();
+        //                freqRotated = dsScheduleDetails.Tables[0].Rows[0]["Frequency"].ToString();
+        //            }
+        //            legNumber += 1;
+        //        }
 
-                RefreshScheduleByScheduleID(scheduleIDs, "SSM/NEW");*/
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-        }
+        //        RefreshScheduleByScheduleID(scheduleIDs, "SSM/NEW");*/
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //}
         private DataTable RearrangeFlightInfo(DataTable dtRearrangeFlightInfo)
         {
             string flightNo = string.Empty, schedDateOfDepart = string.Empty, depTime = string.Empty, arrTime = string.Empty, orgDepTime = string.Empty;
@@ -926,8 +940,8 @@ namespace QidWorkerRole
                     flightNo = arrLine[indxFlightInfo];
                 else
                 {
-                    GenericFunction genericFunction = new GenericFunction();
-                    genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "SSM/TIM");
+                    //GenericFunction genericFunction = new GenericFunction();
+                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "SSM/TIM");
                     return;
                 }
 
@@ -1088,10 +1102,10 @@ namespace QidWorkerRole
             }
         }
 
-        private DataSet SaveSSMDetails(int srno, int scheduleID = 0, bool isLastLeg = false, string scheduleIDs = "", string POL = "", string depDate = ""
+        private async Task<DataSet?> SaveSSMDetails(int srno, int scheduleID = 0, bool isLastLeg = false, string scheduleIDs = "", string POL = "", string depDate = ""
             , string orgDepTime = "")
         {
-            DataSet dsScheduleDetails = new DataSet();
+            DataSet? dsScheduleDetails = new DataSet();
             try
             {
                 object[] QueryValues = {
@@ -1134,8 +1148,9 @@ namespace QidWorkerRole
                             newFlightNumber
                         };
 
-                ASM asm = new ASM();
-                dsScheduleDetails = asm.UpdateToDatatabse(QueryValues);
+                //ASM asm = new ASM();
+                
+                dsScheduleDetails = await _asm.UpdateToDatatabse(QueryValues);
 
                 for (int i = 0; i < dsScheduleDetails.Tables.Count; i++)
                 {
@@ -1442,21 +1457,27 @@ namespace QidWorkerRole
             return dt2;
         }
 
-        private void RefreshScheduleByScheduleID(string scheduleIDs, string updatedBy)
+        private async Task RefreshScheduleByScheduleID(string scheduleIDs, string updatedBy)
         {
             try
             {
                 int[] arrScheduleID = Array.ConvertAll(scheduleIDs.Split(','), s => int.Parse(s));
                 if (arrScheduleID.Length > 0)
                 {
-                    SQLServer db = new SQLServer();
-                    string[] paramNames = new string[] { "ScheduleID", "UpdatedBy" };
-                    SqlDbType[] paramTypes = new SqlDbType[] { SqlDbType.Int, SqlDbType.VarChar };
+                    //SQLServer db = new SQLServer();
+                    //string[] paramNames = new string[] { "ScheduleID", "UpdatedBy" };
+                    //SqlDbType[] paramTypes = new SqlDbType[] { SqlDbType.Int, SqlDbType.VarChar };
+                    SqlParameter[] sqlParams = new SqlParameter[] { 
+                        new SqlParameter("@ScheduleID", SqlDbType.Int),
+                        new SqlParameter("@UpdatedBy", SqlDbType.VarChar)
+                    };
                     for (int i = 0; i < arrScheduleID.Length; i++)
                     {
                         object[] paramValues = new object[] { arrScheduleID[i], updatedBy };
                         DataSet dsRefreshSchedule = new DataSet();
-                        dsRefreshSchedule = db.SelectRecords("dbo.uspRefreshAirlineScheduleRouteForecast", paramNames, paramValues, paramTypes);
+                        //dsRefreshSchedule = db.SelectRecords("dbo.uspRefreshAirlineScheduleRouteForecast", paramNames, paramValues, paramTypes);
+                        dsRefreshSchedule = await _readWriteDao.SelectRecords("dbo.uspRefreshAirlineScheduleRouteForecast", sqlParams);
+
                     }
                 }
             }
