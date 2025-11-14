@@ -1,8 +1,7 @@
-﻿using System;
+﻿using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using QidWorkerRole.SIS.Model;
 using System.Collections;
 using System.Xml;
-using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
-using QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
