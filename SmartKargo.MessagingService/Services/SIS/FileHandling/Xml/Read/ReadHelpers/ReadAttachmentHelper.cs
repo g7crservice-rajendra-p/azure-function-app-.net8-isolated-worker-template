@@ -1,6 +1,8 @@
-﻿using System;
-using System.Xml;
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
@@ -11,7 +13,26 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
         /// </summary>
         /// <param name="xmlTextReader">XmlTextReader</param>
         /// <param name="classObject">classObject</param>
-        private static void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
+        /// 
+
+        private readonly ILogger<XmlReaderHelper> _logger;
+
+        #region Constructor
+
+        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory,
+
+            ILogger<XmlReaderHelper> logger)
+
+        {
+
+            _logger = logger;
+
+        }
+
+        #endregion
+
+        //private static void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
+        private  void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
         {
             try
             {
@@ -80,7 +101,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
                                     case XmlConstants.RejectionMemo:
                                         if (xmlTextReader.Value.Equals(XmlConstants.Y))
                                         {
-                                            ((RejectionMemo)classObject).AttachmentIndicatorValidated =true;
+                                            ((RejectionMemo)classObject).AttachmentIndicatorValidated = true;
                                         }
                                         break;
                                     case XmlConstants.RMAirWayBill:
@@ -113,7 +134,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadAttachmentDetails", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in ReadAttachmentDetails", xmlException);
+                _logger.LogError(xmlException, "Error Occurred in ReadAttachmentDetails");
             }
         }
     }
