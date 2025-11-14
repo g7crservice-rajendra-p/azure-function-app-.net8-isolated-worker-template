@@ -1,4 +1,5 @@
-﻿using QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers;
+﻿using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
 using QidWorkerRole.SIS.Model;
 using System.Xml;
@@ -7,7 +8,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
 {
     public class XmlFileReader
     {
-
+        private readonly ILogger<XmlFileReader> _logger;
         private XmlTextReader xmlTextReader;
         private string IssuingOrganizationId { get; set; }
 
@@ -19,8 +20,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
         /// Parameterized Constructor to Initialize Reader.
         /// </summary>
         /// <param name="filePath">The file path.</param>
-        public XmlFileReader(string filePath)
+        public XmlFileReader(string filePath, ILogger<XmlFileReader> logger)
         {
+            _logger = logger;
             HeaderModelName = XmlConstants.TransmissionHeader;
             DetailModelName = XmlConstants.Invoice;
             SmmaryModelName = XmlConstants.TransmissionSummary;
