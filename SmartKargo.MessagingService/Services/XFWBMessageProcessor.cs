@@ -12,20 +12,37 @@
       * Description          :   
      */
 #endregion
-using QID.DataAccess;
-using System;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using System.Linq;
-using System.Configuration;
-using System.Xml;
 using System.Text;
+using System.Xml;
 using System.Xml.Schema;
 
 namespace QidWorkerRole
 {
     public class XFWBMessageProcessor
     {
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<XFWBMessageProcessor> _logger;
+        private readonly FFRMessageProcessor _fFRMessageProcessor;
+        private readonly GenericFunction _genericFunction;
+        private readonly XFNMMessageProcessor _xFNMMessageProcessor;
+        public XFWBMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFWBMessageProcessor> logger,
+            FFRMessageProcessor fFRMessageProcessor,
+            GenericFunction genericFunction,
+            XFNMMessageProcessor xFNMMessageProcessor
+        )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _fFRMessageProcessor = fFRMessageProcessor;
+            _genericFunction = genericFunction;
+            _xFNMMessageProcessor = xFNMMessageProcessor;
+        }
         /// <summary>
         /// Decoding Received XFWB xml message
         /// </summary>
@@ -1656,6 +1673,7 @@ namespace QidWorkerRole
             return flag;
 
         }
+
         /// <summary>
         /// 
         /// </summary>
@@ -2398,19 +2416,21 @@ namespace QidWorkerRole
         //}
         #endregion
 
-        public bool SaveandValidateFWBMessage(MessageData.fwbinfo fwbdata, MessageData.FltRoute[] fltroute,
+        public async Task<(bool success, string ErrorMsg)> SaveandValidateFWBMessage(MessageData.fwbinfo fwbdata, MessageData.FltRoute[] fltroute,
 MessageData.othercharges[] OtherCharges, MessageData.otherserviceinfo[] othinfoarray,
 MessageData.RateDescription[] fwbrates, MessageData.customsextrainfo[] customextrainfo,
 MessageData.dimensionnfo[] objDimension, int REFNo, MessageData.AWBBuildBUP[] objAWBBup,
-string strMessage, string strMessageFrom, string strFromID, string strStatus, out string ErrorMsg)
+string strMessage, string strMessageFrom, string strFromID, string strStatus, string ErrorMsg)
         {
             bool flag = false, isUpdateDIMSWeight = false;
             string Priority = string.Empty;
             try
             {
                 ErrorMsg = string.Empty;
-                FFRMessageProcessor ffR = new FFRMessageProcessor();
-                SQLServer dtb = new SQLServer();
+
+                //FFRMessageProcessor ffR = new FFRMessageProcessor();
+                //SQLServer dtb = new SQLServer();
+
                 MessageData.FltRoute[] objRouteInfo = new MessageData.FltRoute[0];
                 string awbnum = fwbdata.awbnum; string Numberofposition = "0";
                 string AWBPrefix = fwbdata.airlineprefix;
@@ -2425,9 +2445,11 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                 string strErrorMessage = string.Empty;
                 string fltMonth = "";
 
-                GenericFunction gf = new GenericFunction();
-                XFNMMessageProcessor fna = new XFNMMessageProcessor();
-                gf.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + awbnum, fltroute[0].fltnum, string.Empty,
+                //GenericFunction gf = new GenericFunction();
+
+                //XFNMMessageProcessor fna = new XFNMMessageProcessor();
+
+                await _genericFunction.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + awbnum, fltroute[0].fltnum, string.Empty,
                     string.Empty, "XFWB", strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
 
 
@@ -2442,12 +2464,22 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                 if ((fwbdata.fwbPurposecode).Equals("Deletion", StringComparison.OrdinalIgnoreCase) || (fwbdata.fwbPurposecode).Equals("CANCELLED", StringComparison.OrdinalIgnoreCase))
                 {
-                    DataSet dsCheck = new DataSet();
+                    DataSet? dsCheck = new DataSet();
                     string errormessage = string.Empty;
-                    string[] parametername = new string[] { "AWBNumber", "AWBPrefix" };
-                    object[] AWBvalues = new object[] { awbnum, AWBPrefix };
-                    SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                    dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+
+                    //string[] parametername = new string[] { "AWBNumber", "AWBPrefix" };
+                    //object[] AWBvalues = new object[] { awbnum, AWBPrefix };
+                    //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+
+                    var parameters = new SqlParameter[]
+                    {
+                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                    };
+
+                    //dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                    dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", parameters);
+
                     if (dsCheck != null)
                     {
                         if (dsCheck.Tables.Count > 0)
@@ -2460,10 +2492,19 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                         !dsCheck.Tables[0].Rows[0]["AWBStatus"].ToString().Equals("E", StringComparison.OrdinalIgnoreCase))
                                     {
 
-                                        if (!SetAWBStatus(fwbdata.awbnum, "D", ref errormessage, DateTime.Now, "xFWB",
+                                        //if (!SetAWBStatus(fwbdata.awbnum, "D", ref errormessage, DateTime.Now, "xFWB",
+                                        //    Convert.ToDateTime(fwbdata.updatedondate + " " + fwbdata.updatedontime),
+                                        //fwbdata.airlineprefix, false, "", 0, fwbdata.origin,
+                                        //Convert.ToDateTime(fwbdata.updatedondate + " " + fwbdata.Recivedontime), REFNo, fwbdata.fwbPurposecode))
+
+                                        bool success = false;
+
+                                        (success, errormessage) = await SetAWBStatus(fwbdata.awbnum, "D", errormessage, DateTime.Now, "xFWB",
                                             Convert.ToDateTime(fwbdata.updatedondate + " " + fwbdata.updatedontime),
                                         fwbdata.airlineprefix, false, "", 0, fwbdata.origin,
-                                        Convert.ToDateTime(fwbdata.updatedondate + " " + fwbdata.Recivedontime), REFNo, fwbdata.fwbPurposecode))
+                                        Convert.ToDateTime(fwbdata.updatedondate + " " + fwbdata.Recivedontime), REFNo, fwbdata.fwbPurposecode);
+
+                                        if (!success)
                                         {
 
                                             clsLog.WriteLogAzure("Error for deleteing AWB throught XFWB:" + errormessage + " " + awbnum);
@@ -2486,17 +2527,22 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                 {
                                     if (dsCheck.Tables[0].Rows[0]["AWBNumber"].ToString().Equals(awbnum, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        string[] paramname = new string[] { "AirlinePrefix", "AWBNo", };
+                                        //string[] paramname = new string[] { "AirlinePrefix", "AWBNo", };
 
+                                        //object[] paramvalue = new object[] { fwbdata.airlineprefix, fwbdata.awbnum };
 
-                                        object[] paramvalue = new object[] { fwbdata.airlineprefix, fwbdata.awbnum };
+                                        //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
 
-
-                                        SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                                        SqlParameter[] sqlParameters = new SqlParameter[]
+                                        {
+                                            new SqlParameter("@AirlinePrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                            new SqlParameter("@AWBNo", SqlDbType.VarChar) { Value = fwbdata.awbnum }
+                                        };
 
                                         string procedure = "Messaging.uspUpdateRouteFromXFWB";
 
-                                        flag = dtb.InsertData(procedure, paramname, paramtype, paramvalue);
+                                        //flag = dtb.InsertData(procedure, paramname, paramtype, paramvalue);
+                                        flag = await _readWriteDao.ExecuteNonQueryAsync(procedure, sqlParameters);
 
                                         if (!flag)
                                         {
@@ -2518,24 +2564,48 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                                 flightDate = DateTime.UtcNow;
                                             }
 
-                                            string[] CANname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
-                                           "FlightNo","FlightDate","FlightOrigin","FlightDestination" ,"Action", "Message", "Description",
-                                            "UpdatedBy", "UpdatedOn", "Public", "Station" };
-                                            SqlDbType[] CAType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                                SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar,
-                                            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                                            //object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
-                                            //fwbdata.dest, fwbdata.pcscnt, fwbdata.weight, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum,
-                                            //dtFlightDate_format, fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival,
-                                            //"Booked", "AWB Booked", "AWB Flight Information", "xFWB", DateTime.UtcNow.ToString("yyyy-MM-dd"), 1 };
-                                            object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
-                                            fwbdata.dest, fwbdata.pcscnt, fwbdata.weight,"",(fwbdata.updatedondate+" "+fwbdata.updatedontime),fwbdata.origin,fwbdata.dest,
-                                            "Cancelled", "AWB Cancelled", "AWB Cancelled Through xFWB", "xFWB",(fwbdata.updatedondate+" "+fwbdata.updatedontime)
-                                                //DateTime.UtcNow.ToString()
-                                            , 1,fwbdata.carrierplace };
-                                            if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
-                                                clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                            // string[] CANname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
+                                            //"FlightNo","FlightDate","FlightOrigin","FlightDestination" ,"Action", "Message", "Description",
+                                            // "UpdatedBy", "UpdatedOn", "Public", "Station" };
+                                            // SqlDbType[] CAType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                            //     SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar,
+                                            // SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                            // SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                                            // //object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
+                                            // //fwbdata.dest, fwbdata.pcscnt, fwbdata.weight, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum,
+                                            // //dtFlightDate_format, fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival,
+                                            // //"Booked", "AWB Booked", "AWB Flight Information", "xFWB", DateTime.UtcNow.ToString("yyyy-MM-dd"), 1 };
+                                            // object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
+                                            // fwbdata.dest, fwbdata.pcscnt, fwbdata.weight,"",(fwbdata.updatedondate+" "+fwbdata.updatedontime),fwbdata.origin,fwbdata.dest,
+                                            // "Cancelled", "AWB Cancelled", "AWB Cancelled Through xFWB", "xFWB",(fwbdata.updatedondate+" "+fwbdata.updatedontime)
+                                            //     //DateTime.UtcNow.ToString()
+                                            // , 1,fwbdata.carrierplace };
+
+                                            SqlParameter[] sqlParams = new SqlParameter[]
+                                            {
+                                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                                new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                                                new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fwbdata.origin },
+                                                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fwbdata.dest },
+                                                new SqlParameter("@Pieces", SqlDbType.VarChar) { Value = fwbdata.pcscnt },
+                                                new SqlParameter("@Weight", SqlDbType.VarChar) { Value = fwbdata.weight },
+                                                new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = "" },
+                                                new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = (fwbdata.updatedondate+" "+fwbdata.updatedontime) },
+                                                new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = fwbdata.origin },
+                                                new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fwbdata.dest },
+                                                new SqlParameter("@Action", SqlDbType.VarChar) { Value = "Cancelled" },
+                                                new SqlParameter("@Message", SqlDbType.VarChar) { Value = "AWB Cancelled" },
+                                                new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Cancelled Through xFWB" },
+                                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                                new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = (fwbdata.updatedondate+" "+fwbdata.updatedontime) },
+                                                //new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = DateTime.UtcNow.ToString() },
+                                                new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
+                                                new SqlParameter("@Station", SqlDbType.VarChar) { Value = fwbdata.carrierplace }
+                                            };
+
+                                            //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
+                                            if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParams))
+                                                clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
 
                                             flag = true;
                                         }
@@ -2564,9 +2634,9 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                     {
                         #region : Check flight extsts or not in schedule :
                         bool isCheckValidFlight = false;
-                        DataSet dsawbFlt = new DataSet();
+                        DataSet? dsawbFlt = new DataSet();
 
-                        isCheckValidFlight = Convert.ToBoolean(gf.ReadValueFromDb("ChkFltPresentAndAWBStatus") == string.Empty ? "false" : gf.ReadValueFromDb("ChkFltPresentAndAWBStatus"));
+                        isCheckValidFlight = Convert.ToBoolean(_genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus") == string.Empty ? "false" : _genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus"));
                         if (isCheckValidFlight)
                         {
                             bool isFlightValid = false;
@@ -2668,12 +2738,13 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                     {
                                         if (lstIndex == 0)
                                         {
-                                            dsawbFlt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                            dsawbFlt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
                                             if (dsawbFlt != null && dsawbFlt.Tables.Count > 0 && dsawbFlt.Tables[0].Columns.Contains("ErrorMessage"))
                                             {
                                                 strErrorMessage = dsawbFlt.Tables[0].Rows[0]["ErrorMessage"].ToString();
                                                 ErrorMsg = strErrorMessage;
-                                                return flag = false;
+                                                //return flag = false;
+                                                return (false, ErrorMsg);
                                             }
                                             else
                                             {
@@ -2706,13 +2777,15 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                     }
                                     else
                                     {
-                                        dsawbFlt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                        dsawbFlt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
 
                                         if (dsawbFlt != null && dsawbFlt.Tables.Count > 0 && dsawbFlt.Tables[0].Columns.Contains("ErrorMessage"))
                                         {
                                             strErrorMessage = dsawbFlt.Tables[0].Rows[0]["ErrorMessage"].ToString();
                                             ErrorMsg = strErrorMessage;
-                                            return flag = false;
+                                            //return flag = false;
+                                            return (false, ErrorMsg);
+
                                         }
                                         else
                                         {
@@ -2742,12 +2815,13 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                         {
                                             //clsLog.WriteLogAzure("AWBPrefix: " + AWBPrefix + ";\r\n awbnum:" + awbnum + ";\r\n fwbdata.origin:" + fwbdata.origin + ";\r\n fwbdata.dest:" + fwbdata.dest + ";\r\n fltroute[lstIndex].fltdept:" + fltroute[lstIndex].fltdept + ";\r\n fltroute[lstIndex].fltarrival" + fltroute[lstIndex].fltarrival + ";\r\n fltroute[lstIndex].carriercode:" + fltroute[lstIndex].carriercode + ";\r\n fltroute[lstIndex].fltnum:" + fltroute[lstIndex].fltnum + ";\r\n fltDate:" + fltDate);
 
-                                            dsawbFlt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                            dsawbFlt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
                                             if (dsawbFlt != null && dsawbFlt.Tables.Count > 0 && dsawbFlt.Tables[0].Columns.Contains("ErrorMessage"))
                                             {
                                                 strErrorMessage = dsawbFlt.Tables[1].Rows[0]["ErrorMessage"].ToString();
                                                 ErrorMsg = strErrorMessage;
-                                                return flag = false;
+                                                //return flag = false;
+                                                return (false, ErrorMsg);
                                             }
                                             else
                                             {
@@ -2768,13 +2842,15 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                     }
                                     else
                                     {
-                                        dsawbFlt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                        dsawbFlt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
 
                                         if (dsawbFlt != null && dsawbFlt.Tables.Count > 0 && dsawbFlt.Tables[0].Columns.Contains("ErrorMessage"))
                                         {
                                             strErrorMessage = dsawbFlt.Tables[1].Rows[0]["ErrorMessage"].ToString();
                                             ErrorMsg = strErrorMessage;
-                                            return flag = false;
+                                            //return flag = false;
+
+                                            return (false, ErrorMsg);
                                         }
                                         else
                                         {
@@ -2785,49 +2861,64 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                 }
 
                                 #region : Check Valid Flights :
-                                string[] parms = new string[]
-                                    {
-                                        "FltOrigin",
-                                        "FltDestination",
-                                        "FlightNo",
-                                        "flightDate",
-                                        "AWBNumber",
-                                        "AWBPrefix",
-                                        "RefNo"
-                                    };
-                                SqlDbType[] dataType = new SqlDbType[]
-                                    {
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.DateTime,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.Int
-                                    };
-                                object[] value = new object[]
-                                    {
 
-                                        //fltroute[lstIndex].fltdept,
-                                        //fltroute[lstIndex].fltarrival,
-                                       FltOrg,
-                                       FltDest,
-                                       fltroute[lstIndex].fltnum,
-                                        DateTime.Parse(fltDate),
-                                        string.Empty,
-                                        string.Empty,
-                                        REFNo
-                                    };
+                                //string[] parms = new string[]
+                                //    {
+                                //        "FltOrigin",
+                                //        "FltDestination",
+                                //        "FlightNo",
+                                //        "flightDate",
+                                //        "AWBNumber",
+                                //        "AWBPrefix",
+                                //        "RefNo"
+                                //    };
+                                //SqlDbType[] dataType = new SqlDbType[]
+                                //    {
+                                //        SqlDbType.VarChar,
+                                //        SqlDbType.VarChar,
+                                //        SqlDbType.VarChar,
+                                //        SqlDbType.DateTime,
+                                //        SqlDbType.VarChar,
+                                //        SqlDbType.VarChar,
+                                //        SqlDbType.Int
+                                //    };
+                                //object[] value = new object[]
+                                //    {
+
+                                //        //fltroute[lstIndex].fltdept,
+                                //        //fltroute[lstIndex].fltarrival,
+                                //       FltOrg,
+                                //       FltDest,
+                                //       fltroute[lstIndex].fltnum,
+                                //        DateTime.Parse(fltDate),
+                                //        string.Empty,
+                                //        string.Empty,
+                                //        REFNo
+                                //    };
+
+                                SqlParameter[] sqlParams = new SqlParameter[]
+                                {
+                                    new SqlParameter("@FltOrigin", SqlDbType.VarChar) { Value = FltOrg },
+                                    new SqlParameter("@FltDestination", SqlDbType.VarChar) { Value = FltDest },
+                                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltnum },
+                                    new SqlParameter("@flightDate", SqlDbType.DateTime) { Value = DateTime.Parse(fltDate) },
+                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = string.Empty },
+                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = string.Empty },
+                                    new SqlParameter("@RefNo", SqlDbType.Int) { Value = REFNo }
+                                };
 
                                 //start changes by ajay jira --CM-221                   
-                                if (gf.FlightDisabled(fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, DateTime.Parse(fltDate)))
+                                if (await _genericFunction.FlightDisabled(fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, DateTime.Parse(fltDate)))
                                 {
                                     ErrorMsg = "Flight is Disabled!";
-                                    return false;
+                                    //return false;
+                                    return (false, ErrorMsg);
                                 }
                                 //end changes by ajay jira --CM-221
 
-                                DataSet dsdata = dtb.SelectRecords("GetScheduleid", parms, value, dataType);
+                                //DataSet dsdata = dtb.SelectRecords("GetScheduleid", parms, value, dataType);
+                                DataSet? dsdata = await _readWriteDao.SelectRecords("GetScheduleid", sqlParams);
+
                                 if (dsdata != null && dsdata.Tables.Count > 0)
                                 {
                                     for (int i = 0; i < dsdata.Tables.Count; i++)
@@ -2854,7 +2945,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                             }
                             if (!isFlightValid)
                             {
-                                return isFlightValid;
+                                //return isFlightValid;
+                                return (isFlightValid, ErrorMsg);
                             }
                         }
                         #endregion
@@ -2916,9 +3008,9 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
 
 
-                    DataSet dsawb = new DataSet();
+                    DataSet? dsawb = new DataSet();
 
-                    dsawb = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB",
+                    dsawb = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB",
                         fltroute[0].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[0].carriercode + fltroute[fltroute.Length - 1].fltnum,
                         fltDate, fltroute[0].carriercode + fltroute[0].fltnum, REFNo, fwbdata.agentParticipentIdentifier);
 
@@ -2928,51 +3020,94 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                         {
                             if (dsawb.Tables[1].Rows[0]["MessageName"].ToString() == "xFWB" && (dsawb.Tables[1].Rows[0]["AWBSttus"].ToString().ToUpper() == "ACCEPTED" || dsawb.Tables[1].Rows[1]["AWBSttus"].ToString().ToUpper() == "ACCEPTED"))
                             {
-                                string[] PFWB = new string[] { "AirlinePrefix", "AWBNum", "ShipperName", "ShipperAddr", "ShipperPlace",
-                                "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ShipperPincode", "ConsName",
-                                "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo",
-                                "ConsingneePinCode", "CustAccNo", "IATACargoAgentCode", "CustName",
-                                "REFNo", "UpdatedBy", "ComodityCode", "ComodityDesc", "ChargedWeight","ShippFaxNo" };
+                                //string[] PFWB = new string[] { "AirlinePrefix", "AWBNum", "ShipperName", "ShipperAddr", "ShipperPlace",
+                                //"ShipperState", "ShipperCountryCode", "ShipperContactNo", "ShipperPincode", "ConsName",
+                                //"ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo",
+                                //"ConsingneePinCode", "CustAccNo", "IATACargoAgentCode", "CustName",
+                                //"REFNo", "UpdatedBy", "ComodityCode", "ComodityDesc", "ChargedWeight","ShippFaxNo" };
 
-                                SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.Decimal,SqlDbType.VarChar };
+                                //SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar,
+                                //SqlDbType.VarChar, SqlDbType.Decimal,SqlDbType.VarChar };
 
-                                object[] paramValue = { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.shippername,
-                                fwbdata.shipperadd.Trim(','), fwbdata.shippercity,
-                                fwbdata.shipperstate, fwbdata.shippercountrycode,
-                                fwbdata.shippercontactnum, fwbdata.shipperpostcode,
-                                fwbdata.consname, fwbdata.consadd.Trim(','),
-                                fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
-                                fwbdata.conscontactnum, fwbdata.conspostcode, fwbdata.agentaccnum,
-                                fwbdata.agentIATAnumber, fwbdata.agentname, REFNo, "xFWB", "",
-                                commcode,
-                                0,fwbdata.shipperfaxno };
+                                //object[] paramValue = { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.shippername,
+                                //fwbdata.shipperadd.Trim(','), fwbdata.shippercity,
+                                //fwbdata.shipperstate, fwbdata.shippercountrycode,
+                                //fwbdata.shippercontactnum, fwbdata.shipperpostcode,
+                                //fwbdata.consname, fwbdata.consadd.Trim(','),
+                                //fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
+                                //fwbdata.conscontactnum, fwbdata.conspostcode, fwbdata.agentaccnum,
+                                //fwbdata.agentIATAnumber, fwbdata.agentname, REFNo, "xFWB", "",
+                                //commcode,
+                                //0,fwbdata.shipperfaxno };
 
+                                SqlParameter[] sqlParams = new SqlParameter[]
+                               {
+                                    new SqlParameter("@AirlinePrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                    new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                                    new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fwbdata.shippername },
+                                    new SqlParameter("@ShipperAddr", SqlDbType.VarChar) { Value = fwbdata.shipperadd.Trim(',') },
+                                    new SqlParameter("@ShipperPlace", SqlDbType.VarChar) { Value = fwbdata.shippercity },
+                                    new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = fwbdata.shipperstate },
+                                    new SqlParameter("@ShipperCountryCode", SqlDbType.VarChar) { Value = fwbdata.shippercountrycode },
+                                    new SqlParameter("@ShipperContactNo", SqlDbType.VarChar) { Value = fwbdata.shippercontactnum },
+                                    new SqlParameter("@ShipperPincode", SqlDbType.VarChar) { Value = fwbdata.shipperpostcode },
+                                    new SqlParameter("@ConsName", SqlDbType.VarChar) { Value = fwbdata.consname },
+                                    new SqlParameter("@ConsAddr", SqlDbType.VarChar) { Value = fwbdata.consadd.Trim(',') },
+                                    new SqlParameter("@ConsPlace", SqlDbType.VarChar) { Value = fwbdata.conscity },
+                                    new SqlParameter("@ConsState", SqlDbType.VarChar) { Value = fwbdata.consstate },
+                                    new SqlParameter("@ConsCountryCode", SqlDbType.VarChar) { Value = fwbdata.conscountrycode },
+                                    new SqlParameter("@ConsContactNo", SqlDbType.VarChar) { Value = fwbdata.conscontactnum },
+                                    new SqlParameter("@ConsingneePinCode", SqlDbType.VarChar) { Value = fwbdata.conspostcode },
+                                    new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = fwbdata.agentaccnum },
+                                    new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = fwbdata.agentIATAnumber },
+                                    new SqlParameter("@CustName", SqlDbType.VarChar) { Value = fwbdata.agentname },
+                                    new SqlParameter("@REFNo", SqlDbType.Int) { Value = REFNo },
+                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                    new SqlParameter("@ComodityCode", SqlDbType.VarChar) { Value = "" },
+                                    new SqlParameter("@ComodityDesc", SqlDbType.VarChar) { Value = commcode },
+                                    new SqlParameter("@ChargedWeight", SqlDbType.Decimal) { Value = 0 },
+                                    new SqlParameter("@ShippFaxNo", SqlDbType.VarChar) { Value = fwbdata.shipperfaxno }
+                               };
 
-                                fna.GenerateXFNMMessage(strMessage, "AWB is Already Accepted, We will only update SHP/CNE info", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
+                                _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "AWB is Already Accepted, We will only update SHP/CNE info", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
 
                                 string strProcedure = "Messaging.uspUpdateShipperConsigneeforXFWB";
-                                flag = dtb.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
+
+                                //flag = dtb.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
+                                flag = await _readWriteDao.ExecuteNonQueryAsync(strProcedure, sqlParams);
 
                                 ErrorMsg = "AWB " + AWBPrefix + "-" + awbnum + " is Already Accepted";
 
                                 if (flag)
                                 {
                                     #region ProcessRateFunction
-                                    DataSet dsrateCheck = ffR.CheckAirlineForRateProcessing(AWBPrefix, "xFWB");
+                                    DataSet? dsrateCheck = await _fFRMessageProcessor.CheckAirlineForRateProcessing(AWBPrefix, "xFWB");
                                     if (dsrateCheck != null && dsrateCheck.Tables.Count > 0 && dsrateCheck.Tables[0].Rows.Count > 0)
                                     {
-                                        string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
-                                        SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
-                                        object[] CRValues = new object[] { fwbdata.awbnum, fwbdata.airlineprefix, "xFWB", System.DateTime.Now, 1, 1, "B", 0 };
-                                        if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+                                        //string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
+                                        //SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
+                                        //object[] CRValues = new object[] { fwbdata.awbnum, fwbdata.airlineprefix, "xFWB", System.DateTime.Now, 1, 1, "B", 0 };
+
+                                        SqlParameter[] sqlParamsRate = [
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                            new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                            new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = System.DateTime.Now },
+                                            new SqlParameter("@ValidateMin", SqlDbType.Bit) { Value = 1 },
+                                            new SqlParameter("@UpdateBooking", SqlDbType.Bit) { Value = 1 },
+                                            new SqlParameter("@RouteFrom", SqlDbType.VarChar) { Value = "B" },
+                                            new SqlParameter("@UpdateBilling", SqlDbType.Bit) { Value = 0 }
+                                        ];
+
+                                        //if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+                                        if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", sqlParamsRate))
                                         {
-                                            clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                            clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
                                         }
                                     }
                                     #endregion
@@ -2980,10 +3115,12 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                 }
                                 else
                                 {
-                                    return flag = false;
+                                    //return flag = false;
+                                    return (false, ErrorMsg);
                                 }
 
-                                return flag = false;
+                                //return flag = false;
+                                return (false, ErrorMsg);
 
                             }
                         }
@@ -2997,41 +3134,70 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                 {
                                     if (dsawb.Tables[1].Rows[0]["MessageName"].ToString() == "xFWB" && dsawb.Tables[1].Rows[0]["AWBSttus"].ToString().ToUpper() == "EXECUTED")
                                     {
-                                        string[] PFWB = new string[] { "AirlinePrefix", "AWBNum", "ShipperName", "ShipperAddr", "ShipperPlace",
-                                "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ShipperPincode", "ConsName",
-                                "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo",
-                                "ConsingneePinCode", "CustAccNo", "IATACargoAgentCode", "CustName",
-                                "REFNo", "UpdatedBy", "ComodityCode", "ComodityDesc", "ChargedWeight","ShippFaxNo" };
+                                        //        string[] PFWB = new string[] { "AirlinePrefix", "AWBNum", "ShipperName", "ShipperAddr", "ShipperPlace",
+                                        //"ShipperState", "ShipperCountryCode", "ShipperContactNo", "ShipperPincode", "ConsName",
+                                        //"ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode", "ConsContactNo",
+                                        //"ConsingneePinCode", "CustAccNo", "IATACargoAgentCode", "CustName",
+                                        //"REFNo", "UpdatedBy", "ComodityCode", "ComodityDesc", "ChargedWeight","ShippFaxNo" };
 
-                                        SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar,
-                                SqlDbType.VarChar, SqlDbType.Decimal,SqlDbType.VarChar };
+                                        //        SqlDbType[] ParamSqlType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar,
+                                        //SqlDbType.VarChar, SqlDbType.Decimal,SqlDbType.VarChar };
 
-                                        object[] paramValue = { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.shippername,
-                                fwbdata.shipperadd.Trim(','), fwbdata.shippercity,
-                                fwbdata.shipperstate, fwbdata.shippercountrycode,
-                                fwbdata.shippercontactnum, fwbdata.shipperpostcode,
-                                fwbdata.consname, fwbdata.consadd.Trim(','),
-                                fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
-                                fwbdata.conscontactnum, fwbdata.conspostcode, fwbdata.agentaccnum,
-                                fwbdata.agentIATAnumber, fwbdata.agentname, REFNo, "xFWB", "",
-                                commcode,
-                                0,fwbdata.shipperfaxno };
+                                        //        object[] paramValue = { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.shippername,
+                                        //fwbdata.shipperadd.Trim(','), fwbdata.shippercity,
+                                        //fwbdata.shipperstate, fwbdata.shippercountrycode,
+                                        //fwbdata.shippercontactnum, fwbdata.shipperpostcode,
+                                        //fwbdata.consname, fwbdata.consadd.Trim(','),
+                                        //fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
+                                        //fwbdata.conscontactnum, fwbdata.conspostcode, fwbdata.agentaccnum,
+                                        //fwbdata.agentIATAnumber, fwbdata.agentname, REFNo, "xFWB", "",
+                                        //commcode,
+                                        //0,fwbdata.shipperfaxno };
 
+                                        SqlParameter[] sqlParams = [
+                                            new SqlParameter("@AirlinePrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                            new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                                            new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fwbdata.shippername },
+                                            new SqlParameter("@ShipperAddr", SqlDbType.VarChar) { Value = fwbdata.shipperadd.Trim(',') },
+                                            new SqlParameter("@ShipperPlace", SqlDbType.VarChar) { Value = fwbdata.shippercity },
+                                            new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = fwbdata.shipperstate },
+                                            new SqlParameter("@ShipperCountryCode", SqlDbType.VarChar) { Value = fwbdata.shippercountrycode },
+                                            new SqlParameter("@ShipperContactNo", SqlDbType.VarChar) { Value = fwbdata.shippercontactnum },
+                                            new SqlParameter("@ShipperPincode", SqlDbType.VarChar) { Value = fwbdata.shipperpostcode },
+                                            new SqlParameter("@ConsName", SqlDbType.VarChar) { Value = fwbdata.consname },
+                                            new SqlParameter("@ConsAddr", SqlDbType.VarChar) { Value = fwbdata.consadd.Trim(',') },
+                                            new SqlParameter("@ConsPlace", SqlDbType.VarChar) { Value = fwbdata.conscity },
+                                            new SqlParameter("@ConsState", SqlDbType.VarChar) { Value = fwbdata.consstate },
+                                            new SqlParameter("@ConsCountryCode", SqlDbType.VarChar) { Value = fwbdata.conscountrycode },
+                                            new SqlParameter("@ConsContactNo", SqlDbType.VarChar) { Value = fwbdata.conscontactnum },
+                                            new SqlParameter("@ConsingneePinCode", SqlDbType.VarChar) { Value = fwbdata.conspostcode },
+                                            new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = fwbdata.agentaccnum },
+                                            new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = fwbdata.agentIATAnumber },
+                                            new SqlParameter("@CustName", SqlDbType.VarChar) { Value = fwbdata.agentname },
+                                            new SqlParameter("@REFNo", SqlDbType.Int){ Value = REFNo },
+                                            new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                            new SqlParameter("@ComodityCode", SqlDbType.VarChar) { Value = "" },
+                                            new SqlParameter("@ComodityDesc", SqlDbType.VarChar) { Value = commcode },
+                                            new SqlParameter("@ChargedWeight", SqlDbType.Decimal) { Value = 0 },
+                                            new SqlParameter("@ShippFaxNo", SqlDbType.VarChar) { Value = fwbdata.shipperfaxno }
+                                        ];
 
                                         string strProcedure = "Messaging.uspUpdateShipperConsigneeforXFWB";
-                                        flag = dtb.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
+                                        //flag = dtb.InsertData(strProcedure, PFWB, ParamSqlType, paramValue);
+                                        flag = await _readWriteDao.ExecuteNonQueryAsync(strProcedure, sqlParams);
                                     }
                                 }
                                 ErrorMsg = strErrorMessage;
-                                fna.GenerateXFNMMessage(strMessage, strErrorMessage, fwbdata.airlineprefix,
+                                _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, strErrorMessage, fwbdata.airlineprefix,
                                     fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
                                 strErrorMessage = string.Empty;
-                                return flag = false;
+                                //return flag = false;
+                                return (false, ErrorMsg);
                             }
 
                         }
@@ -3043,7 +3209,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                         AWBDestAirportCode = dsawb.Tables[0].Rows[0]["AWBDestAirportCode"].ToString();
                     }
 
-                    fna.GenerateXFNMMessage(strMessage, "We will book/execute AWB  " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " Shortly.", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
+                    _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "We will book/execute AWB  " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " Shortly.", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
 
                     string strAWbIssueDate = string.Empty;
                     if (fwbdata.carrierdate != "" && fwbdata.carriermonth != "" && fwbdata.carrieryear != "")
@@ -3147,12 +3313,22 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                     #region Check AWB is present or not
                     bool isAWBPresent = false;
-                    DataSet dsCheck = new DataSet();
-                    dtb = new SQLServer();
-                    string[] parametername = new string[] { "AWBNumber", "AWBPrefix" };
-                    object[] AWBvalues = new object[] { awbnum, AWBPrefix };
-                    SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                    dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                    DataSet? dsCheck = new DataSet();
+
+                    //dtb = new SQLServer();
+
+                    //string[] parametername = new string[] { "AWBNumber", "AWBPrefix" };
+                    //object[] AWBvalues = new object[] { awbnum, AWBPrefix };
+                    //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+
+                    SqlParameter[] sqlParameter = [
+                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                    ];
+
+                    //dsCheck = dtb.SelectRecords("sp_getawbdetails", parametername, AWBvalues, ptype);
+                    dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameter);
+
                     if (dsCheck != null)
                     {
                         if (dsCheck.Tables.Count > 0)
@@ -3185,43 +3361,109 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                     }
 
 
-                    string[] paramname = new string[] { "AirlinePrefix", "AWBNum", "Origin", "Dest", "PcsCount", "Weight", "Volume", "ComodityCode"
-                    , "ComodityDesc", "CarrierCode", "FlightNum", "FlightDate", "FlightOrigin", "FlightDest", "ShipperName", "ShipperAddr",
-                    "ShipperPlace"
-                    , "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ConsName", "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode"
-                    , "ConsContactNo", "CustAccNo", "IATACargoAgentCode", "CustName", "SystemDate", "MeasureUnit", "Length", "Breadth", "Height"
-                    , "PartnerStatus", "REFNo", "UpdatedBy", "SpecialHandelingCode", "Paymode", "ShipperPincode", "ConsingneePinCode", "WeightCode"
-                    , "AWBIssueDate","VolumeWt","VolumeCode","ChargeableWeight", "Slac","ISConsole","Remark",
-                    "ProductID","handinginfo","SCI","ShipperAccountCode","ConsAccountCode","NoofPosition","ConsignorParty_PrimaryID ","Purposecode","RefNumber",
-                    "Recivedon","RecoveryTime"};
+                    //      string[] paramname = new string[] { "AirlinePrefix", "AWBNum", "Origin", "Dest", "PcsCount", "Weight", "Volume", "ComodityCode"
+                    //      , "ComodityDesc", "CarrierCode", "FlightNum", "FlightDate", "FlightOrigin", "FlightDest", "ShipperName", "ShipperAddr",
+                    //      "ShipperPlace"
+                    //      , "ShipperState", "ShipperCountryCode", "ShipperContactNo", "ConsName", "ConsAddr", "ConsPlace", "ConsState", "ConsCountryCode"
+                    //      , "ConsContactNo", "CustAccNo", "IATACargoAgentCode", "CustName", "SystemDate", "MeasureUnit", "Length", "Breadth", "Height"
+                    //      , "PartnerStatus", "REFNo", "UpdatedBy", "SpecialHandelingCode", "Paymode", "ShipperPincode", "ConsingneePinCode", "WeightCode"
+                    //      , "AWBIssueDate","VolumeWt","VolumeCode","ChargeableWeight", "Slac","ISConsole","Remark",
+                    //      "ProductID","handinginfo","SCI","ShipperAccountCode","ConsAccountCode","NoofPosition","ConsignorParty_PrimaryID ","Purposecode","RefNumber",
+                    //      "Recivedon","RecoveryTime"};
 
 
-                    object[] paramvalue = new object[] {fwbdata.airlineprefix,fwbdata.awbnum,AWBOriginAirportCode, AWBDestAirportCode,
-                    fwbdata.pcscnt, fwbdata.weight,
-                    VolumeAmount, fwbrates[0].commoditynumber, commcode,fwbdata.carriercode,flightnum,flightdate, strFlightOrigin,strFlightDestination,
-                    fwbdata.shippername.Trim(' '),
-                                                         fwbdata.shipperadd.Trim(','), fwbdata.shippercity.Trim(','),
-                    fwbdata.shipperstate, fwbdata.shippercountrycode, fwbdata.shippercontactnum, fwbdata.consname.Trim(' '),
-                    fwbdata.consadd.Trim(','), fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
-                                                         fwbdata.conscontactnum, fwbdata.agentaccnum, fwbdata.agentIATAnumber,
-                    fwbdata.agentname, DateTime.Now.ToString("yyyy-MM-dd"),"", "", "", "", "",REFNo, "xFWB",
-                    fwbdata.splhandling,fwbdata.chargecode,fwbdata.shipperpostcode,fwbdata.conspostcode,
-                    fwbdata.weightcode,strAWbIssueDate,VolumeWt,fwbdata.volumecode,ChargeableWeight,
-                    Slac,"False",fwbdata.Content,fwbdata.ProductID, fwbdata.handinginfo,fwbdata.SCI,
-                    fwbdata.shipperaccnum,fwbdata.consaccnum,Numberofposition,fwbdata.ConsignorParty_PrimaryID,fwbdata.fwbPurposecode,REFNo,
-                        fwbdata.updatedondate + " " +fwbdata.Recivedontime, fwbdata.Recoverytimedate + " " +fwbdata.Recoverytime
-              };
+                    //      object[] paramvalue = new object[] {fwbdata.airlineprefix,fwbdata.awbnum,AWBOriginAirportCode, AWBDestAirportCode,
+                    //      fwbdata.pcscnt, fwbdata.weight,
+                    //      VolumeAmount, fwbrates[0].commoditynumber, commcode,fwbdata.carriercode,flightnum,flightdate, strFlightOrigin,strFlightDestination,
+                    //      fwbdata.shippername.Trim(' '),
+                    //                                           fwbdata.shipperadd.Trim(','), fwbdata.shippercity.Trim(','),
+                    //      fwbdata.shipperstate, fwbdata.shippercountrycode, fwbdata.shippercontactnum, fwbdata.consname.Trim(' '),
+                    //      fwbdata.consadd.Trim(','), fwbdata.conscity, fwbdata.consstate, fwbdata.conscountrycode,
+                    //                                           fwbdata.conscontactnum, fwbdata.agentaccnum, fwbdata.agentIATAnumber,
+                    //      fwbdata.agentname, DateTime.Now.ToString("yyyy-MM-dd"),"", "", "", "", "",REFNo, "xFWB",
+                    //      fwbdata.splhandling,fwbdata.chargecode,fwbdata.shipperpostcode,fwbdata.conspostcode,
+                    //      fwbdata.weightcode,strAWbIssueDate,VolumeWt,fwbdata.volumecode,ChargeableWeight,
+                    //      Slac,"False",fwbdata.Content,fwbdata.ProductID, fwbdata.handinginfo,fwbdata.SCI,
+                    //      fwbdata.shipperaccnum,fwbdata.consaccnum,Numberofposition,fwbdata.ConsignorParty_PrimaryID,fwbdata.fwbPurposecode,REFNo,
+                    //          fwbdata.updatedondate + " " +fwbdata.Recivedontime, fwbdata.Recoverytimedate + " " +fwbdata.Recoverytime
+                    //};
 
-                    SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                                              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                                              SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                        SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                        SqlDbType.Int,
-                                                            SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
-                    SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Decimal,
-                    SqlDbType.VarChar,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar
-                ,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
-                        SqlDbType.VarChar,SqlDbType.Int,SqlDbType.DateTime2,SqlDbType.DateTime };
+                    //      SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                    //                                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                    //                                                SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                    //          SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                    //          SqlDbType.Int,
+                    //                                              SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
+                    //      SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Decimal,
+                    //      SqlDbType.VarChar,SqlDbType.Decimal,SqlDbType.VarChar,SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar
+                    //  ,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,
+                    //          SqlDbType.VarChar,SqlDbType.Int,SqlDbType.DateTime2,SqlDbType.DateTime };
+
+                    var parameters = new SqlParameter[]
+                    {
+
+                        new SqlParameter("@AirlinePrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                        new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                        new SqlParameter("@Origin", SqlDbType.VarChar) { Value = AWBOriginAirportCode },
+                        new SqlParameter("@Dest", SqlDbType.VarChar) { Value = AWBDestAirportCode },
+                        new SqlParameter("@PcsCount", SqlDbType.VarChar) { Value = fwbdata.pcscnt },
+                        new SqlParameter("@Weight", SqlDbType.VarChar) { Value = fwbdata.weight },
+                        new SqlParameter("@Volume", SqlDbType.VarChar) { Value = VolumeAmount },
+                        new SqlParameter("@ComodityCode", SqlDbType.VarChar) { Value = fwbrates[0].commoditynumber },
+                        new SqlParameter("@ComodityDesc", SqlDbType.VarChar) { Value = commcode },
+                        new SqlParameter("@CarrierCode", SqlDbType.VarChar) { Value = fwbdata.carriercode },
+                        new SqlParameter("@FlightNum", SqlDbType.VarChar) { Value = flightnum },
+                        new SqlParameter("@FlightDate", SqlDbType.VarChar) { Value = flightdate },
+                        new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = strFlightOrigin },
+                        new SqlParameter("@FlightDest", SqlDbType.VarChar) { Value = strFlightDestination },
+                        new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fwbdata.shippername.Trim() },
+                        new SqlParameter("@ShipperAddr", SqlDbType.VarChar) { Value = fwbdata.shipperadd.Trim(',') },
+                        new SqlParameter("@ShipperPlace", SqlDbType.VarChar) { Value = fwbdata.shippercity.Trim(',') },
+                        new SqlParameter("@ShipperState", SqlDbType.VarChar) { Value = fwbdata.shipperstate },
+                        new SqlParameter("@ShipperCountryCode", SqlDbType.VarChar) { Value = fwbdata.shippercountrycode },
+                        new SqlParameter("@ShipperContactNo", SqlDbType.VarChar) { Value = fwbdata.shippercontactnum },
+                        new SqlParameter("@ConsName", SqlDbType.VarChar) { Value = fwbdata.consname.Trim() },
+                        new SqlParameter("@ConsAddr", SqlDbType.VarChar) { Value = fwbdata.consadd.Trim(',') },
+                        new SqlParameter("@ConsPlace", SqlDbType.VarChar) { Value = fwbdata.conscity },
+                        new SqlParameter("@ConsState", SqlDbType.VarChar) { Value = fwbdata.consstate },
+                        new SqlParameter("@ConsCountryCode", SqlDbType.VarChar) { Value = fwbdata.conscountrycode },
+                        new SqlParameter("@ConsContactNo", SqlDbType.VarChar) { Value = fwbdata.conscontactnum },
+                        new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = fwbdata.agentaccnum },
+                        new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = fwbdata.agentIATAnumber },
+                        new SqlParameter("@CustName", SqlDbType.VarChar) { Value = fwbdata.agentname },
+                        new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now.ToString("yyyy-MM-dd") },
+                        new SqlParameter("@MeasureUnit", SqlDbType.VarChar) { Value = "" },
+                        new SqlParameter("@Length", SqlDbType.VarChar) { Value = "" },
+                        new SqlParameter("@Breadth", SqlDbType.VarChar) { Value = "" },
+                        new SqlParameter("@Height", SqlDbType.VarChar) { Value = "" },
+                        new SqlParameter("@PartnerStatus", SqlDbType.VarChar) { Value = "" },
+                        new SqlParameter("@REFNo", SqlDbType.Int) { Value = REFNo },
+                        new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                        new SqlParameter("@SpecialHandelingCode", SqlDbType.VarChar) { Value = fwbdata.splhandling },
+                        new SqlParameter("@Paymode", SqlDbType.VarChar) { Value = fwbdata.chargecode },
+                        new SqlParameter("@ShipperPincode", SqlDbType.VarChar) { Value = fwbdata.shipperpostcode },
+                        new SqlParameter("@ConsingneePinCode", SqlDbType.VarChar) { Value = fwbdata.conspostcode },
+                        new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = fwbdata.weightcode },
+                        new SqlParameter("@AWBIssueDate", SqlDbType.DateTime) { Value = strAWbIssueDate },
+                        new SqlParameter("@VolumeWt", SqlDbType.Decimal) { Value = VolumeWt },
+                        new SqlParameter("@VolumeCode", SqlDbType.VarChar) { Value = fwbdata.volumecode },
+                        new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = ChargeableWeight },
+                        new SqlParameter("@Slac", SqlDbType.VarChar) { Value = Slac },
+                        new SqlParameter("@ISConsole", SqlDbType.Bit) { Value = "False" },
+                        new SqlParameter("@Remark", SqlDbType.VarChar) { Value = fwbdata.Content },
+                        new SqlParameter("@ProductID", SqlDbType.VarChar) { Value = fwbdata.ProductID },
+                        new SqlParameter("@handinginfo", SqlDbType.VarChar) { Value = fwbdata.handinginfo },
+                        new SqlParameter("@SCI", SqlDbType.VarChar) { Value = fwbdata.SCI },
+                        new SqlParameter("@ShipperAccountCode", SqlDbType.VarChar) { Value = fwbdata.shipperaccnum },
+                        new SqlParameter("@ConsAccountCode", SqlDbType.VarChar) { Value = fwbdata.consaccnum },
+                        new SqlParameter("@NoofPosition", SqlDbType.Int) { Value = Numberofposition },
+                        new SqlParameter("@ConsignorParty_PrimaryID", SqlDbType.VarChar) { Value = fwbdata.ConsignorParty_PrimaryID },
+                        new SqlParameter("@Purposecode", SqlDbType.VarChar) { Value = fwbdata.fwbPurposecode },
+                        new SqlParameter("@RefNumber", SqlDbType.Int) { Value = REFNo },
+                        new SqlParameter("@Recivedon", SqlDbType.DateTime2) { Value = fwbdata.updatedondate + " " + fwbdata.Recivedontime },
+                        new SqlParameter("@RecoveryTime", SqlDbType.DateTime) { Value = fwbdata.Recoverytimedate + " " + fwbdata.Recoverytime }
+                    };
+
 
 
 
@@ -3229,7 +3471,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                     string procedure = "Messaging.uspInsertBookingDataFromXFWB";
 
                     // flag = dtb.InsertData(procedure, paramname, paramtype, paramvalue);
-                    DataSet dsdata1 = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+                    //DataSet dsdata1 = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
+                    DataSet? dsdata1 = await _readWriteDao.SelectRecords(procedure, parameters);
 
                     #endregion
                     if (dsdata1 != null)
@@ -3304,18 +3547,24 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                             #region Save AWB Routing
                             bool isRouteUpdate = false;
                             // GenericFunction genericFunction = new GenericFunction();
-                            isRouteUpdate = Convert.ToBoolean(gf.ReadValueFromDb("UpdateRouteThroughFWB") == string.Empty ? "false" : gf.ReadValueFromDb("UpdateRouteThroughFWB"));
+                            isRouteUpdate = Convert.ToBoolean(_genericFunction.ReadValueFromDb("UpdateRouteThroughFWB") == string.Empty ? "false" : _genericFunction.ReadValueFromDb("UpdateRouteThroughFWB"));
                             if ((isRouteUpdate && isAWBPresent) || !isAWBPresent)
                             {
                                 string status = "C";
 
                                 if (fltroute.Length > 0)
                                 {
-                                    string[] parname = new string[] { "AWBNum", "AWBPrefix" };
-                                    object[] parobject = new object[] { awbnum, AWBPrefix };
-                                    SqlDbType[] partype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+                                    //string[] parname = new string[] { "AWBNum", "AWBPrefix" };
+                                    //object[] parobject = new object[] { awbnum, AWBPrefix };
+                                    //SqlDbType[] partype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
 
-                                    if (dtb.ExecuteProcedure("Messaging.uspDeleteAWBRouteXFFR", parname, partype, parobject))
+                                    SqlParameter[] sqlParams = [
+                                        new SqlParameter("@AWBNum", SqlDbType.VarChar) { Value = awbnum },
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                                    ];
+
+                                    //if (dtb.ExecuteProcedure("Messaging.uspDeleteAWBRouteXFFR", parname, partype, parobject))
+                                    if (await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspDeleteAWBRouteXFFR", sqlParams))
                                     {
                                         string dtFlightDate = DateTime.Now.ToString("yyyy/MM/dd");
 
@@ -3335,13 +3584,13 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                                                 fltDate = fltroute[lstIndex].date.ToString().Substring(0, 4) + "/" + fltroute[lstIndex].date.ToString().Substring(5, 2) + "/" + fltroute[lstIndex].date.ToString().Substring(8, 2);
 
-                                            DataSet dsAWBRflt = new DataSet();
+                                            DataSet? dsAWBRflt = new DataSet();
 
                                             if (fltroute.Length > 1)
                                             {
                                                 if (lstIndex == 0)
                                                 {
-                                                    dsAWBRflt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                                    dsAWBRflt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
                                                     //FltOrg = dsAWBRflt.Tables[0].Rows[0]["AWBOriginAirportCode"].ToString();
                                                     ////FltDest = dsAWBRflt.Tables[0].Rows[0]["AWBDestAirportCode"].ToString();
                                                     //FltDest = fltroute[lstIndex].fltarrival;
@@ -3356,7 +3605,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                             }
                                             else
                                             {
-                                                dsAWBRflt = ffR.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
+                                                dsAWBRflt = await _fFRMessageProcessor.CheckValidateXFFRMessage(AWBPrefix, awbnum, fwbdata.origin, fwbdata.dest, "xFWB", fltroute[lstIndex].fltdept, fltroute[fltroute.Length - 1].fltarrival, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum, fltDate);
                                                 FltOrg = dsAWBRflt.Tables[0].Rows[0]["AWBOriginAirportCode"].ToString();
                                                 FltDest = dsAWBRflt.Tables[0].Rows[0]["AWBDestAirportCode"].ToString();
                                             }
@@ -3369,38 +3618,51 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                                 int schedid = 0;
                                                 if (fltroute[lstIndex].fltnum.Trim() != string.Empty)
                                                 {
-                                                    string[] parms = new string[]
+
+                                                    //    string[] parms = new string[]
+                                                    //    {
+                                                    //"FltOrigin",
+                                                    //"FltDestination",
+                                                    //"FlightNo",
+                                                    //"flightDate",
+                                                    //"AWBNumber",
+                                                    //"AWBPrefix",
+                                                    //"RefNo"
+                                                    //    };
+                                                    //    SqlDbType[] dataType = new SqlDbType[]
+                                                    //    {
+                                                    //SqlDbType.VarChar,
+                                                    //SqlDbType.VarChar,
+                                                    //SqlDbType.VarChar,
+                                                    //SqlDbType.DateTime,
+                                                    //SqlDbType.VarChar,
+                                                    //SqlDbType.VarChar,
+                                                    //SqlDbType.Int
+                                                    //    };
+                                                    //    object[] value = new object[]
+                                                    //    {
+                                                    //FltOrg,
+                                                    //FltDest,
+                                                    //fltroute[lstIndex].fltnum,
+                                                    //fltDate,
+                                                    //awbnum,
+                                                    //AWBPrefix,
+                                                    //REFNo
+                                                    //    };
+
+                                                    SqlParameter[] sqlParameters = new SqlParameter[]
                                                     {
-                                                "FltOrigin",
-                                                "FltDestination",
-                                                "FlightNo",
-                                                "flightDate",
-                                                "AWBNumber",
-                                                "AWBPrefix",
-                                                "RefNo"
-                                                    };
-                                                    SqlDbType[] dataType = new SqlDbType[]
-                                                    {
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.DateTime,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.VarChar,
-                                                SqlDbType.Int
-                                                    };
-                                                    object[] value = new object[]
-                                                    {
-                                                FltOrg,
-                                                FltDest,
-                                                fltroute[lstIndex].fltnum,
-                                                fltDate,
-                                                awbnum,
-                                                AWBPrefix,
-                                                REFNo
+                                                        new SqlParameter("@FltOrigin", SqlDbType.VarChar) { Value = FltOrg },
+                                                        new SqlParameter("@FltDestination", SqlDbType.VarChar) { Value = FltDest },
+                                                        new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltnum },
+                                                        new SqlParameter("@flightDate", SqlDbType.DateTime) { Value = fltDate },
+                                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                                        new SqlParameter("@RefNo", SqlDbType.Int) { Value = REFNo }
                                                     };
 
-                                                    DataSet dsdata = dtb.SelectRecords("GetScheduleid", parms, value, dataType);
+                                                    //DataSet dsdata = dtb.SelectRecords("GetScheduleid", parms, value, dataType);
+                                                    DataSet? dsdata = await _readWriteDao.SelectRecords("GetScheduleid", sqlParameters);
 
                                                     if (dsdata != null && dsdata.Tables.Count > 0 && dsdata.Tables[0].Rows[0][0].ToString() == "0")
                                                     {
@@ -3415,110 +3677,175 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                                         schedid = Convert.ToInt32(dsdata.Tables[0].Rows[0]["ScheduleID"]);
                                                     }
                                                 }
-                                                string[] paramNames = new string[]
-                                                {
-                                            "AWBNumber",
-                                            "FltOrigin",
-                                            "FltDestination",
-                                            "FltNumber",
-                                            "FltDate",
-                                            "Status",
-                                            "UpdatedBy",
-                                            "UpdatedOn",
-                                            "IsFFR",
-                                            "REFNo",
-                                            "date",
-                                            "AWBPrefix",
-                                            "carrierCode",
-                                             "schedid",
-                                             "voluemcode",
-                                             "volume",
-                                             "NoOfPosition",
-                                             "inputdeptDatetime",
-                                             "inputarrivaldatetime"
 
+                                                //    string[] paramNames = new string[]
+                                                //    {
+                                                //"AWBNumber",
+                                                //"FltOrigin",
+                                                //"FltDestination",
+                                                //"FltNumber",
+                                                //"FltDate",
+                                                //"Status",
+                                                //"UpdatedBy",
+                                                //"UpdatedOn",
+                                                //"IsFFR",
+                                                //"REFNo",
+                                                //"date",
+                                                //"AWBPrefix",
+                                                //"carrierCode",
+                                                // "schedid",
+                                                // "voluemcode",
+                                                // "volume",
+                                                // "NoOfPosition",
+                                                // "inputdeptDatetime",
+                                                // "inputarrivaldatetime"
+
+                                                //    };
+                                                //    SqlDbType[] dataTypes = new SqlDbType[]
+                                                //    {
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.DateTime,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.DateTime,
+                                                //SqlDbType.Bit,
+                                                //SqlDbType.Int,
+                                                //SqlDbType.DateTime,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.Int,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.Decimal,
+                                                //SqlDbType.VarChar,
+                                                //SqlDbType.DateTime,
+                                                //SqlDbType.DateTime
+
+
+                                                //    };
+
+                                                //    object[] values = new object[]
+                                                //    {
+                                                //awbnum,
+                                                ////fltroute[lstIndex].fltdept,
+                                                ////fltroute[lstIndex].fltarrival,
+                                                //FltOrg,
+                                                //FltDest,
+                                                //fltroute[lstIndex].fltnum,
+                                                //fltDate,
+                                                //status,
+                                                //"xFWB",
+                                                // DateTime.Now,
+                                                //1,
+                                                //0,
+                                                //dtFlightDate,
+                                                //AWBPrefix,
+                                                //fltroute[lstIndex].carriercode,
+                                                //schedid,
+                                                //volcode,
+                                                //VolumeAmount==""?"0":VolumeAmount,
+                                                // Numberofposition,
+                                                // fltroute[lstIndex].inputdeptDatetime,
+
+                                                // fltroute[lstIndex].inputarrivaldatetime
+                                                //};
+
+                                                SqlParameter[] sqlParamsInsert = new SqlParameter[]
+                                                {
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                                    new SqlParameter("@FltOrigin", SqlDbType.VarChar) { Value = FltOrg },
+                                                    new SqlParameter("@FltDestination", SqlDbType.VarChar) { Value = FltDest },
+                                                    new SqlParameter("@FltNumber", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltnum },
+                                                    new SqlParameter("@FltDate", SqlDbType.DateTime) { Value = fltDate },
+                                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.Now },
+                                                    new SqlParameter("@IsFFR", SqlDbType.Bit) { Value = 1 },
+                                                    new SqlParameter("@REFNo", SqlDbType.Int) { Value = 0 },
+                                                    new SqlParameter("@date", SqlDbType.DateTime) { Value = dtFlightDate },
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                                    new SqlParameter("@carrierCode", SqlDbType.VarChar) { Value = fltroute[lstIndex].carriercode },
+                                                    new SqlParameter("@schedid", SqlDbType.Int) { Value = schedid },
+                                                    new SqlParameter("@voluemcode", SqlDbType.VarChar) { Value = volcode },
+                                                    new SqlParameter("@volume", SqlDbType.Decimal) { Value = VolumeAmount == "" ? "0" : VolumeAmount },
+                                                    new SqlParameter("@NoOfPosition", SqlDbType.VarChar) { Value = Numberofposition },
+                                                    new SqlParameter("@inputdeptDatetime", SqlDbType.DateTime) { Value = fltroute[lstIndex].inputdeptDatetime },
+                                                    new SqlParameter("@inputarrivaldatetime", SqlDbType.DateTime) { Value = fltroute[lstIndex].inputarrivaldatetime }
                                                 };
-                                                SqlDbType[] dataTypes = new SqlDbType[]
-                                                {
-                                            SqlDbType.VarChar,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.DateTime,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.DateTime,
-                                            SqlDbType.Bit,
-                                            SqlDbType.Int,
-                                            SqlDbType.DateTime,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.Int,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.Decimal,
-                                            SqlDbType.VarChar,
-                                            SqlDbType.DateTime,
-                                            SqlDbType.DateTime
-
-
-                                                };
-
-                                                object[] values = new object[]
-                                                {
-                                            awbnum,
-                                            //fltroute[lstIndex].fltdept,
-                                            //fltroute[lstIndex].fltarrival,
-                                            FltOrg,
-                                            FltDest,
-                                            fltroute[lstIndex].fltnum,
-                                            fltDate,
-                                            status,
-                                            "xFWB",
-                                             DateTime.Now,
-                                            1,
-                                            0,
-                                            dtFlightDate,
-                                            AWBPrefix,
-                                            fltroute[lstIndex].carriercode,
-                                            schedid,
-                                            volcode,
-                                            VolumeAmount==""?"0":VolumeAmount,
-                                             Numberofposition,
-                                             fltroute[lstIndex].inputdeptDatetime,
-
-                                             fltroute[lstIndex].inputarrivaldatetime
-                                            };
 
 
                                                 string dtFlightDate_format = Convert.ToDateTime(dtFlightDate).ToString("yyyy/MM/dd");
-                                                if (!dtb.UpdateData("Messaging.uspSaveXFFRAWBRoute", paramNames, dataTypes, values))
-                                                    clsLog.WriteLogAzure("Error in Save AWB Route FWB " + dtb.LastErrorDescription);
-                                                string[] CANname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
-                                            "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description",
-                                            "UpdatedBy", "UpdatedOn", "Public", "Station" };
-                                                SqlDbType[] CAType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime,
-                                            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
-                                            SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
-                                                //object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
+
+                                                //if (!dtb.UpdateData("Messaging.uspSaveXFFRAWBRoute", paramNames, dataTypes, values))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveXFFRAWBRoute", sqlParamsInsert))
+                                                {
+                                                    clsLog.WriteLogAzure("Error in Save AWB Route FWB");
+                                                }
+
+                                                //    string[] CANname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
+                                                //"FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description",
+                                                //"UpdatedBy", "UpdatedOn", "Public", "Station" };
+                                                //    SqlDbType[] CAType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime,
+                                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar,
+                                                //SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                                                //    //object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
+                                                //    //fwbdata.dest, fwbdata.pcscnt, fwbdata.weight, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum,
+                                                //    //dtFlightDate_format, fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival,
+                                                //    //"Booked", "AWB Booked", "AWB Flight Information", "xFWB", DateTime.UtcNow.ToString("yyyy-MM-dd"), 1 };
+                                                //    object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
                                                 //fwbdata.dest, fwbdata.pcscnt, fwbdata.weight, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum,
                                                 //dtFlightDate_format, fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival,
-                                                //"Booked", "AWB Booked", "AWB Flight Information", "xFWB", DateTime.UtcNow.ToString("yyyy-MM-dd"), 1 };
-                                                object[] CAValues = new object[] { fwbdata.airlineprefix, fwbdata.awbnum, fwbdata.origin,
-                                            fwbdata.dest, fwbdata.pcscnt, fwbdata.weight, fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum,
-                                            dtFlightDate_format, fltroute[lstIndex].fltdept, fltroute[lstIndex].fltarrival,
-                                            "Booked", "AWB Booked", "AWB Booked Through xFWB", "xFWB",  fwbdata.updatedondate + " " + fwbdata.updatedontime, 1,fwbdata.carrierplace };
-                                                if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
-                                                    clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                                //"Booked", "AWB Booked", "AWB Booked Through xFWB", "xFWB",  fwbdata.updatedondate + " " + fwbdata.updatedontime, 1,fwbdata.carrierplace };
+
+                                                SqlParameter[] sqlParamsAudit = new SqlParameter[]
+                                                {
+                                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fwbdata.airlineprefix },
+                                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fwbdata.awbnum },
+                                                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = fwbdata.origin },
+                                                    new SqlParameter("@Destination", SqlDbType.VarChar) { Value = fwbdata.dest },
+                                                    new SqlParameter("@Pieces", SqlDbType.VarChar) { Value = fwbdata.pcscnt },
+                                                    new SqlParameter("@Weight", SqlDbType.VarChar) { Value = fwbdata.weight },
+                                                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum },
+                                                    new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = dtFlightDate_format },
+                                                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltdept },
+                                                    new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltarrival },
+                                                    new SqlParameter("@Action", SqlDbType.VarChar) { Value = "Booked" },
+                                                    new SqlParameter("@Message", SqlDbType.VarChar) { Value = "AWB Booked" },
+                                                    new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Booked Through xFWB" },
+                                                    new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = fwbdata.updatedondate + " " + fwbdata.updatedontime },
+                                                    new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
+                                                    new SqlParameter("@Station", SqlDbType.VarChar) { Value = fwbdata.carrierplace }
+                                                };
+
+                                                //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParamsAudit))
+                                                {
+                                                    clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
+                                                }
                                             }
                                         }
                                         if (val)
                                         {
-                                            string[] QueryNames = { "AWBPrefix", "AWBNumber" };
-                                            SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                                            object[] QueryValues = { AWBPrefix, awbnum };
-                                            if (!dtb.UpdateData("spDeleteAWBDetailsNoRoute", QueryNames, QueryTypes, QueryValues))
-                                                clsLog.WriteLogAzure("Error in Deleting AWB Details " + dtb.LastErrorDescription);
+
+                                            //string[] QueryNames = { "AWBPrefix", "AWBNumber" };
+                                            //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                                            //object[] QueryValues = { AWBPrefix, awbnum };
+
+                                            SqlParameter[] sqlParamsDelete = new SqlParameter[]
+                                            {
+                                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                                new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum }
+                                            };
+
+                                            //if (!dtb.UpdateData("spDeleteAWBDetailsNoRoute", QueryNames, QueryTypes, QueryValues))
+                                            if (!await _readWriteDao.ExecuteNonQueryAsync("spDeleteAWBDetailsNoRoute", sqlParamsDelete))
+                                            {
+                                                clsLog.WriteLogAzure("Error in Deleting AWB Details");
+                                            }
                                         }
 
                                     }
@@ -3606,84 +3933,110 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                                     }
 
-                                    string[] param = new string[]
-                                    {
-                                        "AWBNumber",
-                                        "CommCode",
-                                        "PayMode",
-                                        "Pcs",
-                                        "Wt",
-                                        "FrIATA",
-                                        "FrMKT",
-                                        "ValCharge",
-                                        "OcDueCar",
-                                        "OcDueAgent",
-                                        "SpotRate",
-                                        "DynRate",
-                                        "ServiceTax",
-                                        "Total",
-                                        "RatePerKg",
-                                        "Currency",
-                                        "AWBPrefix",
-                                        "ChargeableWeight",
-                                        "DeclareCarriageValue",
-                                        "DeclareCustomValue",
-                                        "RateClass",
-                                        "insuranceamount"
-                                    };
-                                    SqlDbType[] dbtypes = new SqlDbType[]
-                                    {
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.Int,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Decimal,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.Float,
-                                        SqlDbType.VarChar,
-                                        SqlDbType.Float,
-                                    };
-                                    object[] values = new object[]
-                                    {
-                                        awbnum,
-                                        commcode,
-                                        paymode,
-                                        Convert.ToInt16(fwbrates[i].numofpcs),
-                                        float.Parse(fwbrates[i].weight),
-                                        float.Parse(freight),
-                                        float.Parse(fwbrates[i].chargeamt),
-                                        float.Parse(valcharge),
-                                        float.Parse(OCDC),
-                                        float.Parse(OCDA),
-                                        0,
-                                        0,
-                                        float.Parse(tax),
-                                        float.Parse(total),
-                                        Convert.ToDecimal(fwbrates[i].chargerate),
-                                        currency,
-                                        AWBPrefix,
-                                        //float.Parse(fwbrates[i].awbweight),
-                                        ChargeableWeight,
-                                        DeclareCarriageValue,
-                                        DeclareCustomValue,
-                                        fwbrates[i].rateclasscode,
-                                        float.Parse(insuranceamount)
-                                    };
+                                    //string[] param = new string[]
+                                    //{
+                                    //    "AWBNumber",
+                                    //    "CommCode",
+                                    //    "PayMode",
+                                    //    "Pcs",
+                                    //    "Wt",
+                                    //    "FrIATA",
+                                    //    "FrMKT",
+                                    //    "ValCharge",
+                                    //    "OcDueCar",
+                                    //    "OcDueAgent",
+                                    //    "SpotRate",
+                                    //    "DynRate",
+                                    //    "ServiceTax",
+                                    //    "Total",
+                                    //    "RatePerKg",
+                                    //    "Currency",
+                                    //    "AWBPrefix",
+                                    //    "ChargeableWeight",
+                                    //    "DeclareCarriageValue",
+                                    //    "DeclareCustomValue",
+                                    //    "RateClass",
+                                    //    "insuranceamount"
+                                    //};
+                                    //SqlDbType[] dbtypes = new SqlDbType[]
+                                    //{
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.Int,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Decimal,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.Float,
+                                    //    SqlDbType.VarChar,
+                                    //    SqlDbType.Float,
+                                    //};
+                                    //object[] values = new object[]
+                                    //{
+                                    //    awbnum,
+                                    //    commcode,
+                                    //    paymode,
+                                    //    Convert.ToInt16(fwbrates[i].numofpcs),
+                                    //    float.Parse(fwbrates[i].weight),
+                                    //    float.Parse(freight),
+                                    //    float.Parse(fwbrates[i].chargeamt),
+                                    //    float.Parse(valcharge),
+                                    //    float.Parse(OCDC),
+                                    //    float.Parse(OCDA),
+                                    //    0,
+                                    //    0,
+                                    //    float.Parse(tax),
+                                    //    float.Parse(total),
+                                    //    Convert.ToDecimal(fwbrates[i].chargerate),
+                                    //    currency,
+                                    //    AWBPrefix,
+                                    //    //float.Parse(fwbrates[i].awbweight),
+                                    //    ChargeableWeight,
+                                    //    DeclareCarriageValue,
+                                    //    DeclareCustomValue,
+                                    //    fwbrates[i].rateclasscode,
+                                    //    float.Parse(insuranceamount)
+                                    //};
 
-                                    if (!dtb.UpdateData("SP_SaveAWBRatesviaMsg", param, dbtypes, values))
+                                    SqlParameter[] sqlParamsFWBRates = [
+                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                        new SqlParameter("@CommCode", SqlDbType.VarChar) { Value = commcode },
+                                        new SqlParameter("@PayMode", SqlDbType.VarChar) { Value = paymode },
+                                        new SqlParameter("@Pcs", SqlDbType.Int) { Value = Convert.ToInt16(fwbrates[i].numofpcs) },
+                                        new SqlParameter("@Wt", SqlDbType.Float) { Value = float.Parse(fwbrates[i].weight) },
+                                        new SqlParameter("@FrIATA", SqlDbType.Float) { Value = float.Parse(freight) },
+                                        new SqlParameter("@FrMKT", SqlDbType.Float) { Value = float.Parse(fwbrates[i].chargeamt) },
+                                        new SqlParameter("@ValCharge", SqlDbType.Float) { Value = float.Parse(valcharge) },
+                                        new SqlParameter("@OcDueCar", SqlDbType.Float) { Value = float.Parse(OCDC) },
+                                        new SqlParameter("@OcDueAgent", SqlDbType.Float) { Value = float.Parse(OCDA) },
+                                        new SqlParameter("@SpotRate", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@DynRate", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@ServiceTax", SqlDbType.Float) { Value = float.Parse(tax) },
+                                        new SqlParameter("@Total", SqlDbType.Float) { Value = float.Parse(total) },
+                                        new SqlParameter("@RatePerKg", SqlDbType.Decimal) { Value = Convert.ToDecimal(fwbrates[i].chargerate) },
+                                        new SqlParameter("@Currency", SqlDbType.VarChar) { Value = currency },
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                        new SqlParameter("@ChargeableWeight", SqlDbType.Float) { Value = ChargeableWeight },
+                                        new SqlParameter("@DeclareCarriageValue", SqlDbType.Float) { Value = DeclareCarriageValue },
+                                        new SqlParameter("@DeclareCustomValue", SqlDbType.Float) { Value = DeclareCustomValue },
+                                        new SqlParameter("@RateClass", SqlDbType.VarChar) { Value = fwbrates[i].rateclasscode },
+                                        new SqlParameter("@insuranceamount", SqlDbType.Float) { Value = float.Parse(insuranceamount) },
+                                       ];
+
+                                    //if (!dtb.UpdateData("SP_SaveAWBRatesviaMsg", param, dbtypes, values))
+                                    if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBRatesviaMsg", sqlParamsFWBRates))
                                         clsLog.WriteLogAzure("Error Saving FWB rates for:" + awbnum);
 
                                 }
@@ -3697,15 +4050,33 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                 for (int i = 0; i < OtherCharges.Length; i++)
                                 {
                                     double chargeamount = OtherCharges[i].chargeamt.Length > 0 ? Convert.ToDouble(OtherCharges[i].chargeamt) : 0;
-                                    string[] param = { "AWBNumber", "ChargeHeadCode", "ChargeType", "DiscountPercent",
-                                       "CommPercent", "TaxPercent", "Discount", "Comission", "Tax","Charge","CommCode","AWBPrefix"};
-                                    SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Float,
-                                            SqlDbType.Float, SqlDbType.Float, SqlDbType.Float, SqlDbType.Float, SqlDbType.Float,SqlDbType.Float,SqlDbType.VarChar,SqlDbType.VarChar};
 
-                                    object[] values = { awbnum, OtherCharges[i].otherchargecode, "D" + OtherCharges[i].entitlementcode, 0, 0, 0, 0, 0, 0,
-                                chargeamount, commcode, AWBPrefix };
+                                    //    string[] param = { "AWBNumber", "ChargeHeadCode", "ChargeType", "DiscountPercent",
+                                    //       "CommPercent", "TaxPercent", "Discount", "Comission", "Tax","Charge","CommCode","AWBPrefix"};
+                                    //    SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Float,
+                                    //            SqlDbType.Float, SqlDbType.Float, SqlDbType.Float, SqlDbType.Float, SqlDbType.Float,SqlDbType.Float,SqlDbType.VarChar,SqlDbType.VarChar};
 
-                                    if (!dtb.InsertData("SP_SaveAWBOCRatesDetails", param, dbtypes, values))
+                                    //    object[] values = { awbnum, OtherCharges[i].otherchargecode, "D" + OtherCharges[i].entitlementcode, 0, 0, 0, 0, 0, 0,
+                                    //chargeamount, commcode, AWBPrefix };
+
+                                    SqlParameter[] sqlParamsOtherCharges = new SqlParameter[]
+                                    {
+                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                        new SqlParameter("@ChargeHeadCode", SqlDbType.VarChar) { Value = OtherCharges[i].otherchargecode },
+                                        new SqlParameter("@ChargeType", SqlDbType.VarChar) { Value = "D" + OtherCharges[i].entitlementcode },
+                                        new SqlParameter("@DiscountPercent", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@CommPercent", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@TaxPercent", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@Discount", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@Comission", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@Tax", SqlDbType.Float) { Value = 0 },
+                                        new SqlParameter("@Charge", SqlDbType.Float) { Value = chargeamount },
+                                        new SqlParameter("@CommCode", SqlDbType.VarChar) { Value = commcode },
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix }
+                                    };
+
+                                    //if (!dtb.InsertData("SP_SaveAWBOCRatesDetails", param, dbtypes, values))
+                                    if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBOCRatesDetails", sqlParamsOtherCharges))
                                         clsLog.WriteLogAzure("Error Saving FWB OCRates for:" + awbnum);
 
                                 }
@@ -3734,11 +4105,19 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                     }
                                     //Badiuz khan
                                     //Description: Delete Dimension if Dimension 
-                                    string[] dparam = { "AWBPrefix", "AWBNumber" };
-                                    SqlDbType[] dbparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                                    object[] dbparamvalues = { AWBPrefix, awbnum };
 
-                                    if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
+                                    //string[] dparam = { "AWBPrefix", "AWBNumber" };
+                                    //SqlDbType[] dbparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                                    //object[] dbparamvalues = { AWBPrefix, awbnum };
+
+                                    SqlParameter[] sqlParamsDeleteDims = new SqlParameter[]
+                                    {
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum }
+                                    };
+
+                                    //if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
+                                    if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspDeleteDimensionThroughXMLMessage", sqlParamsDeleteDims))
                                         clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
                                     else
                                     {
@@ -3781,22 +4160,41 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                                 }
                                             }
 
-                                            string[] param = { "AWBNumber", "RowIndex", "Length", "Breadth", "Height",
-                                        "PcsCount", "MeasureUnit", "AWBPrefix", "Weight", "WeightCode", "UpdatedBy" ,"SLAC"};
-                                            SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal,
-                                        SqlDbType.Decimal, SqlDbType.Int, SqlDbType.VarChar,
-                                        SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.Int };
-                                            Decimal DimWeight = 0;
+                                            //    string[] param = { "AWBNumber", "RowIndex", "Length", "Breadth", "Height",
+                                            //"PcsCount", "MeasureUnit", "AWBPrefix", "Weight", "WeightCode", "UpdatedBy" ,"SLAC"};
+                                            //    SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal,
+                                            //SqlDbType.Decimal, SqlDbType.Int, SqlDbType.VarChar,
+                                            //SqlDbType.VarChar, SqlDbType.Decimal, SqlDbType.VarChar, SqlDbType.VarChar,SqlDbType.Int };
+                                            //    Decimal DimWeight = 0;
 
-                                            object[] value ={awbnum,"1",objDimension[i].length,objDimension[i].width,objDimension[i].height,
-                                            objDimension[i].piecenum,objDimension[i].mesurunitcode,AWBPrefix,
-                                        Decimal.TryParse(objDimension[i].weight,out DimWeight)==true?Convert.ToDecimal(objDimension[i].weight):0,
-                                        objDimension[i].weightcode,"xFWB",objDimension[i].dims_slac};
+                                            //    object[] value ={awbnum,"1",objDimension[i].length,objDimension[i].width,objDimension[i].height,
+                                            //    objDimension[i].piecenum,objDimension[i].mesurunitcode,AWBPrefix,
+                                            //Decimal.TryParse(objDimension[i].weight,out DimWeight)==true?Convert.ToDecimal(objDimension[i].weight):0,
+                                            //objDimension[i].weightcode,"xFWB",objDimension[i].dims_slac};
+
+                                            Decimal DimWeight = 0;
+                                            SqlParameter[] sqlParamsDims = new SqlParameter[]
+                                            {
+                                                new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                                new SqlParameter("@RowIndex", SqlDbType.Int) { Value = "1" },
+                                                new SqlParameter("@Length", SqlDbType.Decimal) { Value = objDimension[i].length },
+                                                new SqlParameter("@Breadth", SqlDbType.Decimal) { Value = objDimension[i].width },
+                                                new SqlParameter("@Height", SqlDbType.Decimal) { Value = objDimension[i].height },
+                                                new SqlParameter("@PcsCount", SqlDbType.Int) { Value = objDimension[i].piecenum },
+                                                new SqlParameter("@MeasureUnit", SqlDbType.VarChar) { Value = objDimension[i].mesurunitcode },
+                                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                                new SqlParameter("@Weight", SqlDbType.Decimal) { Value = Decimal.TryParse(objDimension[i].weight,out DimWeight)==true?Convert.ToDecimal(objDimension[i].weight):0 },
+                                                new SqlParameter("@WeightCode", SqlDbType.VarChar) { Value = objDimension[i].weightcode },
+                                                new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                                new SqlParameter("@SLAC", SqlDbType.Int) { Value = objDimension[i].dims_slac }
+                                            };
 
 
                                             //object[] value ={awbnum,"1",10,20,30,
                                             //        120,2,AWBPrefix,DimWeight,"FWB"};
-                                            if (!dtb.InsertData("Messaging.uspSaveAWBDimensionsXFFR", param, dbtypes, value))
+
+                                            //if (!dtb.InsertData("Messaging.uspSaveAWBDimensionsXFFR", param, dbtypes, value))
+                                            if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveAWBDimensionsXFFR", sqlParamsDims))
                                             {
                                                 clsLog.WriteLogAzure("Error Saving  Dimension Through Message :" + awbnum);
                                             }
@@ -3815,11 +4213,18 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                                     if (objDimension.Length == 0)
                                     {
-                                        string[] dparam = { "AWBPrefix", "AWBNumber" };
-                                        SqlDbType[] dbparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                                        object[] dbparamvalues = { AWBPrefix, awbnum };
+                                        //string[] dparam = { "AWBPrefix", "AWBNumber" };
+                                        //SqlDbType[] dbparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                                        //object[] dbparamvalues = { AWBPrefix, awbnum };
 
-                                        if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
+                                        SqlParameter[] sqlParamsDeleteDims = new SqlParameter[]
+                                        {
+                                            new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                            new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum }
+                                        };
+
+                                        //if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
+                                        if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspDeleteDimensionThroughXMLMessage", sqlParamsDeleteDims))
                                             clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
                                     }
 
@@ -3853,17 +4258,31 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                                             {
                                                 uldbupwt = double.Parse(objAWBBup[k].BUPWt == "" ? fwbdata.weight : objAWBBup[k].BUPWt);
                                             }
-                                            string[] param = { "AWBPrefix", "AWBNumber", "ULDNo", "SlacPcs", "PcsCount", "Volume", "GrossWeight" };
-                                            SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
-                                        SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal };
-                                            object[] value = { AWBPrefix, awbnum, uldno, uldslacPcs, fwbdata.pcscnt, VolumeWt,
-                                        uldbupwt };
+
+                                            //    string[] param = { "AWBPrefix", "AWBNumber", "ULDNo", "SlacPcs", "PcsCount", "Volume", "GrossWeight" };
+                                            //    SqlDbType[] dbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int,
+                                            //SqlDbType.Int, SqlDbType.Decimal, SqlDbType.Decimal };
+                                            //    object[] value = { AWBPrefix, awbnum, uldno, uldslacPcs, fwbdata.pcscnt, VolumeWt,
+                                            //uldbupwt };
+
+                                            SqlParameter[] sqlParamsBUP = new SqlParameter[]
+                                            {
+                                                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                                new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                                new SqlParameter("@ULDNo", SqlDbType.VarChar) { Value = uldno },
+                                                new SqlParameter("@SlacPcs", SqlDbType.Int) { Value = uldslacPcs },
+                                                new SqlParameter("@PcsCount", SqlDbType.Int) { Value = fwbdata.pcscnt },
+                                                new SqlParameter("@Volume", SqlDbType.Decimal) { Value = VolumeWt },
+                                                new SqlParameter("@GrossWeight", SqlDbType.Decimal) { Value = uldbupwt }
+                                            };
 
                                             //if (!dtb.InsertData("SaveandUpdateShippperBUPThroughFWB", param, dbtypes, value))
-                                            if (!dtb.InsertData("Messaging.uspSaveandUpdateShippperBUPThroughXFWB", param, dbtypes, value))
+
+                                            //if (!dtb.InsertData("Messaging.uspSaveandUpdateShippperBUPThroughXFWB", param, dbtypes, value))
+                                            if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveandUpdateShippperBUPThroughXFWB", sqlParamsBUP))
                                             {
-                                                string str = dtb.LastErrorDescription.ToString();
-                                                clsLog.WriteLogAzure("BUP ULD is not Updated  for:" + awbnum + Environment.NewLine + "Error : " + dtb.LastErrorDescription);
+                                                //string str = dtb.LastErrorDescription.ToString();
+                                                clsLog.WriteLogAzure("BUP ULD is not Updated  for:" + awbnum + Environment.NewLine);
 
                                             }
                                         }
@@ -3874,33 +4293,67 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
                                 #region ProcessRateFunction
 
-                                DataSet dsrateCheck = ffR.CheckAirlineForRateProcessing(AWBPrefix, "xFWB");
+                                DataSet? dsrateCheck = await _fFRMessageProcessor.CheckAirlineForRateProcessing(AWBPrefix, "xFWB");
                                 if (dsrateCheck != null && dsrateCheck.Tables.Count > 0 && dsrateCheck.Tables[0].Rows.Count > 0)
                                 {
-                                    string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
-                                    SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
-                                    object[] CRValues = new object[] { awbnum, AWBPrefix, "xFWB", System.DateTime.Now, 1, 1, "B", 0 };
-                                    //if (!dtb.ExecuteProcedure("sp_CalculateFreightChargesforMessage", "AWBNumber", SqlDbType.VarChar, awbnum))
-                                    if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+                                    //string[] CRNname = new string[] { "AWBNumber", "AWBPrefix", "UpdatedBy", "UpdatedOn", "ValidateMin", "UpdateBooking", "RouteFrom", "UpdateBilling" };
+                                    //SqlDbType[] CRType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Bit, SqlDbType.VarChar, SqlDbType.Bit };
+                                    //object[] CRValues = new object[] { awbnum, AWBPrefix, "xFWB", System.DateTime.Now, 1, 1, "B", 0 };
+
+                                    SqlParameter[] sqlParamsCalculateRates = new SqlParameter[]
                                     {
-                                        clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
+                                        new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                        new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                        new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "xFWB" },
+                                        new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = System.DateTime.Now },
+                                        new SqlParameter("@ValidateMin", SqlDbType.Bit) { Value = 1 },
+                                        new SqlParameter("@UpdateBooking", SqlDbType.Bit) { Value = 1 },
+                                        new SqlParameter("@RouteFrom", SqlDbType.VarChar) { Value = "B" },
+                                        new SqlParameter("@UpdateBilling", SqlDbType.Bit) { Value = 0 }
+                                    };
+                                    //if (!dtb.ExecuteProcedure("sp_CalculateFreightChargesforMessage", "AWBNumber", SqlDbType.VarChar, awbnum))
+
+                                    //if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
+                                    if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", sqlParamsCalculateRates))
+                                    {
+                                        clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
                                     }
                                 }
 
                                 #endregion
 
-                                string[] QueryName = { "AWBNumber", "Status", "AWBPrefix", "UserName", "AWBIssueDate", "ChargeableWeight", "Priority" };
-                                SqlDbType[] QueryType = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Decimal, SqlDbType.VarChar };
-                                object[] QueryValue = { awbnum, "E", AWBPrefix, "xFWB", strAWbIssueDate, ChargeableWeight, Priority };
-                                if (!dtb.UpdateData("UpdateStatustoExecuted", QueryName, QueryType, QueryValue))
-                                    clsLog.WriteLogAzure("Error in updating AWB status" + dtb.LastErrorDescription);
+                                //string[] QueryName = { "AWBNumber", "Status", "AWBPrefix", "UserName", "AWBIssueDate", "ChargeableWeight", "Priority" };
+                                //SqlDbType[] QueryType = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Decimal, SqlDbType.VarChar };
+                                //object[] QueryValue = { awbnum, "E", AWBPrefix, "xFWB", strAWbIssueDate, ChargeableWeight, Priority };
+
+                                SqlParameter[] sqlParamsUpdateStatus = new SqlParameter[]
+                                {
+                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
+                                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = "E" },
+                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                    new SqlParameter("@UserName", SqlDbType.VarChar) { Value = "xFWB" },
+                                    new SqlParameter("@AWBIssueDate", SqlDbType.DateTime) { Value = strAWbIssueDate },
+                                    new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = ChargeableWeight },
+                                    new SqlParameter("@Priority", SqlDbType.VarChar) { Value = Priority }
+                                };
+
+                                //if (!dtb.UpdateData("UpdateStatustoExecuted", QueryName, QueryType, QueryValue))
+                                if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateStatustoExecuted", sqlParamsUpdateStatus))
+                                    clsLog.WriteLogAzure("Error in updating AWB status");
 
                                 #region capacity
-                                string[] cparam = { "AWBPrefix", "AWBNumber" };
-                                SqlDbType[] cparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
-                                object[] cparamvalues = { AWBPrefix, awbnum };
+                                //string[] cparam = { "AWBPrefix", "AWBNumber" };
+                                //SqlDbType[] cparamtypes = { SqlDbType.VarChar, SqlDbType.VarChar };
+                                //object[] cparamvalues = { AWBPrefix, awbnum };
 
-                                if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
+                                SqlParameter[] sqlParamsCapacity = new SqlParameter[]
+                                {
+                                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum }
+                                };
+
+                                //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
+                                if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", sqlParamsCapacity))
                                     clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
 
                                 #endregion
@@ -3912,7 +4365,9 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum + "-" + dtb.LastErrorDescription);
+                        //clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum + "-" + dtb.LastErrorDescription);
+                        clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum);
+
                     }
                 }
 
@@ -3925,27 +4380,46 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                 ErrorMsg = "Error while saving AWB data through xFWB";
                 flag = false;
             }
-            return flag;
+            //return flag;
+            return (flag, ErrorMsg);
         }
 
 
-        public bool SetAWBStatus(string awbNumber, string status, ref string errormessage, DateTime executionDt,
+        public async Task<(bool success, string errormessage)> SetAWBStatus(string awbNumber, string status, string errormessage, DateTime executionDt,
           string userName, DateTime currentDt, string awbPrefix, bool validateData, string paymentMode, int updateOpsData, string executedAt,
           DateTime Recivedon, int Refno, string purposecode)
         {
-            SQLServer da = new SQLServer();
-            DataSet dsResult = null;
+            //SQLServer da = new SQLServer();
+            DataSet? dsResult = null;
             try
             {
-                string[] param = { "AWBNumber", "Status", "ExecutionDt", "UserName", "TimeStamp", "AWBPrefix",
-                    "ValidateData", "PaymentMode", "UpdateOPSData", "ExecutedAt","Recivedon","srno" , "purposecode"};
-                SqlDbType[] sqldbtype = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar,
-                    SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Bit,
-                    SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.VarChar };
-                object[] values = { awbNumber, status, executionDt, userName, currentDt, awbPrefix,
-                    validateData, paymentMode, updateOpsData, executedAt,Recivedon,Refno,purposecode };
+                //string[] param = { "AWBNumber", "Status", "ExecutionDt", "UserName", "TimeStamp", "AWBPrefix",
+                //    "ValidateData", "PaymentMode", "UpdateOPSData", "ExecutedAt","Recivedon","srno" , "purposecode"};
+                //SqlDbType[] sqldbtype = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar,
+                //    SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Bit,
+                //    SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar,SqlDbType.DateTime,SqlDbType.Int,SqlDbType.VarChar };
+                //object[] values = { awbNumber, status, executionDt, userName, currentDt, awbPrefix,
+                //    validateData, paymentMode, updateOpsData, executedAt,Recivedon,Refno,purposecode };
 
-                dsResult = da.SelectRecords("Messaging.uspDeleteBookingDataFromXFWB", param, values, sqldbtype);
+                SqlParameter[] sqlParams = new SqlParameter[]
+                {
+                    new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber },
+                    new SqlParameter("@Status", SqlDbType.VarChar) { Value = status },
+                    new SqlParameter("@ExecutionDt", SqlDbType.DateTime) { Value = executionDt },
+                    new SqlParameter("@UserName", SqlDbType.VarChar) { Value = userName },
+                    new SqlParameter("@TimeStamp", SqlDbType.DateTime) { Value = currentDt },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = awbPrefix },
+                    new SqlParameter("@ValidateData", SqlDbType.Bit) { Value = validateData },
+                    new SqlParameter("@PaymentMode", SqlDbType.VarChar) { Value = paymentMode },
+                    new SqlParameter("@UpdateOPSData", SqlDbType.Bit) { Value = updateOpsData },
+                    new SqlParameter("@ExecutedAt", SqlDbType.VarChar) { Value = executedAt },
+                    new SqlParameter("@Recivedon", SqlDbType.DateTime) { Value = Recivedon },
+                    new SqlParameter("@srno", SqlDbType.Int) { Value = Refno },
+                    new SqlParameter("@purposecode", SqlDbType.VarChar) { Value = purposecode }
+                };
+
+                //dsResult = da.SelectRecords("Messaging.uspDeleteBookingDataFromXFWB", param, values, sqldbtype);
+                dsResult = await _readWriteDao.SelectRecords("Messaging.uspDeleteBookingDataFromXFWB", sqlParams);
                 if (dsResult != null)
                 {
                     if (dsResult.Tables.Count != 0)
@@ -3955,40 +4429,46 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
                         {
                             if (dsResult.Tables[0].Rows[0][0].ToString() == "Y")
                             {
-                                return true;
+                                //return true;
+                                return (true, errormessage);
                             }
                             else
                             {
                                 errormessage = " " + dsResult.Tables[0].Rows[0][1];
-                                return false;
+                                //return false;
+                                return (false, errormessage);
                             }
                         }
                         else
                         {
                             errormessage = "msgErrorSetAWBStatus1";
-                            return false;
+                            //return false;
+                            return (false, errormessage);
                         }
 
                     }
                     else
                     {
                         errormessage = "msgErrorSetAWBStatus2";
-                        return false;
+                        //return false;
+                        return (false, errormessage);
                     }
                 }
                 else
                 {
                     errormessage = "msgErrorSetAWBStatus3";
-                    return false;
+                    //return false;
+                    return (false, errormessage);
                 }
 
             }
             catch (Exception ex)
             {
-                dsResult = null;
                 clsLog.WriteLogAzure(ex);
+                dsResult = null;
                 errormessage = "msgExceptionError";
-                return false;
+                //return false;
+                return (false, errormessage);
             }
             finally
             {
@@ -4000,913 +4480,913 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
 
         }
 
-        public string GenerateXFWBMessage(string awbPrefix, string awbNumber)
-        {
-            StringBuilder generateMessage = new StringBuilder();
-            try
-            {
-
-                DataSet dsFWBMessage = GetRecordforAWBToGenerateXFWBMessage(awbPrefix, awbNumber);
-
-                GenericFunction generalfunction = new GenericFunction();
-
-                if (dsFWBMessage != null && dsFWBMessage.Tables.Count > 0 && dsFWBMessage.Tables[0].Rows.Count > 0 && dsFWBMessage.Tables[1].Rows.Count > 0 && dsFWBMessage.Tables[2].Rows.Count > 0 && dsFWBMessage.Tables[3].Rows.Count > 0 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                {
-                    var xmlSchemaTable = generalfunction.GetXMLMessageData("XFWB").Tables[0];
-                    if (xmlSchemaTable != null && xmlSchemaTable.Rows.Count > 0)
-                    {
-                        string messageXml = Convert.ToString(xmlSchemaTable.Rows[0]["XMLMessageData"]);
-                        var fwbXmlDataSet = new DataSet();
-                        messageXml = ReplacingNodeNames(messageXml);
-                        var tx = new StringReader(messageXml);
-                        fwbXmlDataSet.ReadXml(tx);
-
-                        // FWB Message Header Segment
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["ID"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["NAME"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["TypeCode"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["IssueDateTime"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["PurposeCode"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["VersionID"]);
-                        fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["ConversationID"]);
-
-                        DataRow[] drs;
-                        //SenderParty
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["SenderParty_PrimaryID"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["SenderParty_PrimaryIDText"]);
-                            }
-                        }
-                        //RecipientParty
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["RecipientParty_PrimaryID"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["RecipientParty_PrimaryIDText"]);
-                            }
-                        }
-                        //FWB Message BusinessHeaderDocument Segment
-
-                        fwbXmlDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AWBNumber"]);
-                        fwbXmlDataSet.Tables["BusinessHeaderDocument"].Rows[0]["SenderAssignedID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["BHD_SenderAssignedID"]);
-                        fwbXmlDataSet.Tables["IncludedHeaderNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HeaderNote"]);
-                        fwbXmlDataSet.Tables["IncludedHeaderNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HeaderText"]);
-                        fwbXmlDataSet.Tables["SignatoryConsignorAuthentication"].Rows[0]["Signatory"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
-                        fwbXmlDataSet.Tables["SignatoryCarrierAuthentication"].Rows[0]["ActualDateTime"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationDate"]);
-                        fwbXmlDataSet.Tables["SignatoryCarrierAuthentication"].Rows[0]["Signatory"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationSignature"]);
-                        fwbXmlDataSet.Tables["IssueAuthenticationLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationPlace"]);
-
-                        //Master Consignment Segment
-
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["MasterConsignment_ID"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["MasterConsignment_AdditionalID"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["FreightForwarderAssignedID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["FreightForwarderAssignedID"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["AssociatedReferenceID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AssociatedReferenceID"]);
-
-                        if (fwbXmlDataSet.Tables.Contains("DeclaredValueForCarriageAmount"))
-                        {
-                            if (fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Columns.Contains("currencyID"))
-                                fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVCarriageCurrency"]);
-
-                            if (fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Columns.Contains("DeclaredValueForCarriageAmount_Text"))
-                                fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Rows[0]["DeclaredValueForCarriageAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVForCarriage"]);
-
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("DeclaredValueForCustomsAmount"))
-                        {
-                            if (fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Columns.Contains("currencyID"))
-                                fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVCustomCurrency"]);
-
-                            if (fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Columns.Contains("DeclaredValueForCustomsAmount_Text"))
-                                fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Rows[0]["DeclaredValueForCustomsAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVForCustom"]);
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("InsuranceValueAmount"))
-                        {
-                            if (fwbXmlDataSet.Tables["InsuranceValueAmount"].Columns.Contains("currencyID"))
-                                fwbXmlDataSet.Tables["InsuranceValueAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["InsuranceCurrency"]);
-
-                            if (fwbXmlDataSet.Tables["InsuranceValueAmount"].Columns.Contains("InsuranceValueAmount_Text"))
-                                fwbXmlDataSet.Tables["InsuranceValueAmount"].Rows[0]["InsuranceValueAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["InsuranceAmount"]);
-                        }
-
-
-
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilCarriageValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilCarriageValueIndicator"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilCustomsValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilCustomsValueIndicator"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilInsuranceValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilInsuranceValueIndicator"]);
+        //public string GenerateXFWBMessage(string awbPrefix, string awbNumber)
+        //{
+        //    StringBuilder generateMessage = new StringBuilder();
+        //    try
+        //    {
+
+        //        DataSet dsFWBMessage = GetRecordforAWBToGenerateXFWBMessage(awbPrefix, awbNumber);
+
+        //        GenericFunction generalfunction = new GenericFunction();
+
+        //        if (dsFWBMessage != null && dsFWBMessage.Tables.Count > 0 && dsFWBMessage.Tables[0].Rows.Count > 0 && dsFWBMessage.Tables[1].Rows.Count > 0 && dsFWBMessage.Tables[2].Rows.Count > 0 && dsFWBMessage.Tables[3].Rows.Count > 0 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //        {
+        //            var xmlSchemaTable = generalfunction.GetXMLMessageData("XFWB").Tables[0];
+        //            if (xmlSchemaTable != null && xmlSchemaTable.Rows.Count > 0)
+        //            {
+        //                string messageXml = Convert.ToString(xmlSchemaTable.Rows[0]["XMLMessageData"]);
+        //                var fwbXmlDataSet = new DataSet();
+        //                messageXml = ReplacingNodeNames(messageXml);
+        //                var tx = new StringReader(messageXml);
+        //                fwbXmlDataSet.ReadXml(tx);
+
+        //                // FWB Message Header Segment
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["ID"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["NAME"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["TypeCode"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["IssueDateTime"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["PurposeCode"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["PurposeCode"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["VersionID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["VersionID"]);
+        //                fwbXmlDataSet.Tables["MessageHeaderDocument"].Rows[0]["ConversationID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["ConversationID"]);
+
+        //                DataRow[] drs;
+        //                //SenderParty
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("SenderParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["SenderParty_PrimaryID"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["SenderParty_PrimaryIDText"]);
+        //                    }
+        //                }
+        //                //RecipientParty
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("RecipientParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeID"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["RecipientParty_PrimaryID"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[8].Rows[0]["RecipientParty_PrimaryIDText"]);
+        //                    }
+        //                }
+        //                //FWB Message BusinessHeaderDocument Segment
+
+        //                fwbXmlDataSet.Tables["BusinessHeaderDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AWBNumber"]);
+        //                fwbXmlDataSet.Tables["BusinessHeaderDocument"].Rows[0]["SenderAssignedID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["BHD_SenderAssignedID"]);
+        //                fwbXmlDataSet.Tables["IncludedHeaderNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HeaderNote"]);
+        //                fwbXmlDataSet.Tables["IncludedHeaderNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HeaderText"]);
+        //                fwbXmlDataSet.Tables["SignatoryConsignorAuthentication"].Rows[0]["Signatory"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
+        //                fwbXmlDataSet.Tables["SignatoryCarrierAuthentication"].Rows[0]["ActualDateTime"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationDate"]);
+        //                fwbXmlDataSet.Tables["SignatoryCarrierAuthentication"].Rows[0]["Signatory"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationSignature"]);
+        //                fwbXmlDataSet.Tables["IssueAuthenticationLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["CarrierDeclarationPlace"]);
+
+        //                //Master Consignment Segment
+
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["MasterConsignment_ID"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["MasterConsignment_AdditionalID"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["FreightForwarderAssignedID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["FreightForwarderAssignedID"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["AssociatedReferenceID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AssociatedReferenceID"]);
+
+        //                if (fwbXmlDataSet.Tables.Contains("DeclaredValueForCarriageAmount"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Columns.Contains("currencyID"))
+        //                        fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVCarriageCurrency"]);
+
+        //                    if (fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Columns.Contains("DeclaredValueForCarriageAmount_Text"))
+        //                        fwbXmlDataSet.Tables["DeclaredValueForCarriageAmount"].Rows[0]["DeclaredValueForCarriageAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVForCarriage"]);
+
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("DeclaredValueForCustomsAmount"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Columns.Contains("currencyID"))
+        //                        fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVCustomCurrency"]);
+
+        //                    if (fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Columns.Contains("DeclaredValueForCustomsAmount_Text"))
+        //                        fwbXmlDataSet.Tables["DeclaredValueForCustomsAmount"].Rows[0]["DeclaredValueForCustomsAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DVForCustom"]);
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("InsuranceValueAmount"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["InsuranceValueAmount"].Columns.Contains("currencyID"))
+        //                        fwbXmlDataSet.Tables["InsuranceValueAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["InsuranceCurrency"]);
+
+        //                    if (fwbXmlDataSet.Tables["InsuranceValueAmount"].Columns.Contains("InsuranceValueAmount_Text"))
+        //                        fwbXmlDataSet.Tables["InsuranceValueAmount"].Rows[0]["InsuranceValueAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["InsuranceAmount"]);
+        //                }
+
+
+
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilCarriageValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilCarriageValueIndicator"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilCustomsValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilCustomsValueIndicator"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["NilInsuranceValueIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["NilInsuranceValueIndicator"]);
 
 
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalChargePrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TotalChargePrepaidIndicator"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalDisbursementPrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TotalDisbursementPrepaidIndicator"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalChargePrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TotalChargePrepaidIndicator"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalDisbursementPrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TotalDisbursementPrepaidIndicator"]);
 
-                        if (fwbXmlDataSet.Tables.Contains("IncludedTareGrossWeightMeasure"))
-                        {
-                            if (fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Columns.Contains("UnitCode"))
-                                fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Rows[0]["UnitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
+        //                if (fwbXmlDataSet.Tables.Contains("IncludedTareGrossWeightMeasure"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Columns.Contains("UnitCode"))
+        //                        fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Rows[0]["UnitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
 
-                            if (fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Columns.Contains("IncludedTareGrossWeightMeasure_Text"))
-                                fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Rows[0]["IncludedTareGrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["GrossWeight"]);
-                        }
+        //                    if (fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Columns.Contains("IncludedTareGrossWeightMeasure_Text"))
+        //                        fwbXmlDataSet.Tables["IncludedTareGrossWeightMeasure"].Rows[0]["IncludedTareGrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["GrossWeight"]);
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("GrossVolumeMeasure"))
-                        {
-                            drs = fwbXmlDataSet.Tables["GrossVolumeMeasure"].Select("MasterConsignment_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
-                                drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["VolumetricWeight"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("GrossVolumeMeasure"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["GrossVolumeMeasure"].Select("MasterConsignment_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
+        //                        drs[0]["GrossVolumeMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["VolumetricWeight"]);
+        //                    }
+        //                }
 
-                        //fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DensityGroup"]) == "" ? "XXXXXX" : Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DensityGroup"]);
+        //                //fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["DensityGroupCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DensityGroup"]) == "" ? "XXXXXX" : Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DensityGroup"]);
 
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["PackageQuantity"] = "";// Convert.ToString(dsFWBMessage.Tables[9].Rows[0]["SLAC"]);
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = "";// Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["PackageQuantity"] = "";// Convert.ToString(dsFWBMessage.Tables[9].Rows[0]["SLAC"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["TotalPieceQuantity"] = "";// Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
 
-                        fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["ProductID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ProductType"]);
+        //                fwbXmlDataSet.Tables["MasterConsignment"].Rows[0]["ProductID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ProductType"]);
 
-                        //Consignor Party
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("ConsignorParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
-                            }
-                        }
+        //                //Consignor Party
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("ConsignorParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
+        //                    }
+        //                }
 
 
-                        fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperStandardID"]);
-                        fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
-                        fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperStandardID"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAccCode"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAddress"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperAddress"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCity"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCity"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperRegionName"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperRegionName"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperPOBox"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperPOBox"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCity"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCity"]);
 
-                        fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperRegionName"]);
+        //                fwbXmlDataSet.Tables["ConsignorParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperRegionName"]);
 
-                        if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
-                        {
-                            drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("ConsignorParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
-                                drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperDepartnmentName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("ConsignorParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperName"]);
+        //                        drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperDepartnmentName"]);
+        //                    }
+        //                }
 
 
-                        if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperTelephone"]);
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperTelephone"]);
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["FaxCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperFaxNo"]);
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
-                                fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[0]["URIID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperEmailId"]);
+        //                if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["FaxCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperFaxNo"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
+        //                        fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[0]["URIID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperEmailId"]);
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["TelexCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperTelex"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["TelexCommunication"].Rows[0]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperTelex"]);
 
-                        }
+        //                }
 
 
-                        // Consignee Detail of AWB
+        //                // Consignee Detail of AWB
 
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("ConsigneeParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigAccCode"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("ConsigneeParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigAccCode"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeName"]);
+        //                    }
+        //                }
 
-                        fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeStandardID"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeStandardID"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeName"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeName"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigAccCode"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigAccCode"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneePincode"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneePincode"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeAddress"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeAddress"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCity"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCity"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeRegionName"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeRegionName"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneePincode"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneePincode"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCity"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCity"]);
 
-                        fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
+        //                fwbXmlDataSet.Tables["ConsigneeParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
 
 
-                        if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
-                        {
-                            drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("ConsigneeParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
-                                drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeDepartnmentName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("ConsigneeParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeCountry"]);
+        //                        drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeDepartnmentName"]);
+        //                    }
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeTelephone"]);
+        //                if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeTelephone"]);
 
-                        }
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["FaxCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeFaxNo"]);
+        //                if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["FaxCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeFaxNo"]);
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
-                                fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[1]["URIID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigEmailId"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
+        //                        fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[1]["URIID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigEmailId"]);
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["TelexCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeTelex"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["TelexCommunication"].Rows[1]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ConsigneeTelex"]);
 
-                        }
+        //                }
 
 
-                        //FreightForwarderParty
-                        #region FreightForwarderParty
+        //                //FreightForwarderParty
+        //                #region FreightForwarderParty
 
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("FreightForwarderParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAccountCode"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("FreightForwarderParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAccountCode"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
+        //                    }
+        //                }
 
-                        fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentCode"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentCode"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAccountCode"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["AccountID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAccountCode"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["CargoAgentID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["IATAAgentCode"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderParty"].Rows[0]["CargoAgentID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["IATAAgentCode"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["PostalZIP"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["PostalZIP"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["City"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["City"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAddress"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentAddress"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["City"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["City"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["Country"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["Country"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["CountryName"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["CountryName"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["State"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["State"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["PostalZIP"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["PostalZIP"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["Station"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["Station"]);
 
-                        fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["State"]);
+        //                fwbXmlDataSet.Tables["FreightForwarderAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["State"]);
 
 
 
 
-                        if (fwbXmlDataSet.Tables.Contains("SpecifiedCargoAgentLocation"))
-                        {
-                            fwbXmlDataSet.Tables["SpecifiedCargoAgentLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["CassId"]);
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("SpecifiedCargoAgentLocation"))
+        //                {
+        //                    fwbXmlDataSet.Tables["SpecifiedCargoAgentLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["CassId"]);
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
-                        {
-                            drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("FreightForwarderParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
-                                drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["DepartmentName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("FreightForwarderParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["ShippingAgentName"]);
+        //                        drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["DepartmentName"]);
+        //                    }
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentPhone"]);
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("DirectTelephoneCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentPhone"]);
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["FaxCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentFax"]);
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
-                                fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[2]["URIID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentEmailID"]);
+        //                if (fwbXmlDataSet.Tables.Contains("FaxCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["FaxCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["FaxCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentFax"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("URIEmailCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["URIEmailCommunication"].Columns.Contains("URIID"))
+        //                        fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[2]["URIID"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentEmailID"]);
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
-                        {
-                            if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
-                                fwbXmlDataSet.Tables["TelexCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentSitaAddress"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("TelexCommunication"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["TelexCommunication"].Columns.Contains("CompleteNumber"))
+        //                        fwbXmlDataSet.Tables["TelexCommunication"].Rows[2]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[2].Rows[0]["AgentSitaAddress"]);
 
-                        }
-                        #endregion
-                        //AssociatedParty
-                        #region AssociatedParty
+        //                }
+        //                #endregion
+        //                //AssociatedParty
+        //                #region AssociatedParty
 
-                        if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                        {
-                            drs = fwbXmlDataSet.Tables["PrimaryID"].Select("AssociatedParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_schemeAgencyID"]);
-                                drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PrimaryID_Text"]);
-                            }
-                        }
-                        fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_AdditionalID"]);
-                        fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_Name"]);
-                        fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["RoleCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_RoleCode"]);
-                        fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["Role"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_Role"]);
+        //                if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["PrimaryID"].Select("AssociatedParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_schemeAgencyID"]);
+        //                        drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PrimaryID_Text"]);
+        //                    }
+        //                }
+        //                fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_AdditionalID"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_Name"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["RoleCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_RoleCode"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty"].Rows[0]["Role"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_Role"]);
 
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PostcodeCode"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_StreetName"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CityName"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountryID"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountryName"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountrySubDivisionName"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PostOfficeBox"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CityID"]);
-                        fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountrySubDivisionID"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["PostcodeCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PostcodeCode"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["StreetName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_StreetName"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CityName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CityName"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountryID"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountryName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountryName"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountrySubDivisionName"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["PostOfficeBox"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_PostOfficeBox"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CityID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CityID"]);
+        //                fwbXmlDataSet.Tables["AssociatedParty_PostalStructuredAddress"].Rows[0]["CountrySubDivisionID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_CountrySubDivisionID"]);
 
-                        fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_ID"]);
-                        fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_Name"]);
-                        fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_TypeCode"]);
+        //                fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_ID"]);
+        //                fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_Name"]);
+        //                fwbXmlDataSet.Tables["SpecifiedAddressLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_SpecifiedAddressLocation_TypeCode"]);
 
-                        if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
-                        {
-                            drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("AssociatedParty_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DefinedTradeContact_PersonName"]);
-                                drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DefinedTradeContact_DepartmentName"]);
-                            }
-                        }
-                        //AssociatedParty
-                        fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DirectTelephoneCommunication"]);
+        //                if (fwbXmlDataSet.Tables.Contains("DefinedTradeContact"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["DefinedTradeContact"].Select("AssociatedParty_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["PersonName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DefinedTradeContact_PersonName"]);
+        //                        drs[0]["DepartmentName"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DefinedTradeContact_DepartmentName"]);
+        //                    }
+        //                }
+        //                //AssociatedParty
+        //                fwbXmlDataSet.Tables["DirectTelephoneCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_DirectTelephoneCommunication"]);
 
-                        fwbXmlDataSet.Tables["FaxCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_FaxCommunication"]);
+        //                fwbXmlDataSet.Tables["FaxCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_FaxCommunication"]);
 
-                        fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[3]["URIID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_URIEmailCommunication"]);
+        //                fwbXmlDataSet.Tables["URIEmailCommunication"].Rows[3]["URIID"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_URIEmailCommunication"]);
 
-                        fwbXmlDataSet.Tables["TelexCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_TelexCommunication"]);
-                        #endregion
-                        ///////////////////////////////////////////////////////////////
-                        if (fwbXmlDataSet.Tables.Contains("OriginLocation"))
-                        {
-                            fwbXmlDataSet.Tables["OriginLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["OriginCode"]);
+        //                fwbXmlDataSet.Tables["TelexCommunication"].Rows[3]["CompleteNumber"] = Convert.ToString(dsFWBMessage.Tables[11].Rows[0]["AP_TelexCommunication"]);
+        //                #endregion
+        //                ///////////////////////////////////////////////////////////////
+        //                if (fwbXmlDataSet.Tables.Contains("OriginLocation"))
+        //                {
+        //                    fwbXmlDataSet.Tables["OriginLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["OriginCode"]);
 
-                            fwbXmlDataSet.Tables["OriginLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["OriginAirport"]);
-                        }
+        //                    fwbXmlDataSet.Tables["OriginLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["OriginAirport"]);
+        //                }
 
 
-                        if (fwbXmlDataSet.Tables.Contains("FinalDestinationLocation"))
-                        {
-                            fwbXmlDataSet.Tables["FinalDestinationLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DestinationCode"]);
+        //                if (fwbXmlDataSet.Tables.Contains("FinalDestinationLocation"))
+        //                {
+        //                    fwbXmlDataSet.Tables["FinalDestinationLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DestinationCode"]);
 
-                            fwbXmlDataSet.Tables["FinalDestinationLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DestinationAirport"]);
-                        }
+        //                    fwbXmlDataSet.Tables["FinalDestinationLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["DestinationAirport"]);
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("SpecifiedLogisticsTransportMovement"))
-                        {
-                            fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["StageCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ModeOfTransport"]);
+        //                if (fwbXmlDataSet.Tables.Contains("SpecifiedLogisticsTransportMovement"))
+        //                {
+        //                    fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["StageCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ModeOfTransport"]);
 
-                            fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ModeCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TransportModeCode"]);
+        //                    fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ModeCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["TransportModeCode"]);
 
-                            fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["Mode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AirTransportMode"]);
+        //                    fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["Mode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AirTransportMode"]);
 
-                            fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltNumber"]);
+        //                    fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltNumber"]);
 
-                            fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["SequenceNumeric"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["SpecifiedLogisticsTransportMovement_SeqNum"]);
+        //                    fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Rows[0]["SequenceNumeric"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["SpecifiedLogisticsTransportMovement_SeqNum"]);
 
-                        }
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("UsedLogisticsTransportMeans"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["PartnerName"]);
-                            }
-                        }
+        //                if (fwbXmlDataSet.Tables.Contains("UsedLogisticsTransportMeans"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["UsedLogisticsTransportMeans"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["PartnerName"]);
+        //                    }
+        //                }
 
-                        if (fwbXmlDataSet.Tables.Contains("ArrivalEvent"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["ArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDate"]);
-                            }
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("OccurrenceArrivalLocation"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDestination"]);
-                                fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["DestinationAirportName"]);
-                                fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["TypeCode"]);
-                            }
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("DepartureEvent"))
-                        {
+        //                if (fwbXmlDataSet.Tables.Contains("ArrivalEvent"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["ArrivalEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDate"]);
+        //                    }
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("OccurrenceArrivalLocation"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDestination"]);
+        //                        fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["DestinationAirportName"]);
+        //                        fwbXmlDataSet.Tables["OccurrenceArrivalLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["TypeCode"]);
+        //                    }
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("DepartureEvent"))
+        //                {
 
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["DepartureEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDate"]);
-                            }
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["DepartureEvent"].Rows[0]["ScheduledOccurrenceDateTime"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltDate"]);
+        //                    }
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("OccurrenceDepartureLocation"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltOrigin"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("OccurrenceDepartureLocation"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[3].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["FltOrigin"]);
 
-                                fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["OriginAirportName"]);
+        //                        fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["OriginAirportName"]);
 
-                                fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["TypeCode"]);
+        //                        fwbXmlDataSet.Tables["OccurrenceDepartureLocation"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["TypeCode"]);
 
-                            }
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("UtilizedLogisticsTransportEquipment"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[4].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehicleNo"]);
-
-                                fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehType"]);
-
-                                fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["Characteristic"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehicleCapacity"]);
-                            }
-
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("AffixedLogisticsSeal"))
-                        {
-                            fwbXmlDataSet.Tables["AffixedLogisticsSeal"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["VehcialeSealNo"]);
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("HandlingSPHInstructions"))
-                        {
-                            fwbXmlDataSet.Tables["HandlingSPHInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCDescription"]);
-
-                            fwbXmlDataSet.Tables["HandlingSPHInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("HandlingSSRInstructions"))
-                        {
-                            fwbXmlDataSet.Tables["HandlingSSRInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HandlingInfo"]);
-
-                            fwbXmlDataSet.Tables["HandlingSSRInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("HandlingOSIInstructions"))
-                        {
-                            fwbXmlDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HandlingInfo"]);
-
-                            fwbXmlDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
+        //                    }
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("UtilizedLogisticsTransportEquipment"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 2 && dsFWBMessage.Tables[4].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehicleNo"]);
+
+        //                        fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehType"]);
+
+        //                        fwbXmlDataSet.Tables["UtilizedLogisticsTransportEquipment"].Rows[0]["Characteristic"] = Convert.ToString(dsFWBMessage.Tables[4].Rows[0]["VehicleCapacity"]);
+        //                    }
+
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("AffixedLogisticsSeal"))
+        //                {
+        //                    fwbXmlDataSet.Tables["AffixedLogisticsSeal"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["VehcialeSealNo"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("HandlingSPHInstructions"))
+        //                {
+        //                    fwbXmlDataSet.Tables["HandlingSPHInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCDescription"]);
+
+        //                    fwbXmlDataSet.Tables["HandlingSPHInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("HandlingSSRInstructions"))
+        //                {
+        //                    fwbXmlDataSet.Tables["HandlingSSRInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HandlingInfo"]);
+
+        //                    fwbXmlDataSet.Tables["HandlingSSRInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("HandlingOSIInstructions"))
+        //                {
+        //                    fwbXmlDataSet.Tables["HandlingOSIInstructions"].Rows[0]["Description"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["HandlingInfo"]);
+
+        //                    fwbXmlDataSet.Tables["HandlingOSIInstructions"].Rows[0]["DescriptionCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SHCCodes"]);
 
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("IncludedAccountingNote"))
-                        {
-                            fwbXmlDataSet.Tables["IncludedAccountingNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AccCode"]);
-
-                            fwbXmlDataSet.Tables["IncludedAccountingNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AccountInfo"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("IncludedCustomsNote"))
-                        {
-                            fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_ContentCode"]);
-
-                            fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_Content"]);
-
-                            fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_SubjectCode"]);
-
-                            fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_Country"]);
-
-                        }
-
-                        //AssociatedReferenceDocument
-                        if (fwbXmlDataSet.Tables.Contains("AssociatedReferenceDocument"))
-                        {
-                            fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocumentID"]);
-                            fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocument_IssueDateTime"]);
-                            fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocument_TypeCode"]);
-                            fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocumentName"]);
-                        }
-
-
-                        if (fwbXmlDataSet.Tables.Contains("AssociatedConsignmentCustomsProcedure"))
-                        {
-                            fwbXmlDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SCI"]);
-                        }
-
-
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableOriginCurrencyExchange"))
-                        {
-                            fwbXmlDataSet.Tables["ApplicableOriginCurrencyExchange"].Rows[0]["SourceCurrencyCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableDestinationCurrencyExchange"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["TargetCurrencyCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["BaseCurrency"]);
-                                fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["MarketID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvRateQualifier"]);
-                                fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["ConversionRate"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvFactor"]);
-                            }
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableLogisticsServiceCharge"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["TransportPaymentMethodCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["PayMode"]);
-                                fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ShipmentType"]);
-                            }
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableLogisticsAllowanceCharge"))
-                        {
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeCode"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["OCSubCode"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["PrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["PrepaidIndicator"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["LocationTypeCode"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["LocationTypeCode"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["Reason"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeHeadCode"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["PartyTypeCode"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeType"]);
-                            //fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ActualAmount"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvFactor"]);
-                            if (fwbXmlDataSet.Tables.Contains("ActualAmount"))
-                            {
-                                if (fwbXmlDataSet.Tables["ActualAmount"].Columns.Contains("currencyID"))
-                                    fwbXmlDataSet.Tables["ActualAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-
-                                if (fwbXmlDataSet.Tables["ActualAmount"].Columns.Contains("ActualAmount_Text"))
-                                    fwbXmlDataSet.Tables["ActualAmount"].Rows[0]["ActualAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["Charge"]);
-                            }
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["TimeBasisQuantity"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeStorageTime"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ItemBasisQuantity"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ServiceDate"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["UpdatedOn"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["SpecialServiceDescription"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeHeadCode"]);
-                            fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["SpecialServiceTime"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["UpdatedOn"]);
-
-                        }
-
-
-                        //Ratingn Part
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableRating"))
-                        {
-
-                            fwbXmlDataSet.Tables["ApplicableRating"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateType"]);
-
-                            if (fwbXmlDataSet.Tables.Contains("TotalChargeAmount"))
-                            {
-                                fwbXmlDataSet.Tables["TotalChargeAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["TotalChargeAmount"].Rows[0]["TotalChargeAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
-
-                            }
-                            fwbXmlDataSet.Tables["ApplicableRating"].Rows[0]["ConsignmentItemQuantity"] = Convert.ToString(dsFWBMessage.Tables[5].Rows.Count);
-
-                            if (fwbXmlDataSet.Tables.Contains("IncludedMasterConsignmentItem"))
-                            {
-                                fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["SequenceNumeric"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["SequenceNumeric"]);//Convert.ToString(dsFWBMessage.Tables[7].Rows.Count);
-
-                                if (fwbXmlDataSet.Tables.Contains("TypeCode"))
-                                {
-                                    fwbXmlDataSet.Tables["TypeCode"].Rows[0]["TypeCode_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["CommCode"]);
-                                    fwbXmlDataSet.Tables["TypeCode"].Rows[0]["listAgencyID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["TypeCode_listAgencyID"]);
-                                }
-
-                                if (fwbXmlDataSet.Tables.Contains("GrossWeightMeasure"))
-                                {
-                                    drs = fwbXmlDataSet.Tables["GrossWeightMeasure"].Select("IncludedMasterConsignmentItem_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["UOM"]);
-                                        drs[0]["GrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["GWeight"]);
-                                    }
-                                }
-
-                                if (fwbXmlDataSet.Tables.Contains("IncludedMasterConsignmentItem_GrossVolumeMeasure"))
-                                {
-                                    drs = fwbXmlDataSet.Tables["IncludedMasterConsignmentItem_GrossVolumeMeasure"].Select("IncludedMasterConsignmentItem_Id=0");
-                                    if (drs.Length > 0)
-                                    {
-                                        drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["UOM"]);
-                                        drs[0]["IncludedMasterConsignmentItem_GrossVolumeMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["GrossVolumeMeasure"]);
-                                    }
-                                }
-
-                                fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["PackageQuantity"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Pieces"]);
-                                fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["PieceQuantity"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Pieces"]);
-                                fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["VolumetricFactor"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["VolumetricFactor"]); // dsFWBMessage.Tables[7].Rows[0]["Pieces"];
-                                fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["Information"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["DimUOM"]);
-
-                                if (fwbXmlDataSet.Tables.Contains("NatureIdentificationTransportCargo"))
-                                {
-
-                                    fwbXmlDataSet.Tables["NatureIdentificationTransportCargo"].Rows[0]["Identification"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["CommodityDesc"]);
-                                }
-                                if (fwbXmlDataSet.Tables.Contains("OriginCountry"))
-                                {
-                                    fwbXmlDataSet.Tables["OriginCountry"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
-                                }
-                                if (fwbXmlDataSet.Tables.Contains("AssociatedUnitLoadTransportEquipment"))
-                                {
-                                    fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDSNo"]);
-                                    fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDType"]);
-                                    fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["LoadedPackageQuantity"] = Convert.ToString(dsFWBMessage.Tables[9].Rows[0]["SLAC"]);
-
-                                    if (fwbXmlDataSet.Tables.Contains("TareWeightMeasure"))
-                                    {
-                                        if (fwbXmlDataSet.Tables["TareWeightMeasure"].Columns.Contains("unitCode"))
-                                            fwbXmlDataSet.Tables["TareWeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["UnitCode"]);
-
-                                        if (fwbXmlDataSet.Tables["TareWeightMeasure"].Columns.Contains("TareWeightMeasure_Text"))
-                                            fwbXmlDataSet.Tables["TareWeightMeasure"].Rows[0]["TareWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["TareWeight"]);
-                                    }
-                                    //OperatingParty
-                                    if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
-                                    {
-                                        drs = fwbXmlDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
-                                        if (drs.Length > 0)
-                                        {
-                                            drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDSNo"]);
-                                            drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["PartnerCode"]);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        fwbXmlDataSet.Tables["TransportLogisticsPackage"].Rows[0]["ItemQuantity"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
-
-                        if (fwbXmlDataSet.Tables.Contains("GrossWeightMeasure"))
-                        {
-                            drs = fwbXmlDataSet.Tables["GrossWeightMeasure"].Select("TransportLogisticsPackage_Id=0");
-                            if (drs.Length > 0)
-                            {
-                                drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
-                                drs[0]["GrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["GrossWeight"]);
-                            }
-                        }
-
-                        //LinearSpatialDim
-                        if (fwbXmlDataSet.Tables.Contains("WidthMeasure"))
-                        {
-                            if (fwbXmlDataSet.Tables["WidthMeasure"].Columns.Contains("unitCode"))
-                                fwbXmlDataSet.Tables["WidthMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
-
-                            if (fwbXmlDataSet.Tables["WidthMeasure"].Columns.Contains("WidthMeasure_Text"))
-                                fwbXmlDataSet.Tables["WidthMeasure"].Rows[0]["WidthMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Width"]);
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("LengthMeasure"))
-                        {
-                            if (fwbXmlDataSet.Tables["LengthMeasure"].Columns.Contains("unitCode"))
-                                fwbXmlDataSet.Tables["LengthMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
-
-                            if (fwbXmlDataSet.Tables["LengthMeasure"].Columns.Contains("LengthMeasure_Text"))
-                                fwbXmlDataSet.Tables["LengthMeasure"].Rows[0]["LengthMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Length"]);
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("HeightMeasure"))
-                        {
-                            if (fwbXmlDataSet.Tables["HeightMeasure"].Columns.Contains("unitCode"))
-                                fwbXmlDataSet.Tables["HeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
-
-                            if (fwbXmlDataSet.Tables["HeightMeasure"].Columns.Contains("HeightMeasure_Text"))
-                                fwbXmlDataSet.Tables["HeightMeasure"].Rows[0]["HeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Height"]);
-                        }
-
-                        fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["CategoryCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateClass"]);
-                        fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["CommodityItemID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["CommodityCode"]);
-                        fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["AppliedRate"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
-
-                        if (fwbXmlDataSet.Tables.Contains("ChargeableWeightMeasure"))
-                        {
-                            if (fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Columns.Contains("unitCode"))
-                                fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
-
-                            if (fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Columns.Contains("ChargeableWeightMeasure_Text"))
-                                fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Rows[0]["ChargeableWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ChargedWeight"]);
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("AppliedAmount"))
-                        {
-                            if (fwbXmlDataSet.Tables["AppliedAmount"].Columns.Contains("currencyID"))
-                                fwbXmlDataSet.Tables["AppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-
-                            if (fwbXmlDataSet.Tables["AppliedAmount"].Columns.Contains("AppliedAmount_Text"))
-                                fwbXmlDataSet.Tables["AppliedAmount"].Rows[0]["AppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
-                        }
-
-                        fwbXmlDataSet.Tables["SpecifiedRateCombinationPointLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["SpecifiedRateCombinationPointLocation_ID"]);
-
-                        //ApplicableUnitLoadDeviceRateClass
-                        fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Shape"]);
-                        fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["BasisCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["MKTRateClass"]);
-                        fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["AppliedPercent"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Discount"]);
-                        fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["ReferenceID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["ReferenceID"]);
-                        fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["ReferenceTypeCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["ReferenceTypeCode"]);
-
-
-                        if (fwbXmlDataSet.Tables.Contains("ApplicableTotalRating"))
-                        {
-
-                            fwbXmlDataSet.Tables["ApplicableTotalRating"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateType"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("CollectAppliedAmount"))
-                        {
-                            fwbXmlDataSet.Tables["CollectAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                            fwbXmlDataSet.Tables["CollectAppliedAmount"].Rows[0]["CollectAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("DestinationAppliedAmount"))
-                        {
-                            fwbXmlDataSet.Tables["DestinationAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                            fwbXmlDataSet.Tables["DestinationAppliedAmount"].Rows[0]["DestinationAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OtherCharges"]);
-
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("TotalAppliedAmount"))
-                        {
-                            fwbXmlDataSet.Tables["TotalAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                            fwbXmlDataSet.Tables["TotalAppliedAmount"].Rows[0]["TotalAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Total"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("ApplicablePrepaidCollectMonetarySummation"))
-                        {
-                            fwbXmlDataSet.Tables["ApplicablePrepaidCollectMonetarySummation"].Rows[0]["PrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["PrepaidIndicator"]);
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("WeightChargeTotalAmount"))
-                        {
-                            fwbXmlDataSet.Tables["WeightChargeTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                            fwbXmlDataSet.Tables["WeightChargeTotalAmount"].Rows[0]["WeightChargeTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
-
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("ValuationChargeTotalAmount"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 5 && dsFWBMessage.Tables[6].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["ValuationChargeTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["ValuationChargeTotalAmount"].Rows[0]["ValuationChargeTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["Charge"]);
-                            }
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("TaxTotalAmount"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["TaxTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["TaxTotalAmount"].Rows[0]["TaxTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["TAX"]);
-                            }
-                        }
-                        if (fwbXmlDataSet.Tables.Contains("AgentTotalDuePayableAmount"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["AgentTotalDuePayableAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["AgentTotalDuePayableAmount"].Rows[0]["AgentTotalDuePayableAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OCDueAgent"]);
-                            }
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("CarrierTotalDuePayableAmount"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["CarrierTotalDuePayableAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["CarrierTotalDuePayableAmount"].Rows[0]["CarrierTotalDuePayableAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OCDueCar"]);
-                            }
-                        }
-
-                        if (fwbXmlDataSet.Tables.Contains("GrandTotalAmount"))
-                        {
-                            if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
-                            {
-                                fwbXmlDataSet.Tables["GrandTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
-                                fwbXmlDataSet.Tables["GrandTotalAmount"].Rows[0]["GrandTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Total"]);
-                            }
-                        }
-
-                        string generateMessage1 = fwbXmlDataSet.GetXml();
-                        generateMessage = new StringBuilder(generateMessage1);
-                        generateMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                        generateMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
-                        generateMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
-                        generateMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
-                        generateMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                        generateMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
-                        generateMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
-                        generateMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
-                        generateMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
-                        generateMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
-
-                        //Replacing duplicate Nodes
-                        generateMessage.Replace("ram:ConsignorParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
-                        generateMessage.Replace("ram:ConsigneeParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
-                        generateMessage.Replace("ram:AssociatedParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
-                        generateMessage.Replace("ram:IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:GrossVolumeMeasure");
-
-
-                        generateMessage.Insert(12, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:rsm=\"iata:waybill:1\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:waybill:1 Waybill_1.xsd\"");
-                        generateMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
-                        //XMLValidator objxMLValidator = new XMLValidator();
-
-                        /////Remove the empty tags from XML
-                        //var document = System.Xml.Linq.XDocument.Parse(generateMessage.ToString());
-                        //var emptyNodes = document.Descendants().Where(e => e.IsEmpty || String.IsNullOrWhiteSpace(e.Value));
-                        //foreach (var emptyNode in emptyNodes.ToArray())
-                        //{
-                        //    emptyNode.Remove();
-                        //}
-                        //generateMessage = new StringBuilder(document.ToString());
-
-                        //string errormsg = objxMLValidator.CTeXMLValidator(generateMessage.ToString());
-                        //if (errormsg.Length > 1)
-                        //{
-                        //    generateMessage.Clear();
-                        //    generateMessage.Append(errormsg);
-                        //}
-                        fwbXmlDataSet.Dispose();
-
-                    }
-                    else
-                    {
-                        generateMessage.Append("No Message format available in the system.");
-                    }
-
-                }
-
-                else
-                {
-                    generateMessage.Append("No Data available in the system to generate message.");
-                }
-
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
-
-            }
-            generateMessage.Replace("PostalStructuredAddress1", "PostalStructuredAddress");
-            return Convert.ToString(generateMessage);
-        }
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("IncludedAccountingNote"))
+        //                {
+        //                    fwbXmlDataSet.Tables["IncludedAccountingNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AccCode"]);
+
+        //                    fwbXmlDataSet.Tables["IncludedAccountingNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["AccountInfo"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("IncludedCustomsNote"))
+        //                {
+        //                    fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["ContentCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_ContentCode"]);
+
+        //                    fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["Content"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_Content"]);
+
+        //                    fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["SubjectCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_SubjectCode"]);
+
+        //                    fwbXmlDataSet.Tables["IncludedCustomsNote"].Rows[0]["CountryID"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["IncludedCustomsNote_Country"]);
+
+        //                }
+
+        //                //AssociatedReferenceDocument
+        //                if (fwbXmlDataSet.Tables.Contains("AssociatedReferenceDocument"))
+        //                {
+        //                    fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocumentID"]);
+        //                    fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["IssueDateTime"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocument_IssueDateTime"]);
+        //                    fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocument_TypeCode"]);
+        //                    fwbXmlDataSet.Tables["AssociatedReferenceDocument"].Rows[0]["Name"] = Convert.ToString(dsFWBMessage.Tables[12].Rows[0]["AssociatedReferenceDocumentName"]);
+        //                }
+
+
+        //                if (fwbXmlDataSet.Tables.Contains("AssociatedConsignmentCustomsProcedure"))
+        //                {
+        //                    fwbXmlDataSet.Tables["AssociatedConsignmentCustomsProcedure"].Rows[0]["GoodsStatusCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["SCI"]);
+        //                }
+
+
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableOriginCurrencyExchange"))
+        //                {
+        //                    fwbXmlDataSet.Tables["ApplicableOriginCurrencyExchange"].Rows[0]["SourceCurrencyCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableDestinationCurrencyExchange"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["TargetCurrencyCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["BaseCurrency"]);
+        //                        fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["MarketID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvRateQualifier"]);
+        //                        fwbXmlDataSet.Tables["ApplicableDestinationCurrencyExchange"].Rows[0]["ConversionRate"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvFactor"]);
+        //                    }
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableLogisticsServiceCharge"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["TransportPaymentMethodCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["PayMode"]);
+        //                        fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ServiceTypeCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["ShipmentType"]);
+        //                    }
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableLogisticsAllowanceCharge"))
+        //                {
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeCode"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["AdditionalID"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["OCSubCode"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["PrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["PrepaidIndicator"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["LocationTypeCode"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["LocationTypeCode"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["Reason"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeHeadCode"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["PartyTypeCode"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeType"]);
+        //                    //fwbXmlDataSet.Tables["ApplicableLogisticsServiceCharge"].Rows[0]["ActualAmount"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ConvFactor"]);
+        //                    if (fwbXmlDataSet.Tables.Contains("ActualAmount"))
+        //                    {
+        //                        if (fwbXmlDataSet.Tables["ActualAmount"].Columns.Contains("currencyID"))
+        //                            fwbXmlDataSet.Tables["ActualAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+
+        //                        if (fwbXmlDataSet.Tables["ActualAmount"].Columns.Contains("ActualAmount_Text"))
+        //                            fwbXmlDataSet.Tables["ActualAmount"].Rows[0]["ActualAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["Charge"]);
+        //                    }
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["TimeBasisQuantity"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeStorageTime"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ItemBasisQuantity"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["ServiceDate"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["UpdatedOn"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["SpecialServiceDescription"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["ChargeHeadCode"]);
+        //                    fwbXmlDataSet.Tables["ApplicableLogisticsAllowanceCharge"].Rows[0]["SpecialServiceTime"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["UpdatedOn"]);
+
+        //                }
+
+
+        //                //Ratingn Part
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableRating"))
+        //                {
+
+        //                    fwbXmlDataSet.Tables["ApplicableRating"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateType"]);
+
+        //                    if (fwbXmlDataSet.Tables.Contains("TotalChargeAmount"))
+        //                    {
+        //                        fwbXmlDataSet.Tables["TotalChargeAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["TotalChargeAmount"].Rows[0]["TotalChargeAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
+
+        //                    }
+        //                    fwbXmlDataSet.Tables["ApplicableRating"].Rows[0]["ConsignmentItemQuantity"] = Convert.ToString(dsFWBMessage.Tables[5].Rows.Count);
+
+        //                    if (fwbXmlDataSet.Tables.Contains("IncludedMasterConsignmentItem"))
+        //                    {
+        //                        fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["SequenceNumeric"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["SequenceNumeric"]);//Convert.ToString(dsFWBMessage.Tables[7].Rows.Count);
+
+        //                        if (fwbXmlDataSet.Tables.Contains("TypeCode"))
+        //                        {
+        //                            fwbXmlDataSet.Tables["TypeCode"].Rows[0]["TypeCode_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["CommCode"]);
+        //                            fwbXmlDataSet.Tables["TypeCode"].Rows[0]["listAgencyID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["TypeCode_listAgencyID"]);
+        //                        }
+
+        //                        if (fwbXmlDataSet.Tables.Contains("GrossWeightMeasure"))
+        //                        {
+        //                            drs = fwbXmlDataSet.Tables["GrossWeightMeasure"].Select("IncludedMasterConsignmentItem_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["UOM"]);
+        //                                drs[0]["GrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["GWeight"]);
+        //                            }
+        //                        }
+
+        //                        if (fwbXmlDataSet.Tables.Contains("IncludedMasterConsignmentItem_GrossVolumeMeasure"))
+        //                        {
+        //                            drs = fwbXmlDataSet.Tables["IncludedMasterConsignmentItem_GrossVolumeMeasure"].Select("IncludedMasterConsignmentItem_Id=0");
+        //                            if (drs.Length > 0)
+        //                            {
+        //                                drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["UOM"]);
+        //                                drs[0]["IncludedMasterConsignmentItem_GrossVolumeMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["GrossVolumeMeasure"]);
+        //                            }
+        //                        }
+
+        //                        fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["PackageQuantity"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Pieces"]);
+        //                        fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["PieceQuantity"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Pieces"]);
+        //                        fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["VolumetricFactor"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["VolumetricFactor"]); // dsFWBMessage.Tables[7].Rows[0]["Pieces"];
+        //                        fwbXmlDataSet.Tables["IncludedMasterConsignmentItem"].Rows[0]["Information"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["DimUOM"]);
+
+        //                        if (fwbXmlDataSet.Tables.Contains("NatureIdentificationTransportCargo"))
+        //                        {
+
+        //                            fwbXmlDataSet.Tables["NatureIdentificationTransportCargo"].Rows[0]["Identification"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["CommodityDesc"]);
+        //                        }
+        //                        if (fwbXmlDataSet.Tables.Contains("OriginCountry"))
+        //                        {
+        //                            fwbXmlDataSet.Tables["OriginCountry"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[1].Rows[0]["ShipperCountry"]);
+        //                        }
+        //                        if (fwbXmlDataSet.Tables.Contains("AssociatedUnitLoadTransportEquipment"))
+        //                        {
+        //                            fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDSNo"]);
+        //                            fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["CharacteristicCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDType"]);
+        //                            fwbXmlDataSet.Tables["AssociatedUnitLoadTransportEquipment"].Rows[0]["LoadedPackageQuantity"] = Convert.ToString(dsFWBMessage.Tables[9].Rows[0]["SLAC"]);
+
+        //                            if (fwbXmlDataSet.Tables.Contains("TareWeightMeasure"))
+        //                            {
+        //                                if (fwbXmlDataSet.Tables["TareWeightMeasure"].Columns.Contains("unitCode"))
+        //                                    fwbXmlDataSet.Tables["TareWeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["UnitCode"]);
+
+        //                                if (fwbXmlDataSet.Tables["TareWeightMeasure"].Columns.Contains("TareWeightMeasure_Text"))
+        //                                    fwbXmlDataSet.Tables["TareWeightMeasure"].Rows[0]["TareWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["TareWeight"]);
+        //                            }
+        //                            //OperatingParty
+        //                            if (fwbXmlDataSet.Tables.Contains("PrimaryID"))
+        //                            {
+        //                                drs = fwbXmlDataSet.Tables["PrimaryID"].Select("OperatingParty_Id=0");
+        //                                if (drs.Length > 0)
+        //                                {
+        //                                    drs[0]["schemeAgencyID"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["ULDSNo"]);
+        //                                    drs[0]["PrimaryID_Text"] = Convert.ToString(dsFWBMessage.Tables[3].Rows[0]["PartnerCode"]);
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                }
+
+        //                fwbXmlDataSet.Tables["TransportLogisticsPackage"].Rows[0]["ItemQuantity"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["PiecesCount"]);
+
+        //                if (fwbXmlDataSet.Tables.Contains("GrossWeightMeasure"))
+        //                {
+        //                    drs = fwbXmlDataSet.Tables["GrossWeightMeasure"].Select("TransportLogisticsPackage_Id=0");
+        //                    if (drs.Length > 0)
+        //                    {
+        //                        drs[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
+        //                        drs[0]["GrossWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["GrossWeight"]);
+        //                    }
+        //                }
+
+        //                //LinearSpatialDim
+        //                if (fwbXmlDataSet.Tables.Contains("WidthMeasure"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["WidthMeasure"].Columns.Contains("unitCode"))
+        //                        fwbXmlDataSet.Tables["WidthMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
+
+        //                    if (fwbXmlDataSet.Tables["WidthMeasure"].Columns.Contains("WidthMeasure_Text"))
+        //                        fwbXmlDataSet.Tables["WidthMeasure"].Rows[0]["WidthMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Width"]);
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("LengthMeasure"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["LengthMeasure"].Columns.Contains("unitCode"))
+        //                        fwbXmlDataSet.Tables["LengthMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
+
+        //                    if (fwbXmlDataSet.Tables["LengthMeasure"].Columns.Contains("LengthMeasure_Text"))
+        //                        fwbXmlDataSet.Tables["LengthMeasure"].Rows[0]["LengthMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Length"]);
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("HeightMeasure"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["HeightMeasure"].Columns.Contains("unitCode"))
+        //                        fwbXmlDataSet.Tables["HeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["MeasureUnit"]);
+
+        //                    if (fwbXmlDataSet.Tables["HeightMeasure"].Columns.Contains("HeightMeasure_Text"))
+        //                        fwbXmlDataSet.Tables["HeightMeasure"].Rows[0]["HeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Height"]);
+        //                }
+
+        //                fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["CategoryCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateClass"]);
+        //                fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["CommodityItemID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["CommodityCode"]);
+        //                fwbXmlDataSet.Tables["ApplicableFreightRateServiceCharge"].Rows[0]["AppliedRate"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
+
+        //                if (fwbXmlDataSet.Tables.Contains("ChargeableWeightMeasure"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Columns.Contains("unitCode"))
+        //                        fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Rows[0]["unitCode"] = Convert.ToString(dsFWBMessage.Tables[0].Rows[0]["UOM"]);
+
+        //                    if (fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Columns.Contains("ChargeableWeightMeasure_Text"))
+        //                        fwbXmlDataSet.Tables["ChargeableWeightMeasure"].Rows[0]["ChargeableWeightMeasure_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["ChargedWeight"]);
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("AppliedAmount"))
+        //                {
+        //                    if (fwbXmlDataSet.Tables["AppliedAmount"].Columns.Contains("currencyID"))
+        //                        fwbXmlDataSet.Tables["AppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+
+        //                    if (fwbXmlDataSet.Tables["AppliedAmount"].Columns.Contains("AppliedAmount_Text"))
+        //                        fwbXmlDataSet.Tables["AppliedAmount"].Rows[0]["AppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
+        //                }
+
+        //                fwbXmlDataSet.Tables["SpecifiedRateCombinationPointLocation"].Rows[0]["ID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["SpecifiedRateCombinationPointLocation_ID"]);
+
+        //                //ApplicableUnitLoadDeviceRateClass
+        //                fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[7].Rows[0]["Shape"]);
+        //                fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["BasisCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["MKTRateClass"]);
+        //                fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["AppliedPercent"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["Discount"]);
+        //                fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["ReferenceID"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["ReferenceID"]);
+        //                fwbXmlDataSet.Tables["ApplicableUnitLoadDeviceRateClass"].Rows[0]["ReferenceTypeCode"] = Convert.ToString(dsFWBMessage.Tables[10].Rows[0]["ReferenceTypeCode"]);
+
+
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicableTotalRating"))
+        //                {
+
+        //                    fwbXmlDataSet.Tables["ApplicableTotalRating"].Rows[0]["TypeCode"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["RateType"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("CollectAppliedAmount"))
+        //                {
+        //                    fwbXmlDataSet.Tables["CollectAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                    fwbXmlDataSet.Tables["CollectAppliedAmount"].Rows[0]["CollectAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("DestinationAppliedAmount"))
+        //                {
+        //                    fwbXmlDataSet.Tables["DestinationAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                    fwbXmlDataSet.Tables["DestinationAppliedAmount"].Rows[0]["DestinationAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OtherCharges"]);
+
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("TotalAppliedAmount"))
+        //                {
+        //                    fwbXmlDataSet.Tables["TotalAppliedAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                    fwbXmlDataSet.Tables["TotalAppliedAmount"].Rows[0]["TotalAppliedAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Total"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("ApplicablePrepaidCollectMonetarySummation"))
+        //                {
+        //                    fwbXmlDataSet.Tables["ApplicablePrepaidCollectMonetarySummation"].Rows[0]["PrepaidIndicator"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["PrepaidIndicator"]);
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("WeightChargeTotalAmount"))
+        //                {
+        //                    fwbXmlDataSet.Tables["WeightChargeTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                    fwbXmlDataSet.Tables["WeightChargeTotalAmount"].Rows[0]["WeightChargeTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["FrtMKT"]);
+
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("ValuationChargeTotalAmount"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 5 && dsFWBMessage.Tables[6].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["ValuationChargeTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["ValuationChargeTotalAmount"].Rows[0]["ValuationChargeTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[6].Rows[0]["Charge"]);
+        //                    }
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("TaxTotalAmount"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["TaxTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["TaxTotalAmount"].Rows[0]["TaxTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["TAX"]);
+        //                    }
+        //                }
+        //                if (fwbXmlDataSet.Tables.Contains("AgentTotalDuePayableAmount"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["AgentTotalDuePayableAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["AgentTotalDuePayableAmount"].Rows[0]["AgentTotalDuePayableAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OCDueAgent"]);
+        //                    }
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("CarrierTotalDuePayableAmount"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["CarrierTotalDuePayableAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["CarrierTotalDuePayableAmount"].Rows[0]["CarrierTotalDuePayableAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["OCDueCar"]);
+        //                    }
+        //                }
+
+        //                if (fwbXmlDataSet.Tables.Contains("GrandTotalAmount"))
+        //                {
+        //                    if (dsFWBMessage.Tables.Count > 4 && dsFWBMessage.Tables[5].Rows.Count > 0)
+        //                    {
+        //                        fwbXmlDataSet.Tables["GrandTotalAmount"].Rows[0]["currencyID"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Currency"]);
+        //                        fwbXmlDataSet.Tables["GrandTotalAmount"].Rows[0]["GrandTotalAmount_Text"] = Convert.ToString(dsFWBMessage.Tables[5].Rows[0]["Total"]);
+        //                    }
+        //                }
+
+        //                string generateMessage1 = fwbXmlDataSet.GetXml();
+        //                generateMessage = new StringBuilder(generateMessage1);
+        //                generateMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                generateMessage.Replace(" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"", "");
+        //                generateMessage.Replace(" xmlns:rsm=\"iata: waybill:1\"", "");
+        //                generateMessage.Replace(" xmlns:ram=\"iata: datamodel:3\"", "");
+        //                generateMessage.Replace(" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        //                generateMessage.Replace(" xsi:schemaLocation=\"iata: waybill:1 Waybill_1.xsd\"", "");
+        //                generateMessage.Replace(" xmlns: ram = \"iata: datamodel:3\"", "");
+        //                generateMessage.Replace("xmlns: ram = \"iata: datamodel:3\"", "");
+        //                generateMessage.Replace(" xmlns:rsm=\"iata:waybill:1\"", "");
+        //                generateMessage.Replace(" xmlns:ram=\"iata:datamodel:3\"", "");
+
+        //                //Replacing duplicate Nodes
+        //                generateMessage.Replace("ram:ConsignorParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
+        //                generateMessage.Replace("ram:ConsigneeParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
+        //                generateMessage.Replace("ram:AssociatedParty_PostalStructuredAddress", "ram:PostalStructuredAddress");
+        //                generateMessage.Replace("ram:IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:GrossVolumeMeasure");
+
+
+        //                generateMessage.Insert(12, " xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:rsm=\"iata:waybill:1\" xmlns:ram=\"iata:datamodel:3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"iata:waybill:1 Waybill_1.xsd\"");
+        //                generateMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
+        //                //XMLValidator objxMLValidator = new XMLValidator();
+
+        //                /////Remove the empty tags from XML
+        //                //var document = System.Xml.Linq.XDocument.Parse(generateMessage.ToString());
+        //                //var emptyNodes = document.Descendants().Where(e => e.IsEmpty || String.IsNullOrWhiteSpace(e.Value));
+        //                //foreach (var emptyNode in emptyNodes.ToArray())
+        //                //{
+        //                //    emptyNode.Remove();
+        //                //}
+        //                //generateMessage = new StringBuilder(document.ToString());
+
+        //                //string errormsg = objxMLValidator.CTeXMLValidator(generateMessage.ToString());
+        //                //if (errormsg.Length > 1)
+        //                //{
+        //                //    generateMessage.Clear();
+        //                //    generateMessage.Append(errormsg);
+        //                //}
+        //                fwbXmlDataSet.Dispose();
+
+        //            }
+        //            else
+        //            {
+        //                generateMessage.Append("No Message format available in the system.");
+        //            }
+
+        //        }
+
+        //        else
+        //        {
+        //            generateMessage.Append("No Data available in the system to generate message.");
+        //        }
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
+
+        //    }
+        //    generateMessage.Replace("PostalStructuredAddress1", "PostalStructuredAddress");
+        //    return Convert.ToString(generateMessage);
+        //}
 
         private string ReplacingNodeNames(string xmlMsg)
         {
@@ -4956,12 +5436,12 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
             return xmlMsg;
         }
 
-        public string GenerateXFWBMessageV3(string awbPrefix, string awbNumber, string customsName)
+        public async Task<string> GenerateXFWBMessageV3(string awbPrefix, string awbNumber, string customsName)
         {
             StringBuilder generateMessage = new StringBuilder();
-            DataSet dsFWBMessage = GetRecordforAWBToGenerateXFWBMessage(awbPrefix, awbNumber);
+            DataSet? dsFWBMessage = await GetRecordforAWBToGenerateXFWBMessage(awbPrefix, awbNumber);
 
-            GenericFunction generalfunction = new GenericFunction();
+            //GenericFunction generalfunction = new GenericFunction();
             try
             {
                 if (dsFWBMessage != null && dsFWBMessage.Tables.Count > 0 && dsFWBMessage.Tables[0].Rows.Count > 0 && dsFWBMessage.Tables[1].Rows.Count > 0 && dsFWBMessage.Tables[3].Rows.Count > 0 && dsFWBMessage.Tables[5].Rows.Count > 0)
@@ -6423,16 +6903,26 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, ou
         /// <param name="awbNumber">AWB Number</param>
         /// <returns></returns>
 
-        private DataSet GetRecordforAWBToGenerateXFWBMessage(string awbPrefix, string awbNumber)
+        private async Task<DataSet?> GetRecordforAWBToGenerateXFWBMessage(string awbPrefix, string awbNumber)
         {
-            DataSet dsFwb = new DataSet();
+            DataSet? dsFwb = new DataSet();
             try
             {
-                SQLServer da = new SQLServer();
-                string[] paramname = new string[] { "AWBPrefix", "AWBNumber" };
-                object[] paramvalue = new object[] { awbPrefix, awbNumber };
-                SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
-                dsFwb = da.SelectRecords("Messaging.GetRecordMakeXFWBMessage", paramname, paramvalue, paramtype);
+                //SQLServer da = new SQLServer();
+                //string[] paramname = new string[] { "AWBPrefix", "AWBNumber" };
+                //object[] paramvalue = new object[] { awbPrefix, awbNumber };
+                //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
+
+                var parameters = new SqlParameter[]
+                {
+                     new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = awbPrefix },
+                     new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbNumber }
+                };
+
+
+                //dsFwb = da.SelectRecords("Messaging.GetRecordMakeXFWBMessage", paramname, paramvalue, paramtype);
+                dsFwb = await _readWriteDao.SelectRecords("Messaging.GetRecordMakeXFWBMessage", parameters);
+
             }
             catch (Exception ex)
             {
