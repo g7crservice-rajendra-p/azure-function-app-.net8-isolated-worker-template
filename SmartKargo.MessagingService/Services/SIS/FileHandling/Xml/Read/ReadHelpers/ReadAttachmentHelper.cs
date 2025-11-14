@@ -8,6 +8,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
     public sealed partial class XmlReaderHelper
     {
+        #region variable Declaration
         /// <summary>
         /// Read Attachment Details for AirWayBill, BM, BMAWB, CM, CMAWB, RM, RMAWB From XML File.
         /// </summary>
@@ -15,24 +16,26 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
         /// <param name="classObject">classObject</param>
         /// 
 
-        private readonly ILogger<XmlReaderHelper> _logger;
+        private readonly  ILogger<XmlReaderHelper> _logger;
+        // Static factory (safe for static use)
+        private static ILoggerFactory ?_loggerFactory;
+
+        // Static logger getter
+        private static ILogger<XmlReaderHelper> _staticLogger => _loggerFactory?.CreateLogger<XmlReaderHelper>();
+        #endregion
 
         #region Constructor
 
-        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory,
-
-            ILogger<XmlReaderHelper> logger)
+        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<XmlReaderHelper> logger, ILoggerFactory loggerFactory )
 
         {
-
             _logger = logger;
-
+            _loggerFactory ??= loggerFactory;
         }
 
         #endregion
 
-        //private static void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
-        private  void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
+        private static void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
         {
             try
             {
@@ -135,7 +138,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadAttachmentDetails", xmlException);
-                _logger.LogError(xmlException, "Error Occurred in ReadAttachmentDetails");
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadAttachmentDetails");
             }
         }
     }

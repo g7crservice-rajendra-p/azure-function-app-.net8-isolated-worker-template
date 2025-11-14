@@ -1,7 +1,9 @@
-﻿using System;
-using System.Xml;
-using QidWorkerRole.SIS.Model;
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using QidWorkerRole.SIS.Model;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
@@ -153,7 +155,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in AssignChargeAmounts", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in AssignChargeAmounts", xmlException);
+                _staticLogger.LogInformation("Error Occurred in AssignChargeAmounts: {0}", xmlException.Message);
+
             }
         }
     }
