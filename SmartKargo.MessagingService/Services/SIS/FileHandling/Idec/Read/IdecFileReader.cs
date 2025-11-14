@@ -1,19 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-
+﻿using FileHelpers;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
+using System.Reflection;
 using System.Xml;
-using System.IO;
-using FileHelpers;
-using System.Globalization;
 
 namespace QidWorkerRole.SIS.FileHandling.Idec.Read
 {
     public class IdecFileReader
     {
-        public IdecFileReader()
+        private readonly ILogger<Cls_BL> _logger;
+        public IdecFileReader(ILogger<Cls_BL> logger)
         {
+            _logger = logger;
             // Initialize all the record types in the IDEC file.
             InitializeRecordTypes();
 

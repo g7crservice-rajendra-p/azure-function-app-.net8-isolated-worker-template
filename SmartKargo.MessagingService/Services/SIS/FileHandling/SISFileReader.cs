@@ -14,11 +14,11 @@ namespace QidWorkerRole.SIS.FileHandling
 {
     public class SISFileReader
     {
-        private readonly ILogger<Cls_BL> _logger;
+        private readonly ILogger<SISFileReader> _logger;
         private readonly GenericFunction _genericFunction;
         private readonly SISBAL _sISBAL;
         public SISFileReader(
-            ILogger<Cls_BL> logger,
+            ILogger<SISFileReader> logger,
             GenericFunction genericFunction,
             SISBAL sISBAL)
         {
