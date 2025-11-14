@@ -1,11 +1,9 @@
-﻿using System.Reflection;
-using System.Text;
-using FileHelpers;
-
-using QidWorkerRole.SIS.FileHandling.Idec.RecordModels.Base;
+﻿using FileHelpers;
 using QidWorkerRole.SIS.FileHandling.Idec.CustomConverters;
 using QidWorkerRole.SIS.FileHandling.Idec.Read;
+using QidWorkerRole.SIS.FileHandling.Idec.RecordModels.Base;
 using QidWorkerRole.SIS.FileHandling.Idec.Write;
+using System.Text;
 
 namespace QidWorkerRole.SIS.FileHandling.Idec.RecordModels
 {

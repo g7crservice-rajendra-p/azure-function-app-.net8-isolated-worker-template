@@ -1,5 +1,4 @@
-﻿using System;
-using FileHelpers;
+﻿using FileHelpers;
 
 namespace QidWorkerRole.SIS.FileHandling.Idec.CustomConverters
 {

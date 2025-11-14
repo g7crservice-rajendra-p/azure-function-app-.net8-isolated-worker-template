@@ -1,36 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
+﻿using log4net;
+using log4net.Appender;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.FileHandling.Idec.Read;
+using QidWorkerRole.SIS.FileHandling.ISValidationReport;
 using QidWorkerRole.SIS.FileHandling.Xml.Read;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
-using QidWorkerRole.SIS.FileHandling.ISValidationReport;
-using ModelClass = QidWorkerRole.SIS.Model;
-using DbEntity = QidWorkerRole.SIS.DAL;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using log4net;
-using log4net.Config;
-using log4net.Appender;
+using DbEntity = QidWorkerRole.SIS.DAL;
+using ModelClass = QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.FileHandling
 {
     public class SISFileReader
     {
+        private readonly ILogger<SISFileReader> _logger;
+        private readonly GenericFunction _genericFunction;
+        private readonly SISBAL _sISBAL;
+        public SISFileReader(
+            ILogger<SISFileReader> logger,
+            GenericFunction genericFunction,
+            SISBAL sISBAL)
+        {
+            _logger = logger;
+            _genericFunction = genericFunction;
+            _sISBAL = sISBAL;
+        }
 
         // For Logging.
-        private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        GenericFunction objGenericFunction = new GenericFunction();
-        Cls_BL objBL = new Cls_BL();
-        SISBAL bojSISBAL = new SISBAL();
+        //private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        //GenericFunction objGenericFunction = new GenericFunction();
+        //Cls_BL objBL = new Cls_BL();
+        //SISBAL bojSISBAL = new SISBAL();
+
         /// <summary>
         /// Read SIS File.
         /// </summary>
         /// <param name="filePath"> File Path to be read.</param>
         /// <param name="logFilePath"> Log File Path. </param>
         /// <returns>true if successful, false if unsuccessful.</returns>
-        public bool ReadSISFile(string filePath, string CreatedBy, out string logFilePath)
+        public async Task<bool> ReadSISFile(string filePath, string CreatedBy, out string logFilePath)
         {
             string appDomainCurrentDomainBaseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string zipFilePath = appDomainCurrentDomainBaseDirectory + @"\SISFilesReceived\ZipFiles\";
@@ -231,7 +240,7 @@ namespace QidWorkerRole.SIS.FileHandling
                                     }
 
                                     MemoryStream logFileMemoryStream = new MemoryStream(bytes);
-                                    logFileBlobUrl = objGenericFunction.UploadToBlob(logFileMemoryStream, logFileName, BlobContainerName);
+                                    logFileBlobUrl = _genericFunction.UploadToBlob(logFileMemoryStream, logFileName, BlobContainerName);
 
                                     if (newFileHeaderId > 0)
                                     {
@@ -239,7 +248,7 @@ namespace QidWorkerRole.SIS.FileHandling
                                         updateDBData.UpdateReceivedFileHeaderData(newFileHeaderId, DBNull.Value.ToString(), logFileBlobUrl);
 
                                         string strMsg = "";
-                                        DataSet ds = bojSISBAL.InterlineMatchPayablesAWBs(newFileHeaderId.ToString(), CreatedBy, strMsg);
+                                        DataSet ds = await _sISBAL.InterlineMatchPayablesAWBs(newFileHeaderId.ToString(), CreatedBy, strMsg);
                                     }
 
                                     return true;
@@ -419,7 +428,7 @@ namespace QidWorkerRole.SIS.FileHandling
                                     }
 
                                     MemoryStream logFileMemoryStream = new MemoryStream(bytes);
-                                    logValFileBlobUrl = objGenericFunction.UploadToBlob(logFileMemoryStream, logValFileName, BlobContainerName);
+                                    logValFileBlobUrl = _genericFunction.UploadToBlob(logFileMemoryStream, logValFileName, BlobContainerName);
                                     DbEntity.CreateDBData createDBDatav = new DbEntity.CreateDBData();
                                     createDBDatav.CreateReceivedISValidationFileHeaderData(Path.GetFileNameWithoutExtension(zipFileNameWithPath) + ".ZIP", DBNull.Value.ToString(), logValFileBlobUrl, receivablesFileID, UserName);
                                 }
