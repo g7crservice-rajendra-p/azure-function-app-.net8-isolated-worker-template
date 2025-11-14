@@ -1,15 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using QID.DataAccess;
-using System.Globalization;
 
 namespace QidWorkerRole.UploadMasters.ShipperConsignee
 {
@@ -18,13 +10,25 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
     /// </summary>
     public class UploadShipperConsigneeMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadShipperConsigneeMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadShipperConsigneeMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadShipperConsigneeMaster> logger)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+        }
+        #endregion
         /// <summary>
         /// Method to Uplaod ShipperConsignee Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean ShipperConsigneeMasterUpload(DataSet dataSetFileData)
+        public async Task<Boolean> ShipperConsigneeMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -36,22 +40,22 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "ShipperConsigneeMasterUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -94,7 +98,7 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableShipperConsigneeExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableShipperConsigneeExcelData);
 
                 foreach (DataColumn dataColumn in dataTableShipperConsigneeExcelData.Columns)
                 {
@@ -1913,9 +1917,9 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
         /// <param name="agentType"> Agent Master Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertUpdateShipperConsigneeMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertUpdateShipperConsigneeMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] { 
@@ -1924,8 +1928,9 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadShipperConsigneeMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadShipperConsigneeMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadShipperConsigneeMaster", sqlParameters);
 
                 return dataSetResult;
             }

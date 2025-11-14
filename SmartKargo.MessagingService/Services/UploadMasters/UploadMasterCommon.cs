@@ -1,19 +1,14 @@
-﻿using DocumentFormat.OpenXml.Packaging;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using QID.DataAccess;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.UploadMasters.Agent;
 using QidWorkerRole.UploadMasters.Booking;
+using QidWorkerRole.UploadMasters.DCM;
 using QidWorkerRole.UploadMasters.ExchangeRates;
 using QidWorkerRole.UploadMasters.ExchangeRatesFromTo;
+using QidWorkerRole.UploadMasters.RateLine;
 using QidWorkerRole.UploadMasters.Vendor;
-using QidWorkerRole.UploadMasters.DCM;
-using System;
-using System.Collections.Generic;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
 using System.Net;
 
 namespace QidWorkerRole.UploadMasters
@@ -32,11 +27,35 @@ namespace QidWorkerRole.UploadMasters
         /// <param name="ErrorMessage"></param>
         /// <param name="IsSuccess"></param>
         /// <param name="IsRetryCountUpdate"></param>
-        public void UpdateUploadMastersStatus(int UploadSummarySrNo, string STATUS, int RecordCount, int SuccessCount, int FailCount,
+        
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadMasterCommon> _logger;
+        private readonly GenericFunction _genericFunction;
+        private readonly UploadVendorMaster _uploadVendorMaster;
+        private readonly UploadRateLineMaster _uploadRateLineMaster;
+
+        #region Constructor
+        public UploadMasterCommon(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadMasterCommon> logger,
+            GenericFunction genericFunction,
+            UploadVendorMaster uploadVendorMaster,
+            UploadRateLineMaster uploadRateLineMaster)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _genericFunction = genericFunction;
+            _uploadVendorMaster = uploadVendorMaster;
+            _uploadRateLineMaster = uploadRateLineMaster;
+        }
+        #endregion
+        //public void UpdateUploadMastersStatus(int UploadSummarySrNo, string STATUS, int RecordCount, int SuccessCount, int FailCount,
+        //                                      int ProgressStatus, string ErrorMessage, int IsSuccess, int IsRetryCountUpdate = 0)
+        public async Task UpdateUploadMastersStatus(int UploadSummarySrNo, string STATUS, int RecordCount, int SuccessCount, int FailCount,
                                               int ProgressStatus, string ErrorMessage, int IsSuccess, int IsRetryCountUpdate = 0)
         {
-            DataSet dataSetResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dataSetResult = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
+
             try
             {
                 SqlParameter[] sqlParameter = new SqlParameter[] { new SqlParameter("@UploadSummarySrNo", UploadSummarySrNo),
@@ -50,7 +69,8 @@ namespace QidWorkerRole.UploadMasters
                                                                    new SqlParameter("@IsRetryCountUpdate", IsRetryCountUpdate)
                                                                  };
 
-                dataSetResult = sqlServer.SelectRecords("Masters.uspUpdateUploadMastersStatus", sqlParameter);
+                //dataSetResult =  sqlServer.SelectRecords("Masters.uspUpdateUploadMastersStatus", sqlParameter);
+                dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUpdateUploadMastersStatus", sqlParameter);
             }
             catch (Exception exception)
             {
@@ -70,11 +90,14 @@ namespace QidWorkerRole.UploadMasters
         /// <param name="ProcessMethod"></param>
         /// <param name="ErrorMessage"></param>
         /// <param name="IsProcessed"></param>
-        public void UpdateUploadMasterSummaryLog(int SrNo, int RecordCount, int SuccessCount, int FailedCount, string Status,
-                                                 int ProgressStatus, string ProcessMethod, string ErrorMessage, bool IsProcessed)
+        //public void UpdateUploadMasterSummaryLog(int SrNo, int RecordCount, int SuccessCount, int FailedCount, string Status,
+        //                                         int ProgressStatus, string ProcessMethod, string ErrorMessage, bool IsProcessed)
+
+        public async Task UpdateUploadMasterSummaryLog(int SrNo, int RecordCount, int SuccessCount, int FailedCount, string Status,
+                                                int ProgressStatus, string ProcessMethod, string ErrorMessage, bool IsProcessed)
         {
-            DataSet dataSetResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dataSetResult = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
             try
             {
                 SqlParameter[] sqlParameter = new SqlParameter[] { new SqlParameter("@SrNo", SrNo),
@@ -88,7 +111,8 @@ namespace QidWorkerRole.UploadMasters
                                                                    new SqlParameter("@IsProcessed", IsProcessed)
                                                                  };
 
-                dataSetResult = sqlServer.SelectRecords("Masters.uspUpdateUploadMasterSummary", sqlParameter);
+                //dataSetResult = sqlServer.SelectRecords("Masters.uspUpdateUploadMasterSummary", sqlParameter);
+                dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUpdateUploadMasterSummary", sqlParameter);
             }
             catch (Exception exception)
             {
@@ -96,10 +120,10 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        public DataSet GetUploadedFileData(string MasterType)
+        public async Task<DataSet> GetUploadedFileData(string MasterType)
         {
-            DataSet ds = new DataSet();
-            SQLServer ObjSql = new SQLServer();
+            DataSet? ds = new DataSet();
+            //SQLServer ObjSql = new SQLServer();
 
             try
             {
@@ -109,7 +133,8 @@ namespace QidWorkerRole.UploadMasters
                 };
 
 
-                ds = ObjSql.SelectRecords("uspGetUplodedFile", sqlParams);
+                //ds = ObjSql.SelectRecords("uspGetUplodedFile", sqlParams);
+                ds = await _readWriteDao.SelectRecords("uspGetUplodedFile", sqlParams);
 
                 if (ds != null)
                     return (ds);
@@ -152,9 +177,10 @@ namespace QidWorkerRole.UploadMasters
             string BlobKey = "";
             try
             {
-                Cls_BL cls_BL = new Cls_BL();
-                GenericFunction genericFunction = new GenericFunction();
-                BlobKey = genericFunction.ReadValueFromDb("BlobStorageKey");
+                //Cls_BL cls_BL = new Cls_BL();
+                
+                //GenericFunction genericFunction = new GenericFunction();
+                BlobKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
                 //BlobKey = sqlServer.GetMasterConfiguration("BlobStorageKey");
 
             }
@@ -172,8 +198,8 @@ namespace QidWorkerRole.UploadMasters
             try
             {
                 //Cls_BL cls_BL = new Cls_BL();
-                GenericFunction genericFunction = new GenericFunction();
-                BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                //GenericFunction genericFunction = new GenericFunction();
+                BlobName = _genericFunction.ReadValueFromDb("BlobStorageName");
             }
             catch (Exception ex)
             {
@@ -202,13 +228,13 @@ namespace QidWorkerRole.UploadMasters
         /// <param name="ErrorMessage"></param>
         /// <param name="IsProcessed"></param>
         /// <returns></returns>
-        internal DataSet InsertMasterSummaryLog(int SrNo, string FileName, string MasterType, string UploadedBy, int RecordCount,
+        internal async Task<DataSet?> InsertMasterSummaryLog(int SrNo, string FileName, string MasterType, string UploadedBy, int RecordCount,
                                                 int SuccessCount, int FailedCount, string Station, string Status, int ProgressStatus,
                                                 string BolbName, string ContainerName, string FolderName, string ProcessMethod, string ErrorMessage,
                                                 bool IsProcessed, DateTime? LastWriteTime = null)
         {
-            DataSet dataSetResult = new DataSet();
-            SQLServer sqlServer = new SQLServer();
+            DataSet? dataSetResult = new DataSet();
+            //SQLServer sqlServer = new SQLServer();
             try
             {
                 SqlParameter[] sqlParameter = new SqlParameter[] { new SqlParameter("@SrNo", SrNo),
@@ -230,7 +256,8 @@ namespace QidWorkerRole.UploadMasters
                                                                    new SqlParameter("@LastWriteTime", LastWriteTime)
                                                                  };
 
-                dataSetResult = sqlServer.SelectRecords("Masters.uspInsertMasterUploadSummaryStatusLog", sqlParameter);
+                //dataSetResult = sqlServer.SelectRecords("Masters.uspInsertMasterUploadSummaryStatusLog", sqlParameter);
+                dataSetResult = await _readWriteDao.SelectRecords("Masters.uspInsertMasterUploadSummaryStatusLog", sqlParameter);
             }
             catch (Exception exception)
             {
@@ -239,16 +266,17 @@ namespace QidWorkerRole.UploadMasters
             return dataSetResult;
         }
 
-        internal DataSet GetUploadMasterMessageConfiguration(string MessageType)
+        internal async Task<DataSet?> GetUploadMasterMessageConfiguration(string MessageType)
         {
-            DataSet dsUploadMasterConfiguration = new DataSet();
+            DataSet? dsUploadMasterConfiguration = new DataSet();
             try
             {
-                SQLServer sqlServer = new SQLServer();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                      new  SqlParameter("@MessageType",MessageType)
                 };
-                dsUploadMasterConfiguration = sqlServer.SelectRecords("uspGetUploadMasterMessageConfiguration", sqlParameter);
+                //dsUploadMasterConfiguration = sqlServer.SelectRecords("uspGetUploadMasterMessageConfiguration", sqlParameter);
+                dsUploadMasterConfiguration = await _readWriteDao.SelectRecords("uspGetUploadMasterMessageConfiguration", sqlParameter);
                 if (dsUploadMasterConfiguration != null && dsUploadMasterConfiguration.Tables.Count > 0)
                 {
                     return dsUploadMasterConfiguration;
@@ -272,18 +300,19 @@ namespace QidWorkerRole.UploadMasters
         /// </summary>
         /// <param name="UploadType">Type of master to be uploaded</param>
         /// <returns></returns>
-        public DataSet GetUploadMasterConfiguration(string UploadType)
+        public async Task<DataSet> GetUploadMasterConfiguration(string UploadType)
         {
             try
             {
-                DataSet ds = new DataSet();
-                SQLServer da = new SQLServer();
+                DataSet? ds = new DataSet();
+                //SQLServer da = new SQLServer();
 
                 SqlParameter[] sqlParams = new SqlParameter[] {
                     new SqlParameter("@UploadType",UploadType),
                 };
 
-                ds = da.SelectRecords("uspGetUploadMasterConfiguration", sqlParams);
+                //ds = da.SelectRecords("uspGetUploadMasterConfiguration", sqlParams);
+                ds = await _readWriteDao.SelectRecords("uspGetUploadMasterConfiguration", sqlParams);
 
                 if (ds != null)
                 {
@@ -305,10 +334,10 @@ namespace QidWorkerRole.UploadMasters
 
             try
             {
-                Cls_BL cls_BL = new Cls_BL();
-                GenericFunction genericFunction = new GenericFunction();
-                string BlobStorageName = genericFunction.ReadValueFromDb("BlobStorageName");
-                string BlobStorageKey = genericFunction.ReadValueFromDb("BlobStorageKey");
+                //Cls_BL cls_BL = new Cls_BL();
+                //GenericFunction genericFunction = new GenericFunction();
+                string BlobStorageName = _genericFunction.ReadValueFromDb("BlobStorageName");
+                string BlobStorageKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
                 //  This is standard code to interact with Blob storage.
                 StorageCredentialsAccountAndKey creds = new StorageCredentialsAccountAndKey(BlobStorageName, BlobStorageKey);
                 CloudStorageAccount storageAccount = new CloudStorageAccount(creds, useHttps: true);
@@ -329,7 +358,7 @@ namespace QidWorkerRole.UploadMasters
                 // Fetch container properties and write out their values.
                 blob.FetchAttributes();
                 //  create a local file
-                string filepath = @Convert.ToString(genericFunction.ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
+                string filepath = @Convert.ToString(_genericFunction.ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
                 //string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\" + FolderName + "\\" + blob.Name.Trim();
 
                 FileInfo fiFilePath = new FileInfo(filepath);
@@ -359,12 +388,12 @@ namespace QidWorkerRole.UploadMasters
             return true;
         }
 
-        internal DataSet InsertCapacityFile(DataTable dt, DateTime Updatedon, string UpdatedBy)
+        internal async Task<DataSet> InsertCapacityFile(DataTable dt, DateTime Updatedon, string UpdatedBy)
         {
             try
             {
-                DataSet ds = new DataSet();
-                QID.DataAccess.SQLServer da = new QID.DataAccess.SQLServer();
+                DataSet? ds = new DataSet();
+                //QID.DataAccess.SQLServer da = new QID.DataAccess.SQLServer();
 
                 SqlParameter[] sqlParams = new SqlParameter[] {
                 new SqlParameter("@tblcapacityTableType", dt),
@@ -373,7 +402,8 @@ namespace QidWorkerRole.UploadMasters
 
             };
 
-                ds = da.SelectRecords("uspUploadCapcityFile", sqlParams);
+                //ds = da.SelectRecords("uspUploadCapcityFile", sqlParams);
+                ds = await _readWriteDao.SelectRecords("uspUploadCapcityFile", sqlParams);
 
                 if (ds != null)
                     return (ds);
@@ -390,7 +420,7 @@ namespace QidWorkerRole.UploadMasters
 
         }
 
-        internal DataSet InsertMasterDetailsLog(int SerialNumber, string MasterValue, string ErrorMessage, bool IsSuccess, DateTime UploadStartTime)
+        internal async Task<DataSet> InsertMasterDetailsLog(int SerialNumber, string MasterValue, string ErrorMessage, bool IsSuccess, DateTime UploadStartTime)
         {
             try
             {
@@ -402,11 +432,13 @@ namespace QidWorkerRole.UploadMasters
                     ,new SqlParameter("UploadedOn",UploadStartTime)
                 };
 
-                SQLServer sqlServer = new SQLServer();
-                DataSet ds = new DataSet("Ds_DetailLogSrNo");
+                //SQLServer sqlServer = new SQLServer();
+                DataSet? ds = new DataSet("Ds_DetailLogSrNo");
 
 
-                ds = sqlServer.SelectRecords("spAddUploadMasterDetails", sqlParameter);
+                //ds = sqlServer.SelectRecords("spAddUploadMasterDetails", sqlParameter);
+                ds = await _readWriteDao.SelectRecords("spAddUploadMasterDetails", sqlParameter);
+
                 return ds;
             }
             catch (Exception ex)
@@ -416,13 +448,13 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        internal bool InsertMasterDetailsLog(DataTable dtUploadMasterDetailLog, DataTable dtCapacity, DateTime UploadStartTime, string UserName)
+        internal async Task<bool> InsertMasterDetailsLog(DataTable dtUploadMasterDetailLog, DataTable dtCapacity, DateTime UploadStartTime, string UserName)
         {
             bool IsSuccess = false;
             try
             {
-                SQLServer sqlServer = new SQLServer();
-                DataSet dsUploadMasterDetailLog = new DataSet();
+                //SQLServer sqlServer = new SQLServer();
+                DataSet? dsUploadMasterDetailLog = new DataSet();
 
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                       new SqlParameter("@dtUploadMasterDetailLog",dtUploadMasterDetailLog)
@@ -430,7 +462,8 @@ namespace QidWorkerRole.UploadMasters
                     , new SqlParameter("@UploadStartTime",UploadStartTime)
                     , new SqlParameter("@UserName",UserName)
                 };
-                dsUploadMasterDetailLog = sqlServer.SelectRecords("uspUploadMasterDetailsLog", sqlParameter);
+                //dsUploadMasterDetailLog = sqlServer.SelectRecords("uspUploadMasterDetailsLog", sqlParameter);
+                dsUploadMasterDetailLog = await _readWriteDao.SelectRecords("uspUploadMasterDetailsLog", sqlParameter);
                 if (dsUploadMasterDetailLog != null && dsUploadMasterDetailLog.Tables.Count > 0 && dsUploadMasterDetailLog.Tables[0].Rows.Count > 0)
                 {
                     bool.TryParse(dsUploadMasterDetailLog.Tables[1].Rows[0]["Result"].ToString(), out IsSuccess);
@@ -609,16 +642,17 @@ namespace QidWorkerRole.UploadMasters
 
         }
 
-        internal void AgentUpdateDateInterval(string nextDate)
+        internal async Task AgentUpdateDateInterval(string nextDate)
         {
             try
             {
-                DataSet dsResult = new DataSet();
-                SQLServer sqlServer = new SQLServer();
+                DataSet? dsResult = new DataSet();
+                //SQLServer sqlServer = new SQLServer();
                 SqlParameter[] sqlParameter = new SqlParameter[] {
                     new SqlParameter("NextDate", nextDate)
                 };
-                dsResult = sqlServer.SelectRecords("uspAgentUpdateDateInterval", sqlParameter);
+                //dsResult = sqlServer.SelectRecords("uspAgentUpdateDateInterval", sqlParameter);
+                dsResult = await _readWriteDao.SelectRecords("uspAgentUpdateDateInterval", sqlParameter);
 
             }
             catch (Exception ex)
@@ -627,7 +661,7 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        internal void UploadMasters(DataSet dsUploadMasters)
+        internal async Task UploadMasters(DataSet dsUploadMasters)
         {
 
             try
@@ -654,8 +688,8 @@ namespace QidWorkerRole.UploadMasters
                     retryCount = Convert.ToInt32(dsUploadMasters.Tables[0].Rows[i]["RetryCount"].ToString());
                     if (uploadType.ToUpper() == UploadMasterType.RateLine.ToUpper())
                     {
-                        RateLine.UploadRateLineMaster uploadRateLineMaster = new RateLine.UploadRateLineMaster();
-                        uploadRateLineMaster.RateLineMasterUpload(dsUploadRecord);
+                        //RateLine.UploadRateLineMaster uploadRateLineMaster = new RateLine.UploadRateLineMaster();
+                        await _uploadRateLineMaster.RateLineMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.AgentGeneralInfo.ToUpper())
                     {
@@ -692,10 +726,10 @@ namespace QidWorkerRole.UploadMasters
                         FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
                         if (!uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
                         {
-                            GenericFunction genericFunction = new GenericFunction();
-                            string uploadAlertEmailID = genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                            //GenericFunction genericFunction = new GenericFunction();
+                            string uploadAlertEmailID = await _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
 
-                            genericFunction.SaveMessageOutBox("Flight Schedule"
+                            await _genericFunction.SaveMessageOutBox("Flight Schedule"
                                 , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
                                 , "", uploadAlertEmailID, "", 0);
                         }
@@ -798,8 +832,9 @@ namespace QidWorkerRole.UploadMasters
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.VendorMaster.ToUpper())
                     {
-                        UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
-                        uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
+                        //UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
+
+                        _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.DCM.ToUpper())
                     {
@@ -815,14 +850,15 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        public void UploadMasters()
+        public async Task UploadMasters()
         {
 
             try
             {
-                DataSet dsUploadMasters = new DataSet();
-                SQLServer sqlServerUplodedFile = new SQLServer();
-                dsUploadMasters = sqlServerUplodedFile.SelectRecords("uspGetUplodedFile");
+                DataSet? dsUploadMasters = new DataSet();
+                //SQLServer sqlServerUplodedFile = new SQLServer();
+                //dsUploadMasters = sqlServerUplodedFile.SelectRecords("uspGetUplodedFile");
+                dsUploadMasters = await _readWriteDao.SelectRecords("uspGetUplodedFile");
 
                 if (dsUploadMasters != null && dsUploadMasters.Tables.Count > 0 && dsUploadMasters.Tables[0].Rows.Count > 0)
                 {
@@ -847,8 +883,8 @@ namespace QidWorkerRole.UploadMasters
                         retryCount = Convert.ToInt32(dsUploadMasters.Tables[0].Rows[i]["RetryCount"].ToString());
                         if (uploadType.ToUpper() == UploadMasterType.RateLine.ToUpper())
                         {
-                            RateLine.UploadRateLineMaster uploadRateLineMaster = new RateLine.UploadRateLineMaster();
-                            uploadRateLineMaster.RateLineMasterUpload(dsUploadRecord);
+                            //RateLine.UploadRateLineMaster uploadRateLineMaster = new RateLine.UploadRateLineMaster();
+                            await _uploadRateLineMaster.RateLineMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.AgentGeneralInfo.ToUpper())
                         {
@@ -885,10 +921,11 @@ namespace QidWorkerRole.UploadMasters
                             FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
                             if (!uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
                             {
-                                GenericFunction genericFunction = new GenericFunction();
-                                string uploadAlertEmailID = genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                                //GenericFunction genericFunction = new GenericFunction();
 
-                                genericFunction.SaveMessageOutBox("Flight Schedule"
+                                string uploadAlertEmailID = await _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+
+                               await _genericFunction.SaveMessageOutBox("Flight Schedule"
                                     , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
                                     , "", uploadAlertEmailID, "", 0);
                             }
@@ -991,8 +1028,9 @@ namespace QidWorkerRole.UploadMasters
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.VendorMaster.ToUpper())
                         {
-                            UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
-                            uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
+                            //UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
+
+                            _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.DCM.ToUpper())
                         {
