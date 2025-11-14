@@ -1,25 +1,34 @@
-﻿using Excel;
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole.UploadMasters.Vendor
 {
     public class UploadVendorMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadVendorMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadVendorMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadVendorMaster> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
 
         /// <summary>
         /// Method to Uplaod Cost Line Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean VendorMasterUpload(DataSet dataSetFileData)
+        public async Task<Boolean> VendorMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -31,22 +40,22 @@ namespace QidWorkerRole.UploadMasters.Vendor
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "VendorMasterUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -89,7 +98,7 @@ namespace QidWorkerRole.UploadMasters.Vendor
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableVendorMasterExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableVendorMasterExcelData);
 
                 foreach (DataColumn dataColumn in dataTableVendorMasterExcelData.Columns)
                 {
@@ -483,9 +492,9 @@ namespace QidWorkerRole.UploadMasters.Vendor
         /// <param name="dataTableCostRemarksType"> CostRemarksType DataTable </param>
         /// <param name="errorInSp"> Stored Procedure Out Parameter </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertVendorMaster(int srNotblMasterUploadSummaryLog, DataTable VendorType, string errorInSp)
+        public async Task<DataSet> ValidateAndInsertVendorMaster(int srNotblMasterUploadSummaryLog, DataTable VendorType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@SrNotblMasterUploadSummaryLog", srNotblMasterUploadSummaryLog),
@@ -495,8 +504,8 @@ namespace QidWorkerRole.UploadMasters.Vendor
 
 
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("Masters.uspUploadVendorMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUploadVendorMaster", sqlParameters);
 
                 return dataSetResult;
             }

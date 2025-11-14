@@ -1,21 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
 namespace QidWorkerRole.UploadMasters.Taxline
 {
     public class UploadTaxLine
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadTaxLine> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
 
-        public Boolean TaxLineMasterUpload(DataSet dataSetFileData)
+        #region Constructor
+        public UploadTaxLine(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadTaxLine> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+        public async Task<Boolean> TaxLineMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -27,21 +33,21 @@ namespace QidWorkerRole.UploadMasters.Taxline
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "TaxLineMasterUploadFile", out uploadFilePath))
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "TaxLineMasterUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -79,7 +85,7 @@ namespace QidWorkerRole.UploadMasters.Taxline
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableTaxLineExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableTaxLineExcelData);
 
                 foreach (DataColumn dataColumn in dataTableTaxLineExcelData.Columns)
                 {
@@ -917,10 +923,10 @@ namespace QidWorkerRole.UploadMasters.Taxline
                 dataTableTaxLineExcelData = null;
             }
         }
-        public DataSet ValidateAndInsertTaxLineMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableTaxLineType, DataTable dataTableTaxLineRemarkType,
+        public async Task<DataSet> ValidateAndInsertTaxLineMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableTaxLineType, DataTable dataTableTaxLineRemarkType,
                                                                                   DataTable dataTableTaxLineParamType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] { 
@@ -931,8 +937,9 @@ namespace QidWorkerRole.UploadMasters.Taxline
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadTaxLineMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadTaxLineMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadTaxLineMaster", sqlParameters);
 
                 return dataSetResult;
             }
