@@ -9,7 +9,7 @@ using WinSCP;
 
 namespace QidWorkerRole
 {
-    class RapidInterfaceMethods
+    public class RapidInterfaceMethods
     {
         static Dictionary<string, string> objDictionary = null;
         static Dictionary<string, string> objUploadDictionary = null;

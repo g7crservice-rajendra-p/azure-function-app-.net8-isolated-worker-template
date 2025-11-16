@@ -25,7 +25,9 @@ namespace QidWorkerRole
         #endregion
         public async Task RapidExceptionCEBU()
         {
-            clsLog.WriteLogAzure("Calling start RapidExceptionCEBU");
+            //clsLog.WriteLogAzure("Calling start RapidExceptionCEBU");
+            _logger.LogInformation("Calling start RapidExceptionCEBU");
+
             String TimeZone = System.Configuration.ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
             DateTime ExecutedOn = DateTime.Now;
             DateTime FromDate = DateTime.Now;
@@ -53,7 +55,9 @@ namespace QidWorkerRole
             dsRapidException = await _balRapidInterfaceForCebu.GetMissingAWBFlownDetails(Convert.ToDateTime(ExecutedOn), FromDate, ToDate);
             if (dsRapidException != null & dsRapidException.Tables.Count > 0)
             {
-                clsLog.WriteLogAzure("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+                //clsLog.WriteLogAzure("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+                _logger.LogInformation("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+
                 DataTable dtAWB = dsRapidException.Tables[0];
                 DataTable dtFlown = dsRapidException.Tables[1];
                 //string toId = GetConfigurationValue("ToEmailIDForRapidException");
@@ -73,7 +77,9 @@ namespace QidWorkerRole
 
                 if ((dtFlown.Rows.Count > 0 || dtAWB.Rows.Count > 0)&& ToEmailID.Length>1 )
                 {
-                    clsLog.WriteLogAzure("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+                    //clsLog.WriteLogAzure("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+                    _logger.LogInformation("GetMissingAWBFlownDetails Process start SK to RAPID Interface..");
+
                     body += "<p style='padding: 3px;font-family:Calibri;'><b/>1.AWB</p>";
                     body += "<table  border=1 style='border-collapse:collapse;padding: 5px;font-family:Calibri;width:600px'>";
                     body += "<tr style='padding: 3px'><td style='padding: 3px'> <b/>AWB Number </td><td style='padding: 3px'> <b/>Date Accepted </td><td style='padding: 3px'> <b/>Origin / Destination </td></tr>";
@@ -121,14 +127,19 @@ namespace QidWorkerRole
                     body += "<tr style='padding: 3px;height:20px'> <td style='padding: 3px'><br/></td><td style='padding: 3px'></td ><td style='padding: 3px'></td ><td style='padding: 3px'></td ><td style='padding: 3px'></td > </tr>";
                     body += "</table>";
 
-                    clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports sending");
+                    //clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports sending");
+                    _logger.LogInformation("RAPIDEXCEPTIONREPORT Reports sending");
+
                     await addMsgToOutBox(strSubject, body, fromID, ToEmailID, false, true, "RAPIDEXCEPTIONREPORT");
-                    clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports Sent");
+                    
+                    //clsLog.WriteLogAzure("RAPIDEXCEPTIONREPORT Reports Sent");
+                    _logger.LogInformation("RAPIDEXCEPTIONREPORT Reports Sent");
                 }
             }
             else
             {
-                clsLog.WriteLog("No Missing Data found in AWB or Flown:");
+                //clsLog.WriteLog("No Missing Data found in AWB or Flown:");
+                _logger.LogInformation("No Missing Data found in AWB or Flown:");
             }
 
             #endregion
@@ -198,7 +209,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error in addMsgToOutBox: {ErrorMessage}", ex.Message);
                 flag = false;
             }
             return flag;
