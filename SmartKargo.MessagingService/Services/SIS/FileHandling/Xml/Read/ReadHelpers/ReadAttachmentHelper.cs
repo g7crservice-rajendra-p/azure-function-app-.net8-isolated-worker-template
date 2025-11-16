@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System;
 using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
@@ -16,9 +15,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
         /// <param name="classObject">classObject</param>
         /// 
 
-        private readonly  ILogger<XmlReaderHelper> _logger;
+        private readonly ILogger<XmlReaderHelper> _logger;
         // Static factory (safe for static use)
-        private static ILoggerFactory ?_loggerFactory;
+        private static ILoggerFactory? _loggerFactory;
 
         // Static logger getter
         private static ILogger<XmlReaderHelper> _staticLogger => _loggerFactory?.CreateLogger<XmlReaderHelper>();
@@ -26,7 +25,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 
         #region Constructor
 
-        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<XmlReaderHelper> logger, ILoggerFactory loggerFactory )
+        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<XmlReaderHelper> logger, ILoggerFactory loggerFactory)
 
         {
             _logger = logger;

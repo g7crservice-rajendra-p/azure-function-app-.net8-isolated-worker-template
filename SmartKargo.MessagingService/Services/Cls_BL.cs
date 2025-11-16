@@ -1,5 +1,4 @@
 ﻿using AE.Net.Mail;
-using Azure;
 using Azure.Messaging.ServiceBus;
 using Azure.Storage;
 using Azure.Storage.Blobs;
@@ -8,10 +7,8 @@ using Azure.Storage.Sas;
 //using DocumentFormat.OpenXml.InkML;
 //using DocumentFormat.OpenXml.Wordprocessing;
 using EAGetMail;
-using Grpc.Core;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualBasic;
 //using Microsoft.WindowsAzure;
 //using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
@@ -20,35 +17,20 @@ using NReco.PdfGenerator;
 using Pop3;
 using QueueManager;
 using RestSharp;
-using SendGrid.Helpers.Mail.Model;
 using SmartKargo.MessagingService.Configurations;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
 using System.Data;
-using System.Data.SqlClient;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web;
-//using System.Web.UI;
-//using System.Web.UI.HtmlControls;
-//using System.Web.UI.WebControls;
 using System.Xml;
 using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace QidWorkerRole
@@ -114,8 +96,8 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<Cls_BL> _logger;
-
-        private static ILogger<Cls_BL> _staticLogger;
+        private static ILoggerFactory? _loggerFactory;
+        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
         private readonly AppConfig _appConfig;
         private readonly FTP _ftp;
         private readonly AWBDetailsAPI _aWBDetailsAPI;
@@ -134,11 +116,12 @@ namespace QidWorkerRole
             AWBDetailsAPI aWBDetailsAPI,
             EMAILOUT emailOut,
             GenericFunction genericFunction,
-            AzureDrive azureDrive)
+            AzureDrive azureDrive,
+            ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _staticLogger ??= logger;
+            _loggerFactory ??= loggerFactory;
             _ftp = ftp;
             _aWBDetailsAPI = aWBDetailsAPI;
             _emailOut = emailOut;
@@ -3073,10 +3056,10 @@ namespace QidWorkerRole
                 // clsLog.WriteLogAzure("queueName: " + queueName);
 
                 // clsLog.WriteLogAzure("Initializing connection");
-                 _staticLogger.LogInformation("connectionString: {0}" , connectionString);
-                 _staticLogger.LogInformation("queueName: {0}" , queueName);
+                 _staticLogger?.LogInformation("connectionString: {0}" , connectionString);
+                 _staticLogger?.LogInformation("queueName: {0}" , queueName);
 
-                 _staticLogger.LogInformation("Initializing connection");
+                 _staticLogger?.LogInformation("Initializing connection");
                 var client = new ServiceBusClient(connectionString);
 
                 #region Send
@@ -3099,7 +3082,7 @@ namespace QidWorkerRole
                 #region Receive
                 // create a receiver that we can use to receive the message
                 // clsLog.WriteLogAzure("Creating receiver");
-                _staticLogger.LogInformation("Creating receiver");
+                _staticLogger?.LogInformation("Creating receiver");
                 ServiceBusReceiverOptions sbro = new ServiceBusReceiverOptions();
                 sbro.ReceiveMode = Receive_Mode.ToUpper() == "TRUE" ? ServiceBusReceiveMode.PeekLock : ServiceBusReceiveMode.ReceiveAndDelete;
                 //sbro.ReceiveMode = ServiceBusReceiveMode.PeekLock;
@@ -3115,19 +3098,19 @@ namespace QidWorkerRole
 
                 // // the received message is a different type as it contains some service set properties
                 // clsLog.WriteLogAzure("Receive message");
-                _staticLogger.LogInformation("Receiver created");
+                _staticLogger?.LogInformation("Receiver created");
 
-                _staticLogger.LogInformation("receiver.PrefetchCount: {0}" , (receiver.PrefetchCount));
-                _staticLogger.LogInformation("receiver.IsClosed: {0}" ,(receiver.IsClosed));
-                _staticLogger.LogInformation("receiver.ReceiveMode: {0}" ,(receiver.ReceiveMode));
-                _staticLogger.LogInformation("receiver.EntityPath: {0}" ,(receiver.EntityPath));
-                _staticLogger.LogInformation("receiver.FullyQualifiedNamespace: {0}",(receiver.FullyQualifiedNamespace));
+                _staticLogger?.LogInformation("receiver.PrefetchCount: {0}" , (receiver.PrefetchCount));
+                _staticLogger?.LogInformation("receiver.IsClosed: {0}" ,(receiver.IsClosed));
+                _staticLogger?.LogInformation("receiver.ReceiveMode: {0}" ,(receiver.ReceiveMode));
+                _staticLogger?.LogInformation("receiver.EntityPath: {0}" ,(receiver.EntityPath));
+                _staticLogger?.LogInformation("receiver.FullyQualifiedNamespace: {0}",(receiver.FullyQualifiedNamespace));
 
                 // the received message is a different type as it contains some service set properties
-                _staticLogger.LogInformation("Receive message");
+                _staticLogger?.LogInformation("Receive message");
                 IReadOnlyList<ServiceBusReceivedMessage> receivedMessages = await receiver.ReceiveMessagesAsync(10, TimeSpan.FromSeconds(10));
                 // clsLog.WriteLogAzure($"Received {receivedMessages.Count} from the queue {queueName} ");
-                _staticLogger.LogInformation($"Received {receivedMessages.Count} from the queue {queueName} ");
+                _staticLogger?.LogInformation($"Received {receivedMessages.Count} from the queue {queueName} ");
 
                 #endregion Receive
 
@@ -3136,7 +3119,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex, "Error on ReceiveMessagesAsync");
+                _staticLogger?.LogError(ex, "Error on ReceiveMessagesAsync");
                 return null;
             }
         }
@@ -8967,7 +8950,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
                 flag = false;
             }
             return flag;

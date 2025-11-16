@@ -1439,7 +1439,9 @@ namespace QidWorkerRole
                                         strMsg = strMsg.Replace("\n", "$");
                                         strMsg = strMsg.Replace("$$", "$");
                                         strMsg = strMsg.Trim('$');
-                                        _aSm.ToASM(strMsg, refNO, strOriginalMessage, strMessageFrom, out flag);
+                                        //await _aSm.ToASM(strMsg, refNO, strOriginalMessage, strMessageFrom, out flag);
+                                        flag = await _aSm.ToASM(strMsg, refNO, strOriginalMessage, strMessageFrom);
+
                                     }
                                 }
                             }
