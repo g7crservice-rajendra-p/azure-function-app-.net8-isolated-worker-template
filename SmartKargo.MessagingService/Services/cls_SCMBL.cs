@@ -857,7 +857,11 @@ namespace QidWorkerRole
 
                             flag = fwbProcessor.DecodeReceiveFWBMessage(strMsg, ref fwbdata, ref fltroute, ref OtherCharges, ref othinfoarray, ref fwbrates,
                                 ref customextrainfo, ref objDimension, ref objAwbBup, refNO, out ErrorMsg);
-                            if (flag == true && _cIMPMessageValidation.ValidateFWB(strMsg, refNO, out ErrorMsg))
+
+                            //if (flag == true && _cIMPMessageValidation.ValidateFWB(strMsg, refNO, out ErrorMsg))
+                            bool success = false;
+                            (success, ErrorMsg) = await _cIMPMessageValidation.ValidateFWB(strMsg, refNO, ErrorMsg);
+                            if (flag == true && success)
                                 flag = fwbProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, strOriginalMessage, strMessageFrom, strFromID, strStatus, PIMAAddress, out ErrorMsg);
                             else
                                 flag = false;
