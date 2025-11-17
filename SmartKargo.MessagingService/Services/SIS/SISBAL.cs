@@ -50,7 +50,8 @@ namespace QidWorkerRole.SIS
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return ds;
             }
         }
@@ -120,9 +121,10 @@ namespace QidWorkerRole.SIS
 
                 return resultDataSet;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return resultDataSet;
             }
         }
