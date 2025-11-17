@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -21,7 +22,7 @@ namespace QidWorkerRole.UploadMasters.Taxline
             _uploadMasterCommon = uploadMasterCommon;
         }
         #endregion
-        public async Task<Boolean> TaxLineMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> TaxLineMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -39,7 +40,7 @@ namespace QidWorkerRole.UploadMasters.Taxline
                         if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "TaxLineMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -52,15 +53,15 @@ namespace QidWorkerRole.UploadMasters.Taxline
                 }
                 return true;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
                 return false;
             }
         }
 
 
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableTaxLineExcelData = new DataTable("dataTableTaxLineExcelData");
 
@@ -907,7 +908,7 @@ namespace QidWorkerRole.UploadMasters.Taxline
 
                 // Database Call to Validate & Insert Rate Line Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertTaxLineMaster(srNotblMasterUploadSummaryLog, TaxLineType, TaxLineRemarkType,
+                await ValidateAndInsertTaxLineMaster(srNotblMasterUploadSummaryLog, TaxLineType, TaxLineRemarkType,
                                                                                TaxLineParamType,
                                                                                errorInSp);
 
@@ -929,13 +930,13 @@ namespace QidWorkerRole.UploadMasters.Taxline
             DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@TaxLineTableType", dataTableTaxLineType),
-                                                                      new SqlParameter("@TaxLineRemarkTableType", dataTableTaxLineRemarkType),
-                                                                      new SqlParameter("@TaxLineParamTableType", dataTableTaxLineParamType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@TaxLineTableType", dataTableTaxLineType),
+                    new SqlParameter("@TaxLineRemarkTableType", dataTableTaxLineRemarkType),
+                    new SqlParameter("@TaxLineParamTableType", dataTableTaxLineParamType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 //SQLServer sQLServer = new SQLServer();
                 //dataSetResult = sQLServer.SelectRecords("uspUploadTaxLineMaster", sqlParameters);
@@ -943,9 +944,9 @@ namespace QidWorkerRole.UploadMasters.Taxline
 
                 return dataSetResult;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
                 return dataSetResult;
             }
         }

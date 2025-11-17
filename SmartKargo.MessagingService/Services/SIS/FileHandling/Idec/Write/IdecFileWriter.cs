@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Xml;
+﻿using FileHelpers;
 using QidWorkerRole.SIS.FileHandling.Idec.RecordModels;
-
-using FileHelpers;
 using QidWorkerRole.SIS.Model;
 using QidWorkerRole.SIS.Model.SupportingModels;
-using System.IO;
+using System.Reflection;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Idec.Write
 {

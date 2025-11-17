@@ -1,23 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using System.Globalization;
 
 namespace QidWorkerRole.UploadMasters.PartnerSchedule
 {
     public class UploadPartnerSchedule
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadPartnerSchedule> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
 
-        public Boolean PartnerScheduleUpload(DataSet dsFiles)
+        #region Constructor
+        public UploadPartnerSchedule(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadPartnerSchedule> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+
+        }
+        #endregion
+
+        public async Task<bool> PartnerScheduleUpload(DataSet dsFiles)
         {
             try
             {
@@ -28,23 +36,23 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
                 foreach (DataRow dr in dsFiles.Tables[0].Rows)
                 {
                     // to upadate retry count only.
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
-                    UploadMasterCommon umc = new UploadMasterCommon();
+                    //UploadMasterCommon umc = new UploadMasterCommon();
 
-                    if (umc.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PartnerSchedule", out FilePath))
+                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PartnerSchedule", out FilePath))
                     {
-                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
+                        await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
                     else
                     {
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
 
-                    umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                    umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                 }
             }
             catch (Exception exception)
@@ -54,7 +62,7 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
             return false;
         }
 
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTablePartnerScheduleExcelData = new DataTable("dataTablePartnerScheduleExcelData");
 
@@ -80,7 +88,7 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTablePartnerScheduleExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTablePartnerScheduleExcelData);
 
                 foreach (DataColumn dataColumn in dataTablePartnerScheduleExcelData.Columns)
                 {
@@ -757,7 +765,7 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
                 }
 
                 string errorInSp = string.Empty;
-                ValidateAndInsertPartnerSchedule(srNotblMasterUploadSummaryLog, PartnerScheduleType, errorInSp);
+                await ValidateAndInsertPartnerSchedule(srNotblMasterUploadSummaryLog, PartnerScheduleType, errorInSp);
                 return true;
             }
             catch (Exception exception)
@@ -771,19 +779,21 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
             }
         }
 
-        public DataSet ValidateAndInsertPartnerSchedule(int srNotblMasterUploadSummaryLog, DataTable partnerScheduleType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertPartnerSchedule(int srNotblMasterUploadSummaryLog, DataTable partnerScheduleType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@PartnerScheduleType", partnerScheduleType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@PartnerScheduleType", partnerScheduleType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
+
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
 
                 return dataSetResult;
             }

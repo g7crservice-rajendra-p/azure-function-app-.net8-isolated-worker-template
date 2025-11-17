@@ -71,7 +71,8 @@ namespace QidWorkerRole
                         IsSAPEnabled = false;
                     }
 
-                    clsLog.WriteLogAzure("Messaging Service Started!!!");
+                    // clsLog.WriteLogAzure("Messaging Service Started!!!");
+                    _logger.LogInformation("Messaging Service Started!!!");
 
                     #region : Service start-restart alert : 
                     int outport = 0;
@@ -141,7 +142,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         #endregion
@@ -163,7 +165,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -184,7 +187,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -209,7 +213,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -229,7 +234,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -249,7 +255,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -269,7 +276,8 @@ namespace QidWorkerRole
 
                     if (dsUploadMasters != null && dsUploadMasters.Tables.Count > 0 && dsUploadMasters.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("Count of master files to be uploaded: " + dsUploadMasters.Tables[0].Rows.Count.ToString());
+                        // clsLog.WriteLogAzure("Count of master files to be uploaded: " + dsUploadMasters.Tables[0].Rows.Count.ToString());
+                        _logger.LogInformation("Count of master files to be uploaded: {0}" , dsUploadMasters.Tables[0].Rows.Count);
                         UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
                         uploadMasterCommon.UploadMasters(dsUploadMasters);
                     }
@@ -279,7 +287,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -322,7 +331,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -339,7 +349,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         //Not in used commeneted 
@@ -353,7 +364,7 @@ namespace QidWorkerRole
         //    Task Task6 = AsyncUploadMastersProcess();
         //    await Task.WhenAll(Task1, Task2, Task3, Task4, Task5, Task6);
         //}
-         
+
         //private Task AsyncDBCalls()
         //{
         //    return Task.Run(() =>
@@ -361,7 +372,7 @@ namespace QidWorkerRole
         //        DBCalls();
         //    });
         //}
-        
+
         //private Task AsyncSendMail()
         //{
         //    return Task.Run(() =>

@@ -292,7 +292,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 strarr = null;
             }
             return strarr;
@@ -326,7 +327,11 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+            catch (Exception ex)
+            {
+                //  //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            }
         }
 
         private async Task<DataSet?> GenertateAWBDimensions(string AWBNumber, int AWBPieces, DataSet Dimensions, decimal AWBWt, string UserName, DateTime TimeStamp, bool IsCreate, string AWBPrefix)
@@ -395,7 +400,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 ds = null;
             }
             finally
@@ -437,19 +443,19 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
         //}
 
         //public void SaveandUpdagteFBLMessageinDatabase(ref MessageData.fblinfo fbldata, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo[] othinfoarray, ref MessageData.consignmentorigininfo[] consigmnentOrigin, ref MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
-        public async Task<(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport,  MessageData.dimensionnfo[] objDimension,  MessageData.ULDinfo[] uld,  MessageData.otherserviceinfo[] othinfoarray,  MessageData.consignmentorigininfo[] consigmnentOrigin)> SaveandUpdagteFBLMessageinDatabase( MessageData.fblinfo fbldata,  MessageData.unloadingport[] unloadingport,  MessageData.dimensionnfo[] objDimension,  MessageData.ULDinfo[] uld,  MessageData.otherserviceinfo[] othinfoarray,  MessageData.consignmentorigininfo[] consigmnentOrigin,  MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
+        public async Task<(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin)> SaveandUpdagteFBLMessageinDatabase(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin, MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
         {
 
             try
             {
                 //SQLServer dtb = new SQLServer();
                 //GenericFunction gf = new GenericFunction();
-                
+
                 //AuditLog log = new AuditLog();
                 string flightnum = fbldata.carriercode + fbldata.fltnum;
                 DateTime flightdate = new DateTime();
@@ -511,7 +517,7 @@ namespace QidWorkerRole
                         //string[] pcname = new string[] { "AWBnumber", "AWBPrefix", "RefNo", "MessageType" };
                         //object[] pcvalues = new object[] { AWBNum, AWBPrefix, RefNo, "XFBL" };
                         //SqlDbType[] pctypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar };
-                        
+
                         sqlParameters = new SqlParameter[]
                         {
                             new SqlParameter("@AWBnumber", AWBNum),
@@ -521,7 +527,7 @@ namespace QidWorkerRole
                         };
 
                         //DataSet dscheck = dtb.SelectRecords("spCheckStatusofAWB", pcname, pcvalues, pctypes);
-                        
+
                         DataSet? dscheck = await _readWriteDao.SelectRecords("spCheckStatusofAWB", sqlParameters);
                         if (dscheck != null && dscheck.Tables != null && dscheck.Tables.Count > 0 && dscheck.Tables[0].Rows.Count > 0)
                         {
@@ -773,7 +779,8 @@ namespace QidWorkerRole
                             string procedure = "spInsertBookingDataFromFFR";
                             //if (!dtb.InsertData(procedure, paramname, paramtype, paramvalue))
                             if (!await _readWriteDao.ExecuteNonQueryAsync(procedure, parameters))
-                                clsLog.WriteLogAzure("Error in XFBL AWB Add Error for:" + consinfo[i].awbnum);
+                                // clsLog.WriteLogAzure("Error in XFBL AWB Add Error for:" + consinfo[i].awbnum);
+                                _logger.LogWarning("Error in XFBL AWB Add Error for: {0}", consinfo[i].awbnum);
 
 
                             // Audit log
@@ -932,13 +939,14 @@ namespace QidWorkerRole
                                     //if (!dtb.UpdateData("spSaveFFRAWBRoute", RName, RType, RValues))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("spSaveFFRAWBRoute", sqlPara))
                                         //clsLog.WriteLogAzure("Error in Save AWB Route XFBL " + dtb.LastErrorDescription);
-                                        clsLog.WriteLogAzure("Error in Save AWB Route XFBL for:" );
+                                        // clsLog.WriteLogAzure("Error in Save AWB Route XFBL for:" );
+                                        _logger.LogWarning("Error in Save AWB Route XFBL for:");
 
                                     #region Save AWBNo On Audit Log
                                     //string[] CNname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight", "FlightNo", "FlightDate", "FlightOrigin", "FlightDestination", "Action", "Message", "Description", "UpdatedBy", "UpdatedOn", "Public" };
                                     //SqlDbType[] CType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit };
                                     //object[] CValues = new object[] { AWBPrefix, AWBNum, consinfo[i].origin, consinfo[i].dest, consinfo[i].pcscnt, consinfo[i].weight, flightnum, flightdate, fltroute[route].fltdept, fltroute[route].fltarrival, "Booked", "XFBL", "AWB Flight Information", "XFBL", DateTime.Today.ToString(), 1 };
-                                    
+
                                     SqlParameter[] sqlParametersAWBP = new SqlParameter[]
                                     {
                                         new SqlParameter("@AWBPrefix", AWBPrefix),
@@ -961,20 +969,22 @@ namespace QidWorkerRole
                                     //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParametersAWBP))
                                         //clsLog.WriteLog("AWB Audit log  for:" + AWBNum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
-                                        clsLog.WriteLogAzure("AWB Audit log  for:" + AWBNum);
+                                        // clsLog.WriteLogAzure("AWB Audit log  for:" + AWBNum);
+                                        _logger.LogWarning("AWB Audit log  for: {0}", AWBNum);
                                     #endregion
                                 }
                             }
                         }
                     }
-                        #endregion
+                    #endregion
                 }
-               return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin);
+                return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin);
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin); ;
             }
 
@@ -1020,7 +1030,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;

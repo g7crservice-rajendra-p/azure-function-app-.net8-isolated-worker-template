@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using QidWorkerRole.SIS.Model.ISValidationReport;
-
-using System.Reflection;
-using System.Globalization;
-using System.IO;
+﻿using QidWorkerRole.SIS.Model.ISValidationReport;
 using System.Data;
-using System.Linq;
+using System.Globalization;
 
 namespace QidWorkerRole.SIS.FileHandling.ISValidationReport
 {

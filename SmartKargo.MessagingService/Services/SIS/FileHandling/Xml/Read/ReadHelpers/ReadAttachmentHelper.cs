@@ -1,16 +1,39 @@
-﻿using System;
-using System.Xml;
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
     public sealed partial class XmlReaderHelper
     {
+        #region variable Declaration
         /// <summary>
         /// Read Attachment Details for AirWayBill, BM, BMAWB, CM, CMAWB, RM, RMAWB From XML File.
         /// </summary>
         /// <param name="xmlTextReader">XmlTextReader</param>
         /// <param name="classObject">classObject</param>
+        /// 
+
+        private readonly ILogger<XmlReaderHelper> _logger;
+        // Static factory (safe for static use)
+        private static ILoggerFactory? _loggerFactory;
+
+        // Static logger getter
+        private static ILogger<XmlReaderHelper> _staticLogger => _loggerFactory?.CreateLogger<XmlReaderHelper>();
+        #endregion
+
+        #region Constructor
+
+        public XmlReaderHelper(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<XmlReaderHelper> logger, ILoggerFactory loggerFactory)
+
+        {
+            _logger = logger;
+            _loggerFactory ??= loggerFactory;
+        }
+
+        #endregion
+
         private static void ReadAttachmentDetails(XmlTextReader xmlTextReader, object classObject)
         {
             try
@@ -80,7 +103,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
                                     case XmlConstants.RejectionMemo:
                                         if (xmlTextReader.Value.Equals(XmlConstants.Y))
                                         {
-                                            ((RejectionMemo)classObject).AttachmentIndicatorValidated =true;
+                                            ((RejectionMemo)classObject).AttachmentIndicatorValidated = true;
                                         }
                                         break;
                                     case XmlConstants.RMAirWayBill:
@@ -113,7 +136,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadAttachmentDetails", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in ReadAttachmentDetails", xmlException);
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadAttachmentDetails");
             }
         }
     }

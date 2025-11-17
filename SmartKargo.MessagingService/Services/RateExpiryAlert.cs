@@ -14,7 +14,7 @@ using System.Text;
 
 namespace QidWorkerRole
 {
-   public class RateExpiryAlert
+    public class RateExpiryAlert
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<RateExpiryAlert> _logger;
@@ -65,7 +65,7 @@ namespace QidWorkerRole
                         MemoryStream memoryStream = null;
                         htmlToPdfConverter = new NReco.PdfGenerator.HtmlToPdfConverter();
                         htmlToPdfConverter.Margins.Top = 5.0f;
-                        htmlToPdfConverter.Margins.Bottom = 10.0f;                        
+                        htmlToPdfConverter.Margins.Bottom = 10.0f;
                         htmlToPdfConverter.Orientation = NReco.PdfGenerator.PageOrientation.Landscape;
                         var pdfbyteArray = htmlToPdfConverter.GeneratePdf(htmlContent);
                         memoryStream = new MemoryStream(pdfbyteArray);
@@ -84,7 +84,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
 
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //not required as we are using dependency injection
             //finally
@@ -103,14 +104,14 @@ namespace QidWorkerRole
 
         #region Send mail with attachment
         //public  static int SendRateExpiryAlertWithAttachment(string subject, string Msg, DateTime TimeStamp, string MessageType, string ErrorDesc, bool IsBlog, string FromEmailId, string ToEmailId, MemoryStream Attachments, string AttachmentExtension, string FileUrl, string isProcessed, string MessageBoxType, string AttachmentName)
-        public async  Task<int> SendRateExpiryAlertWithAttachment(string subject, string Msg, DateTime TimeStamp, string MessageType, string ErrorDesc, bool IsBlog, string FromEmailId, string ToEmailId, MemoryStream Attachments, string AttachmentExtension, string FileUrl, string isProcessed, string MessageBoxType, string AttachmentName)
+        public async Task<int> SendRateExpiryAlertWithAttachment(string subject, string Msg, DateTime TimeStamp, string MessageType, string ErrorDesc, bool IsBlog, string FromEmailId, string ToEmailId, MemoryStream Attachments, string AttachmentExtension, string FileUrl, string isProcessed, string MessageBoxType, string AttachmentName)
         {
             int SerialNo = 0;
 
             try
             {
                 string procedure = "uspAddMessageAttachmentDetails";
-               // SQLServer dtb = new SQLServer();
+                // SQLServer dtb = new SQLServer();
                 DataSet objDS = null;
                 byte[] objBytes = null;
 
@@ -165,7 +166,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 SerialNo = 0;
             }
 
@@ -203,7 +205,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;

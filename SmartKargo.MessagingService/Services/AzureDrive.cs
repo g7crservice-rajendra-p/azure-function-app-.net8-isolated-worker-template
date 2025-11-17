@@ -4,14 +4,6 @@ using Azure.Storage.Files.Shares;
 using Azure.Storage.Files.Shares.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-//using Microsoft.WindowsAzure.Storage;
-//using Microsoft.WindowsAzure.Storage.Auth;
-//using Microsoft.WindowsAzure.Storage.File;
-//using Microsoft.WindowsAzure.StorageClient;
-//using QID.DataAccess;
-//using System;
-//using System.Collections.Generic;
-using SmartKargo.MessagingService.Configurations;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
 using System.Data;
@@ -111,7 +103,7 @@ namespace QidWorkerRole
         /// Below Method used to Read file from shared Drive and save in the database
         /// </summary>
         /// 
-        public void ReadFromSITADrive()
+        public async Task ReadFromSITADrive()
         {
             try
             {
@@ -119,6 +111,11 @@ namespace QidWorkerRole
 
                 // clsLog.WriteLogAzure("In ReadFromSITADrive()");
                 _logger.LogInformation("In ReadFromSITADrive()");
+
+                //storageAccountName = genericFunction.ReadValueFromDb("SHARE_DRIVE_STORAGE_ACCOUNT_NAME");
+                //storageAccountKey = genericFunction.ReadValueFromDb("SHARE_DRIVE_STORAGE_ACCOUNT_KEY");
+                //shareDriveName = genericFunction.ReadValueFromDb("SHARE_DRIVE_VM_DRIVE_NAME");
+                //RootFolder = genericFunction.ReadValueFromDb("SHARE_DRIVE_VM_ROOT_FOLDER");
 
                 var storageAccountName = ConfigCache.Get("SHARE_DRIVE_STORAGE_ACCOUNT_NAME");
                 var storageAccountKey = ConfigCache.Get("SHARE_DRIVE_STORAGE_ACCOUNT_KEY");
@@ -171,7 +168,7 @@ namespace QidWorkerRole
                                     }
 
                                     // Save incoming message in DB (same as original order)
-                                    _genericFunction.SaveIncomingMessageInDatabase(
+                                    await _genericFunction.SaveIncomingMessageInDatabase(
                                         "MSG:" + fileItem.Name,
                                         strMessage,
                                         "SITAftp",

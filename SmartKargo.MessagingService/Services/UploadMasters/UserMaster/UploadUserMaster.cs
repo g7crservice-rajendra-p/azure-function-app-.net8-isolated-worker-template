@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -27,11 +28,12 @@ namespace QidWorkerRole.UploadMasters.UserMaster
             _uploadMasterCommon = uploadMasterCommon;
         }
         #endregion
+
         /// <summary>
         /// Method to Uplaod User Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public async Task<Boolean> UserMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> UserMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -727,11 +729,11 @@ namespace QidWorkerRole.UploadMasters.UserMaster
             DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@UserMasterNewTableType", userMasterNewTableType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [ 
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@UserMasterNewTableType", userMasterNewTableType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 //SQLServer sQLServer = new SQLServer();
                 //dataSetResult = sQLServer.SelectRecords("Masters.uspUploadUserMaster", sqlParameters);
