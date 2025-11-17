@@ -1,22 +1,32 @@
 ﻿using Excel;
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using System.Data;
 
 namespace QidWorkerRole.UploadMasters.Booking
 {
     public class BookingExcelUpload
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
-        public Boolean BookingUpload(DataSet dsFiles)
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<BookingExcelUpload> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public BookingExcelUpload(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<BookingExcelUpload> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+
+        public async Task<Boolean> BookingUpload(DataSet dsFiles)
         {
             try
             {
@@ -26,23 +36,27 @@ namespace QidWorkerRole.UploadMasters.Booking
                 {
                     userName = dr["UploadedBy"].ToString();
                     // to upadate retry count only.
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
-                    UploadMasterCommon umc = new UploadMasterCommon();
+                    //UploadMasterCommon umc = new UploadMasterCommon();
 
-                    if (umc.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
+                    //if (umc.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
+                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
                     {
                         ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, userName);
                     }
                     else
                     {
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
 
-                    umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                    umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                    //umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    //umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                 }
             }
             catch (Exception exception)
@@ -78,7 +92,7 @@ namespace QidWorkerRole.UploadMasters.Booking
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableBookingExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableBookingExcelData);
 
                 foreach (DataColumn dataColumn in dataTableBookingExcelData.Columns)
                 {
@@ -963,9 +977,9 @@ namespace QidWorkerRole.UploadMasters.Booking
             return jsonString;
         }
 
-        public DataSet ValidateAndInsertPartnerSchedule(int srNotblMasterUploadSummaryLog, DataTable partnerScheduleType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertPartnerSchedule(int srNotblMasterUploadSummaryLog, DataTable partnerScheduleType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {
@@ -974,8 +988,9 @@ namespace QidWorkerRole.UploadMasters.Booking
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadPartnerSchedule", sqlParameters);
 
                 return dataSetResult;
             }
