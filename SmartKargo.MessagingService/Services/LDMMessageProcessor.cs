@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
 
@@ -8,10 +9,12 @@ namespace QidWorkerRole
     {
 
         private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<LDMMessageProcessor> _logger;
 
-        public LDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory)
+        public LDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<LDMMessageProcessor> logger)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
         }
         public bool DecodeReceiveLDMMessage(string strMsg, ref MessageData.LDMInfo ldm, int srno)
         {
@@ -63,7 +66,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -115,7 +119,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return (flag, ldm);

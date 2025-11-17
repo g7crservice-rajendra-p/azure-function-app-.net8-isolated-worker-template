@@ -43,7 +43,7 @@ namespace QidWorkerRole
                         string htmlContent;
                         StringBuilder sbUnDepartedAWBList = new StringBuilder(string.Empty);
                         //GenericFunction genericFunction = new GenericFunction();
-                        
+
                         for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
                         {
                             sbUnDepartedAWBList.Append(Convert.ToString(ds.Tables[0].Rows[i]["body"].ToString()));
@@ -65,7 +65,7 @@ namespace QidWorkerRole
                         String FileUrl = _genericFunction.UploadToBlob(memoryStream, Docfilename + ".pdf", "UnDepAWBs");
                         string FileExcelURL = _genericFunction.UploadToBlob(msExcel, Docfilename + ".xls", "UnDepAWBs");
 
-                        string emailBody = "\r\nHi, \r\n\tPlease see attached Un-departed AWB list on date("+ ds.Tables[1].Rows[0]["UnDepAWBsOnDate"].ToString() + ").\r\n\r\n Thanks.\r\n\r\n Best Regards,\r\n\r\n" + ds.Tables[1].Rows[0]["ClientName"].ToString() + ".";
+                        string emailBody = "\r\nHi, \r\n\tPlease see attached Un-departed AWB list on date(" + ds.Tables[1].Rows[0]["UnDepAWBsOnDate"].ToString() + ").\r\n\r\n Thanks.\r\n\r\n Best Regards,\r\n\r\n" + ds.Tables[1].Rows[0]["ClientName"].ToString() + ".";
 
                         string EmailID = string.Empty;
                         if (ds.Tables[1] != null && ds.Tables[1].Rows.Count > 0)
@@ -75,7 +75,7 @@ namespace QidWorkerRole
 
                         if (!string.IsNullOrEmpty(EmailID))
                         {
-                            SendUnDepartedAWBListAlertWithAttachment("Undeparted AWB list notification", emailBody, DateTime.Now, "UnDepAWBListAlert", "", true, "", ds.Tables[1].Rows[0]["Emailids"].ToString(), memoryStream, ".pdf", FileUrl, "0", "Outbox", Docfilename, FileExcelURL, msExcel);
+                            await SendUnDepartedAWBListAlertWithAttachment("Undeparted AWB list notification", emailBody, DateTime.Now, "UnDepAWBListAlert", "", true, "", ds.Tables[1].Rows[0]["Emailids"].ToString(), memoryStream, ".pdf", FileUrl, "0", "Outbox", Docfilename, FileExcelURL, msExcel);
                         }
                     }
                 }
@@ -83,16 +83,18 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
 
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, "Error in UnDepartedAWBListListener: {ErrorMessage}", ex.Message);
             }
-            finally
-            {
-                //if (db != null)
-                //{
-                //    db = null;
-                //}
 
-            }
+            //finally
+            //{
+            //if (db != null)
+            //{
+            //    db = null;
+            //}
+
+            //}
 
         }
         #endregion
@@ -112,29 +114,29 @@ namespace QidWorkerRole
                 if (Attachments != null)
                     objBytes = Attachments.ToArray();
 
-            //    string[] paramname = new string[] { "Subject",
-            //                                    "Body",
-            //                                    "TimeStamp",
-            //                                    "MessageType",
-            //                                    "ErrorDesc",
-            //                                    "IsBlog",
-            //"FromId", "ToId","Attachment","Extension","FileUrl","isProcessed","MessageBoxType", "AttachmentName","AttachmentExcel","FileUrlExcel"};
+                //    string[] paramname = new string[] { "Subject",
+                //                                    "Body",
+                //                                    "TimeStamp",
+                //                                    "MessageType",
+                //                                    "ErrorDesc",
+                //                                    "IsBlog",
+                //"FromId", "ToId","Attachment","Extension","FileUrl","isProcessed","MessageBoxType", "AttachmentName","AttachmentExcel","FileUrlExcel"};
 
-            //    object[] paramvalue = new object[] {subject,
-            //                                    Msg,
-            //                                    TimeStamp,
-            //                                    MessageType,
-            //                                    ErrorDesc,
-            //                                    IsBlog, FromEmailId,ToEmailId, objBytes,AttachmentExtension,FileUrl,isProcessed,MessageBoxType, AttachmentName,attachExcel,FileUrlExcel};
+                //    object[] paramvalue = new object[] {subject,
+                //                                    Msg,
+                //                                    TimeStamp,
+                //                                    MessageType,
+                //                                    ErrorDesc,
+                //                                    IsBlog, FromEmailId,ToEmailId, objBytes,AttachmentExtension,FileUrl,isProcessed,MessageBoxType, AttachmentName,attachExcel,FileUrlExcel};
 
-            //    SqlDbType[] paramtype = new SqlDbType[] {SqlDbType.VarChar,
-            //                                         SqlDbType.VarChar,
-            //                                         SqlDbType.DateTime,
-            //                                         SqlDbType.VarChar,
-            //                                         SqlDbType.VarChar,
-            //                                         SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar};
-                
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
+                //    SqlDbType[] paramtype = new SqlDbType[] {SqlDbType.VarChar,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.DateTime,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.VarChar,
+                //                                         SqlDbType.Bit,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarChar,SqlDbType.VarBinary,SqlDbType.VarChar};
+
+                SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("@Subject", SqlDbType.VarChar) { Value = subject },
                     new SqlParameter("@Body", SqlDbType.VarChar) { Value = Msg },
                     new SqlParameter("@TimeStamp", SqlDbType.DateTime) { Value = TimeStamp },
@@ -160,8 +162,9 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
                 SerialNo = 0;
+                _logger.LogError(ex, "Error in SendUnDepartedAWBListAlertWithAttachment: {ErrorMessage}", ex.Message);
             }
 
             return SerialNo;

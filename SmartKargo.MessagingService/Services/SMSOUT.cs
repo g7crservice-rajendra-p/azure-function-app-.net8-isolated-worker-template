@@ -5,7 +5,7 @@ using System.Text;
 
 namespace QidWorkerRole
 {
-    class SMSOUT
+    public class SMSOUT
     {
 
         #region variables

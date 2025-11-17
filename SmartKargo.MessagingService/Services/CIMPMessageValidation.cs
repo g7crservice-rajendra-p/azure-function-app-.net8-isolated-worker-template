@@ -14,42 +14,44 @@ namespace QidWorkerRole
             _logger = logger;
             _genericFunction = genericFunction;
         }
-        public bool ValidateFFR(string ffrMessage, int srno, out string errorMessage)
-        {
-            //GenericFunction genericFunction = new GenericFunction();
-            errorMessage = string.Empty;
-            try
-            {
-                string[] arrFFR = ffrMessage.Split('$');
-                if (ffrMessage.Trim().StartsWith("FFR", StringComparison.OrdinalIgnoreCase))
-                {
-                    #region : Validate Mandatory Lines :
-                    string lineIdentifier = string.Empty;
-                    string[] arrMandatoryLines = new string[] { "FFR", "REF" };
 
-                    for (int i = 0; i < arrFFR.Length; i++)
-                        lineIdentifier += "," + arrFFR[i].Split('/')[0].Split(' ')[0].Split('-')[0];
+        /*Not in use currently*/
+        //public async Task<bool> ValidateFFR(string ffrMessage, int srno, out string errorMessage)
+        //{
+        //    //GenericFunction genericFunction = new GenericFunction();
+        //    errorMessage = string.Empty;
+        //    try
+        //    {
+        //        string[] arrFFR = ffrMessage.Split('$');
+        //        if (ffrMessage.Trim().StartsWith("FFR", StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            #region : Validate Mandatory Lines :
+        //            string lineIdentifier = string.Empty;
+        //            string[] arrMandatoryLines = new string[] { "FFR", "REF" };
 
-                    string[] arrLineIdentifier = lineIdentifier.Trim(',').Split(',');
-                    string[] arrIdentifierDifference = arrMandatoryLines.Except(arrLineIdentifier).ToArray();
-                    if (arrIdentifierDifference.Length > 0)
-                    {
-                        errorMessage = arrIdentifierDifference[0] + " line is missing";
-                        _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FFR", false, "", false);
-                        return false;
-                    }
-                    #endregion Validate Mandatory Lines
-                }
-            }
-            catch (Exception ex)
-            {
-                // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error on ValidateFFR");
-            }
-            return true;
-        }
+        //            for (int i = 0; i < arrFFR.Length; i++)
+        //                lineIdentifier += "," + arrFFR[i].Split('/')[0].Split(' ')[0].Split('-')[0];
 
-        public bool ValidateFWB(string fwbMessage, int srno, out string errorMessage)
+        //            string[] arrLineIdentifier = lineIdentifier.Trim(',').Split(',');
+        //            string[] arrIdentifierDifference = arrMandatoryLines.Except(arrLineIdentifier).ToArray();
+        //            if (arrIdentifierDifference.Length > 0)
+        //            {
+        //                errorMessage = arrIdentifierDifference[0] + " line is missing";
+        //                await _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FFR", false, "", false);
+        //                return false;
+        //            }
+        //            #endregion Validate Mandatory Lines
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, "Error on ValidateFFR");
+        //    }
+        //    return true;
+        //}
+
+        public async Task<(bool success,string errorMessage)> ValidateFWB(string fwbMessage, int srno, string errorMessage)
         {
             //GenericFunction genericFunction = new GenericFunction();
             errorMessage = string.Empty;
@@ -70,8 +72,9 @@ namespace QidWorkerRole
                     if (arrIdentifierDifference.Length > 0)
                     {
                         errorMessage = arrIdentifierDifference[0] + " line is missing";
-                        _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FWB", false, "", false);
-                        return false;
+                        await _genericFunction.UpdateErrorMessageToInbox(srno, errorMessage, "FWB", false, "", false);
+                        //return false;
+                        return (false, errorMessage);
                     }
                     #endregion Validate Mandatory Lines
 
@@ -96,7 +99,8 @@ namespace QidWorkerRole
                 // clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, "Error on ValidateFWB");
             }
-            return true;
+            //return true;
+            return (true, errorMessage);
         }
     }
 }

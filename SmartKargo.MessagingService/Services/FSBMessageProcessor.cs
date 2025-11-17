@@ -594,7 +594,7 @@ namespace QidWorkerRole
             }
             catch (System.Exception ex)
             {
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
             }
         }

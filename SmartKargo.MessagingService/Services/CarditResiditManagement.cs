@@ -29,12 +29,15 @@ namespace QidWorkerRole
         string AgentCode = string.Empty, AgentName = string.Empty;
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<CarditResiditManagement> _logger;
+        private readonly GenericFunction _genericFunction;
 
         public CarditResiditManagement(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<CarditResiditManagement> logger)
+            ILogger<CarditResiditManagement> logger,
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _genericFunction = genericFunction;
         }
 
         #region Make CarditClass and CarditConsignmentclass
@@ -93,7 +96,7 @@ namespace QidWorkerRole
             public string ReceptacleType = "";
             public string ReceptacleHndlingClass = "";
         }
-        
+
 
         #endregion
 
@@ -112,7 +115,7 @@ namespace QidWorkerRole
 
             MessageData.FltRoute[] fltroute = new MessageData.FltRoute[] { };
             MessageData.FltRoute flight = new MessageData.FltRoute("");
-            
+
             MessageData.FltRouteDate[] flightRoutedate = new MessageData.FltRouteDate[] { };
             MessageData.FltRouteDate flight2 = new MessageData.FltRouteDate("");
 
@@ -121,7 +124,7 @@ namespace QidWorkerRole
             if (dsDesCode != null && dsDesCode.Tables.Count > 0 && dsDesCode.Tables[0].Rows.Count > 0 && dsDesCode.Tables[0].Rows[0][0].ToString() != "")
             {
                 strDesignatorCode = dsDesCode.Tables[0].Rows[0]["DesignatorCode"].ToString();
-                
+
             }
 
             try
@@ -159,7 +162,7 @@ namespace QidWorkerRole
                                         cardit.MessageRefNumber = strMessageTag[1];
                                         string[] strMessageType = strMessageTag[2].Split(':');
                                         if (strMessageType.Length >= 1)
-                                        {                                            
+                                        {
                                             cardit.MessageType = strMessageType[0];
                                             cardit.MessageVersion = strMessageType[1];
                                         }
@@ -366,19 +369,19 @@ namespace QidWorkerRole
                                 if (splitmessage[K].Length > 5 && splitmessage[K].Contains("LOC"))
                                 {
                                     string[] strinLOCTag = splitmessage[K].Split('+');
-                                   
+
                                     if (strinLOCTag.Length > 2)
                                     {
                                         for (int i = 0; i < strinLOCTag.Length; i++)
                                         {
                                             if (strinLOCTag[i].Contains(":") && isSetFlight)
                                             {
-                                                string[] strFlightOrgDest = strinLOCTag[i].Split(':'); 
+                                                string[] strFlightOrgDest = strinLOCTag[i].Split(':');
 
                                                 if ((splitmessage[K - 1].Contains("TDT+") || splitmessage[K - 1].Contains("TSR+")))
                                                 {
                                                     cardit.FlightOrigin = strFlightOrgDest[0].ToString();
-                                                   // flight.fltdept= strFlightOrgDest[0].ToString();
+                                                    // flight.fltdept= strFlightOrgDest[0].ToString();
                                                 }
                                                 else
                                                 {
@@ -389,7 +392,7 @@ namespace QidWorkerRole
 
                                                 if (!string.IsNullOrEmpty(cardit.FlightOrigin) && !string.IsNullOrEmpty(cardit.FlightDestination))
                                                 {
-                                                    if(cardit.FlightOrigin != cardit.FlightDestination)
+                                                    if (cardit.FlightOrigin != cardit.FlightDestination)
                                                     {
                                                         if (cardit.FlightNo.Substring(0, 2) == strDesignatorCode)
                                                         {
@@ -400,14 +403,14 @@ namespace QidWorkerRole
 
                                                             Array.Resize(ref fltroute, fltroute.Length + 1);
                                                             fltroute[fltroute.Length - 1] = flight;
-                                                        }                                                        
+                                                        }
 
                                                     }
-                                                    
+
                                                 }
-                                                
+
                                             }
-                                            
+
                                         }
                                     }
                                 }
@@ -451,11 +454,11 @@ namespace QidWorkerRole
                                 }
 
                                 if (splitmessage[K].Length > 2
-                                    && (splitmessage[K].Contains("GID") 
-                                        || splitmessage[K].Contains("ID") 
-                                        || splitmessage[K].Contains("PCI") 
-                                        || splitmessage[K].Contains("CNI") 
-                                        || splitmessage[K].Contains("MEA") 
+                                    && (splitmessage[K].Contains("GID")
+                                        || splitmessage[K].Contains("ID")
+                                        || splitmessage[K].Contains("PCI")
+                                        || splitmessage[K].Contains("CNI")
+                                        || splitmessage[K].Contains("MEA")
                                         || splitmessage[K].Contains("DOC")
                                         || splitmessage[K].Contains("FTX+INS")))
                                 {
@@ -554,14 +557,14 @@ namespace QidWorkerRole
                             carditMessage.Add(cardit);
                         }
                     }
-                    
+
                     //SQLServer dbCardit = new SQLServer();
                     int CarditID = 0;
                     int FlgRouteID = 0;
 
                     string FltorgNumber = string.Empty;
                     string FltDestination = string.Empty;
-                        
+
 
                     DataSet dsPAWB = new DataSet();
 
@@ -743,7 +746,7 @@ namespace QidWorkerRole
                                 //    cPg.ReceptacleHndlingClass
                                 //};
                                 //int SuccessSNo = db.GetIntegerByProcedure("dbo.SaveCarditPackageInformation", RName, RValues, RType);
-                                
+
                                 SqlParameter[] parametersR =
                                 {
                                     new SqlParameter("@CarditID", SqlDbType.Int) { Value = CarditID },
@@ -762,7 +765,7 @@ namespace QidWorkerRole
                                 int SuccessSNo = await _readWriteDao.GetIntegerByProcedureAsync("dbo.SaveCarditPackageInformation", parametersR);
                                 if (SuccessSNo < 1)
                                     //clsLog.WriteLogAzure("Error saving tblpomcontCARDIT Table :" + db.LastErrorDescription);
-                                _logger.LogWarning( "Error on saving in tblpomcontCARDIT Table");
+                                    _logger.LogWarning("Error on saving in tblpomcontCARDIT Table");
                             }
 
                             for (int lstIndex = 0; lstIndex < fltroute.Length; lstIndex++)
@@ -825,16 +828,16 @@ namespace QidWorkerRole
                                         new SqlParameter("@TotalGrossWeight", SqlDbType.Decimal) { Value = MailWeight }
                                      };
                                     if (fltroute[lstIndex].fltnum.Substring(0, 2) == strDesignatorCode)
-                                    {                                       
+                                    {
 
-                                        if (!(lstIndex>0 && cd.BagNumber == fltroute[lstIndex-1].BagNumber))
+                                        if (!(lstIndex > 0 && cd.BagNumber == fltroute[lstIndex - 1].BagNumber))
                                         {
                                             FltorgNumber = fltroute[lstIndex].fltdept;
-                                        }                                       
-                                                                               
-                                        FltDestination = fltroute[lstIndex].fltarrival; 
-                                        
-                                        
+                                        }
+
+                                        FltDestination = fltroute[lstIndex].fltarrival;
+
+
                                         strRouteDetails = strRouteDetails + "@" + fltroute[lstIndex].fltnum + "," + fltroute[lstIndex].fltdept + "," + fltroute[lstIndex].fltarrival + "," + "0" + "," + flightRoutedate[lstIndex].FltDate + ",";
                                         //SQLServer db1 = new SQLServer();
                                         FlgRouteID = await _readWriteDao.GetIntegerByProcedureAsync("dbo.SaveCarditRouteInfo", parametersRR);
@@ -1021,10 +1024,10 @@ namespace QidWorkerRole
 
                                             #endregion Parameters to save Route Information
 
-                                            if (! await _readWriteDao.ExecuteNonQueryAsync("spSaveFFRAWBRoute", ParamValuesRoute))
+                                            if (!await _readWriteDao.ExecuteNonQueryAsync("spSaveFFRAWBRoute", ParamValuesRoute))
                                                 //clsLog.WriteLogAzure("Error saving spSaveFFRAWBRoute :" + db.LastErrorDescription);
 
-                                                _logger.LogInformation("Error on saving spSaveFFRAWBRoute");
+                                                _logger.LogWarning("Error on saving spSaveFFRAWBRoute");
                                             else
                                                 //clsLog.WriteLogAzure("Data saving Sucessfully spSaveFFRAWBRoute :" + db.LastErrorDescription);
                                                 _logger.LogInformation("Data saving Sucessfully spSaveFFRAWBRoute ");
@@ -1057,9 +1060,9 @@ namespace QidWorkerRole
                                                     new SqlParameter("@UpdateBilling", SqlDbType.Bit)   { Value = 0 }
                                                 };
 
-                                                if (! await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", ParamValue1))
-                                                   // clsLog.WriteLogAzure("Error saving sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
-                                                    _logger.LogInformation("Error on saving sp_CalculateAWBRatesReprocess");
+                                                if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", ParamValue1))
+                                                    // clsLog.WriteLogAzure("Error saving sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
+                                                    _logger.LogWarning("Error on saving sp_CalculateAWBRatesReprocess");
                                                 else
                                                     //clsLog.WriteLogAzure("Data saved in sp_CalculateAWBRatesReprocess :" + db.LastErrorDescription);
                                                     _logger.LogInformation("Data saved in sp_CalculateAWBRatesReprocess");
@@ -1115,7 +1118,7 @@ namespace QidWorkerRole
                                     {
                                         status = false;
                                         //clsLog.WriteLogAzure(ErrorDesc + db.LastErrorDescription);
-                                        _logger.LogInformation(ErrorDesc);
+                                        _logger.LogWarning(ErrorDesc);
                                     }
                                 }
 
@@ -1140,14 +1143,14 @@ namespace QidWorkerRole
                         }
                         else
                         {
-                            GenericFunction gf = new GenericFunction();                           
-                            
-                            gf.UpdateErrorMessageToInbox(Srno, "Bag# " + cd.BagNumber + " orgin or destination not valid.");
+                            //GenericFunction gf = new GenericFunction();                           
+
+                            await _genericFunction.UpdateErrorMessageToInbox(Srno, "Bag# " + cd.BagNumber + " orgin or destination not valid.");
 
                         }
                     }
                 }
-                
+
             }
             catch (Exception ex)
             {
@@ -1519,13 +1522,13 @@ namespace QidWorkerRole
                 ///SCMExceptionHandling.logexception(ref ex);
                 status = false;
                 //clsLog.WriteLogAzure("Error saving Ssaving Cardit Message :" + ex.ToString());
-                _logger.LogError(ex,"Error on saving Ssaving Cardit Message.");
+                _logger.LogError(ex, "Error on saving Ssaving Cardit Message.");
             }
             return status;
         }
 
         #region Get Agent Code
-        public async Task<DataSet> GetAgentCode(string origin, DateTime tranDate)
+        public async Task<DataSet?> GetAgentCode(string origin, DateTime tranDate)
         {
             //SQLServer da = new SQLServer();
             DataSet? objDs = null;
@@ -1551,28 +1554,28 @@ namespace QidWorkerRole
                     new SqlParameter("@TranDate", SqlDbType.DateTime) { Value = tranDate }
                 };
                 //objDs = da.SelectRecords("spGetPOMAILAgentCode", pname, pvalue, ptype);
-                
+
                 objDs = await _readWriteDao.SelectRecords("spGetPOMAILAgentCode", parameters);
 
                 return objDs;
             }
             catch (Exception ex)
             {
-                objDs = null;
+                //objDs = null;
                 //clsLog.WriteLogAzure("Error saving spGetPOMAILAgentCode :" + ex.ToString());
                 _logger.LogError(ex, "Error on saving spGetPOMAILAgentCode");
                 // SCMExceptionHandling.logexception(ref ex);
                 return null;
             }
-            finally
-            {
-                if (objDs != null)
-                    objDs.Dispose();
-            }
+            //finally
+            //{
+            //    if (objDs != null)
+            //        objDs.Dispose();
+            //}
         }
         #endregion
 
-        public async Task<DataSet> GetDesigCode()
+        public async Task<DataSet?> GetDesigCode()
         {
             //SQLServer da = new SQLServer();
             DataSet? objDs = null;
@@ -1602,7 +1605,7 @@ namespace QidWorkerRole
             {
                 objDs = null;
                 //clsLog.WriteLogAzure("Error on saving spGetPOMAILAgentCode :" + ex.ToString());
-                _logger.LogError(ex,"Error on saving spGetPOMAILAgentCode");
+                _logger.LogError(ex, "Error on saving spGetPOMAILAgentCode");
                 // SCMExceptionHandling.logexception(ref ex);
                 return null;
             }
@@ -1613,7 +1616,7 @@ namespace QidWorkerRole
             }
         }
 
-        public async Task<DataSet> GenerateMailPAWB(string consignmentID, string station, string destination, string commodityCode, string commodityDesc, int pcs, decimal wgt, string fltDetails, string AWBprefix, string LoginName, string callFrom)
+        public async Task<DataSet?> GenerateMailPAWB(string consignmentID, string station, string destination, string commodityCode, string commodityDesc, int pcs, decimal wgt, string fltDetails, string AWBprefix, string LoginName, string callFrom)
         {
             //SQLServer da = new SQLServer();
             DataSet? dsPOMailDetails = new DataSet();
@@ -1688,16 +1691,17 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //clsLog.WriteLogAzure("Data saved in uspSavePAWBMailBooking :" + ex.InnerException);
-                _logger.LogError(ex, "Data saved in uspSavePAWBMailBooking" );
+                _logger.LogError(ex, "Data saved in uspSavePAWBMailBooking");
             }
 
             return null;
         }
 
-        public DataSet setTableNameToDataSetTable(DataSet dsTables)
+        public DataSet? setTableNameToDataSetTable(DataSet dsTables)
         {
             string sTableName = "";
             if (dsTables != null && dsTables.Tables.Count > 0)
+            {
                 for (int i = 0; i < dsTables.Tables.Count; i++)
                 {
                     try
@@ -1718,10 +1722,12 @@ namespace QidWorkerRole
                         _logger.LogError(ex, "Error on setTableNameToDataSetTable");
                     }
                 }
+            }
+
             return dsTables;
         }
 
-        public async Task<DataSet> UpdatePAWBToConsignment(string ConsignmentID, string AWBPrefix, string AWBNumber)
+        public async Task<DataSet?> UpdatePAWBToConsignment(string ConsignmentID, string AWBPrefix, string AWBNumber)
         {
             //SQLServer da = new SQLServer();
             DataSet? dsPOMailDetails = new DataSet();
@@ -1765,8 +1771,5 @@ namespace QidWorkerRole
 
             return null;
         }
-
-
-
     }
 }

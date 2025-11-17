@@ -1,315 +1,315 @@
-﻿using System.Data;
-using System.Configuration;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using SmartKargo.MessagingService.Data.Dao.Interfaces;
-namespace QidWorkerRole
-{
-    public class BALReveraInterface
-    {
-        #region Variables
-        public static string ConStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        //SQLServer db = new SQLServer();
+﻿//using Microsoft.Data.SqlClient;
+//using Microsoft.Extensions.Logging;
+//using SmartKargo.MessagingService.Data.Dao.Interfaces;
+//using System.Configuration;
+//using System.Data;
+//namespace QidWorkerRole
+//{
+//    public class BALReveraInterface
+//    {
+//        #region Variables
+//        public static string ConStr = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+//        //SQLServer db = new SQLServer();
 
-        private readonly ISqlDataHelperDao _readWriteDao;
-        private readonly ILogger<EMAILOUT> _logger;
+//        private readonly ISqlDataHelperDao _readWriteDao;
+//        private readonly ILogger<EMAILOUT> _logger;
 
-        #endregion
-        public BALReveraInterface(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<EMAILOUT> logger)
-        {
-            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
-            _logger = logger;
-        }
-        #region GetAWBInfo
-        public async Task<DataSet> GetAWBInfo(DateTime FromDate, DateTime ToDate)
-        {
-            DataSet? dsGetAWBInfo = new DataSet("BALReveraInterface_dsGetAWBInfo");
-            try
-            {
+//        #endregion
+//        public BALReveraInterface(ISqlDataHelperFactory sqlDataHelperFactory,
+//            ILogger<EMAILOUT> logger)
+//        {
+//            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+//            _logger = logger;
+//        }
+//        #region GetAWBInfo
+//        public async Task<DataSet> GetAWBInfo(DateTime FromDate, DateTime ToDate)
+//        {
+//            DataSet? dsGetAWBInfo = new DataSet("BALReveraInterface_dsGetAWBInfo");
+//            try
+//            {
 
-                //string[] Pname = new string[2];
-                //Pname[0] = "FromDate";
-                //Pname[1] = "ToDate";
+//                //string[] Pname = new string[2];
+//                //Pname[0] = "FromDate";
+//                //Pname[1] = "ToDate";
 
-                //object[] Pvalue = new object[2];
-                //Pvalue[0] = FromDate;
-                //Pvalue[1] = ToDate;
+//                //object[] Pvalue = new object[2];
+//                //Pvalue[0] = FromDate;
+//                //Pvalue[1] = ToDate;
 
-                //SqlDbType[] Ptype = new SqlDbType[2];
-                //Ptype[0] = SqlDbType.DateTime;
-                //Ptype[1] = SqlDbType.DateTime;
+//                //SqlDbType[] Ptype = new SqlDbType[2];
+//                //Ptype[0] = SqlDbType.DateTime;
+//                //Ptype[1] = SqlDbType.DateTime;
 
-                //dsGetAWBInfo = db.SelectRecords("SPReveraAWBInfomation", Pname, Pvalue, Ptype);
+//                //dsGetAWBInfo = db.SelectRecords("SPReveraAWBInfomation", Pname, Pvalue, Ptype);
 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
-                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
-                };
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
+//                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
+//                };
 
-                dsGetAWBInfo = await _readWriteDao.SelectRecords("SPReveraAWBInfomation", parameters);
+//                dsGetAWBInfo = await _readWriteDao.SelectRecords("SPReveraAWBInfomation", parameters);
 
-                if (dsGetAWBInfo != null && dsGetAWBInfo.Tables.Count > 0 && dsGetAWBInfo.Tables[0].Rows.Count > 0)
-                {
-                    return dsGetAWBInfo;
-                }
+//                if (dsGetAWBInfo != null && dsGetAWBInfo.Tables.Count > 0 && dsGetAWBInfo.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsGetAWBInfo;
+//                }
 
-            }
-            catch (Exception ex)
-            {
+//            }
+//            catch (Exception ex)
+//            {
 
-                if (dsGetAWBInfo != null)
-                    dsGetAWBInfo.Dispose();
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetAWBInfo");
-                _logger.LogError(ex, "Error on GetAWBInfo.");
-            }
-            return (null);
-        }
-        #endregion
+//                if (dsGetAWBInfo != null)
+//                    dsGetAWBInfo.Dispose();
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetAWBInfo");
+//                _logger.LogError(ex, "Error on GetAWBInfo.");
+//            }
+//            return (null);
+//        }
+//        #endregion
 
-        #region FlownInfo
-        public async Task<DataSet> GetFlownInfo(DateTime FromDate, DateTime ToDate)
-        {
-            DataSet? dsFlownInfo = new DataSet("BALReveraInterface_dsFlownInfo");
-            try
-            {
-                //string[] Pname = new string[2];
-                //Pname[0] = "FromDate";
-                //Pname[1] = "ToDate";
+//        #region FlownInfo
+//        public async Task<DataSet> GetFlownInfo(DateTime FromDate, DateTime ToDate)
+//        {
+//            DataSet? dsFlownInfo = new DataSet("BALReveraInterface_dsFlownInfo");
+//            try
+//            {
+//                //string[] Pname = new string[2];
+//                //Pname[0] = "FromDate";
+//                //Pname[1] = "ToDate";
 
-                //object[] Pvalue = new object[2];
-                //Pvalue[0] = FromDate;
-                //Pvalue[1] = ToDate;
+//                //object[] Pvalue = new object[2];
+//                //Pvalue[0] = FromDate;
+//                //Pvalue[1] = ToDate;
 
-                //SqlDbType[] Ptype = new SqlDbType[2];
-                //Ptype[0] = SqlDbType.DateTime;
-                //Ptype[1] = SqlDbType.DateTime;
-                //dsFlownInfo = db.SelectRecords("SPReveraFlownInformation", Pname, Pvalue, Ptype);
+//                //SqlDbType[] Ptype = new SqlDbType[2];
+//                //Ptype[0] = SqlDbType.DateTime;
+//                //Ptype[1] = SqlDbType.DateTime;
+//                //dsFlownInfo = db.SelectRecords("SPReveraFlownInformation", Pname, Pvalue, Ptype);
 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
-                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
-                };
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
+//                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
+//                };
 
-                dsFlownInfo = await _readWriteDao.SelectRecords("SPReveraFlownInformation", parameters);
+//                dsFlownInfo = await _readWriteDao.SelectRecords("SPReveraFlownInformation", parameters);
 
-                if (dsFlownInfo != null && dsFlownInfo.Tables.Count > 0 && dsFlownInfo.Tables[0].Rows.Count > 0)
-                {
-                    return dsFlownInfo;
-                }
+//                if (dsFlownInfo != null && dsFlownInfo.Tables.Count > 0 && dsFlownInfo.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsFlownInfo;
+//                }
 
-            }
-            catch (Exception ex)
-            {
-                if (dsFlownInfo != null)
-                    dsFlownInfo.Dispose();
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetFlownInfo");
-                _logger.LogError(ex, "Error on GetFlownInfo.");
+//            }
+//            catch (Exception ex)
+//            {
+//                if (dsFlownInfo != null)
+//                    dsFlownInfo.Dispose();
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetFlownInfo");
+//                _logger.LogError(ex, "Error on GetFlownInfo.");
 
-            }
-            return (null);
-        }
-        #endregion
+//            }
+//            return (null);
+//        }
+//        #endregion
 
-        #region FltManifest
-        public async Task<DataSet> GetFltManifestDetails(DateTime FromDate, DateTime ToDate)
-        {
-            DataSet? dsFltManifest = new DataSet("BALReveraInterface_dsFltManifest");
+//        #region FltManifest
+//        public async Task<DataSet> GetFltManifestDetails(DateTime FromDate, DateTime ToDate)
+//        {
+//            DataSet? dsFltManifest = new DataSet("BALReveraInterface_dsFltManifest");
 
-            try
-            {
-                //string[] Pname = new string[2];
-                //Pname[0] = "FromDate";
-                //Pname[1] = "ToDate";
+//            try
+//            {
+//                //string[] Pname = new string[2];
+//                //Pname[0] = "FromDate";
+//                //Pname[1] = "ToDate";
 
-                //object[] Pvalue = new object[2];
-                //Pvalue[0] = FromDate;
-                //Pvalue[1] = ToDate;
+//                //object[] Pvalue = new object[2];
+//                //Pvalue[0] = FromDate;
+//                //Pvalue[1] = ToDate;
 
-                //SqlDbType[] Ptype = new SqlDbType[2];
-                //Ptype[0] = SqlDbType.DateTime;
-                //Ptype[1] = SqlDbType.DateTime;
-                //dsFltManifest = db.SelectRecords("SP_ReveraManifestInterface", Pname, Pvalue, Ptype);
+//                //SqlDbType[] Ptype = new SqlDbType[2];
+//                //Ptype[0] = SqlDbType.DateTime;
+//                //Ptype[1] = SqlDbType.DateTime;
+//                //dsFltManifest = db.SelectRecords("SP_ReveraManifestInterface", Pname, Pvalue, Ptype);
                 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
-                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
-                };
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
+//                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
+//                };
 
-                dsFltManifest = await _readWriteDao.SelectRecords("SP_ReveraManifestInterface", parameters);
+//                dsFltManifest = await _readWriteDao.SelectRecords("SP_ReveraManifestInterface", parameters);
 
-                if (dsFltManifest != null && dsFltManifest.Tables.Count > 0 && dsFltManifest.Tables[0].Rows.Count > 0)
-                {
-                    return dsFltManifest;
-                }
+//                if (dsFltManifest != null && dsFltManifest.Tables.Count > 0 && dsFltManifest.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsFltManifest;
+//                }
 
-            }
-            catch (Exception ex)
-            {
-                if (dsFltManifest != null)
-                    dsFltManifest.Dispose();
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetFltManifestDetails");
-                _logger.LogError(ex, "Error on GetFltManifestDetails.");
+//            }
+//            catch (Exception ex)
+//            {
+//                if (dsFltManifest != null)
+//                    dsFltManifest.Dispose();
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetFltManifestDetails");
+//                _logger.LogError(ex, "Error on GetFltManifestDetails.");
 
-            }
-            return (null);
-
-
-        }
-        #endregion
-
-        #region GetReveraFileName
-        public async Task<DataTable> GetReveraFileName(DateTime CurrentDate, string ReveraFileType, string TransactionID, int TotalRecord, float CheckSum)
-        {
-            DataSet? dsFileName = new DataSet("BALReveraInterface_dsFileName");
-            try
-            {
-                //string[] Pname = new string[5];
-                //Pname[0] = "CurrentDate";
-                //Pname[1] = "ReveraFileType";
-                //Pname[2] = "transID";
-                //Pname[3] = "totRec";
-                //Pname[4] = "CHKSUM";
-
-                //object[] Pvalue = new object[5];
-                //Pvalue[0] = CurrentDate;
-                //Pvalue[1] = ReveraFileType;
-                //Pvalue[2] = TransactionID;
-                //Pvalue[3] = TotalRecord;
-                //Pvalue[4] = CheckSum;
-
-                //SqlDbType[] Ptype = new SqlDbType[5];
-                //Ptype[0] = SqlDbType.DateTime;
-                //Ptype[1] = SqlDbType.VarChar;
-                //Ptype[2] = SqlDbType.VarChar;
-                //Ptype[3] = SqlDbType.Int;
-                //Ptype[4] = SqlDbType.Float;
-                //dsFileName = db.SelectRecords("SPGetOrSetReveraFileNumber", Pname, Pvalue, Ptype);
+//            }
+//            return (null);
 
 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@CurrentDate", SqlDbType.DateTime) { Value = CurrentDate },
-                    new SqlParameter("@ReveraFileType", SqlDbType.VarChar) { Value = ReveraFileType },
-                    new SqlParameter("@transID", SqlDbType.VarChar) { Value = TransactionID },
-                    new SqlParameter("@totRec", SqlDbType.Int) { Value = TotalRecord },
-                    new SqlParameter("@CHKSUM", SqlDbType.Float) { Value = CheckSum }
-                };
+//        }
+//        #endregion
 
-                dsFileName = await _readWriteDao.SelectRecords("SPGetOrSetReveraFileNumber", parameters);
+//        #region GetReveraFileName
+//        public async Task<DataTable> GetReveraFileName(DateTime CurrentDate, string ReveraFileType, string TransactionID, int TotalRecord, float CheckSum)
+//        {
+//            DataSet? dsFileName = new DataSet("BALReveraInterface_dsFileName");
+//            try
+//            {
+//                //string[] Pname = new string[5];
+//                //Pname[0] = "CurrentDate";
+//                //Pname[1] = "ReveraFileType";
+//                //Pname[2] = "transID";
+//                //Pname[3] = "totRec";
+//                //Pname[4] = "CHKSUM";
 
-                if (dsFileName != null && dsFileName.Tables.Count > 0 && dsFileName.Tables[0].Rows.Count > 0)
-                {
-                    return dsFileName.Tables[0];
-                }
+//                //object[] Pvalue = new object[5];
+//                //Pvalue[0] = CurrentDate;
+//                //Pvalue[1] = ReveraFileType;
+//                //Pvalue[2] = TransactionID;
+//                //Pvalue[3] = TotalRecord;
+//                //Pvalue[4] = CheckSum;
 
-            }
-            catch (Exception ex)
-            {
-                if (dsFileName != null)
-                    dsFileName.Dispose();
-
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraFileName");
-                _logger.LogError(ex, "Error on GetReveraFileName.");
-            }
-            return (null);
-        }
-        #endregion
+//                //SqlDbType[] Ptype = new SqlDbType[5];
+//                //Ptype[0] = SqlDbType.DateTime;
+//                //Ptype[1] = SqlDbType.VarChar;
+//                //Ptype[2] = SqlDbType.VarChar;
+//                //Ptype[3] = SqlDbType.Int;
+//                //Ptype[4] = SqlDbType.Float;
+//                //dsFileName = db.SelectRecords("SPGetOrSetReveraFileNumber", Pname, Pvalue, Ptype);
 
 
-        //Added by Dhaval Kumar for frmInterfaceAuditLog.aspx
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@CurrentDate", SqlDbType.DateTime) { Value = CurrentDate },
+//                    new SqlParameter("@ReveraFileType", SqlDbType.VarChar) { Value = ReveraFileType },
+//                    new SqlParameter("@transID", SqlDbType.VarChar) { Value = TransactionID },
+//                    new SqlParameter("@totRec", SqlDbType.Int) { Value = TotalRecord },
+//                    new SqlParameter("@CHKSUM", SqlDbType.Float) { Value = CheckSum }
+//                };
 
-        #region Get Revera Interface Audit log
-        public async Task<DataSet> GetReveraAuditLog(DateTime FromDate, DateTime ToDate)
-        {
-            DataSet? dsReveraAuditLog = new DataSet("BALReveraInterface_dsReveraAuditLog");
+//                dsFileName = await _readWriteDao.SelectRecords("SPGetOrSetReveraFileNumber", parameters);
 
-            try
-            {
-                //string[] Pname = new string[2];
-                //Pname[0] = "FromDate";
-                //Pname[1] = "ToDate";
+//                if (dsFileName != null && dsFileName.Tables.Count > 0 && dsFileName.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsFileName.Tables[0];
+//                }
 
-                //object[] Pvalue = new object[2];
-                //Pvalue[0] = FromDate;
-                //Pvalue[1] = ToDate;
+//            }
+//            catch (Exception ex)
+//            {
+//                if (dsFileName != null)
+//                    dsFileName.Dispose();
 
-                //SqlDbType[] Ptype = new SqlDbType[2];
-                //Ptype[0] = SqlDbType.DateTime;
-                //Ptype[1] = SqlDbType.DateTime;
-                //dsReveraAuditLog = db.SelectRecords("SP_ReveraAuditLog", Pname, Pvalue, Ptype);
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraFileName");
+//                _logger.LogError(ex, "Error on GetReveraFileName.");
+//            }
+//            return (null);
+//        }
+//        #endregion
 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
-                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
-                };
 
-                dsReveraAuditLog = await _readWriteDao.SelectRecords("SP_ReveraAuditLog", parameters);
+//        //Added by Dhaval Kumar for frmInterfaceAuditLog.aspx
 
-                if (dsReveraAuditLog != null && dsReveraAuditLog.Tables.Count > 0 && dsReveraAuditLog.Tables[0].Rows.Count > 0)
-                {
-                    return dsReveraAuditLog;
-                }
-            }
-            catch (Exception ex)
-            {
-                if (dsReveraAuditLog != null)
-                    dsReveraAuditLog.Dispose();
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraAuditLog");
-                _logger.LogError(ex, "Error on GetReveraAuditLog.");
+//        #region Get Revera Interface Audit log
+//        public async Task<DataSet> GetReveraAuditLog(DateTime FromDate, DateTime ToDate)
+//        {
+//            DataSet? dsReveraAuditLog = new DataSet("BALReveraInterface_dsReveraAuditLog");
 
-            }
-            return (null);
-        }
-        #endregion
+//            try
+//            {
+//                //string[] Pname = new string[2];
+//                //Pname[0] = "FromDate";
+//                //Pname[1] = "ToDate";
 
-        #region Get Revera Interface Audit log Indepth Details
-        public async Task<DataSet> GetReveraAuditLogDetails(string FileName, string UniqueID)
-        {
-            DataSet? dsAuditLogDetails = new DataSet("BALReveraInterface_dsAuditLogDetails");
+//                //object[] Pvalue = new object[2];
+//                //Pvalue[0] = FromDate;
+//                //Pvalue[1] = ToDate;
 
-            try
-            {
-                //string[] Pname = new string[2];
-                //Pname[0] = "Fname";
-                //Pname[1] = "UniqID";
+//                //SqlDbType[] Ptype = new SqlDbType[2];
+//                //Ptype[0] = SqlDbType.DateTime;
+//                //Ptype[1] = SqlDbType.DateTime;
+//                //dsReveraAuditLog = db.SelectRecords("SP_ReveraAuditLog", Pname, Pvalue, Ptype);
 
-                //object[] Pvalue = new object[2];
-                //Pvalue[0] = FileName;
-                //Pvalue[1] = UniqueID;
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@FromDate", SqlDbType.DateTime) { Value = FromDate },
+//                    new SqlParameter("@ToDate", SqlDbType.DateTime)   { Value = ToDate }
+//                };
 
-                //SqlDbType[] Ptype = new SqlDbType[2];
-                //Ptype[0] = SqlDbType.VarChar;
-                //Ptype[1] = SqlDbType.VarChar;
+//                dsReveraAuditLog = await _readWriteDao.SelectRecords("SP_ReveraAuditLog", parameters);
 
-                SqlParameter[] parameters =
-                {
-                    new SqlParameter("@Fname", SqlDbType.VarChar) { Value = FileName },
-                    new SqlParameter("@UniqID", SqlDbType.VarChar) { Value = UniqueID }
-                };
-                dsAuditLogDetails = await _readWriteDao.SelectRecords("SP_ReveraAuditLogDetails", parameters);
+//                if (dsReveraAuditLog != null && dsReveraAuditLog.Tables.Count > 0 && dsReveraAuditLog.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsReveraAuditLog;
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                if (dsReveraAuditLog != null)
+//                    dsReveraAuditLog.Dispose();
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraAuditLog");
+//                _logger.LogError(ex, "Error on GetReveraAuditLog.");
 
-                if (dsAuditLogDetails != null && dsAuditLogDetails.Tables.Count > 0 && dsAuditLogDetails.Tables[0].Rows.Count > 0)
-                {
-                    return dsAuditLogDetails;
-                }
-            }
-            catch (Exception ex)
-            {
-                if (dsAuditLogDetails != null)
-                    dsAuditLogDetails.Dispose();
-                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraAuditLogDetails");
-                _logger.LogError(ex, "Error on GetReveraAuditLogDetails.");
+//            }
+//            return (null);
+//        }
+//        #endregion
 
-            }
-            return (null);
-        }
-        #endregion
-        //----------------------------END----------------------------------------
+//        #region Get Revera Interface Audit log Indepth Details
+//        public async Task<DataSet> GetReveraAuditLogDetails(string FileName, string UniqueID)
+//        {
+//            DataSet? dsAuditLogDetails = new DataSet("BALReveraInterface_dsAuditLogDetails");
 
-    }
-}
+//            try
+//            {
+//                //string[] Pname = new string[2];
+//                //Pname[0] = "Fname";
+//                //Pname[1] = "UniqID";
+
+//                //object[] Pvalue = new object[2];
+//                //Pvalue[0] = FileName;
+//                //Pvalue[1] = UniqueID;
+
+//                //SqlDbType[] Ptype = new SqlDbType[2];
+//                //Ptype[0] = SqlDbType.VarChar;
+//                //Ptype[1] = SqlDbType.VarChar;
+
+//                SqlParameter[] parameters =
+//                {
+//                    new SqlParameter("@Fname", SqlDbType.VarChar) { Value = FileName },
+//                    new SqlParameter("@UniqID", SqlDbType.VarChar) { Value = UniqueID }
+//                };
+//                dsAuditLogDetails = await _readWriteDao.SelectRecords("SP_ReveraAuditLogDetails", parameters);
+
+//                if (dsAuditLogDetails != null && dsAuditLogDetails.Tables.Count > 0 && dsAuditLogDetails.Tables[0].Rows.Count > 0)
+//                {
+//                    return dsAuditLogDetails;
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                if (dsAuditLogDetails != null)
+//                    dsAuditLogDetails.Dispose();
+//                //clsLog.WriteLogAzure(ex, "BALReveraInterface", "GetReveraAuditLogDetails");
+//                _logger.LogError(ex, "Error on GetReveraAuditLogDetails.");
+
+//            }
+//            return (null);
+//        }
+//        #endregion
+//        //----------------------------END----------------------------------------
+
+//    }
+//}

@@ -239,7 +239,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure("Error while save Cargo Capacity via CGO Msg " + FlightNo + ex);
-                _logger.LogError(ex, "Error while save Cargo Capacity via CGO Msg {FlightNo}" , FlightNo + ex);
+                _logger.LogError(ex, "Error while save Cargo Capacity via CGO Msg {FlightNo}", FlightNo + ex);
                 return false;
             }
             #endregion

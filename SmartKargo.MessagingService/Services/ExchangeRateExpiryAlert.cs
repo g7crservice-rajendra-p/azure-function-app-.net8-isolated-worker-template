@@ -73,7 +73,7 @@ namespace QidWorkerRole
             {
 
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //finally
             //{
@@ -157,7 +157,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 SerialNo = 0;
             }
 

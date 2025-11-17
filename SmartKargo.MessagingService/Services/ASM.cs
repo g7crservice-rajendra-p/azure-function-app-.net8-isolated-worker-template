@@ -1,29 +1,26 @@
-﻿using Microsoft.Extensions.Logging;
-//using QID.DataAccess;
-//using QidWorkerRole;
-//using SmartKargo.MessagingService.Data.Dao.Implementations;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-//using SmartKargo.MessagingService.Functions.Activities;
-//using System;
-//using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
-using Microsoft.Data.SqlClient;
 
 namespace QidWorkerRole
 {
     public class ASM
     {
-        private static ILogger<ASM>? _staticLogger;  // static shared logger
         private readonly ILogger<ASM> _logger;//instance logger
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly GenericFunction _genericFunction;
 
         #region Constructor
-        public ASM(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction)
+        public ASM(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<ASM>? staticLogger,
+            ILogger<ASM> logger,
+            GenericFunction genericFunction,
+            SSM sSM,
+            ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
-            _staticLogger = staticLogger;
             _logger = logger;
             _genericFunction = genericFunction;
         }
@@ -55,9 +52,10 @@ namespace QidWorkerRole
         public string[] arrRRT = new string[] { "RRT", "RRT OPER", "RRT/TIM", "RRT/ADM/TIM", "RPL/RRT/TIM", "RPL/ADM/RRT/TIM" };
         public string[] arrTIM = new string[] { "TIM", "TIM/ADM", "TIM COMM" };
 
-        public void ToASM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom, out bool isProcessFlag)
+        //public void ToASM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom, out bool isProcessFlag)
+        public async Task<bool> ToASM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom)
         {
-            isProcessFlag = false;
+            bool isProcessFlag = false;
             try
             {
                 string[] arrLine;
@@ -67,59 +65,61 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
-                    return;
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM");
+                    return isProcessFlag;
                 }
                 messageType = arrLine[0];
                 if (arrLine.Length > 0 && arrLine.Intersect(arrNEW).Any())
                 {
-                    parseNEW(arrLine, srno);
+                    await parseNEW(arrLine, srno);
                     //parseNEWRevised(arrLine, srno, originalMessage);
 
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrCNL).Any())
                 {
-                    parseCNL(arrLine, srno);
+                    await parseCNL(arrLine, srno);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrRPL).Any())
                 {
-                    parseRPL(arrLine, srno);
+                    await parseRPL(arrLine, srno);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrTIM).Any())
                 {
-                    parseTIM(arrLine, srno);
+                    await parseTIM(arrLine, srno);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrEQT).Any())
                 {
                     string messageID = "EQT";
                     messageID = arrLine.Intersect(arrEQT).Count() > 0 && arrLine.Intersect(arrEQT).Single().Trim().Length > 2 && arrLine.Intersect(arrEQT).Single().Trim() == "CON" || arrLine.Intersect(arrEQT).Single().Trim() == "CON EQUI" ? "CON" : "EQT";
-                    parseEQT(arrLine, srno, messageID);
+                    await parseEQT(arrLine, srno, messageID);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrRIN).Any())
                 {
-                    parseRIN(arrLine, srno);
+                    await parseRIN(arrLine, srno);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrADM).Any())
                 {
-                    parseADM(arrLine, srno);
+                    await parseADM(arrLine, srno);
                 }
                 else if (arrLine.Length > 0 && arrLine.Intersect(arrRRT).Any())
                 {
-                    parseRRT(arrLine, srno);
+                    await parseRRT(arrLine, srno);
                 }
                 else
                 {
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
-                    return;
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported ASM Message", "ASM", true, originalMessage.Replace("$", "\r\n"));
+                    return isProcessFlag;
                 }
                 isProcessFlag = true;
             }
             catch (Exception ex)
             {
+                isProcessFlag = false;
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, "Error on ToASM");
             }
+            return isProcessFlag;
         }
 
         private async Task parseNEW(string[] arrLine, int srno)
@@ -150,7 +150,7 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -160,7 +160,7 @@ namespace QidWorkerRole
                 DataTable dtSaveFlightInfo = new DataTable();
                 dtSaveFlightInfo = CreateFlightInfoDataTable();
 
-                DataRow dr = null;
+                DataRow? dr = null;
                 for (int i = indxFlightInfo; i < arrLine.Length; i++)
                 {
                     String[] strMessages = arrLine[i].Trim().Split(' ');
@@ -185,7 +185,7 @@ namespace QidWorkerRole
                     //    );
                     indxFlightInfo++;
                 }
-                DataRow drSaveFlightInfo = null;
+                DataRow? drSaveFlightInfo = null;
                 for (int j = 0; j < dtFlightInfo.Rows.Count; j++)
                 {
                     flightNo = dtFlightInfo.Rows[j]["FlightNumber"].ToString();
@@ -289,160 +289,163 @@ namespace QidWorkerRole
             }
         }
 
-        private async Task parseNEWRevised(string[] arrLine, int srno, string messageBody)
-        {
-            try
-            {
-                SSM ssm = new SSM();
-                string frequency = string.Empty;
-                SetVariablesToDefaultValues();
-                int rowIncrement = 0;
-                string thirdLine = string.Empty, scheduleIDs = string.Empty;
-                int indxFlightInfo = 0;
-                messageIdentifier = "NEW";
+        /*Not in use*/
+        //private async Task parseNEWRevised(string[] arrLine, int srno, string messageBody)
+        //{
+        //    try
+        //    {
+        //        //SSM ssm = new SSM();
 
-                for (int i = 0; i < arrLine.Length; i++)
-                {
-                    if (arrLine[i].Trim() == "LT")
-                        messageTimeMode = "LT";
-                    if (arrNEW.Contains(arrLine[i].Trim()))
-                    {
-                        indxFlightInfo = i + 1;
-                        break;
-                    }
-                }
-                flightNo = arrLine[indxFlightInfo].Split(' ')[0].Split('/')[0];
-                DataTable dtFlightInfo = new DataTable();
-                dtFlightInfo = ssm.CreateNewFlightDataTable();
-                DataTable dtPeriodFrequency = new DataTable();
-                dtPeriodFrequency = ssm.CreatePeriodFreqDataTable();
+        //        string frequency = string.Empty;
+        //        SetVariablesToDefaultValues();
+        //        int rowIncrement = 0;
+        //        string thirdLine = string.Empty, scheduleIDs = string.Empty;
+        //        int indxFlightInfo = 0;
+        //        messageIdentifier = "NEW";
 
-                for (int i = indxFlightInfo; i < arrLine.Length; i++)
-                {
-                    string[] strMessages = arrLine[i].Split(' ')[0].Split('/');
+        //        for (int i = 0; i < arrLine.Length; i++)
+        //        {
+        //            if (arrLine[i].Trim() == "LT")
+        //                messageTimeMode = "LT";
+        //            if (arrNEW.Contains(arrLine[i].Trim()))
+        //            {
+        //                indxFlightInfo = i + 1;
+        //                break;
+        //            }
+        //        }
+        //        flightNo = arrLine[indxFlightInfo].Split(' ')[0].Split('/')[0];
+        //        DataTable dtFlightInfo = new DataTable();
+        //        dtFlightInfo = _ssm.CreateNewFlightDataTable();
+        //        DataTable dtPeriodFrequency = new DataTable();
+        //        dtPeriodFrequency = _ssm.CreatePeriodFreqDataTable();
 
-                    if (strMessages[0].Trim().Length == 1)
-                        break;
-                    schedDateOfDepart = getDateDDMMMYY(strMessages[1]);
-                    schedDateOfArrival = getDateDDMMMYY(strMessages[1]);
-                    dtPeriodFrequency.Rows.Add(
-                        flightNo
-                        , schedDateOfDepart
-                        , schedDateOfArrival
-                        , (int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek
-                    );
-                    indxFlightInfo++;
-                }
-                for (int i = 0; i < dtPeriodFrequency.Rows.Count; i++)
-                {
-                    legNumber = 1;
-                    for (int j = indxFlightInfo; j < arrLine.Length; j++)
-                    {
-                        string[] strMessages = arrLine[j].Trim().Split(' ');
-                        if (strMessages[0] == "SI" || strMessages[0] == "//")
-                            break;
-                        int orgInfoLen = 0, destInfoLen = 0;
-                        if (strMessages.Length > 1)
-                        {
-                            orgInfoLen = strMessages[0].Split('/')[0].Length;
-                            destInfoLen = strMessages[1].Split('/')[0].Length;
-                        }
-                        if ((orgInfoLen == 7 || orgInfoLen == 9) && (destInfoLen == 7 || destInfoLen == 9))
-                        {
-                            dateVariationDep = dateVariationArr = 0;
+        //        for (int i = indxFlightInfo; i < arrLine.Length; i++)
+        //        {
+        //            string[] strMessages = arrLine[i].Split(' ')[0].Split('/');
 
-                            string[] source = strMessages[0].Split('/');
-                            airportOfDepart = strMessages[0].Substring(0, 3);
-                            schedTimeOfDepart = strMessages[0].Split('/')[0].Substring(3);
+        //            if (strMessages[0].Trim().Length == 1)
+        //                break;
+        //            schedDateOfDepart = getDateDDMMMYY(strMessages[1]);
+        //            schedDateOfArrival = getDateDDMMMYY(strMessages[1]);
+        //            dtPeriodFrequency.Rows.Add(
+        //                flightNo
+        //                , schedDateOfDepart
+        //                , schedDateOfArrival
+        //                , (int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek
+        //            );
+        //            indxFlightInfo++;
+        //        }
+        //        for (int i = 0; i < dtPeriodFrequency.Rows.Count; i++)
+        //        {
+        //            legNumber = 1;
+        //            for (int j = indxFlightInfo; j < arrLine.Length; j++)
+        //            {
+        //                string[] strMessages = arrLine[j].Trim().Split(' ');
+        //                if (strMessages[0] == "SI" || strMessages[0] == "//")
+        //                    break;
+        //                int orgInfoLen = 0, destInfoLen = 0;
+        //                if (strMessages.Length > 1)
+        //                {
+        //                    orgInfoLen = strMessages[0].Split('/')[0].Length;
+        //                    destInfoLen = strMessages[1].Split('/')[0].Length;
+        //                }
+        //                if ((orgInfoLen == 7 || orgInfoLen == 9) && (destInfoLen == 7 || destInfoLen == 9))
+        //                {
+        //                    dateVariationDep = dateVariationArr = 0;
 
-                            //if (source.Length > 1 && (source[1].Length == 1 || source[1].Length == 2))
-                            //{
-                            //    dateVariationDep = Convert.ToInt32(source[1].Substring(source[1].Length - 1));
-                            //    dateVariationDep = source[1].Substring(0, 1) == "M" ? -dateVariationDep : dateVariationDep;
-                            //}
-                            string[] dest = strMessages[1].Split('/');
-                            airportOfArrival = strMessages[1].Substring(0, 3);
-                            schedTimeOfArrival = strMessages[1].Split('/')[0].Substring(3);
-                            //if (dest.Length > 1 && (dest[1].Length == 1 || dest[1].Length == 2))
-                            //{
-                            //    dateVariationArr = Convert.ToInt32(dest[1].Substring(dest[1].Length - 1));
-                            //    dateVariationArr = dest[1].Substring(0, 1) == "M" ? -dateVariationArr : dateVariationArr;
-                            //}
+        //                    string[] source = strMessages[0].Split('/');
+        //                    airportOfDepart = strMessages[0].Substring(0, 3);
+        //                    schedTimeOfDepart = strMessages[0].Split('/')[0].Substring(3);
 
-                            schedDateOfDepart = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
-                            schedDateOfArrival = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
-                            frequency = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
-                            frequency = ((int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek).ToString() == "0" ? "7" : ((int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek).ToString();
-                            if (schedTimeOfDepart.Length == 6)
-                            {
-                                schedDateOfDepart = schedDateOfDepart.Substring(0, 8) + schedTimeOfDepart.Substring(0, 2);
-                                schedTimeOfDepart = schedTimeOfDepart.Substring(2);
-                            }
-                            if (schedTimeOfArrival.Length == 6)
-                            {
-                                schedDateOfArrival = schedDateOfArrival.Substring(0, 8) + schedTimeOfArrival.Substring(0, 2);
-                                schedTimeOfArrival = schedTimeOfArrival.Substring(2);
-                            }
+        //                    //if (source.Length > 1 && (source[1].Length == 1 || source[1].Length == 2))
+        //                    //{
+        //                    //    dateVariationDep = Convert.ToInt32(source[1].Substring(source[1].Length - 1));
+        //                    //    dateVariationDep = source[1].Substring(0, 1) == "M" ? -dateVariationDep : dateVariationDep;
+        //                    //}
+        //                    string[] dest = strMessages[1].Split('/');
+        //                    airportOfArrival = strMessages[1].Substring(0, 3);
+        //                    schedTimeOfArrival = strMessages[1].Split('/')[0].Substring(3);
+        //                    //if (dest.Length > 1 && (dest[1].Length == 1 || dest[1].Length == 2))
+        //                    //{
+        //                    //    dateVariationArr = Convert.ToInt32(dest[1].Substring(dest[1].Length - 1));
+        //                    //    dateVariationArr = dest[1].Substring(0, 1) == "M" ? -dateVariationArr : dateVariationArr;
+        //                    //}
 
-                            dtFlightInfo.Rows.Add(
-                                ++rowIncrement
-                                , srno
-                                , legNumber
-                                , messageType
-                                , messageIdentifier
-                                , flightNo
-                                , schedDateOfDepart
-                                , schedDateOfArrival
-                                , airportOfDepart
-                                , airportOfArrival
-                                , frequency
-                                , schedTimeOfDepart
-                                , schedTimeOfArrival
-                                , messageTimeMode
-                                , dateVariationDep
-                                , dateVariationArr
-                                , ""
-                                , ""
-                                , serviceType
-                                , aircraftType
-                                , registrationNo
-                                , ""
-                                , messageBody
-                            );
-                            legNumber++;
-                        }
-                        ///C 330 F10Y100/FO.F10Y120
-                        else if (strMessages[0].Trim().Length == 1)
-                        {
-                            //dtFlightInfo.Rows.Add(drNewFlightInfo);
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["FlightType"] = strMessages[0];
-                            //dtFlightInfo.Rows[flightInfoRowIndex]["AircraftType"] = strMessages[1];
-                            serviceType = strMessages[0];
-                            aircraftType = strMessages[1];
-                            if (strMessages.Length > 3)
-                                registrationNo = strMessages[3];
-                            //isNewRowAddedToFlightInfoTable = true;
-                        }
-                    }
-                }
-                DataTable dtUniqueFlightInfo = ssm.RemoveDuplicatesRecords(dtFlightInfo);
-                //SQLServer sqlServer = new SQLServer();
-                // dsFlightinfo = sqlServer.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
+        //                    schedDateOfDepart = dtPeriodFrequency.Rows[i]["FromDate"].ToString();
+        //                    schedDateOfArrival = dtPeriodFrequency.Rows[i]["ToDate"].ToString();
+        //                    frequency = dtPeriodFrequency.Rows[i]["Frequency"].ToString();
+        //                    frequency = ((int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek).ToString() == "0" ? "7" : ((int)Convert.ToDateTime(schedDateOfDepart).DayOfWeek).ToString();
+        //                    if (schedTimeOfDepart.Length == 6)
+        //                    {
+        //                        schedDateOfDepart = schedDateOfDepart.Substring(0, 8) + schedTimeOfDepart.Substring(0, 2);
+        //                        schedTimeOfDepart = schedTimeOfDepart.Substring(2);
+        //                    }
+        //                    if (schedTimeOfArrival.Length == 6)
+        //                    {
+        //                        schedDateOfArrival = schedDateOfArrival.Substring(0, 8) + schedTimeOfArrival.Substring(0, 2);
+        //                        schedTimeOfArrival = schedTimeOfArrival.Substring(2);
+        //                    }
 
-                SqlParameter[] sqlParameter = new SqlParameter[]{
-                    new  SqlParameter("@FlightInfoTableType", dtUniqueFlightInfo)
-                };
-                DataSet? dsFlightinfo = new DataSet();
+        //                    dtFlightInfo.Rows.Add(
+        //                        ++rowIncrement
+        //                        , srno
+        //                        , legNumber
+        //                        , messageType
+        //                        , messageIdentifier
+        //                        , flightNo
+        //                        , schedDateOfDepart
+        //                        , schedDateOfArrival
+        //                        , airportOfDepart
+        //                        , airportOfArrival
+        //                        , frequency
+        //                        , schedTimeOfDepart
+        //                        , schedTimeOfArrival
+        //                        , messageTimeMode
+        //                        , dateVariationDep
+        //                        , dateVariationArr
+        //                        , ""
+        //                        , ""
+        //                        , serviceType
+        //                        , aircraftType
+        //                        , registrationNo
+        //                        , ""
+        //                        , messageBody
+        //                    );
+        //                    legNumber++;
+        //                }
+        //                ///C 330 F10Y100/FO.F10Y120
+        //                else if (strMessages[0].Trim().Length == 1)
+        //                {
+        //                    //dtFlightInfo.Rows.Add(drNewFlightInfo);
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["FlightType"] = strMessages[0];
+        //                    //dtFlightInfo.Rows[flightInfoRowIndex]["AircraftType"] = strMessages[1];
+        //                    serviceType = strMessages[0];
+        //                    aircraftType = strMessages[1];
+        //                    if (strMessages.Length > 3)
+        //                        registrationNo = strMessages[3];
+        //                    //isNewRowAddedToFlightInfoTable = true;
+        //                }
+        //            }
+        //        }
+        //        DataTable dtUniqueFlightInfo = _ssm.RemoveDuplicatesRecords(dtFlightInfo);
+        //        //SQLServer sqlServer = new SQLServer();
+        //        // dsFlightinfo = sqlServer.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
 
-                dsFlightinfo = await _readWriteDao.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
-            }
-            catch (Exception ex)
-            {
-                //clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error on parseNEWRevised");
-            }
-        }
-        private void parseCNL(string[] arrLine, int srno)
+        //        SqlParameter[] sqlParameter = new SqlParameter[]{
+        //            new  SqlParameter("@FlightInfoTableType", dtUniqueFlightInfo)
+        //        };
+        //        DataSet? dsFlightinfo = new DataSet();
+
+        //        dsFlightinfo = await _readWriteDao.SelectRecords("Messaging.uspSSMNEW", sqlParameter);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, "Error on parseNEWRevised");
+        //    }
+        //}
+
+        private async Task parseCNL(string[] arrLine, int srno)
         {
             try
             {
@@ -490,7 +493,7 @@ namespace QidWorkerRole
                                 for (int j = 0; j < arrFlightInfo.Length - 1; j++)
                                 {
                                     flightNo = CombineCarrierAndFlightCode(arrFlightInfo[j], carrier);
-                                    SaveASMDetails(srno);
+                                    await SaveASMDetails(srno);
                                 }
                             }
                         }
@@ -500,7 +503,7 @@ namespace QidWorkerRole
                         for (int j = 0; j < arrFlightInfo.Length - 1; j++)
                         {
                             flightNo = CombineCarrierAndFlightCode(arrFlightInfo[j], carrier);
-                            SaveASMDetails(srno);
+                            await SaveASMDetails(srno);
                         }
                     }
                 }
@@ -512,7 +515,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseRIN(string[] arrLine, int srno)
+        private async Task parseRIN(string[] arrLine, int srno)
         {
             try
             {
@@ -551,7 +554,7 @@ namespace QidWorkerRole
                     for (int j = 0; j < arrFlightInfo.Length - 1; j++)
                     {
                         flightNo = CombineCarrierAndFlightCode(arrFlightInfo[j], carrier);
-                        SaveASMDetails(srno);
+                        await SaveASMDetails(srno);
                     }
                 }
             }
@@ -562,7 +565,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseRPL(string[] arrLine, int srno)
+        private async Task parseRPL(string[] arrLine, int srno)
         {
             try
             {
@@ -588,7 +591,7 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/NEW");
                     return;
                 }
 
@@ -663,7 +666,7 @@ namespace QidWorkerRole
                         }
                         if (!string.IsNullOrEmpty(airportOfDepart))
                         {
-                            SaveASMDetails(srno);
+                            await SaveASMDetails(srno);
                             airportOfDepart = string.Empty;
                         }
                     }
@@ -676,13 +679,13 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseADM(string[] arrLine, int srno)
+        private async Task parseADM(string[] arrLine, int srno)
         {
             try
             {
                 SetVariablesToDefaultValues();
                 messageIdentifier = "ADM";
-                SaveASMDetails(srno);
+                await SaveASMDetails(srno);
             }
             catch (Exception ex)
             {
@@ -691,7 +694,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseEQT(string[] arrLine, int srno, string msgId)
+        private async Task parseEQT(string[] arrLine, int srno, string msgId)
         {
             try
             {
@@ -733,14 +736,14 @@ namespace QidWorkerRole
                     for (int i = 0; i < arrFlightInfo.Length - 1; i++)
                     {
                         flightNo = CombineCarrierAndFlightCode(arrFlightInfo[i].Trim(), carrier);
-                        SaveASMDetails(srno);
+                        await SaveASMDetails(srno);
                     }
                 }
                 else
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/EQT");
                 }
             }
             catch (Exception ex)
@@ -750,7 +753,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseRRT(string[] arrLine, int srno)
+        private async Task parseRRT(string[] arrLine, int srno)
         {
             try
             {
@@ -776,7 +779,7 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/RRT");
                     return;
                 }
 
@@ -859,7 +862,7 @@ namespace QidWorkerRole
                         if (!string.IsNullOrEmpty(airportOfDepart))
                         {
                             legNumber += 1;
-                            SaveASMDetails(srno);
+                            await SaveASMDetails(srno);
                             airportOfDepart = string.Empty;
                         }
                     }
@@ -872,7 +875,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseTIM(string[] arrLine, int srno)
+        private async Task parseTIM(string[] arrLine, int srno)
         {
             try
             {
@@ -898,7 +901,7 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "ASM/TIM");
                     return;
                 }
 
@@ -971,7 +974,7 @@ namespace QidWorkerRole
                         }
                         if (!string.IsNullOrEmpty(airportOfDepart))
                         {
-                            SaveASMDetails(srno);
+                            await SaveASMDetails(srno);
                             airportOfDepart = string.Empty;
                             break;
                         }
@@ -1206,116 +1209,117 @@ namespace QidWorkerRole
             return flightNumber;
         }
 
-        private DataTable ScheduleDataTable()
-        {
-            var dc1 = new DataColumn();
-            dc1.Caption = "MessageType";
-            dc1.ColumnName = "MessageType";
-            dc1.DataType = Type.GetType("System.String");
+        /*Not in use*/
+        //private DataTable ScheduleDataTable()
+        //{
+        //    var dc1 = new DataColumn();
+        //    dc1.Caption = "MessageType";
+        //    dc1.ColumnName = "MessageType";
+        //    dc1.DataType = Type.GetType("System.String");
 
-            var dc2 = new DataColumn();
-            dc2.Caption = "MessageIdentifier";
-            dc2.ColumnName = "MessageIdentifier";
-            dc2.DataType = Type.GetType("System.String");
+        //    var dc2 = new DataColumn();
+        //    dc2.Caption = "MessageIdentifier";
+        //    dc2.ColumnName = "MessageIdentifier";
+        //    dc2.DataType = Type.GetType("System.String");
 
-            var dc3 = new DataColumn();
-            dc3.Caption = "OriginalMessage";
-            dc3.ColumnName = "OriginalMessage";
-            dc3.DataType = Type.GetType("System.String");
+        //    var dc3 = new DataColumn();
+        //    dc3.Caption = "OriginalMessage";
+        //    dc3.ColumnName = "OriginalMessage";
+        //    dc3.DataType = Type.GetType("System.String");
 
-            var dc4 = new DataColumn();
-            dc4.Caption = "FlightNo";
-            dc4.ColumnName = "FlightNo";
-            dc4.DataType = Type.GetType("System.String");
+        //    var dc4 = new DataColumn();
+        //    dc4.Caption = "FlightNo";
+        //    dc4.ColumnName = "FlightNo";
+        //    dc4.DataType = Type.GetType("System.String");
 
-            var dc5 = new DataColumn();
-            dc5.Caption = "RegistrationNo";
-            dc5.ColumnName = "RegistrationNo";
-            dc5.DataType = Type.GetType("System.String");
+        //    var dc5 = new DataColumn();
+        //    dc5.Caption = "RegistrationNo";
+        //    dc5.ColumnName = "RegistrationNo";
+        //    dc5.DataType = Type.GetType("System.String");
 
-            var dc6 = new DataColumn();
-            dc6.Caption = "AircraftType";
-            dc6.ColumnName = "AircraftType";
-            dc6.DataType = Type.GetType("System.String");
+        //    var dc6 = new DataColumn();
+        //    dc6.Caption = "AircraftType";
+        //    dc6.ColumnName = "AircraftType";
+        //    dc6.DataType = Type.GetType("System.String");
 
-            var dc7 = new DataColumn();
-            dc7.Caption = "PassangerReservation";
-            dc7.ColumnName = "PassangerReservation";
-            dc7.DataType = Type.GetType("System.Int16");
+        //    var dc7 = new DataColumn();
+        //    dc7.Caption = "PassangerReservation";
+        //    dc7.ColumnName = "PassangerReservation";
+        //    dc7.DataType = Type.GetType("System.Int16");
 
-            var dc8 = new DataColumn();
-            dc8.Caption = "AirportOfDepart";
-            dc8.ColumnName = "AirportOfDepart";
-            dc8.DataType = Type.GetType("System.String");
+        //    var dc8 = new DataColumn();
+        //    dc8.Caption = "AirportOfDepart";
+        //    dc8.ColumnName = "AirportOfDepart";
+        //    dc8.DataType = Type.GetType("System.String");
 
-            var dc9 = new DataColumn();
-            dc9.Caption = "AirportOfArrival";
-            dc9.ColumnName = "AirportOfArrival";
-            dc9.DataType = Type.GetType("System.String");
+        //    var dc9 = new DataColumn();
+        //    dc9.Caption = "AirportOfArrival";
+        //    dc9.ColumnName = "AirportOfArrival";
+        //    dc9.DataType = Type.GetType("System.String");
 
-            var dc10 = new DataColumn();
-            dc10.Caption = "SchedDateOfArrival";
-            dc10.ColumnName = "SchedDateOfArrival";
-            dc10.DataType = Type.GetType("System.String");
+        //    var dc10 = new DataColumn();
+        //    dc10.Caption = "SchedDateOfArrival";
+        //    dc10.ColumnName = "SchedDateOfArrival";
+        //    dc10.DataType = Type.GetType("System.String");
 
-            var dc11 = new DataColumn();
-            dc11.Caption = "SchedDateOfDepart";
-            dc11.ColumnName = "SchedDateOfDepart";
-            dc11.DataType = Type.GetType("System.String");
+        //    var dc11 = new DataColumn();
+        //    dc11.Caption = "SchedDateOfDepart";
+        //    dc11.ColumnName = "SchedDateOfDepart";
+        //    dc11.DataType = Type.GetType("System.String");
 
-            var dc12 = new DataColumn();
-            dc12.Caption = "actualDateOfArrival";
-            dc12.ColumnName = "actualDateOfArrival";
-            dc12.DataType = Type.GetType("System.String");
+        //    var dc12 = new DataColumn();
+        //    dc12.Caption = "actualDateOfArrival";
+        //    dc12.ColumnName = "actualDateOfArrival";
+        //    dc12.DataType = Type.GetType("System.String");
 
-            var dc13 = new DataColumn();
-            dc13.Caption = "ServiceType";
-            dc13.ColumnName = "ServiceType";
-            dc13.DataType = Type.GetType("System.String");
+        //    var dc13 = new DataColumn();
+        //    dc13.Caption = "ServiceType";
+        //    dc13.ColumnName = "ServiceType";
+        //    dc13.DataType = Type.GetType("System.String");
 
-            var dc14 = new DataColumn();
-            dc14.Caption = "Date";
-            dc14.ColumnName = "Date";
-            dc14.DataType = Type.GetType("System.String");
+        //    var dc14 = new DataColumn();
+        //    dc14.Caption = "Date";
+        //    dc14.ColumnName = "Date";
+        //    dc14.DataType = Type.GetType("System.String");
 
-            var dc15 = new DataColumn();
-            dc15.Caption = "SrNo";
-            dc15.ColumnName = "SrNo";
-            dc15.DataType = Type.GetType("System.String");
+        //    var dc15 = new DataColumn();
+        //    dc15.Caption = "SrNo";
+        //    dc15.ColumnName = "SrNo";
+        //    dc15.DataType = Type.GetType("System.String");
 
-            var dc16 = new DataColumn();
-            dc16.Caption = "TailNo";
-            dc16.ColumnName = "TailNo";
-            dc16.DataType = Type.GetType("System.String");
+        //    var dc16 = new DataColumn();
+        //    dc16.Caption = "TailNo";
+        //    dc16.ColumnName = "TailNo";
+        //    dc16.DataType = Type.GetType("System.String");
 
-            var dc17 = new DataColumn();
-            dc17.Caption = "MessageTimeMode";
-            dc17.ColumnName = "MessageTimeMode";
-            dc17.DataType = Type.GetType("System.String");
+        //    var dc17 = new DataColumn();
+        //    dc17.Caption = "MessageTimeMode";
+        //    dc17.ColumnName = "MessageTimeMode";
+        //    dc17.DataType = Type.GetType("System.String");
 
 
 
-            var dt = new DataTable();
-            dt.Columns.Add(dc1);
-            dt.Columns.Add(dc2);
-            dt.Columns.Add(dc3);
-            dt.Columns.Add(dc4);
-            dt.Columns.Add(dc5);
-            dt.Columns.Add(dc6);
-            dt.Columns.Add(dc7);
-            dt.Columns.Add(dc8);
-            dt.Columns.Add(dc9);
-            dt.Columns.Add(dc10);
-            dt.Columns.Add(dc11);
-            dt.Columns.Add(dc12);
-            dt.Columns.Add(dc13);
-            dt.Columns.Add(dc14);
-            dt.Columns.Add(dc15);
-            dt.Columns.Add(dc16);
-            dt.Columns.Add(dc17);
+        //    var dt = new DataTable();
+        //    dt.Columns.Add(dc1);
+        //    dt.Columns.Add(dc2);
+        //    dt.Columns.Add(dc3);
+        //    dt.Columns.Add(dc4);
+        //    dt.Columns.Add(dc5);
+        //    dt.Columns.Add(dc6);
+        //    dt.Columns.Add(dc7);
+        //    dt.Columns.Add(dc8);
+        //    dt.Columns.Add(dc9);
+        //    dt.Columns.Add(dc10);
+        //    dt.Columns.Add(dc11);
+        //    dt.Columns.Add(dc12);
+        //    dt.Columns.Add(dc13);
+        //    dt.Columns.Add(dc14);
+        //    dt.Columns.Add(dc15);
+        //    dt.Columns.Add(dc16);
+        //    dt.Columns.Add(dc17);
 
-            return dt;
-        }
+        //    return dt;
+        //}
 
         private DataTable CreateFlightInfoDataTable()
         {
@@ -1341,43 +1345,44 @@ namespace QidWorkerRole
             return dtFlightInfo;
         }
 
-        private String getDate(int p)
-        {
-            try
-            {
-                DateTime dt = DateTime.Now;
+        /*Not in use*/
+        //private String getDate(int p)
+        //{
+        //    try
+        //    {
+        //        DateTime dt = DateTime.Now;
 
-                if (!String.IsNullOrEmpty(schedDateOfArrival) && schedDateOfArrival.Trim().Length == 7)
-                {
-                    dt = DateTime.ParseExact(schedDateOfArrival, "ddMMMyy", null);
-                }
-                else
-                {
+        //        if (!String.IsNullOrEmpty(schedDateOfArrival) && schedDateOfArrival.Trim().Length == 7)
+        //        {
+        //            dt = DateTime.ParseExact(schedDateOfArrival, "ddMMMyy", null);
+        //        }
+        //        else
+        //        {
 
-                    if (!String.IsNullOrEmpty(schedDateOfDepart) && schedDateOfDepart.Trim().Length == 7)
-                    {
-                        dt = DateTime.ParseExact(schedDateOfDepart, "ddMMMyy", null);
-                    }
+        //            if (!String.IsNullOrEmpty(schedDateOfDepart) && schedDateOfDepart.Trim().Length == 7)
+        //            {
+        //                dt = DateTime.ParseExact(schedDateOfDepart, "ddMMMyy", null);
+        //            }
 
-                    else if (!String.IsNullOrEmpty(schedDateOfArrival) && schedDateOfArrival.Trim().Length > 5)
-                    {
-                        dt = Convert.ToDateTime(schedDateOfArrival);
-                    }
-                    else if (!String.IsNullOrEmpty(schedDateOfDepart) && schedDateOfDepart.Trim().Length > 7)
-                    {
-                        dt = DateTime.ParseExact(schedDateOfDepart, "ddMMMyy", null);
-                    }
+        //            else if (!String.IsNullOrEmpty(schedDateOfArrival) && schedDateOfArrival.Trim().Length > 5)
+        //            {
+        //                dt = Convert.ToDateTime(schedDateOfArrival);
+        //            }
+        //            else if (!String.IsNullOrEmpty(schedDateOfDepart) && schedDateOfDepart.Trim().Length > 7)
+        //            {
+        //                dt = DateTime.ParseExact(schedDateOfDepart, "ddMMMyy", null);
+        //            }
 
-                }
-                return new DateTime(DateTime.Now.Year, dt.Month, p).ToShortDateString();
-            }
-            catch (Exception ex)
-            {
-                //clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error on getDate(input is integer type)");
-                return new DateTime(DateTime.Now.Year, DateTime.Now.Month, p).ToShortDateString();
-            }
-        }
+        //        }
+        //        return new DateTime(DateTime.Now.Year, dt.Month, p).ToShortDateString();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, "Error on getDate(input is integer type)");
+        //        return new DateTime(DateTime.Now.Year, DateTime.Now.Month, p).ToShortDateString();
+        //    }
+        //}
 
         private String getDate(string schedDateOfArrival)
         {
@@ -1410,74 +1415,76 @@ namespace QidWorkerRole
             return tempDate.ToString("yyyy-MM-dd hh:mm:ss");
         }
 
-        private String getDateDDMMMYY(string schedDateOfArrival)
-        {
-            try
-            {
+        /*Not in use*/
+        //private String getDateDDMMMYY(string schedDateOfArrival)
+        //{
+        //    try
+        //    {
 
-                if (schedDateOfArrival.Trim().Length == 7)
-                    return schedDateOfArrival;
-                else if (schedDateOfArrival.Trim().Length == 5)
-                    return schedDateOfArrival + DateTime.Now.ToString("yy");
-                else if (schedDateOfArrival.Trim().Length == 2)
-                {
-                    string currentMonth = GetMonthNameByNumber(DateTime.Now.Month);
-                    return schedDateOfArrival + currentMonth + DateTime.Now.ToString("yy");
-                }
+        //        if (schedDateOfArrival.Trim().Length == 7)
+        //            return schedDateOfArrival;
+        //        else if (schedDateOfArrival.Trim().Length == 5)
+        //            return schedDateOfArrival + DateTime.Now.ToString("yy");
+        //        else if (schedDateOfArrival.Trim().Length == 2)
+        //        {
+        //            string currentMonth = GetMonthNameByNumber(DateTime.Now.Month);
+        //            return schedDateOfArrival + currentMonth + DateTime.Now.ToString("yy");
+        //        }
 
-            }
-            catch (Exception ex)
-            {
-                //clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, "Error on getDateDDMMMYY");
-            }
-            return "";
-        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, "Error on getDateDDMMMYY");
+        //    }
+        //    return "";
+        //}
 
-        private string GetMonthNameByNumber(int m)
-        {
-            string res = string.Empty;
-            switch (m)
-            {
-                case 1:
-                    res = "JAN";
-                    break;
-                case 2:
-                    res = "FEB";
-                    break;
-                case 3:
-                    res = "MAR";
-                    break;
-                case 4:
-                    res = "APR";
-                    break;
-                case 5:
-                    res = "MAY";
-                    break;
-                case 6:
-                    res = "JUN";
-                    break;
-                case 7:
-                    res = "JUL";
-                    break;
-                case 8:
-                    res = "AUG";
-                    break;
-                case 9:
-                    res = "SEP";
-                    break;
-                case 10:
-                    res = "OCT";
-                    break;
-                case 11:
-                    res = "NOV";
-                    break;
-                case 12:
-                    res = "DEC";
-                    break;
-            }
-            return res;
-        }
+        ///*Not in use*/
+        //private string GetMonthNameByNumber(int m)
+        //{
+        //    string res = string.Empty;
+        //    switch (m)
+        //    {
+        //        case 1:
+        //            res = "JAN";
+        //            break;
+        //        case 2:
+        //            res = "FEB";
+        //            break;
+        //        case 3:
+        //            res = "MAR";
+        //            break;
+        //        case 4:
+        //            res = "APR";
+        //            break;
+        //        case 5:
+        //            res = "MAY";
+        //            break;
+        //        case 6:
+        //            res = "JUN";
+        //            break;
+        //        case 7:
+        //            res = "JUL";
+        //            break;
+        //        case 8:
+        //            res = "AUG";
+        //            break;
+        //        case 9:
+        //            res = "SEP";
+        //            break;
+        //        case 10:
+        //            res = "OCT";
+        //            break;
+        //        case 11:
+        //            res = "NOV";
+        //            break;
+        //        case 12:
+        //            res = "DEC";
+        //            break;
+        //    }
+        //    return res;
+        //}
 
         private void SetVariablesToDefaultValues()
         {
@@ -1506,42 +1513,38 @@ namespace QidWorkerRole
             }
         }
 
-        private static string? getConnectionString()
-        {
-            try
-            {
-                string strConnectionString = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-                if (strConnectionString == null)
-                {
-                    strConnectionString = "";
-                }
-                return strConnectionString;
-            }
-            catch (Exception ex)
-            {
-                //clsLog.WriteLogAzure(ex);
-                _staticLogger?.LogError(ex, "Error on getConnectionString");
-                return null;
-            }
-        }
+        /*Not in use*/
+        //private static string? getConnectionString()
+        //{
+        //    try
+        //    {
+        //        string strConnectionString = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //        if (strConnectionString == null)
+        //        {
+        //            strConnectionString = "";
+        //        }
+        //        return strConnectionString;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //clsLog.WriteLogAzure(ex);
+        //        _staticLogger?.LogError(ex, "Error on getConnectionString");
+        //        return null;
+        //    }
+        //}
     }
 
     public class MVT
     {
-        private static ILogger<ASM>? _staticLogger;  // static shared logger
         private readonly ILogger<ASM> _logger;//instance logger
         private readonly ISqlDataHelperDao _readWriteDao;
-        private readonly ISqlDataHelperDao _readOnlyDao;
         private readonly GenericFunction _genericFunction;
         private readonly FDMMessageProcessor _fDMMessageProcessor;
 
-
         #region Constructor
-        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction, FDMMessageProcessor fDMMessageProcessor )
+        public MVT(ISqlDataHelperFactory sqlDataHelperFactory, ILogger<ASM>? staticLogger, ILogger<ASM> logger, GenericFunction genericFunction, FDMMessageProcessor fDMMessageProcessor)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
-            _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
-            _staticLogger = staticLogger;
             _logger = logger;
             _genericFunction = genericFunction;
             _fDMMessageProcessor = fDMMessageProcessor;
@@ -1618,7 +1621,7 @@ namespace QidWorkerRole
                     else if (messageIdentifier.ToUpper() == "AD")
                     {
                         tempMessageIdentifier = "AD";
-                        ParseDeparture(arrLine);
+                        await ParseDeparture(arrLine);
                     }
                     else if (messageIdentifier.ToUpper() == "DL" || messageIdentifier.ToUpper() == "NI" || messageIdentifier.ToUpper() == "ED" || messageIdentifier.ToUpper() == "FR")
                     {
@@ -1828,15 +1831,17 @@ namespace QidWorkerRole
             }
         }
 
-        private void ParseDiversion(string[] arrLine)
-        {
+        //Not in use
+        //private void ParseDiversion(string[] arrLine)
+        //{
 
-        }
+        //}
 
-        private void ParseReturnToRamp(string[] arrLine)
-        {
-            throw new NotImplementedException();
-        }
+        //Not in use
+        //private void ParseReturnToRamp(string[] arrLine)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         private void ParseDaelay(string[] arrLine, string actualMessageType)
         {
@@ -1891,7 +1896,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void ParseDeparture(string[] arrLine)
+        private async Task ParseDeparture(string[] arrLine)
         {
             try
             {
@@ -2063,7 +2068,7 @@ namespace QidWorkerRole
                 {
                     //GenericFunction genericFunction = new GenericFunction();
                     //genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
-                    _genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
+                    await _genericFunction.UpdateErrorMessageToInbox(111, "Invalid message format");
                 }
                 try
                 {
@@ -2080,7 +2085,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, "Error on ParseDeparture for loop section");
                         }
                     }
 
@@ -2146,7 +2152,7 @@ namespace QidWorkerRole
             }
         }
 
-        private string getDate(int p)
+        private string? getDate(int p)
         {
             try
             {
@@ -2160,23 +2166,24 @@ namespace QidWorkerRole
             return null;
         }
 
-        private static string? getConnectionString()
-        {
-            try
-            {
-                string strConnectionString = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-                if (strConnectionString == null)
-                {
-                    strConnectionString = "";
-                }
-                return strConnectionString;
-            }
-            catch (Exception ex)
-            {
-                _staticLogger?.LogError(ex, "Error on getConnectionString MVT Class");
-                return null;
-            }
-        }
+        /*Not in use*/
+        //private static string? getConnectionString()
+        //{
+        //    try
+        //    {
+        //        string strConnectionString = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //        if (strConnectionString == null)
+        //        {
+        //            strConnectionString = "";
+        //        }
+        //        return strConnectionString;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _staticLogger?.LogError(ex, "Error on getConnectionString MVT Class");
+        //        return null;
+        //    }
+        //}
 
         public async Task<bool> UpdateToDatatabse(object[] QueryValues)
         {
