@@ -13,16 +13,20 @@ namespace QidWorkerRole.UploadMasters.Booking
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<BookingExcelUpload> _logger;
+        private static ILoggerFactory? _loggerFactory;
+        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
         private readonly UploadMasterCommon _uploadMasterCommon;
 
         #region Constructor
         public BookingExcelUpload(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<BookingExcelUpload> logger,
-            UploadMasterCommon uploadMasterCommon)
+            UploadMasterCommon uploadMasterCommon,
+            ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _uploadMasterCommon = uploadMasterCommon;
+            _loggerFactory = loggerFactory;
         }
         #endregion
 
@@ -61,14 +65,16 @@ namespace QidWorkerRole.UploadMasters.Booking
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} \nStackTrace: {stackTrace}", exception.Message, exception.StackTrace);
             }
             return false;
         }
 
         public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath, string userName)
         {
-            clsLog.WriteLogAzure("Process Booking Excel File: " + filepath);
+            // clsLog.WriteLogAzure("Process Booking Excel File: " + filepath);
+            _logger.LogInformation("Process Booking Excel File: {FilePath}", filepath);
             DataTable dataTableBookingExcelData = new DataTable();
 
             bool isBinaryReader = false;
@@ -857,7 +863,8 @@ namespace QidWorkerRole.UploadMasters.Booking
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return false;
             }
             finally
@@ -972,7 +979,8 @@ namespace QidWorkerRole.UploadMasters.Booking
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
             }
             return jsonString;
         }
@@ -996,7 +1004,8 @@ namespace QidWorkerRole.UploadMasters.Booking
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return dataSetResult;
             }
         }
