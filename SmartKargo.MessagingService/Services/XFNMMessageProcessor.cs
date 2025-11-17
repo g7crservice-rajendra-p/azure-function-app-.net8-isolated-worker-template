@@ -65,7 +65,7 @@ namespace QidWorkerRole
                 {
                     var xfnmDataSet = new DataSet();
                     var xmlSchema = await _genericFunction.GetXMLMessageData("XFNM");
-                    
+
                     if (xmlSchema != null && xmlSchema.Tables.Count > 0 && xmlSchema.Tables[0].Rows.Count > 0)
                     {
                         string messageXML = Convert.ToString(xmlSchema.Tables[0].Rows[0]["XMLMessageData"]);
@@ -165,7 +165,7 @@ namespace QidWorkerRole
 
 
                         //GenericFunction GF = new GenericFunction();
-                        
+
                         string SitaMessageHeader = string.Empty, Emailaddress = string.Empty, FNAMessageVersion = string.Empty, messageid = string.Empty;
 
                         DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion("", "XFNM", "AIR", "", "", "", string.Empty, awbPrefix);
@@ -204,7 +204,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -240,7 +241,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -263,7 +265,7 @@ namespace QidWorkerRole
                 //string[] pnames = new string[] { "Acknowledgement", "OrignlMsg", "MsgId", "AWBnumber", "AWBPrefix", "Origin", "Destination", "UpdatedOn", "MessageType" };
                 //SqlDbType[] ptypes = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
                 //object[] pvalues = new object[] { fnadata.AckInfo, fnadata.originalmessage, refno, fnadata.AWBnumber, fnadata.AWBPrefix, fnadata.Origin, fnadata.Destination, System.DateTime.Now, fnadata.MessageType };
-                
+
                 SqlParameter[] sqlParameters = new SqlParameter[]
                 {
                     new SqlParameter("@Acknowledgement", fnadata.AckInfo),
@@ -280,10 +282,11 @@ namespace QidWorkerRole
                 if (!await _readWriteDao.ExecuteNonQueryAsync("spUpdateFNAMessageError", sqlParameters))
                     flag = false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
                 flag = false;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return flag;
         }
@@ -318,7 +321,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 dsmessage = null;
             }
             return dsmessage;
@@ -331,58 +335,66 @@ namespace QidWorkerRole
         /// <returns></returns>
         public string ReplacingNodeNames(string xmlMsg)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xmlMsg);
-            XmlNode nodeToFind;
-            XmlElement root = doc.DocumentElement;
-            XmlNodeList xmlNodelst;
-            if (root.Name.Equals("rsm:HouseManifest"))
+            try
             {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(xmlMsg);
+                XmlNode nodeToFind;
+                XmlElement root = doc.DocumentElement;
+                XmlNodeList xmlNodelst;
+                if (root.Name.Equals("rsm:HouseManifest"))
                 {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_TransportContractDocument");
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_TransportContractDocument");
+                        }
                     }
-                }
 
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:OriginLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_OriginLocation");
+                        }
                     }
-                }
 
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:FinalDestinationLocation')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_FinalDestinationLocation");
+                        }
                     }
-                }
 
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:IncludedCustomsNote')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_IncludedCustomsNote");
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_IncludedCustomsNote");
+                        }
                     }
+
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_TransportContractDocument", "ram:MasterConsignment_TransportContractDocument");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_IncludedCustomsNote", "ram:MasterConsignment_IncludedCustomsNote");
+
+                    return xmlMsg;
                 }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("MasterConsignment_TransportContractDocument", "ram:MasterConsignment_TransportContractDocument");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_OriginLocation", "ram:MasterConsignment_OriginLocation");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_FinalDestinationLocation", "ram:MasterConsignment_FinalDestinationLocation");
-                xmlMsg = xmlMsg.Replace("MasterConsignment_IncludedCustomsNote", "ram:MasterConsignment_IncludedCustomsNote");
-
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
 
-            return xmlMsg;
         }
 
         #endregion Public Methods
@@ -396,20 +408,28 @@ namespace QidWorkerRole
         /// <returns></returns>
         private XmlNode RenameNode(XmlNode e, string newName)
         {
-            XmlDocument doc = e.OwnerDocument;
-            XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
-            while (e.HasChildNodes)
+            try
             {
-                newNode.AppendChild(e.FirstChild);
+                XmlDocument doc = e.OwnerDocument;
+                XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
+                while (e.HasChildNodes)
+                {
+                    newNode.AppendChild(e.FirstChild);
+                }
+                XmlAttributeCollection ac = e.Attributes;
+                while (ac.Count > 0)
+                {
+                    newNode.Attributes.Append(ac[0]);
+                }
+                XmlNode parent = e.ParentNode;
+                parent.ReplaceChild(newNode, e);
+                return newNode;
             }
-            XmlAttributeCollection ac = e.Attributes;
-            while (ac.Count > 0)
+            catch (System.Exception ex)
             {
-                newNode.Attributes.Append(ac[0]);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
-            XmlNode parent = e.ParentNode;
-            parent.ReplaceChild(newNode, e);
-            return newNode;
         }
 
         #endregion Private Methods
