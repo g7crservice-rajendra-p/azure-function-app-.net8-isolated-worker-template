@@ -29,7 +29,7 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readOnlyDao;
         private readonly ILogger<cls_Encode_Decode> _logger;
          private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private static ILogger<cls_Encode_Decode> _staticLogger => _loggerFactory?.CreateLogger<cls_Encode_Decode>();
         private readonly PSNMessageProcessor _pSNMessageProcessor;
         public cls_Encode_Decode(
             ISqlDataHelperFactory sqlDataHelperFactory,

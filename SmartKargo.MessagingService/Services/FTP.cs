@@ -29,7 +29,7 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private static ILogger<FTP> _staticLogger => _loggerFactory?.CreateLogger<FTP>();
   // static shared logger
         private readonly ILogger<FTP> _logger;       // instance logger
         private readonly EMAILOUT _emailOut;

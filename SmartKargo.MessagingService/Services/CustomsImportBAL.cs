@@ -25,7 +25,7 @@ namespace BAL
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<CustomsImportBAL> _logger;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private static ILogger<CustomsImportBAL> _staticLogger => _loggerFactory?.CreateLogger<CustomsImportBAL>();
 
         #region Constructor
         public CustomsImportBAL(ISqlDataHelperFactory sqlDataHelperFactory,

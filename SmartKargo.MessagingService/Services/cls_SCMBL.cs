@@ -13,7 +13,7 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<cls_SCMBL> _logger;
          private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private static ILogger<cls_SCMBL> _staticLogger => _loggerFactory?.CreateLogger<cls_SCMBL>();
 
         private readonly GenericFunction _genericFunction;
         private readonly CIMPMessageValidation _cIMPMessageValidation;

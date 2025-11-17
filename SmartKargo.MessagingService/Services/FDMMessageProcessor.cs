@@ -18,7 +18,7 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FDMMessageProcessor> _logger;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private static ILogger<FDMMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<FDMMessageProcessor>();
 
         #region Constructor
         public FDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,ILogger<FDMMessageProcessor> logger, ILoggerFactory loggerFactory)
