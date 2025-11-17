@@ -4,6 +4,8 @@ using System.Net.Sockets;
 using System.IO;
 using System.Text.RegularExpressions;
 using QidWorkerRole;
+using Microsoft.Extensions.Logging;
+
 namespace QidWorkerRole
 {
     public class TcpIMAP
@@ -13,10 +15,12 @@ namespace QidWorkerRole
         private NetworkStream _imapNs;
         private StreamWriter _imapSw;
         private StreamReader _imapSr;
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
-        public TcpIMAP()
-        {
 
+        private readonly ILogger<TcpIMAP> _logger;
+        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+        public TcpIMAP(ILogger<TcpIMAP> logger)
+        {
+            _logger = logger;
         }
 
         public TcpIMAP(string hostname, int port)
@@ -38,12 +42,14 @@ namespace QidWorkerRole
                 _imapSw = new StreamWriter(_imapNs);
                 _imapSr = new StreamReader(_imapNs);
 
-                Console.WriteLine("*** Connected ***");
+                // Console.WriteLine("*** Connected ***");
+                _logger.LogInformation("*** Connected ***");
                 Response();
             }
             catch (SocketException ex)
             {
-                Console.WriteLine(ex.Message);
+                // Console.WriteLine(ex.Message);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -76,9 +82,10 @@ namespace QidWorkerRole
                 Match m = Regex.Match(res, "[0-9]*[0-9]");
                 return Convert.ToInt32(m.ToString());
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return 0;
         }
@@ -97,9 +104,10 @@ namespace QidWorkerRole
                     m = Regex.Match(res, "[0-9]*[0-9]");
                 return m.ToString().Trim().Split(' ');
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return null;
         }
@@ -118,9 +126,10 @@ namespace QidWorkerRole
                     m = Regex.Match(res, "[0-9]*[0-9]");
                 return m.ToString().Trim().Split(' ');
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return null;
         }
@@ -132,9 +141,10 @@ namespace QidWorkerRole
                 _imapSw.WriteLine("$ UID FETCH " + uid + " (body[header.fields (from subject date)])");
                 _imapSw.Flush();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return Response();
         }
@@ -146,9 +156,10 @@ namespace QidWorkerRole
                 _imapSw.WriteLine("$ UID FETCH " + uid + " (body[header.fields (date)])");
                 _imapSw.Flush();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return Response();
         }
@@ -178,9 +189,10 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
             return strResult;
@@ -202,9 +214,10 @@ namespace QidWorkerRole
                     return strResult.Substring(strResult.IndexOf("subject:") + 8, strResult.LastIndexOf(")") - strResult.IndexOf("subject:") - 8).Trim();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");  
             }
             return strResult;
         }
@@ -226,9 +239,10 @@ namespace QidWorkerRole
                     return strResult.Substring(strResult.IndexOf("date:") + 5, strResult.LastIndexOf(")") - strResult.IndexOf("date:") - 5).Trim();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strResult;
         }
@@ -249,9 +263,10 @@ namespace QidWorkerRole
                     strResult = strResult.Substring(strResult.IndexOf("\r\n")).Trim();
                 strResult = strResult.Substring(0, strResult.LastIndexOf(')'));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strResult;
         }
@@ -306,9 +321,10 @@ namespace QidWorkerRole
                 int ret = _imapNs.Read(data, 0, data.Length);
                 return Encoding.ASCII.GetString(data).TrimEnd();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return "";
         }
@@ -328,9 +344,10 @@ namespace QidWorkerRole
                 }
                 EXPUNGE(uid);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref objEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strResp;
         }
@@ -354,9 +371,10 @@ namespace QidWorkerRole
                 }
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ObjEx);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strRes;
         }
