@@ -86,7 +86,8 @@ namespace QidWorkerRole
                     ToDate = ExecutedOn.AddDays(-1);
 
                 }
-                clsLog.WriteLogAzure("------------------------- doProcess() Started ---------------------------------------------------------------------");
+                // clsLog.WriteLogAzure("------------------------- doProcess() Started ---------------------------------------------------------------------");
+                _logger.LogInformation("------------------------- doProcess() Started ---------------------------------------------------------------------");
                 objDictionary = new Dictionary<string, string>();
                 objUploadDictionary = new Dictionary<string, string>();
 
@@ -105,8 +106,10 @@ namespace QidWorkerRole
 
                 //balRapidInterfaceForCebu objBAL = new balRapidInterfaceForCebu();
 
-                clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
-                clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
+                // clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
+                // clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
+                _logger.LogInformation("----------------------------------------------------------------------------------------------------------------------");
+                _logger.LogInformation("Schedular run on :: {0}" , System.DateTime.Now);
                 objDictionary.Add("File Names ", "Status");
                 #region "AWB RAPID File"
 
@@ -124,10 +127,12 @@ namespace QidWorkerRole
                                                                  , FromDate
                                                                  , ToDate
                                                                 , filenameCTM, filenameAWBData);
-                    clsLog.WriteLogAzure("--Data Inserted -" + DateTime.Now.ToString() + ":" + FromDate + ":" + ToDate + ":");
+                    // clsLog.WriteLogAzure("--Data Inserted -" + DateTime.Now.ToString() + ":" + FromDate + ":" + ToDate + ":");
+                    _logger.LogInformation("--Data Inserted - {0} : {1} : {2} :", DateTime.Now.ToString(), FromDate, ToDate);
                     if (dsRpdIntrfcAWBFileName != null) //dsFileName != null
                     {
-                        clsLog.WriteLogAzure("- dsRpdIntrfcAWBFileName is not null -");
+                        // clsLog.WriteLogAzure("- dsRpdIntrfcAWBFileName is not null -");
+                        _logger.LogInformation("- dsRpdIntrfcAWBFileName is not null -");
                         if (dsRpdIntrfcAWBFileName.Tables.Count > 0)
                         {
                             {
@@ -276,7 +281,8 @@ namespace QidWorkerRole
                     } //[END]//if dsFileName != null
                     else
                     {
-                        clsLog.WriteLogAzure("--Else Run -");
+                        // clsLog.WriteLogAzure("--Else Run -");
+                        _logger.LogWarning("--Else Run -");
                         //lblStatus.Text = "Rapid AWB generation failed!";
                         //lblStatus.ForeColor = Color.Red;
                         //return;
@@ -285,7 +291,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -386,7 +393,8 @@ namespace QidWorkerRole
                             }
                             catch (Exception exc)
                             {
-                                clsLog.WriteLogAzure(exc);
+                                // clsLog.WriteLogAzure(exc);
+                                _logger.LogError(exc, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 objDictionary.Add("sksap.domcollection" + ExecutedOn.ToString("yyyyMMdd") + ".txt", "Failed");
                                 objUploadDictionary.Add("sksap.domcollection" + ExecutedOn.ToString("yyyyMMdd") + ".txt", "Failed");
                             }
@@ -404,7 +412,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -504,7 +513,8 @@ namespace QidWorkerRole
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure(ex);
+                                //clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 objDictionary.Add("sksap.domcollection" + ExecutedOn.ToString("yyyyMMdd") + ".txt", "Failed");
                                 objUploadDictionary.Add("sksap.domcollection" + ExecutedOn.ToString("yyyyMMdd") + ".txt", "Failed");
                             }
@@ -528,11 +538,13 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
-                clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
+                // clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
+                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}" , System.DateTime.Now);
 
 
                 #region Send Email Notification
@@ -579,7 +591,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
 
@@ -597,26 +610,30 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
             }
             catch (Exception ex)
             {
 
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         public async Task UpdateRapidDetails()
         {
             try
             {
-                clsLog.WriteLogAzure("After UpdateULDStock 1111");
+                // clsLog.WriteLogAzure("After UpdateULDStock 1111");
+                _logger.LogInformation("After UpdateULDStock 1111");
                 //String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
 
                 string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
 
-                clsLog.WriteLogAzure("After UpdateULDStock 2222 :  " + TimeZone);
+                // clsLog.WriteLogAzure("After UpdateULDStock 2222 :  " + TimeZone);
+                _logger.LogInformation("After UpdateULDStock 2222 :  {0}", TimeZone);
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;
                 DateTime ToDate = DateTime.Now;
@@ -639,7 +656,8 @@ namespace QidWorkerRole
 
 
                 }
-                clsLog.WriteLogAzure("------------------------- doProcess() Started ---------------------------------------------------------------------");
+                // clsLog.WriteLogAzure("------------------------- doProcess() Started ---------------------------------------------------------------------");
+                _logger.LogInformation("------------------------- doProcess() Started ---------------------------------------------------------------------");
                 objDictionary = new Dictionary<string, string>();
                 objUploadDictionary = new Dictionary<string, string>();
 
@@ -660,8 +678,10 @@ namespace QidWorkerRole
 
                 //balRapidInterface objBAL = new balRapidInterface();
 
-                clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
-                clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
+                // clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
+                // clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
+                _logger.LogInformation("----------------------------------------------------------------------------------------------------------------------");
+                _logger.LogInformation("Schedular run on ::" + System.DateTime.Now);
                 objDictionary.Add("File Names ", "Status");
                 #region "AWB RAPID File"
 
@@ -679,10 +699,12 @@ namespace QidWorkerRole
                                                                  , FromDate
                                                                  , ToDate
                                                                 , "", filenameAWBData);
-                    clsLog.WriteLogAzure("--Data Inserted -" + DateTime.Now.ToString() + ":" + FromDate + ":" + ToDate + ":");
+                    // clsLog.WriteLogAzure("--Data Inserted -" + DateTime.Now.ToString() + ":" + FromDate + ":" + ToDate + ":");
+                    _logger.LogInformation("--Data Inserted - {0} : {1} : {2}" , DateTime.Now.ToString(),  FromDate , ToDate);
                     if (dsRpdIntrfcAWBFileName != null) //dsFileName != null
                     {
-                        clsLog.WriteLogAzure("-AWB File write Processing Started -");
+                        // clsLog.WriteLogAzure("-AWB File write Processing Started -");
+                        _logger.LogInformation("-AWB File write Processing Started -");
                         if (dsRpdIntrfcAWBFileName.Tables.Count > 0)
                         {
                             {
@@ -691,7 +713,8 @@ namespace QidWorkerRole
                                 {
                                     if (Convert.ToString(dsRpdIntrfcAWBFileName.Tables[0].Rows[0]["StatusMsg"]).ToUpper() == "FILESALREADYGENERATED")
                                     {
-                                        clsLog.WriteLogAzure("- FILESALREADYGENERATED ON :- " + ExecutedOn.ToString("ddMMMyymmss"));
+                                        // clsLog.WriteLogAzure("- FILESALREADYGENERATED ON :- " + ExecutedOn.ToString("ddMMMyymmss"));
+                                        _logger.LogInformation("- FILESALREADYGENERATED ON :- {0}" , ExecutedOn.ToString("ddMMMyymmss"));
                                         return;
                                     }
                                 }
@@ -804,7 +827,8 @@ namespace QidWorkerRole
                                                             await addMsgToOutBox(FileName, sbAWB.ToString(), "", "SFTP", false, true, "RAPID");
                                                             objDictionary.Add(FileName, "Success");
                                                             objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsAWBData.Tables[5].Rows[0]["TotalAWBs"]).ToString());
-                                                            clsLog.WriteLogAzure("--AWB file write Process Completed -");
+                                                            // clsLog.WriteLogAzure("--AWB file write Process Completed -");
+                                                            _logger.LogInformation("--AWB file write Process Completed -");
                                                         }
                                                         else
                                                         {
@@ -816,7 +840,8 @@ namespace QidWorkerRole
                                                     {
                                                         objDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                                                         objUploadDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                                                        clsLog.WriteLogAzure(exc);
+                                                        // clsLog.WriteLogAzure(exc);
+                                                        _logger.LogError(exc, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                     }
 
                                                     #endregion
@@ -843,7 +868,8 @@ namespace QidWorkerRole
                         {
                             objDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                             objUploadDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                            clsLog.WriteLogAzure("if (dsRpdIntrfcAWBFileName");
+                            // clsLog.WriteLogAzure("if (dsRpdIntrfcAWBFileName");
+                            _logger.LogInformation("if (dsRpdIntrfcAWBFileName");
                         }
 
                     } //[END]//if dsFileName != null
@@ -852,7 +878,8 @@ namespace QidWorkerRole
                         objDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                         objUploadDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
 
-                        clsLog.WriteLogAzure("--Else Run -");
+                        // clsLog.WriteLogAzure("--Else Run -");
+                        _logger.LogInformation("--Else Run -");
                         //lblStatus.Text = "Rapid AWB generation failed!";
                         //lblStatus.ForeColor = Color.Red;
                         //return;
@@ -866,8 +893,10 @@ namespace QidWorkerRole
                     objDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                     objUploadDictionary.Add("RAPID_AWB" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
 
-                    clsLog.WriteLogAzure(ex.Message);
-                    clsLog.WriteLogAzure(ex);
+                    // clsLog.WriteLogAzure(ex.Message);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -881,7 +910,8 @@ namespace QidWorkerRole
                     string filenameFlown = "";
 
                     #region INSERT Flown DATA
-                    clsLog.WriteLogAzure("-Flown File write Processing Started -");
+                    // clsLog.WriteLogAzure("-Flown File write Processing Started -");
+                    _logger.LogInformation("-Flown File write Processing Started -");
                     dsFlownFileName = await _balRapidInterface.InsertRapidFlownTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
@@ -964,7 +994,8 @@ namespace QidWorkerRole
                                         await addMsgToOutBox(FileName, sbFlown.ToString(), "", "SFTP", false, true, "RAPID");
                                         objDictionary.Add(FileName, "Success");
                                         objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsFlownData.Tables[2].Rows[0]["TotalAWBs"]).ToString());
-                                        clsLog.WriteLogAzure("--Flown file write Process Completed -");
+                                        // clsLog.WriteLogAzure("--Flown file write Process Completed -");
+                                        _logger.LogInformation("--Flown file write Process Completed -");
                                     }
                                     else
                                     {
@@ -978,7 +1009,8 @@ namespace QidWorkerRole
 
                                     objDictionary.Add("RAPID_FLN" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                                     objUploadDictionary.Add("RAPID_FLN" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                                    clsLog.WriteLogAzure(exc);
+                                    // clsLog.WriteLogAzure(exc);
+                                    _logger.LogError(exc, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
 
                                 #endregion
@@ -998,7 +1030,8 @@ namespace QidWorkerRole
                     objDictionary.Add("RAPID_FLN" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                     objUploadDictionary.Add("RAPID_FLN" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
 
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -1012,7 +1045,8 @@ namespace QidWorkerRole
                 try
                 {
 
-                    clsLog.WriteLogAzure("--CTM file write Process Started -");
+                    // clsLog.WriteLogAzure("--CTM file write Process Started -");
+                    _logger.LogInformation("--CTM file write Process Started -");
                     #region Insert CTM DATA
                     dsCTMFileName = await _balRapidInterface.InsertRapidCTMTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
@@ -1098,7 +1132,8 @@ namespace QidWorkerRole
                                     await addMsgToOutBox(FileName, sbCTM.ToString(), "", "SFTP", false, true, "RAPID");
                                     objDictionary.Add(FileName, "Success");
                                     objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsCTMData.Tables[2].Rows[0]["TotalAWBs"]).ToString());
-                                    clsLog.WriteLogAzure("--CTM file write Process Completed -");
+                                    // clsLog.WriteLogAzure("--CTM file write Process Completed -");
+                                    _logger.LogInformation("--CTM file write Process Completed -");
                                 }
                                 else
                                 {
@@ -1110,7 +1145,8 @@ namespace QidWorkerRole
                             {
                                 objDictionary.Add("RAPID_CTM" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                                 objUploadDictionary.Add("RAPID_CTM" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                                clsLog.WriteLogAzure(exc);
+                                // clsLog.WriteLogAzure(exc);
+                                _logger.LogError(exc, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                             }
 
                             #endregion
@@ -1135,7 +1171,8 @@ namespace QidWorkerRole
                 {
                     objDictionary.Add("RAPID_CTM" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                     objUploadDictionary.Add("RAPID_CTM" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 finally
                 {
@@ -1157,7 +1194,8 @@ namespace QidWorkerRole
 
 
                     #region Insert CTM DATA
-                    clsLog.WriteLogAzure("--CCA For PX file write Process Started -");
+                    // clsLog.WriteLogAzure("--CCA For PX file write Process Started -");
+                    _logger.LogInformation("--CCA For PX file write Process Started -");
                     dsCCAPXFileName = await _balRapidInterface.InsertRapidCCAPXTransaction(Convert.ToDateTime(ExecutedOn)
                                                                 , "SKAdmin"
                                                                  , FromDate
@@ -1242,7 +1280,8 @@ namespace QidWorkerRole
                                     await addMsgToOutBox(FileName, sbCCAPX.ToString(), "", "SFTP", false, true, "RAPID");
                                     objDictionary.Add(FileName, "Success");
                                     objUploadDictionary.Add(FileName, "" + Convert.ToInt64(dsCCAPXData.Tables[5].Rows[0]["TotalAWBs"]).ToString());
-                                    clsLog.WriteLogAzure("--CCA for PX file write Process Completed -");
+                                    // clsLog.WriteLogAzure("--CCA for PX file write Process Completed -");
+                                    _logger.LogInformation("--CCA for PX file write Process Completed -");
                                 }
                                 else
                                 {
@@ -1254,7 +1293,8 @@ namespace QidWorkerRole
                             {
                                 objDictionary.Add("RAPID_CCA" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                                 objUploadDictionary.Add("RAPID_CCA" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                                clsLog.WriteLogAzure(exec);
+                                // clsLog.WriteLogAzure(exec);
+                                _logger.LogError(exec, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                             }
 
                             #endregion
@@ -1278,7 +1318,8 @@ namespace QidWorkerRole
                 {
                     objDictionary.Add("RAPID_CCA" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "FAILED");
                     objUploadDictionary.Add("RAPID_CCA" + ExecutedOn.ToString("ddMMMyymmss") + ".txt", "0");
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 finally
                 {
@@ -1288,7 +1329,8 @@ namespace QidWorkerRole
                 }
                 #endregion
 
-                clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
+                // clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
+                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}" , System.DateTime.Now);
                 SaveRapidStatus("SaveRapidLog");
 
                 //#region Send Email Notification
@@ -1348,15 +1390,15 @@ namespace QidWorkerRole
                 //}
                 //catch (Exception ex)
                 //{
-                //    clsLog.WriteLogAzure(ex);
-
+                //    //clsLog.WriteLogAzure(ex);
                 //}
                 //#endregion
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex.Message);
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex.Message);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -1388,7 +1430,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return "";
 
         //    }
@@ -1442,32 +1484,39 @@ namespace QidWorkerRole
                                 if (value)
                                     objUploadDictionary[Path.GetFileName(transfer.FileName)] = "Success";
 
-                                clsLog.WriteLogAzure("Rapid File trasferd::" + transfer.FileName + "\r\n");
+                                // clsLog.WriteLogAzure("Rapid File trasferd::" + transfer.FileName + "\r\n");
+                                _logger.LogInformation("Rapid File trasferd:: {0} \r\n" , transfer.FileName );
                             }
                             catch (Exception ex)
-                            { clsLog.WriteLogAzure(ex); }
+                            { //clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                            }
                         }
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("Rapid File trasferd::" + "failed \r\n");
+                        // clsLog.WriteLogAzure("Rapid File trasferd::" + "failed \r\n");
+                        _logger.LogWarning("Rapid File trasferd:: failed \r\n");
                     }
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception::" + ex.Message);
+                // clsLog.WriteLogAzure("Exception::" + ex.Message);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 foreach (TransferEventArgs transfer in transferResult.Transfers)
                 {
                     try
                     {
                         objUploadDictionary[Path.GetFileName(transfer.FileName)] = "failed";
 
-                        clsLog.WriteLogAzure("Rapid File trasferd::" + transfer.FileName + "failed \r\n");
+                        // clsLog.WriteLogAzure("Rapid File trasferd::" + transfer.FileName + "failed \r\n");
+                        _logger.LogWarning("Rapid File trasferd:: {0} failed \r\n", transfer.FileName);
                     }
                     catch (Exception ex1)
                     {
-                        clsLog.WriteLogAzure("Exception::" + ex1.Message);
+                        // clsLog.WriteLogAzure("Exception::" + ex1.Message);
+                        _logger.LogError(ex1, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
                     }
                 }
             }
@@ -1493,7 +1542,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return false;
         //    }
         //}
@@ -1510,7 +1559,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
         //    return BlobKey;
         //}
@@ -1528,7 +1577,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
         //    return BlobName;
         //}
@@ -1620,7 +1669,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -1665,20 +1715,24 @@ namespace QidWorkerRole
                     dsReturn = await _readWriteDao.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
                     if (dsReturn != null)
                     {
-                        clsLog.WriteLogAzure("Sucess-SaveRapidLog_Ds ::" + System.DateTime.Now);
+                        // clsLog.WriteLogAzure("Sucess-SaveRapidLog_Ds ::" + System.DateTime.Now);
+                        _logger.LogInformation("Sucess-SaveRapidLog_Ds :: {0}" , System.DateTime.Now);
 
                         if (dsReturn.Tables.Count > 0 && dsReturn.Tables[0].Rows.Count > 0)
                         {
-                            clsLog.WriteLogAzure("Sucess-SaveRapidLog_Dt ::" + System.DateTime.Now);
+                            // clsLog.WriteLogAzure("Sucess-SaveRapidLog_Dt ::" + System.DateTime.Now);
+                            _logger.LogInformation("Sucess-SaveRapidLog_Dt :: {0}" , System.DateTime.Now);
                         }
                         else
                         {
-                            clsLog.WriteLogAzure("Failed-SaveRapidLog_Dt ::" + System.DateTime.Now);
+                            // clsLog.WriteLogAzure("Failed-SaveRapidLog_Dt ::" + System.DateTime.Now);
+                            _logger.LogWarning("Failed-SaveRapidLog_Dt :: {0}" , System.DateTime.Now);
                         }
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("Failed-SaveRapidLog_Ds ::" + System.DateTime.Now);
+                        // clsLog.WriteLogAzure("Failed-SaveRapidLog_Ds ::" + System.DateTime.Now);
+                        _logger.LogWarning("Failed-SaveRapidLog_Ds :: {0}" , System.DateTime.Now);
                     }
                 }
 
@@ -1690,12 +1744,14 @@ namespace QidWorkerRole
                     dsReturn = await _readWriteDao.SelectRecords("UspSendAleart_SFTP_RAPID", sqlParameters);
                     if (dsReturn != null)
                     {
-                        clsLog.WriteLogAzure("Sucess-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                        // clsLog.WriteLogAzure("Sucess-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                        _logger.LogInformation("Sucess-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
                         if (dsReturn.Tables.Count > 0 && dsReturn.Tables[0].Rows.Count > 0)
                         {
                             if (Convert.ToString(dsReturn.Tables[0].Rows[0][0]).ToUpper() != "FILESALREADYGENERATED")
                             {
-                                clsLog.WriteLogAzure("Sucess-FILESGENERATED ::" + System.DateTime.Now);
+                                // clsLog.WriteLogAzure("Sucess-FILESGENERATED ::" + System.DateTime.Now);
+                                _logger.LogInformation("Sucess-FILESGENERATED :: {0}" , System.DateTime.Now);
 
                                 string agentEmail = string.Empty; string AgentCode = string.Empty; String body = string.Empty; String ToEmailID = string.Empty;
                                 DataTable dt = new DataTable();
@@ -1731,19 +1787,22 @@ namespace QidWorkerRole
                         }
                         else
                         {
-                            clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                            // clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                            _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
                         }
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                        // clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
+                        _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Failed SaveRapidSendStatus" + ex.Message + System.DateTime.Now);
+                // clsLog.WriteLogAzure("Failed SaveRapidSendStatus" + ex.Message + System.DateTime.Now);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name} {System.DateTime.Now}");
             }
         }
     }
