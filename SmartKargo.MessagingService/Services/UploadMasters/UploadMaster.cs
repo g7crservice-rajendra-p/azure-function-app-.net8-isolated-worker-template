@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Services;
 using System.Data;
-
 namespace QidWorkerRole.UploadMasters
 {
     public class UploadMaster
@@ -116,7 +115,9 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -161,7 +162,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -202,18 +204,21 @@ namespace QidWorkerRole.UploadMasters
 
                     if (dsSerialNumber != null && dsSerialNumber.Tables.Count > 0 && dsSerialNumber.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("File uploaded successfully");
+                        // clsLog.WriteLogAzure("File uploaded successfully");
+                        _logger.LogInformation("File uploaded successfully");
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("File already Uploaded");
+                        // clsLog.WriteLogAzure("File already Uploaded");
+                        _logger.LogWarning("File already Uploaded");
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -255,18 +260,21 @@ namespace QidWorkerRole.UploadMasters
 
                     if (dsSerialNumber != null && dsSerialNumber.Tables.Count > 0 && dsSerialNumber.Tables[0].Rows.Count > 0)
                     {
-                        clsLog.WriteLogAzure("File uploaded successfully");
+                        // clsLog.WriteLogAzure("File uploaded successfully");
+                        _logger.LogInformation("File uploaded successfully");
                     }
                     else
                     {
-                        clsLog.WriteLogAzure("File already Uploaded");
+                        // clsLog.WriteLogAzure("File already Uploaded");
+                        _logger.LogWarning("File already Uploaded");
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 

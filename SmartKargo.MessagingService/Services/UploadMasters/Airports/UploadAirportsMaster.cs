@@ -55,7 +55,8 @@ namespace QidWorkerRole.UploadMasters.Airports
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
+                _logger.LogError($"Message: {ex.Message} \nStackTrace: {ex.StackTrace}");
             }
             return false;
         }
@@ -1979,7 +1980,8 @@ namespace QidWorkerRole.UploadMasters.Airports
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return false;
             }
             finally
@@ -2006,7 +2008,8 @@ namespace QidWorkerRole.UploadMasters.Airports
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return dataSetResult;
             }
         }
