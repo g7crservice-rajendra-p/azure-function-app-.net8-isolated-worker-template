@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
@@ -120,7 +121,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteChargeAmount for " + classObject.GetType().Name, xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteChargeAmount for " + classObject.GetType().Name, xmlException);
+                _staticLogger.LogError("Error Occurred in WriteChargeAmount for {0} {1}", classObject.GetType().Name, xmlException);
             }
         }
     }

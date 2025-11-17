@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
 
 
@@ -13,7 +14,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
     /// </summary>
     public sealed partial class XmlWriterHelper
     {
-        
+
         #region Invoice node
 
         /// <summary>
@@ -47,7 +48,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -62,28 +64,36 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         /// <param name="invoice">Invoice</param>
         private static void WriteInvoiceHeader(XmlTextWriter xmlTextWriter, Invoice invoice)
         {
-            //Logger.Info("Start of WriteInvoiceHeader.");
-
-            xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.InvoiceHeader);
-            WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceNumber, invoice.InvoiceNumber);
-            WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceDate, invoice.InvoiceDate.ToString(XmlConstants.BillingDateFormat));
-
-            WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceType, invoice.InvoiceType.ToLower().Equals("iv") ? "Invoice" : "CreditNote");
-
-            WriteSpecifiedElement(xmlTextWriter, XmlConstants.ChargeCategory, "Cargo");
-
-            // Seller-Byer nodes.
-            WriteBuyerAndSeller(xmlTextWriter, invoice);
-
-            // PaymentTerms detail.
-            WritePaymentTerms(xmlTextWriter, invoice);
-
-            // IS Details 
-            WriteIsDetails(xmlTextWriter, invoice);
-
-            WriteSpecifiedElement(xmlTextWriter, XmlConstants.Language, invoice.InvoiceTemplateLanguage);
-
-            xmlTextWriter.WriteEndElement();
+            try
+            {
+                //Logger.Info("Start of WriteInvoiceHeader.");
+    
+                xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.InvoiceHeader);
+                WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceNumber, invoice.InvoiceNumber);
+                WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceDate, invoice.InvoiceDate.ToString(XmlConstants.BillingDateFormat));
+    
+                WriteSpecifiedElement(xmlTextWriter, XmlConstants.InvoiceType, invoice.InvoiceType.ToLower().Equals("iv") ? "Invoice" : "CreditNote");
+    
+                WriteSpecifiedElement(xmlTextWriter, XmlConstants.ChargeCategory, "Cargo");
+    
+                // Seller-Byer nodes.
+                WriteBuyerAndSeller(xmlTextWriter, invoice);
+    
+                // PaymentTerms detail.
+                WritePaymentTerms(xmlTextWriter, invoice);
+    
+                // IS Details 
+                WriteIsDetails(xmlTextWriter, invoice);
+    
+                WriteSpecifiedElement(xmlTextWriter, XmlConstants.Language, invoice.InvoiceTemplateLanguage);
+    
+                xmlTextWriter.WriteEndElement();
+            }
+            catch (System.Exception ex)
+            {
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+                throw;
+            }
         }
 
         /// <summary>
@@ -95,57 +105,65 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         {
             //Logger.Info("Start of WriteBuyerAndSeller");
 
-            #region SellerOrganization
-
-            xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.SellerOrganization);
-
-            if (invoice.BillingAirline != null)
-            {
-                WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationID, invoice.BillingAirline);
-            }
-
-            foreach (var billingMemberInfo in invoice.ReferenceDataList.Where(billingMemberInfo => billingMemberInfo.IsBillingMember))
-            {
-                if (!string.IsNullOrWhiteSpace(billingMemberInfo.OrganizationDesignator))
-                {
-                    WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationDesignator, billingMemberInfo.OrganizationDesignator);
-                }
-
-                // WriteSpecifiedElement(xmlTextWriter, XmlConstants.LocationID, invoice.BillingAirlineLocationID);
-
-                //WriteReferenceData(xmlTextWriter, billingMemberInfo);
-            }
-
-            xmlTextWriter.WriteEndElement();
-
-            #endregion
-
-            #region BuyerOrganization
-
-            xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.BuyerOrganization);
-
-            if (invoice.BilledAirline != null)
-            {
-                WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationID, invoice.BilledAirline);
-            }
-
-            foreach (var billedMemberInfo in invoice.ReferenceDataList.Where(billedMemberInfo => !billedMemberInfo.IsBillingMember))
-            {
-                if (!string.IsNullOrWhiteSpace(billedMemberInfo.OrganizationDesignator))
-                {
-                    WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationDesignator, billedMemberInfo.OrganizationDesignator);
-                }
-
-                // WriteSpecifiedElement(xmlTextWriter, XmlConstants.LocationID, invoice.BilledAirlineLocationID);
-
-                //WriteReferenceData(xmlTextWriter, billedMemberInfo);
-            }
-
-            xmlTextWriter.WriteEndElement();
-
-            #endregion
-
-            //Logger.Info("End of WriteBuyerAndSeller");
+           try
+           {
+             #region SellerOrganization
+ 
+             xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.SellerOrganization);
+ 
+             if (invoice.BillingAirline != null)
+             {
+                 WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationID, invoice.BillingAirline);
+             }
+ 
+             foreach (var billingMemberInfo in invoice.ReferenceDataList.Where(billingMemberInfo => billingMemberInfo.IsBillingMember))
+             {
+                 if (!string.IsNullOrWhiteSpace(billingMemberInfo.OrganizationDesignator))
+                 {
+                     WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationDesignator, billingMemberInfo.OrganizationDesignator);
+                 }
+ 
+                 // WriteSpecifiedElement(xmlTextWriter, XmlConstants.LocationID, invoice.BillingAirlineLocationID);
+ 
+                 //WriteReferenceData(xmlTextWriter, billingMemberInfo);
+             }
+ 
+             xmlTextWriter.WriteEndElement();
+ 
+             #endregion
+ 
+             #region BuyerOrganization
+ 
+             xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.BuyerOrganization);
+ 
+             if (invoice.BilledAirline != null)
+             {
+                 WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationID, invoice.BilledAirline);
+             }
+ 
+             foreach (var billedMemberInfo in invoice.ReferenceDataList.Where(billedMemberInfo => !billedMemberInfo.IsBillingMember))
+             {
+                 if (!string.IsNullOrWhiteSpace(billedMemberInfo.OrganizationDesignator))
+                 {
+                     WriteSpecifiedElement(xmlTextWriter, XmlConstants.OrganizationDesignator, billedMemberInfo.OrganizationDesignator);
+                 }
+ 
+                 // WriteSpecifiedElement(xmlTextWriter, XmlConstants.LocationID, invoice.BilledAirlineLocationID);
+ 
+                 //WriteReferenceData(xmlTextWriter, billedMemberInfo);
+             }
+ 
+             xmlTextWriter.WriteEndElement();
+ 
+             #endregion
+ 
+             //Logger.Info("End of WriteBuyerAndSeller");
+           }
+           catch (System.Exception ex)
+           {
+            _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+            throw;
+           }
         }
 
         /// <summary>
@@ -155,6 +173,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         /// <param name="referenceDataModel">ReferenceDataModel</param>
         private static void WriteReferenceData(XmlTextWriter xmlTextWriter, ReferenceDataModel referenceDataModel)
         {
+            try{
             //Logger.Info("Start of WriteReferenceData.");
 
             if (referenceDataModel.CompanyLegalName != null)
@@ -202,6 +221,11 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
 
             //Logger.Info("End of WriteReferenceData.");
+        }catch (System.Exception ex)
+        {
+            _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+            throw;
+        }
         }
 
         /// <summary>
@@ -244,7 +268,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -278,7 +303,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -370,7 +396,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -400,31 +427,31 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
                     var lineItem = billingCodeTotal;
 
                     #region Air Way Bill
-                     
+
                     var airWayBillList = (from airWayBills in invoice.AirWayBillList
                                           where airWayBills.BillingCode == lineItem.BillingCode
                                           select airWayBills).ToList().OrderBy(i => i.BatchSequenceNumber).ThenBy(i => i.RecordSequenceWithinBatch);
-                    
+
                     if (airWayBillList.Count() > 0)
                     {
                         foreach (var airWayBill in airWayBillList)
                         {
                             detailNumber++;
                             xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.LineItemDetail);
-                            
+
                             WriteSpecifiedElement(xmlTextWriter, XmlConstants.DetailNumber, detailNumber.ToString());
                             WriteSpecifiedElement(xmlTextWriter, XmlConstants.LineItemNumber, lineItemNumber.ToString());
-                            
+
                             WriteSpecifiedElement(xmlTextWriter, XmlConstants.BatchSequenceNumber, airWayBill.BatchSequenceNumber.ToString());
-                            
+
                             WriteSpecifiedElement(xmlTextWriter, XmlConstants.RecordSequenceWithinBatch, airWayBill.RecordSequenceWithinBatch.ToString());
-                            
+
                             WriteChargeAmount(xmlTextWriter, airWayBill);
-                            
+
                             WriteVat(xmlTextWriter, airWayBill, XmlConstants.AirWayBill);
-                            
+
                             WriteAddonCharges(xmlTextWriter, XmlConstants.IscAllowed, airWayBill.InterlineServiceChargeAmount, airWayBill.InterlineServiceChargePercentage.ToString());
-                            
+
                             if (airWayBill.AWBOtherChargesList.Count == 0)
                             {
                                 WriteAddonCharges(xmlTextWriter, XmlConstants.OtherChargesAllowed, airWayBill.OtherCharges);
@@ -444,17 +471,17 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
                                 }
                             }
                             WriteAddonCharges(xmlTextWriter, XmlConstants.AmountSubjectToISCAllowed, airWayBill.AmountSubjectToInterlineServiceCharge);
-                            
+
                             WriteSpecifiedElement(xmlTextWriter, XmlConstants.TotalNetAmount, String.Format("{0:0.000}", airWayBill.AWBTotalAmount));
-                            
+
                             WriteAirWayBill(xmlTextWriter, airWayBill);
-                            
+
                             xmlTextWriter.WriteEndElement();
                         }
                     }
-                    
+
                     #endregion
-                    
+
                     #region Rejection Memo
 
                     var rejectionMemoList = (from rejMemo in invoice.RejectionMemoList
@@ -575,7 +602,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -667,7 +695,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -749,7 +778,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -876,7 +906,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -918,7 +949,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -987,7 +1019,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1108,7 +1141,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1150,7 +1184,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1218,7 +1253,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1284,7 +1320,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
 
                     if (cMAirWayBill.DateOfCarriageOrTransfer != null)
                     {
-                        WriteSpecifiedElement(xmlTextWriter, XmlConstants.DateOfCarriageOrTransfer, 
+                        WriteSpecifiedElement(xmlTextWriter, XmlConstants.DateOfCarriageOrTransfer,
                                               new DateTime(Convert.ToInt32("20" + cMAirWayBill.DateOfCarriageOrTransfer.Substring(0, 2)),
                                                            Convert.ToInt32(cMAirWayBill.DateOfCarriageOrTransfer.Substring(2, 2)),
                                                            Convert.ToInt32(cMAirWayBill.DateOfCarriageOrTransfer.Substring(4, 2))).ToString("yyyy-MM-dd"));
@@ -1342,7 +1378,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1383,7 +1420,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1449,7 +1487,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1484,7 +1523,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure(xmlException);
+                //clsLog.WriteLogAzure(xmlException);
+                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1529,14 +1569,22 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         /// <param name="value"></param>
         private static void WriteAttributeNodeValue(XmlTextWriter xmlTextWriter, string startElement, string attributeName, string value)
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return;
-            }
-            xmlTextWriter.WriteStartElement(XmlConstants.Prefix + startElement);
-            xmlTextWriter.WriteAttributeString(XmlConstants.Name, attributeName);
-            xmlTextWriter.WriteValue(value);
-            xmlTextWriter.WriteEndElement();
+           try
+           {
+             if (string.IsNullOrWhiteSpace(value))
+             {
+                 return;
+             }
+             xmlTextWriter.WriteStartElement(XmlConstants.Prefix + startElement);
+             xmlTextWriter.WriteAttributeString(XmlConstants.Name, attributeName);
+             xmlTextWriter.WriteValue(value);
+             xmlTextWriter.WriteEndElement();
+           }
+           catch (System.Exception xmlException)
+           {
+            _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            throw;
+           }
         }
 
         #endregion

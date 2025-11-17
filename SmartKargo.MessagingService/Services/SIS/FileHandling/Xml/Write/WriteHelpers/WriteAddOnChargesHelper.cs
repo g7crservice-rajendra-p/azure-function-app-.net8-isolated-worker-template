@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
 {
@@ -12,6 +13,15 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         /// <param name="addOnChargeName">addOnChargeName</param>
         /// <param name="addOnChargeAmount">addOnChargeAmount</param>
         /// <param name="addOnChargePercent">addOnChargePercent</param>
+        
+        private static ILoggerFactory? _loggerFactory;
+        private static ILogger<XmlWriterHelper> _staticLogger => _loggerFactory?.CreateLogger<XmlWriterHelper>();
+
+        public XmlWriterHelper(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+        }
+        
         private static void WriteAddonCharges(XmlTextWriter xmlTextWriter, string addOnChargeName, double addOnChargeAmount, string addOnChargePercent = null)
         {
             try
@@ -35,7 +45,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteAddonCharges", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteAddonCharges", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteAddonCharges {0}", xmlException);
             }
         }
 
@@ -70,7 +81,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteOtherChargeAddonCharges", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteOtherChargeAddonCharges", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteOtherChargeAddonCharges {0}", xmlException);
             }
         }
     }

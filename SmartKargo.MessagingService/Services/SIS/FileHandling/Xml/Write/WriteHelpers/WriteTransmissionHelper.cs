@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
@@ -42,7 +43,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteTransmissionHeader, Error Message: {0}, Error: {1}", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteTransmissionHeader, Error Message: {0}, Error: {1}", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteTransmissionHeader,  Error Message: {0}", xmlException);
             }
             
         }
@@ -54,160 +56,168 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
         /// <param name="invoiceList">invoiceList</param>
         private static void WriteTotalSummaryAmounts(XmlTextWriter xmlTextWriter, IEnumerable<Invoice> invoiceList)
         {
-            //Logger.Info("Start of WriteTotalSummaryAmounts.");
-
-            var htTotalAmount = new Hashtable();
-            var htTotalVatAmount = new Hashtable();
-            var htTotalAddOnChargeAmount = new Hashtable();
-            var htTotalAmountWithoutVat = new Hashtable();
-            var htTotalAmountInClearanceCurrency = new Hashtable();
-
-            foreach (var invoice in invoiceList)
+            try
             {
-                if (!string.IsNullOrWhiteSpace(invoice.CurrencyofBilling))
+                //Logger.Info("Start of WriteTotalSummaryAmounts.");
+    
+                var htTotalAmount = new Hashtable();
+                var htTotalVatAmount = new Hashtable();
+                var htTotalAddOnChargeAmount = new Hashtable();
+                var htTotalAmountWithoutVat = new Hashtable();
+                var htTotalAmountInClearanceCurrency = new Hashtable();
+    
+                foreach (var invoice in invoiceList)
                 {
-                    var billingCurrency = invoice.CurrencyofBilling;
-
-                    if (billingCurrency != null)
+                    if (!string.IsNullOrWhiteSpace(invoice.CurrencyofBilling))
                     {
-                        if (invoice.InvoiceTotals != null)
-                        {
-                            if (htTotalAmount.Contains(billingCurrency))
-                            {
-                                var totalAmount = Convert.ToDecimal(htTotalAmount[billingCurrency]) + invoice.InvoiceTotals.NetInvoiceBillingTotal;
-                                htTotalAmount.Remove(billingCurrency);
-                                htTotalAmount.Add(billingCurrency, totalAmount);
-                            }
-                            else
-                            {
-                                if (invoice.InvoiceTotals.NetInvoiceBillingTotal != 0)
-                                {
-                                    htTotalAmount.Add(billingCurrency, invoice.InvoiceTotals.NetInvoiceBillingTotal);
-                                }
-                                else
-                                {
-                                    htTotalAmount.Add(billingCurrency, 0);
-                                }
-                            }
-
-                            if (htTotalAddOnChargeAmount.Contains(billingCurrency))
-                            {
-                                var totalAddOnChargeAmount = Convert.ToDecimal(htTotalAddOnChargeAmount[billingCurrency]) +
-                                                             ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
-                                                             invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate);
-                                htTotalAddOnChargeAmount.Remove(billingCurrency);
-                                htTotalAddOnChargeAmount.Add(billingCurrency, totalAddOnChargeAmount);
-                            }
-                            else
-                            {
-                                if (invoice.InvoiceTotals.TotalInterlineServiceChargeAmount != 0 || invoice.InvoiceTotals.TotalOtherCharges != 0)
-                                {
-                                    htTotalAddOnChargeAmount.Add(billingCurrency, ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
-                                                                                    invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate));
-                                }
-                            }
-
-                            if (htTotalVatAmount.Contains(billingCurrency))
-                            {
-                                var totalVatAmount = Convert.ToDecimal(htTotalVatAmount[billingCurrency]) +
-                                                    (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate);
-                                htTotalVatAmount.Remove(billingCurrency);
-                                htTotalVatAmount.Add(billingCurrency, totalVatAmount);
-                            }
-                            else
-                            {
-                                if (invoice.InvoiceTotals.TotalVATAmount != 0)
-                                {
-                                    htTotalVatAmount.Add(billingCurrency, (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate));
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(invoice.CurrencyofBilling))
+                        var billingCurrency = invoice.CurrencyofBilling;
+    
+                        if (billingCurrency != null)
                         {
                             if (invoice.InvoiceTotals != null)
                             {
-                                if (htTotalAmount.Contains(invoice.CurrencyofBilling))
+                                if (htTotalAmount.Contains(billingCurrency))
                                 {
-                                    var totalAmount = Convert.ToDecimal(htTotalAmount[invoice.CurrencyofBilling]) + invoice.InvoiceTotals.NetInvoiceBillingTotal;
-                                    htTotalAmount.Remove(invoice.CurrencyofBilling);
-                                    htTotalAmount.Add(invoice.CurrencyofBilling, totalAmount);
+                                    var totalAmount = Convert.ToDecimal(htTotalAmount[billingCurrency]) + invoice.InvoiceTotals.NetInvoiceBillingTotal;
+                                    htTotalAmount.Remove(billingCurrency);
+                                    htTotalAmount.Add(billingCurrency, totalAmount);
                                 }
                                 else
                                 {
                                     if (invoice.InvoiceTotals.NetInvoiceBillingTotal != 0)
                                     {
-                                        htTotalAmount.Add(invoice.CurrencyofBilling, invoice.InvoiceTotals.NetInvoiceBillingTotal);
+                                        htTotalAmount.Add(billingCurrency, invoice.InvoiceTotals.NetInvoiceBillingTotal);
                                     }
                                     else
                                     {
-                                        htTotalAmount.Add(invoice.CurrencyofBilling, 0);
+                                        htTotalAmount.Add(billingCurrency, 0);
                                     }
                                 }
-
-                                if (htTotalAddOnChargeAmount.Contains(invoice.CurrencyofBilling))
+    
+                                if (htTotalAddOnChargeAmount.Contains(billingCurrency))
                                 {
-                                    var totalAddOnChargeAmount = Convert.ToDecimal(htTotalAddOnChargeAmount[invoice.CurrencyofBilling]) +
-                                                                ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
-                                                                  invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate);
-                                    htTotalAddOnChargeAmount.Remove(invoice.CurrencyofBilling);
-                                    htTotalAddOnChargeAmount.Add(invoice.CurrencyofBilling, totalAddOnChargeAmount);
+                                    var totalAddOnChargeAmount = Convert.ToDecimal(htTotalAddOnChargeAmount[billingCurrency]) +
+                                                                 ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
+                                                                 invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate);
+                                    htTotalAddOnChargeAmount.Remove(billingCurrency);
+                                    htTotalAddOnChargeAmount.Add(billingCurrency, totalAddOnChargeAmount);
                                 }
                                 else
                                 {
                                     if (invoice.InvoiceTotals.TotalInterlineServiceChargeAmount != 0 || invoice.InvoiceTotals.TotalOtherCharges != 0)
                                     {
-                                        htTotalAddOnChargeAmount.Add(invoice.CurrencyofBilling, ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
-                                                                     invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate));
+                                        htTotalAddOnChargeAmount.Add(billingCurrency, ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
+                                                                                        invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate));
                                     }
                                 }
-
-                                if (htTotalVatAmount.Contains(invoice.CurrencyofBilling))
+    
+                                if (htTotalVatAmount.Contains(billingCurrency))
                                 {
-                                    var totalVatAmount = Convert.ToDecimal(htTotalVatAmount[invoice.CurrencyofBilling]) +
-                                                         (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate);
-                                    htTotalVatAmount.Remove(invoice.CurrencyofBilling);
-                                    htTotalVatAmount.Add(invoice.CurrencyofBilling, totalVatAmount);
+                                    var totalVatAmount = Convert.ToDecimal(htTotalVatAmount[billingCurrency]) +
+                                                        (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate);
+                                    htTotalVatAmount.Remove(billingCurrency);
+                                    htTotalVatAmount.Add(billingCurrency, totalVatAmount);
                                 }
                                 else
                                 {
                                     if (invoice.InvoiceTotals.TotalVATAmount != 0)
                                     {
-                                        htTotalVatAmount.Add(invoice.CurrencyofBilling, (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate));
+                                        htTotalVatAmount.Add(billingCurrency, (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate));
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(invoice.CurrencyofBilling))
+                            {
+                                if (invoice.InvoiceTotals != null)
+                                {
+                                    if (htTotalAmount.Contains(invoice.CurrencyofBilling))
+                                    {
+                                        var totalAmount = Convert.ToDecimal(htTotalAmount[invoice.CurrencyofBilling]) + invoice.InvoiceTotals.NetInvoiceBillingTotal;
+                                        htTotalAmount.Remove(invoice.CurrencyofBilling);
+                                        htTotalAmount.Add(invoice.CurrencyofBilling, totalAmount);
+                                    }
+                                    else
+                                    {
+                                        if (invoice.InvoiceTotals.NetInvoiceBillingTotal != 0)
+                                        {
+                                            htTotalAmount.Add(invoice.CurrencyofBilling, invoice.InvoiceTotals.NetInvoiceBillingTotal);
+                                        }
+                                        else
+                                        {
+                                            htTotalAmount.Add(invoice.CurrencyofBilling, 0);
+                                        }
+                                    }
+    
+                                    if (htTotalAddOnChargeAmount.Contains(invoice.CurrencyofBilling))
+                                    {
+                                        var totalAddOnChargeAmount = Convert.ToDecimal(htTotalAddOnChargeAmount[invoice.CurrencyofBilling]) +
+                                                                    ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
+                                                                      invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate);
+                                        htTotalAddOnChargeAmount.Remove(invoice.CurrencyofBilling);
+                                        htTotalAddOnChargeAmount.Add(invoice.CurrencyofBilling, totalAddOnChargeAmount);
+                                    }
+                                    else
+                                    {
+                                        if (invoice.InvoiceTotals.TotalInterlineServiceChargeAmount != 0 || invoice.InvoiceTotals.TotalOtherCharges != 0)
+                                        {
+                                            htTotalAddOnChargeAmount.Add(invoice.CurrencyofBilling, ((invoice.InvoiceTotals.TotalInterlineServiceChargeAmount +
+                                                                         invoice.InvoiceTotals.TotalOtherCharges) / invoice.ListingToBillingRate));
+                                        }
+                                    }
+    
+                                    if (htTotalVatAmount.Contains(invoice.CurrencyofBilling))
+                                    {
+                                        var totalVatAmount = Convert.ToDecimal(htTotalVatAmount[invoice.CurrencyofBilling]) +
+                                                             (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate);
+                                        htTotalVatAmount.Remove(invoice.CurrencyofBilling);
+                                        htTotalVatAmount.Add(invoice.CurrencyofBilling, totalVatAmount);
+                                    }
+                                    else
+                                    {
+                                        if (invoice.InvoiceTotals.TotalVATAmount != 0)
+                                        {
+                                            htTotalVatAmount.Add(invoice.CurrencyofBilling, (invoice.InvoiceTotals.TotalVATAmount / invoice.ListingToBillingRate));
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+    
+                foreach (DictionaryEntry item in htTotalAmount)
+                {
+                    xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalAmount);
+                    xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
+                    xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
+                    xmlTextWriter.WriteEndElement();
+                }
+    
+                foreach (DictionaryEntry item in htTotalAddOnChargeAmount)
+                {
+                    xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalAddOnChargeAmount);
+                    xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
+                    xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
+                    xmlTextWriter.WriteEndElement();
+                }
+    
+                foreach (DictionaryEntry item in htTotalVatAmount)
+                {
+                    xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalVATAmount);
+                    xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
+                    xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
+                    xmlTextWriter.WriteEndElement();
+                }
+                //Logger.Info("End of WriteTotalSummaryAmounts.");
             }
-
-            foreach (DictionaryEntry item in htTotalAmount)
+            catch (System.Exception ex)
             {
-                xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalAmount);
-                xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
-                xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
-                xmlTextWriter.WriteEndElement();
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
+                throw;
             }
-
-            foreach (DictionaryEntry item in htTotalAddOnChargeAmount)
-            {
-                xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalAddOnChargeAmount);
-                xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
-                xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
-                xmlTextWriter.WriteEndElement();
-            }
-
-            foreach (DictionaryEntry item in htTotalVatAmount)
-            {
-                xmlTextWriter.WriteStartElement(XmlConstants.Prefix + XmlConstants.TotalVATAmount);
-                xmlTextWriter.WriteAttributeString(XmlConstants.CurrencyCode, item.Key.ToString());
-                xmlTextWriter.WriteValue(String.Format("{0:0.000}", item.Value));
-                xmlTextWriter.WriteEndElement();
-            }
-            //Logger.Info("End of WriteTotalSummaryAmounts.");
         }
 
         /// <summary>
@@ -233,7 +243,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteTransmissionSummary, Error Message: {0}, Error: {1}",xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteTransmissionSummary, Error Message: {0}, Error: {1}",xmlException);
+                _staticLogger.LogError("Error Occurred in WriteTransmissionSummary,  Error Message: {0}", xmlException);
             }
 
         }

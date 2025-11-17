@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
 using QidWorkerRole.SIS.Model.Base;
 
@@ -192,7 +193,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteVat for {0}, Error Message: {1}, Error: {2}", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteVat for {0}, Error Message: {1}, Error: {2}", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteVat for {0},  Error Message: {1}", lineItemDetailType, xmlException);
             }
         }
 
@@ -246,7 +248,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteVatDetails, Error Message: {0}, Error: {1}", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteVatDetails, Error Message: {0}, Error: {1}", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteVatDetails,  Error Message: {0}", xmlException);
             }
         }
 
@@ -405,7 +408,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteOtherChargeTax for {0}, Error Message: {1}, Error: {2}", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteOtherChargeTax for {0}, Error Message: {1}, Error: {2}", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteOtherChargeTax for {0},  Error Message: {1}", lineItemDetailType, xmlException);
             }
         }
 
@@ -463,7 +467,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteInvoiceTotalVAT, Error Message: {0}, Error: {1}", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in WriteInvoiceTotalVAT, Error Message: {0}, Error: {1}", xmlException);
+                _staticLogger.LogError("Error Occurred in WriteInvoiceTotalVAT,  Error Message: {0}", xmlException);
             }
         }
 

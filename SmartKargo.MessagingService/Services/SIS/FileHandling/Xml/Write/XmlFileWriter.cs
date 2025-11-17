@@ -8,6 +8,7 @@ using QidWorkerRole.SIS.Model;
 using System.IO;
 using System.Text;
 using QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write
 {
@@ -17,6 +18,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write
     public class XmlFileWriter
     {
         private XmlTextWriter xmlTextWriter;
+        private readonly ILogger<XmlFileWriter> _logger;
         private string FilePath { get; set; }
 
         /// <summary>
@@ -24,6 +26,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write
         /// </summary>
         /// <param name="filePath"></param>
         public void Init(string filePath)
+    
         {
             //Logger.Debug("Initializing IS-XML writer engine.");
             if (File.Exists(filePath))
@@ -35,6 +38,11 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write
             xmlTextWriter.Formatting = Formatting.Indented;
             FilePath = filePath;
         }
+
+         public XmlFileWriter(ILogger<XmlFileWriter> logger)
+            {
+                _logger = logger;
+            }
 
         /// <summary>
         /// To check whether XML writer is initialized or not.
@@ -81,10 +89,11 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in WriteXMLFile", exception);
+                // clsLog.WriteLogAzure("Error Occurred in WriteXMLFile", exception);
 
-                clsLog.WriteLogAzure("File is Deleted due to exception", exception);
-
+                // clsLog.WriteLogAzure("File is Deleted due to exception", exception);
+                _logger.LogError("File is Deleted due to exception {0}", exception);
+                _logger.LogWarning("Error Occurred in WriteXMLFile");
                 xmlTextWriter.Close();
 
                 File.Delete(FilePath);
