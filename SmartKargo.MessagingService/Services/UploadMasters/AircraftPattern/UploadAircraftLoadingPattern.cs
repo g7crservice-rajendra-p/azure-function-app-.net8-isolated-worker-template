@@ -1,57 +1,73 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using System.Globalization;
 
 namespace QidWorkerRole.UploadMasters.AircraftPattern
 {
     public class UploadAircraftLoadingPattern
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadAircraftLoadingPattern> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly GenericFunction _genericFunction;
 
-        public Boolean AircraftPatternUpload()
+        #region Constructor
+        public UploadAircraftLoadingPattern(ISqlDataHelperFactory sqlDataHelperFactory,
+        ILogger<UploadAircraftLoadingPattern> logger, UploadMasterCommon uploadmasterCommon, GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadmasterCommon;
+            _genericFunction = genericFunction;
+        }
+        #endregion
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        public async Task<Boolean> AircraftPatternUpload()
         {
             try
             {
                 DataSet dataSetFileData = new DataSet();
-                dataSetFileData = uploadMasterCommon.GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
+                //dataSetFileData = uploadMasterCommon.GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
+                dataSetFileData = await _uploadMasterCommon.GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
 
                 if (dataSetFileData != null && dataSetFileData.Tables[0].Rows.Count > 0)
                 {
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                       await  _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        //if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "AircraftLoadPattern", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                           // uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} \nStackTrace: {StackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
         }
@@ -90,7 +106,8 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
+                //uploadMasterCommon.RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
 
                 #region Creating AircraftConfig
                 DataTable AircraftConfig = new DataTable("AircraftLoadingPattern");
@@ -631,7 +648,8 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
             finally
@@ -648,7 +666,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
         /// <param name="datatableAircraftCompartment"></param>
         /// <param name="errorInSp"></param>
         /// <returns>Result</returns>
-        public DataSet ValidateAndInsertAircraftLoadingPattern(int srNotblMasterUploadSummaryLog, DataTable dataTableAircraftPattern, DataTable datatableAircraftCompartment,
+        public async Task<DataSet?> ValidateAndInsertAircraftLoadingPattern(int srNotblMasterUploadSummaryLog, DataTable dataTableAircraftPattern, DataTable datatableAircraftCompartment,
                                                                                               string errorInSp)
         {
             DataSet dataSetResult = new DataSet();
@@ -662,14 +680,16 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
 
 
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadAircraftLoadingPattern", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadAircraftLoadingPattern", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadAircraftLoadingPattern", sqlParameters);
 
                 return dataSetResult;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                ///clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
                 return dataSetResult;
             }
         }
