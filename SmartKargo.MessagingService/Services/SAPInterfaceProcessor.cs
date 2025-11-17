@@ -46,18 +46,23 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<Cls_BL> _logger;
+         private static ILoggerFactory? _loggerFactory;
+        private static ILogger<SAPInterfaceProcessor> _staticLogger => _loggerFactory?.CreateLogger<SAPInterfaceProcessor>();
+
         private readonly FTP _fTP;
         private readonly GenericFunction _genericFunction;
 
         public SAPInterfaceProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<Cls_BL> logger,
+            ILoggerFactory loggerFactory,
             FTP fTP,
             GenericFunction genericFunction
          )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _loggerFactory = loggerFactory;
             _fTP = fTP;
             _genericFunction = genericFunction;
 
@@ -213,7 +218,8 @@ namespace QidWorkerRole
                     }
                     else
                     {
-                        clsLog.WriteLogAzure(isFileGenerated);
+                        // clsLog.WriteLogAzure(isFileGenerated);
+                        _logger.LogWarning(isFileGenerated);
                     }
 
                 }
@@ -222,7 +228,8 @@ namespace QidWorkerRole
             {
                 if (dsGetSapInfo != null)
                     dsGetSapInfo.Dispose();
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -260,7 +267,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -312,7 +320,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -344,7 +353,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return result;
             }
         }
