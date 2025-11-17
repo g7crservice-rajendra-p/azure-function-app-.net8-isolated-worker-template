@@ -1,6 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using QidWorkerRole.UploadMasters.FlightSchedule;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
 
