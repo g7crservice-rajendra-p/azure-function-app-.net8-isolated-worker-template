@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -28,7 +29,7 @@ namespace QidWorkerRole.UploadMasters.Vendor
         /// Method to Uplaod Cost Line Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public async Task<Boolean> VendorMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> VendorMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -60,9 +61,9 @@ namespace QidWorkerRole.UploadMasters.Vendor
                 }
                 return true;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \n StackTrace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " \n StackTrace: " + ex.StackTrace);
                 return false;
             }
         }
@@ -492,7 +493,7 @@ namespace QidWorkerRole.UploadMasters.Vendor
         /// <param name="dataTableCostRemarksType"> CostRemarksType DataTable </param>
         /// <param name="errorInSp"> Stored Procedure Out Parameter </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public async Task<DataSet> ValidateAndInsertVendorMaster(int srNotblMasterUploadSummaryLog, DataTable VendorType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertVendorMaster(int srNotblMasterUploadSummaryLog, DataTable VendorType, string errorInSp)
         {
             DataSet? dataSetResult = new DataSet();
             try
@@ -509,9 +510,9 @@ namespace QidWorkerRole.UploadMasters.Vendor
 
                 return dataSetResult;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
                 return dataSetResult;
             }
         }
