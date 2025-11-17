@@ -3,6 +3,7 @@ using System.Xml;
 using QidWorkerRole.SIS.Model;
 using System.Collections;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
@@ -49,7 +50,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadLineItemVat", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadLineItemVat", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadLineItemVat {0}", xmlException);  
             }
         }
 
@@ -112,7 +114,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadLineItemVatDetails", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadLineItemVatDetails", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadLineItemVatDetails {0}", xmlException);
             }
         }
 
@@ -155,7 +158,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadLineItemDetailsVat", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadLineItemDetailsVat", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadLineItemDetailsVat {0}", xmlException);
             }
         }
 
@@ -224,7 +228,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadLineItemDetailVatDetails", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadLineItemDetailVatDetails", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadLineItemDetailVatDetails {0}", xmlException);
             }
         }
 
@@ -485,7 +490,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in AssignVatDetails", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in AssignVatDetails", xmlException);
+                _staticLogger.LogError("Error Occurred in AssignVatDetails {0}", xmlException);
             }
         }
 
@@ -542,7 +548,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadInvoiceTotalVAT", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadInvoiceTotalVAT", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadInvoiceTotalVAT {0}", xmlException);
             }
         }
     }

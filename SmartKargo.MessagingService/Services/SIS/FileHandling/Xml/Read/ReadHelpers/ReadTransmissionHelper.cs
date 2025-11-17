@@ -3,6 +3,7 @@ using System.Reflection;
 
 using System.Xml;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
@@ -13,6 +14,13 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
     {
   
         #region Read Transmission Header.
+        private static ILoggerFactory? _loggerFactory;
+        private static ILogger<XmlReaderHelper> _staticLogger => _loggerFactory?.CreateLogger<XmlReaderHelper>();
+
+        public static void Init(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+        }
 
         /// <summary>
         /// To Read the XML File Transmission Header.
@@ -71,12 +79,14 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadTransmissionHeader", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadTransmissionHeader", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadTransmissionHeader {0}", xmlException);
                 return null;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadTransmissionHeader", exception);
+                // clsLog.WriteLogAzure("Error Occurred in ReadTransmissionHeader", exception);
+                _staticLogger.LogError("Error Occurred in ReadTransmissionHeader {0}", exception);
                 return null;
             }
         }
@@ -95,7 +105,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             try
             {
                 //Logger.Info("Start of ReadTransmissionSummary.");
-
+                _staticLogger.LogInformation("Start of ReadTransmissionSummary.");
                 if ((transmissionSummary != null) && (xmlTextReader != null))
                 {
                     while (xmlTextReader.Read())
@@ -129,14 +139,17 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
                     }
                 }
                 //Logger.Info("End of ReadTransmissionSummary.");
+                _staticLogger.LogInformation("End of ReadTransmissionSummary.");
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadTransmissionSummary", xmlException);
+                // clsLog.WriteLogAzure("Error Occurred in ReadTransmissionSummary", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadTransmissionSummary {0}", xmlException);
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadTransmissionSummary", exception);
+                // clsLog.WriteLogAzure("Error Occurred in ReadTransmissionSummary", exception);
+                _staticLogger.LogError("Error Occurred in ReadTransmissionSummary {0}", exception);
             }
         }
 
@@ -164,7 +177,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in IsContinue", exception);
+                // clsLog.WriteLogAzure("Error Occurred in IsContinue", exception);
+                _staticLogger.LogError("Error Occurred in IsContinue {0}", exception);
                 return isContinue;
             }
         }
