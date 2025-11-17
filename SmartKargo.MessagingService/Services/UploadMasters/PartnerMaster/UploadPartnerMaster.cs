@@ -1,23 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using System.Globalization;
 
 namespace QidWorkerRole.UploadMasters.PartnerMaster
 {
     public class UploadPartnerMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
-        public Boolean PartnerMasterUpload(DataSet dataSetFileData)
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadPartnerMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadPartnerMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadPartnerMaster> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+
+        }
+        #endregion
+        public async Task<bool> PartnerMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -30,21 +38,21 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "Partners", out FilePath))
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "Partners", out FilePath))
                         {
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), FilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), FilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                             continue;
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -56,7 +64,7 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
             return false;
         }
 
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTablePartnerExcelData = new DataTable("dataTablePartnerExcelData");
 
@@ -82,7 +90,7 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTablePartnerExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTablePartnerExcelData);
 
                 foreach (DataColumn dataColumn in dataTablePartnerExcelData.Columns)
                 {
@@ -558,13 +566,13 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                             {
                                 switch (dataTablePartnerExcelData.Rows[i]["settlement method"].ToString().Trim().Trim(',').ToUpper())
                                 {
-                                    case "ICH" :
+                                    case "ICH":
                                         dataRowPartnerMasterType["SettlementMethod"] = "ICH";
                                         break;
-                                    case "ACH" :
+                                    case "ACH":
                                         dataRowPartnerMasterType["SettlementMethod"] = "ACH";
                                         break;
-                                    case "BILATERAL" :
+                                    case "BILATERAL":
                                         dataRowPartnerMasterType["SettlementMethod"] = "BILATERAL";
                                         break;
                                     default:
@@ -1292,7 +1300,7 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                             }
                         }
                     }
-                     
+
                     #endregion
 
                     #region [FRTApplied] [bit] NULL
@@ -1359,23 +1367,23 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                     #endregion
 
                     #region [PartnerEndpoint] [varchar] (500) NULL
-                          dataRowPartnerMasterType["PartnerEndpoint"] = DBNull.Value;
+                    dataRowPartnerMasterType["PartnerEndpoint"] = DBNull.Value;
                     #endregion
 
                     #region [ValidateStock] [bit] NULL
-                         dataRowPartnerMasterType["ValidateStock"] = DBNull.Value;
+                    dataRowPartnerMasterType["ValidateStock"] = DBNull.Value;
                     #endregion
 
                     #region [ValidateTSA] [bit] NULL
-                          dataRowPartnerMasterType["ValidateTSA"] = DBNull.Value;
+                    dataRowPartnerMasterType["ValidateTSA"] = DBNull.Value;
                     #endregion
 
                     #region [ValidateCommodity] [bit] NULL
-                         dataRowPartnerMasterType["ValidateCommodity"] = DBNull.Value;
+                    dataRowPartnerMasterType["ValidateCommodity"] = DBNull.Value;
                     #endregion
 
                     #region [ValidateShipperAgent] [bit] NULL
-                          dataRowPartnerMasterType["ValidateShipperAgent"] = DBNull.Value;
+                    dataRowPartnerMasterType["ValidateShipperAgent"] = DBNull.Value;
                     #endregion
 
                     #region [isSIS] [bit] NULL
@@ -1413,23 +1421,23 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
                     #endregion
 
                     #region [CarrierRegistrationNo] [varchar] (50) NULL
-                        dataRowPartnerMasterType["CarrierRegistrationNo"] = DBNull.Value;
+                    dataRowPartnerMasterType["CarrierRegistrationNo"] = DBNull.Value;
                     #endregion
 
                     #region [CompanyCode] [varchar] (50) NULL
-                         dataRowPartnerMasterType["CompanyCode"] = DBNull.Value;
+                    dataRowPartnerMasterType["CompanyCode"] = DBNull.Value;
                     #endregion
 
                     #region [WebServiceAddress] [varchar] (500) NULL
-                         dataRowPartnerMasterType["WebServiceAddress"] = DBNull.Value;
+                    dataRowPartnerMasterType["WebServiceAddress"] = DBNull.Value;
                     #endregion
 
                     #region [Token] [nvarchar] (500) NULL
-                        dataRowPartnerMasterType["Token"] = DBNull.Value;
+                    dataRowPartnerMasterType["Token"] = DBNull.Value;
                     #endregion
 
                     #region [Logo] [nvarchar] (30) NULL
-                        dataRowPartnerMasterType["Logo"] = DBNull.Value;
+                    dataRowPartnerMasterType["Logo"] = DBNull.Value;
                     #endregion
 
                     dataRowPartnerMasterType["validationDetailsPartnerMaster"] = validationDetailsPartnerMaster;
@@ -1441,7 +1449,7 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
 
                 // Database Call to Validate & Insert/Update AirportMaster Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertPartnerMaster(srNotblMasterUploadSummaryLog, PartnerMasterType, errorInSp);//
+                await ValidateAndInsertPartnerMaster(srNotblMasterUploadSummaryLog, PartnerMasterType, errorInSp);//
 
                 return true;
             }
@@ -1456,20 +1464,21 @@ namespace QidWorkerRole.UploadMasters.PartnerMaster
             }
         }
 
-        public DataSet ValidateAndInsertPartnerMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertPartnerMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
         {
             // uspUploadPartnerMaster
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@PartnerMasterTableType", shipperConsigneeType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@PartnerMasterTableType", shipperConsigneeType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadPartnerMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadPartnerMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadPartnerMaster", sqlParameters);
 
                 return dataSetResult;
             }

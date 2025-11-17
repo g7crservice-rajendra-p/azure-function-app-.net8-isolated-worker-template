@@ -149,7 +149,10 @@ namespace QidWorkerRole
 
                                 }
                             }
-                            catch (Exception ex) { clsLog.WriteLogAzure(ex); }
+                            catch (Exception ex) {
+                                //  clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                             }
                         }
 
                     }
@@ -209,7 +212,9 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception in send grid functionality" + ex);
+                // clsLog.WriteLogAzure("Exception in send grid functionality" + ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogWarning("Exception in send grid functionality");
             }
 
             #endregion

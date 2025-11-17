@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -11,7 +12,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
     public class UploadRouteControl
     {
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-        
+
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadRouteControl> _logger;
         private readonly UploadMasterCommon _uploadMasterCommon;
@@ -34,7 +35,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
         /// Method to Uplaod Route Controls Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public async Task<Boolean> RouteControlsMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> RouteControlsMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -53,7 +54,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
                                                               "RouteControlsMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -79,7 +80,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Route Controls Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableRouteControlsExcelData = new DataTable("dataTableRouteControlsExcelData");
 
@@ -117,27 +118,27 @@ namespace QidWorkerRole.UploadMasters.RouteControl
 
                 DataTable dataTableRouteControlsMasterType = new DataTable("dataTableRouteControlsMasterType");
                 dataTableRouteControlsMasterType.Columns.Add("RouteControlsIndex", System.Type.GetType("System.Int32"));
-	            dataTableRouteControlsMasterType.Columns.Add("SerialNumber", System.Type.GetType("System.Int32"));
-	            dataTableRouteControlsMasterType.Columns.Add("RouteID", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("RouteName", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("StartDate", System.Type.GetType("System.DateTime"));
-	            dataTableRouteControlsMasterType.Columns.Add("EndDate", System.Type.GetType("System.DateTime"));
-	            dataTableRouteControlsMasterType.Columns.Add("LocationLevel", System.Type.GetType("System.Int32"));
-	            dataTableRouteControlsMasterType.Columns.Add("Location", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("OriginLevel", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Origin", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("DestinationLevel", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Destination", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Type", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Status", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("UpdatedOn", System.Type.GetType("System.DateTime"));
-	            dataTableRouteControlsMasterType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Remarks", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("MINIMUM_CAPACITY", System.Type.GetType("System.Decimal"));
+                dataTableRouteControlsMasterType.Columns.Add("SerialNumber", System.Type.GetType("System.Int32"));
+                dataTableRouteControlsMasterType.Columns.Add("RouteID", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("RouteName", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("StartDate", System.Type.GetType("System.DateTime"));
+                dataTableRouteControlsMasterType.Columns.Add("EndDate", System.Type.GetType("System.DateTime"));
+                dataTableRouteControlsMasterType.Columns.Add("LocationLevel", System.Type.GetType("System.Int32"));
+                dataTableRouteControlsMasterType.Columns.Add("Location", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("OriginLevel", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Origin", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("DestinationLevel", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Destination", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Type", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Status", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("UpdatedOn", System.Type.GetType("System.DateTime"));
+                dataTableRouteControlsMasterType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Remarks", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("MINIMUM_CAPACITY", System.Type.GetType("System.Decimal"));
                 dataTableRouteControlsMasterType.Columns.Add("MINIMUM_VOLUME", System.Type.GetType("System.Decimal"));
-	            dataTableRouteControlsMasterType.Columns.Add("ControlType", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("Yield", System.Type.GetType("System.String"));
-	            dataTableRouteControlsMasterType.Columns.Add("ValidationErrorDetailsRouteControls", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("ControlType", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("Yield", System.Type.GetType("System.String"));
+                dataTableRouteControlsMasterType.Columns.Add("ValidationErrorDetailsRouteControls", System.Type.GetType("System.String"));
 
                 #endregion
 
@@ -145,13 +146,13 @@ namespace QidWorkerRole.UploadMasters.RouteControl
 
                 DataTable dataTableRouteConfigParamsType = new DataTable("dataTableRouteConfigParamsType");
                 dataTableRouteConfigParamsType.Columns.Add("RouteControlsIndex", System.Type.GetType("System.Int32"));
-	            dataTableRouteConfigParamsType.Columns.Add("SerialNumber", System.Type.GetType("System.Int32"));
-	            dataTableRouteConfigParamsType.Columns.Add("RouteSrNo", System.Type.GetType("System.Int32"));
-	            dataTableRouteConfigParamsType.Columns.Add("ParamName", System.Type.GetType("System.String"));
-	            dataTableRouteConfigParamsType.Columns.Add("ParamValue", System.Type.GetType("System.String"));
-	            dataTableRouteConfigParamsType.Columns.Add("IsInclude", System.Type.GetType("System.Byte"));
+                dataTableRouteConfigParamsType.Columns.Add("SerialNumber", System.Type.GetType("System.Int32"));
+                dataTableRouteConfigParamsType.Columns.Add("RouteSrNo", System.Type.GetType("System.Int32"));
+                dataTableRouteConfigParamsType.Columns.Add("ParamName", System.Type.GetType("System.String"));
+                dataTableRouteConfigParamsType.Columns.Add("ParamValue", System.Type.GetType("System.String"));
+                dataTableRouteConfigParamsType.Columns.Add("IsInclude", System.Type.GetType("System.Byte"));
                 dataTableRouteConfigParamsType.Columns.Add("UpdatedOn", System.Type.GetType("System.DateTime"));
-	            dataTableRouteConfigParamsType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
+                dataTableRouteConfigParamsType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
 
                 #endregion
 
@@ -437,7 +438,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
                                 validationErrorDetailsRouteControls = validationErrorDetailsRouteControls + "Invalid MINIMUM_CAPACITY;";
                             }
                         }
-                    }                    
+                    }
 
                     #endregion MINIMUM_CAPACITY
 
@@ -466,7 +467,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
                                 validationErrorDetailsRouteControls = validationErrorDetailsRouteControls + "Invalid MINIMUM_VOLUME;";
                             }
                         }
-                    } 
+                    }
 
                     #endregion MINIMUM_VOLUME
 
@@ -940,7 +941,7 @@ namespace QidWorkerRole.UploadMasters.RouteControl
 
                 // Database Call to Validate & Insert Route Controls Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertRouteControlsMaster(srNotblMasterUploadSummaryLog, dataTableRouteControlsMasterType, dataTableRouteConfigParamsType, errorInSp);
+                await ValidateAndInsertRouteControlsMaster(srNotblMasterUploadSummaryLog, dataTableRouteControlsMasterType, dataTableRouteConfigParamsType, errorInSp);
 
                 return true;
             }
@@ -969,11 +970,12 @@ namespace QidWorkerRole.UploadMasters.RouteControl
             DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@RouteControlsMasterType", dataTableRouteControlsMasterType),
-                                                                      new SqlParameter("@RouteConfigParamsType", dataTableRouteConfigParamsType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@RouteControlsMasterType", dataTableRouteControlsMasterType),
+                    new SqlParameter("@RouteConfigParamsType", dataTableRouteConfigParamsType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 //SQLServer sQLServer = new SQLServer();
                 //dataSetResult = sQLServer.SelectRecords("uspUploadRouteControlsMaster", sqlParameters);

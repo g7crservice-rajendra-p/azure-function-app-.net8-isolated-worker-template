@@ -1,9 +1,8 @@
 ﻿using Excel;
-using QID.DataAccess;
-using System;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
 
 namespace QidWorkerRole.UploadMasters.OtherCharges
 {
@@ -12,13 +11,29 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
     /// </summary>
     public class UploadOtherChargesMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadOtherChargesMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadOtherChargesMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadOtherChargesMaster> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+
+        }
+        #endregion
 
         /// <summary>
         /// Method to Uplaod OtherCharges Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean OtherChargesMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> OtherChargesMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -30,22 +45,22 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "OtherChargesMasterUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -63,7 +78,7 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Other Charges Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableOtherChargesExcelData = new DataTable("dataTableOtherChargesExcelData");
 
@@ -88,7 +103,7 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableOtherChargesExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableOtherChargesExcelData);
 
                 foreach (DataColumn dataColumn in dataTableOtherChargesExcelData.Columns)
                 {
@@ -145,7 +160,7 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
                 OtherChargesMasterType.Columns.Add("IsPackaging", System.Type.GetType("System.Byte"));
                 OtherChargesMasterType.Columns.Add("isEditable", System.Type.GetType("System.Byte"));
                 OtherChargesMasterType.Columns.Add("UOM", System.Type.GetType("System.String"));
-                
+
                 OtherChargesMasterType.Columns.Add("validationDetails", System.Type.GetType("System.String"));
 
                 #endregion
@@ -961,7 +976,7 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
 
                     #endregion UOM
 
-                   
+
 
                     #endregion Create row for OtherChargesMaster Data Table
 
@@ -1518,7 +1533,7 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
 
                 // Database Call to Validate & Insert Other Charges Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertOtherChargesMaster(srNotblMasterUploadSummaryLog, OtherChargesMasterType,
+                await ValidateAndInsertOtherChargesMaster(srNotblMasterUploadSummaryLog, OtherChargesMasterType,
                                                                                    OtherChargesParamType,
                                                                                    OtherChargeSlabsType,
                                                                                    ULDOCSlabsType, errorInSp);
@@ -1546,27 +1561,29 @@ namespace QidWorkerRole.UploadMasters.OtherCharges
         /// <param name="dataTableULDOCSlabsType"> ULD OC Slabs Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertOtherChargesMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableOtherChargesMasterType,
+        public async Task<DataSet> ValidateAndInsertOtherChargesMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableOtherChargesMasterType,
                                                                                               DataTable dataTableOtherChargesParamsType,
                                                                                               DataTable dataTableOtherChargeSlabsType,
                                                                                               DataTable dataTableULDOCSlabsType,
                                                                                               string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                    new SqlParameter("@OtherChargesMasterTableType", dataTableOtherChargesMasterType),
-                                                                    new SqlParameter("@OtherChargesParamsTableType", dataTableOtherChargesParamsType),
-                                                                    new SqlParameter("@OtherChargeSlabsTableType", dataTableOtherChargeSlabsType),
-                                                                    new SqlParameter("@ULDOCSlabsTableType", dataTableULDOCSlabsType),
-                                                                    new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@OtherChargesMasterTableType", dataTableOtherChargesMasterType),
+                    new SqlParameter("@OtherChargesParamsTableType", dataTableOtherChargesParamsType),
+                    new SqlParameter("@OtherChargeSlabsTableType", dataTableOtherChargeSlabsType),
+                    new SqlParameter("@ULDOCSlabsTableType", dataTableULDOCSlabsType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
 
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadOtherChargesMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadOtherChargesMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadOtherChargesMaster", sqlParameters);
 
                 return dataSetResult;
             }

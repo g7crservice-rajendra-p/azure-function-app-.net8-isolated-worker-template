@@ -1,4 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -34,7 +37,7 @@ namespace QidWorkerRole.UploadMasters.RateLine
         /// Method to Uplaod Rate Line Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public async Task<Boolean> RateLineMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> RateLineMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -53,7 +56,7 @@ namespace QidWorkerRole.UploadMasters.RateLine
                                                               "RateLineMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath, Convert.ToString(dataRowFileData["ContainerName"]));
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath, Convert.ToString(dataRowFileData["ContainerName"]));
                         }
                         else
                         {
@@ -79,7 +82,7 @@ namespace QidWorkerRole.UploadMasters.RateLine
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Rate Line Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath, string ContainerName)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath, string ContainerName)
         {
             DataTable dataTableRateLineExcelData = new DataTable("dataTableRateLineExcelData");
 
@@ -1092,7 +1095,7 @@ namespace QidWorkerRole.UploadMasters.RateLine
 
                         if (dataColumn.ColumnName.Equals("min"))
                         {
-                            if (dataRowRateLineType["RateBase"].Equals("WB") || dataRowRateLineType["RateBase"].Equals("WP") || dataRowRateLineType["RateBase"].Equals("FC") || dataRowRateLineType["RateBase"].Equals("PB") || dataRowRateLineType["RateBase"].Equals("RC") || dataRowRateLineType["RateBase"].Equals("WK")|| dataRowRateLineType["RateBase"].Equals("WS"))
+                            if (dataRowRateLineType["RateBase"].Equals("WB") || dataRowRateLineType["RateBase"].Equals("WP") || dataRowRateLineType["RateBase"].Equals("FC") || dataRowRateLineType["RateBase"].Equals("PB") || dataRowRateLineType["RateBase"].Equals("RC") || dataRowRateLineType["RateBase"].Equals("WK") || dataRowRateLineType["RateBase"].Equals("WS"))
                             {
                                 tempDecimalValue = 0;
                                 if (!dataTableRateLineExcelData.Rows[i][j].ToString().Trim().Equals(string.Empty))
@@ -1616,7 +1619,7 @@ namespace QidWorkerRole.UploadMasters.RateLine
 
                 // Database Call to Validate & Insert Rate Line Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertRateLineMaster(srNotblMasterUploadSummaryLog, RateLineType,
+                await ValidateAndInsertRateLineMaster(srNotblMasterUploadSummaryLog, RateLineType,
                                                                                RateLineRemarkType,
                                                                                RateLineParamType,
                                                                                RateLineSlabType,
@@ -1655,15 +1658,15 @@ namespace QidWorkerRole.UploadMasters.RateLine
             DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] {
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@RateLineTableType", dataTableRateLineType),
-                                                                      new SqlParameter("@RateLineRemarkTableType", dataTableRateLineRemarkType),
-                                                                      new SqlParameter("@RateLineParamTableType", dataTableRateLineParamType),
-                                                                      new SqlParameter("@RateLineSlabTableType", dataTableRateLineSlabType),
-                                                                      new SqlParameter("@RatelineULDSlabTableType", dataTableRatelineULDSlabType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@RateLineTableType", dataTableRateLineType),
+                    new SqlParameter("@RateLineRemarkTableType", dataTableRateLineRemarkType),
+                    new SqlParameter("@RateLineParamTableType", dataTableRateLineParamType),
+                    new SqlParameter("@RateLineSlabTableType", dataTableRateLineSlabType),
+                    new SqlParameter("@RatelineULDSlabTableType", dataTableRatelineULDSlabType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 //SQLServer sQLServer = new SQLServer();
                 //dataSetResult = sQLServer.SelectRecords("uspUploadRateLineMaster", sqlParameters);

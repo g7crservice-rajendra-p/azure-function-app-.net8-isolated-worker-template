@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
@@ -17,18 +18,23 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
         private readonly UploadMasterCommon _uploadMasterCommon;
 
         #region Constructor
-        public UploadShipperConsigneeMaster(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<UploadShipperConsigneeMaster> logger)
+        public UploadShipperConsigneeMaster(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadShipperConsigneeMaster> logger,
+            UploadMasterCommon uploadMasterCommon
+        )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
         }
         #endregion
+
         /// <summary>
         /// Method to Uplaod ShipperConsignee Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public async Task<Boolean> ShipperConsigneeMasterUpload(DataSet dataSetFileData)
+        public async Task<bool> ShipperConsigneeMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -60,9 +66,9 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                 }
                 return true;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
                 return false;
             }
         }
@@ -970,7 +976,7 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                                     }
                                 }
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
                                 dataRowAShipperConsigneeType["KnownShipperExpDt"] = DBNull.Value;
                                 validationDetailsShipperConsignee = validationDetailsShipperConsignee + "Invalid KNOWN_SHIPPER_VALID_TO;";
@@ -1899,9 +1905,9 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
 
                 return true;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
                 return false;
             }
             finally
@@ -1922,11 +1928,11 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
             DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@ShipperConsigneeTableType", shipperConsigneeType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [ 
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@ShipperConsigneeTableType", shipperConsigneeType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 //SQLServer sQLServer = new SQLServer();
                 //dataSetResult = sQLServer.SelectRecords("uspUploadShipperConsigneeMaster", sqlParameters);
@@ -1934,9 +1940,9 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
 
                 return dataSetResult;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
                 return dataSetResult;
             }
         }

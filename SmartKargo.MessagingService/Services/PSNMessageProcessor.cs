@@ -10,15 +10,20 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<PSNMessageProcessor> _logger;
+         private static ILoggerFactory? _loggerFactory;
+        private static ILogger<PSNMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<PSNMessageProcessor>();
+
         private readonly GenericFunction _genericFunction;
 
         #region Constructor
         public PSNMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<PSNMessageProcessor> logger,
-            GenericFunction genericFunction)
+            GenericFunction genericFunction,
+            ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _loggerFactory = loggerFactory;
             _genericFunction = genericFunction;
         }
         #endregion
@@ -87,7 +92,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -158,7 +164,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -828,7 +835,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -1130,7 +1138,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
         }
@@ -1177,7 +1186,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 //db = null;
                 return null;
 
@@ -1191,7 +1201,7 @@ namespace QidWorkerRole
             {
                 string AutoPSN = string.Empty;
                 //GenericFunction genericFunction = new GenericFunction();
-                
+
                 AutoPSN = _genericFunction.ReadValueFromDb("AutoPSN");
 
                 if (AutoPSN != string.Empty && AutoPSN == "false")
@@ -1241,23 +1251,27 @@ namespace QidWorkerRole
                             if (SitaMessageHeader != "")
                             {
                                 _genericFunction.SaveMessageOutBox("PSN", SitaMessageHeader + "\r\n" + sbPSN.ToString().ToUpper(), "SITAFTP", "SITAFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
-                                clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
+                                // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
+                                _logger.LogInformation("PSN message in SaveMessageOutBox SitaMessageHeader {0}", DateTime.Now);
                             }
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
                             {
                                 _genericFunction.SaveMessageOutBox("PSN", SFTPHeaderSITAddress + "\r\n" + sbPSN.ToString().ToUpper(), "SFTP", "SFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
-                                clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
+                                // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
+                                _logger.LogInformation("PSN message in SaveMessageOutBox SFTPHeaderSITAddress {0}", DateTime.Now);
                             }
                             if (Emailaddress.Trim().Length > 0)
                             {
                                 _genericFunction.SaveMessageOutBox("PSN", sbPSN.ToString().ToUpper(), string.Empty, Emailaddress, string.Empty, "", string.Empty, string.Empty, AWBNumber);
-                                clsLog.WriteLogAzure("PSN message in SaveMessageOutBox Email" + DateTime.Now);
+                                // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox Email" + DateTime.Now);
+                                _logger.LogInformation("PSN message in SaveMessageOutBox Email {0}", DateTime.Now);
                             }
 
                             #endregion
                         }
 
-                        clsLog.WriteLogAzure("PSN Message generated successfully:" + AWBNumber + "-" + HAWBNumber);
+                        // clsLog.WriteLogAzure("PSN Message generated successfully:" + AWBNumber + "-" + HAWBNumber);
+                        _logger.LogInformation("PSN Message generated successfully: {0}-{1}", AWBNumber, HAWBNumber);
                         return true;
                     }
                     else
@@ -1269,7 +1283,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
         }
