@@ -1,22 +1,33 @@
 ﻿using Excel;
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
 {
     public class UploadExchangeRatesFromTo
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
-        public Boolean ExchangeRatesFromTo(DataSet dsFiles)
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadExchangeRatesFromTo> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadExchangeRatesFromTo(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadExchangeRatesFromTo> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+
+        public async Task<Boolean> ExchangeRatesFromTo(DataSet dsFiles)
         {
             try
             {
@@ -25,16 +36,16 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                 foreach (DataRow dr in dsFiles.Tables[0].Rows)
                 {
                     ///to upadate retry count only.
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "", 0, 0, 0, 1, "", 1, 1);
 
-                    if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "ExchangeRatesFromTo", out FilePath))
+                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "ExchangeRatesFromTo", out FilePath))
                     {
                         ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
                     else
                     {
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
                 }
@@ -91,7 +102,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                     // Free resources (IExcelDataReader is IDisposable)
                     iExcelDataReader.Close();
 
-                    uploadMasterCommon.RemoveEmptyRows(dataTableExchangeRatesFromTo);
+                    _uploadMasterCommon.RemoveEmptyRows(dataTableExchangeRatesFromTo);
                 }
                 else
                 {
@@ -233,9 +244,9 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
         }
 
-        public DataSet ValidateAndInsertExchangeRatesFromTo(int srNotblMasterUploadSummaryLog, DataTable dataTableExchangeRates, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertExchangeRatesFromTo(int srNotblMasterUploadSummaryLog, DataTable dataTableExchangeRates, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {
@@ -245,8 +256,9 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                                                                   };
 
                 sqlParameters[2].Direction = ParameterDirection.Output;
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("masters.uspUploadCurrencyExchangeRatesFromTo", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("masters.uspUploadCurrencyExchangeRatesFromTo", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("masters.uspUploadCurrencyExchangeRatesFromTo", sqlParameters);
 
                 return dataSetResult;
             }

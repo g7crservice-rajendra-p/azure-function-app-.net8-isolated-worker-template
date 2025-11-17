@@ -1,26 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using System.Globalization;
-using System.Xml;
-using System.Xml.Serialization;
 
 
 namespace QidWorkerRole.UploadMasters.Collection
 {
     class InvoiceCollection
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-        public Boolean UpdateInvoiceCollection(DataSet dataSetFileData)
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<InvoiceCollection> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public InvoiceCollection(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<InvoiceCollection> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+        public async Task<Boolean> UpdateInvoiceCollection(DataSet dataSetFileData)
         {
             try
             {
@@ -32,22 +37,22 @@ namespace QidWorkerRole.UploadMasters.Collection
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "CollectionUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -83,7 +88,7 @@ namespace QidWorkerRole.UploadMasters.Collection
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableCollectionExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableCollectionExcelData);
 
                 foreach (DataColumn dataColumn in dataTableCollectionExcelData.Columns)
                 {
@@ -575,7 +580,7 @@ namespace QidWorkerRole.UploadMasters.Collection
         /// <param name="dataTableRateLineParamType"> Route Config Params Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertCollectionMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableCollectionType,
+        public async Task<DataSet> ValidateAndInsertCollectionMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableCollectionType,
                                                                                                 string errorInSp)
         {
             DataSet dataSetResult = new DataSet();
@@ -587,8 +592,9 @@ namespace QidWorkerRole.UploadMasters.Collection
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("USPInvoiceLevelCollectionUpload", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("USPInvoiceLevelCollectionUpload", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("USPInvoiceLevelCollectionUpload", sqlParameters);
 
                 return dataSetResult;
             }
@@ -601,9 +607,9 @@ namespace QidWorkerRole.UploadMasters.Collection
 
 
 
-        public String ValidateORNo(string strRotationId, int intYear, string strUserName)
+        public async Task<String?> ValidateORNo(string strRotationId, int intYear, string strUserName)
         {
-            DataSet res = new DataSet();
+            DataSet? res = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@strRotationId",strRotationId),
@@ -612,8 +618,9 @@ namespace QidWorkerRole.UploadMasters.Collection
                                                                       new SqlParameter("@strOutput", ParameterDirection.Output)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                res = sQLServer.SelectRecords("spGenerateRotationNoNew", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //res = sQLServer.SelectRecords("spGenerateRotationNoNew", sqlParameters);
+                res = await _readWriteDao.SelectRecords("spGenerateRotationNoNew", sqlParameters);
                 string s = res.Tables[0].Rows[0][0].ToString();
                 return s;
             }
