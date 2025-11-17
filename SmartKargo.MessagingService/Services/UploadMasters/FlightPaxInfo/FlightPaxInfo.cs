@@ -1,24 +1,35 @@
-﻿using QID.DataAccess;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole.UploadMasters.FlightPaxInfo
 {
-    class FlightPaxInfo
+    public class FlightPaxInfo
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon _uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<FlightPaxInfo> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public FlightPaxInfo(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FlightPaxInfo> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+
+        }
+        #endregion
 
         /// <summary>
         /// Method to Uplaod ScedulePaxData Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean PaxMasterUpload(DataSet dataSetFileData, string uploadType)
+        public async Task<bool> PaxMasterUpload(DataSet dataSetFileData, string uploadType)
         {
             try
             {
@@ -29,19 +40,19 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Update Retry Count", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Update Retry Count", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               folderName, out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath, messageType);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath, messageType);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
                     }
                 }
@@ -54,7 +65,7 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
             }
         }
 
-        private void ProcessFile(int srNo, string filePath, string messageType)
+        private async Task ProcessFile(int srNo, string filePath, string messageType)
         {
             try
             {
@@ -65,7 +76,7 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
                 int successCount = 0;
                 int failedCount = 0;
                 DataTable dtFlightPaxInfo = CreatePaxDataTable();
-                uploadMasterCommon.UpdateUploadMastersStatus(srNo, "Process Start", recordCount, successCount, failedCount, 1, string.Empty, 1);
+                await _uploadMasterCommon.UpdateUploadMastersStatus(srNo, "Process Start", recordCount, successCount, failedCount, 1, string.Empty, 1);
                 for (int i = 0; i < lines.Length; i++)
                 {
                     DataRow paxDataRow = dtFlightPaxInfo.NewRow();
@@ -134,14 +145,17 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
                 }
                 if (dtFlightPaxInfo.Rows.Count > 0)
                 {
-                    SqlParameter[] sqlParams = new SqlParameter[] {
+                    SqlParameter[] sqlParams = [
                         new SqlParameter("@FlightPacInformation", dtFlightPaxInfo)
                         , new SqlParameter("@RecordCount", recordCount)
                         , new SqlParameter("@SrNo", srNo)
-                    };
-                    SQLServer sqlServer = new SQLServer();
-                    DataSet dsPaxResult = new DataSet();
-                    dsPaxResult = sqlServer.SelectRecords("uspSaveFlightPaxInformation", sqlParams);
+                    ];
+
+                    //SQLServer sqlServer = new SQLServer();
+                    //dsPaxResult = sqlServer.SelectRecords("uspSaveFlightPaxInformation", sqlParams);
+
+                    DataSet? dsPaxResult = new DataSet();
+                    dsPaxResult = await _readWriteDao.SelectRecords("uspSaveFlightPaxInformation", sqlParams);
                 }
                 else
                 {
@@ -154,103 +168,104 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
             }
         }
 
-        public bool SaveFlightPaxInformation(object[] paxdata)
-        {
-            bool isInsert;
-            try
-            {
-                string[] paramNames = new string[15];
-                SqlDbType[] dataTypes = new SqlDbType[15];
-                int i = 0;
+        /*Not in use*/
+        //public bool SaveFlightPaxInformation(object[] paxdata)
+        //{
+        //    bool isInsert;
+        //    try
+        //    {
+        //        string[] paramNames = new string[15];
+        //        SqlDbType[] dataTypes = new SqlDbType[15];
+        //        int i = 0;
 
-                //0
-                paramNames.SetValue("DepartureDate", i);
-                dataTypes.SetValue(SqlDbType.DateTime, i);
-                i++;
+        //        //0
+        //        paramNames.SetValue("DepartureDate", i);
+        //        dataTypes.SetValue(SqlDbType.DateTime, i);
+        //        i++;
 
-                //1
-                paramNames.SetValue("Origin", i);
-                dataTypes.SetValue(SqlDbType.VarChar, i);
-                i++;
+        //        //1
+        //        paramNames.SetValue("Origin", i);
+        //        dataTypes.SetValue(SqlDbType.VarChar, i);
+        //        i++;
 
-                //2
-                paramNames.SetValue("CarrierCode", i);
-                dataTypes.SetValue(SqlDbType.VarChar, i);
-                i++;
+        //        //2
+        //        paramNames.SetValue("CarrierCode", i);
+        //        dataTypes.SetValue(SqlDbType.VarChar, i);
+        //        i++;
 
-                //3
-                paramNames.SetValue("FlightID", i);
-                dataTypes.SetValue(SqlDbType.VarChar, i);
-                i++;
+        //        //3
+        //        paramNames.SetValue("FlightID", i);
+        //        dataTypes.SetValue(SqlDbType.VarChar, i);
+        //        i++;
 
-                //4
-                paramNames.SetValue("ExpectedInfants", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //4
+        //        paramNames.SetValue("ExpectedInfants", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //5
-                paramNames.SetValue("ExpectedAdults", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //5
+        //        paramNames.SetValue("ExpectedAdults", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //6
-                paramNames.SetValue("ExpectedChild", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //6
+        //        paramNames.SetValue("ExpectedChild", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //7
-                paramNames.SetValue("ExpectedTotalPax", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //7
+        //        paramNames.SetValue("ExpectedTotalPax", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //8
-                paramNames.SetValue("ActualInfants", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //8
+        //        paramNames.SetValue("ActualInfants", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //9
-                paramNames.SetValue("ActualAdults", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //9
+        //        paramNames.SetValue("ActualAdults", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //10
-                paramNames.SetValue("ActualChild", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //10
+        //        paramNames.SetValue("ActualChild", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
-                //11
-                paramNames.SetValue("ActualTotalPax", i);
-                dataTypes.SetValue(SqlDbType.Int, i);
-                i++;
+        //        //11
+        //        paramNames.SetValue("ActualTotalPax", i);
+        //        dataTypes.SetValue(SqlDbType.Int, i);
+        //        i++;
 
 
-                //12
-                paramNames.SetValue("CreatedOn", i);
-                dataTypes.SetValue(SqlDbType.DateTime, i);
-                i++;
+        //        //12
+        //        paramNames.SetValue("CreatedOn", i);
+        //        dataTypes.SetValue(SqlDbType.DateTime, i);
+        //        i++;
 
-                //13
-                paramNames.SetValue("CreatedBy", i);
-                dataTypes.SetValue(SqlDbType.VarChar, i);
-                i++;
+        //        //13
+        //        paramNames.SetValue("CreatedBy", i);
+        //        dataTypes.SetValue(SqlDbType.VarChar, i);
+        //        i++;
 
-                //14
-                paramNames.SetValue("FileName", i);
-                dataTypes.SetValue(SqlDbType.VarChar, i);
+        //        //14
+        //        paramNames.SetValue("FileName", i);
+        //        dataTypes.SetValue(SqlDbType.VarChar, i);
 
-                SQLServer sqlServer = new SQLServer();
-                isInsert = sqlServer.InsertData("uspSaveFlightPaxInformation", paramNames, dataTypes, paxdata);
+        //        SQLServer sqlServer = new SQLServer();
+        //        isInsert = sqlServer.InsertData("uspSaveFlightPaxInformation", paramNames, dataTypes, paxdata);
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                isInsert = false;
-            }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        isInsert = false;
+        //    }
 
-            return isInsert;
+        //    return isInsert;
 
-        }
+        //}
 
         private DataTable CreatePaxDataTable()
         {
@@ -273,7 +288,7 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
             dt.Columns.Add("UpdatedBy", typeof(string));
             dt.Columns.Add("ExpectedBaggage", typeof(string));
             dt.Columns.Add("ActualBaggage", typeof(string));
-            
+
             dt.Columns.Add("AircraftCode", typeof(string));
             dt.Columns.Add("AircraftRegistration", typeof(string));
             dt.Columns.Add("AircraftType", typeof(string));
@@ -283,6 +298,4 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
             return dt;
         }
     }
-
-
 }

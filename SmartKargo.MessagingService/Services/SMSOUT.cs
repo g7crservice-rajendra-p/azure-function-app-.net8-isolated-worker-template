@@ -57,12 +57,14 @@ namespace QidWorkerRole
                         sb.Append(tempstring);
                     }
                 } while (count > 0);
-                clsLog.WriteLogAzure("SMS sent @ " + DateTime.Now.ToString(), null);
+                // clsLog.WriteLogAzure("SMS sent @ " + DateTime.Now.ToString(), null);
+                _logger.LogInformation("SMS sent @ {0}" , DateTime.Now.ToString());
                 flag = true;
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception while sending SMS : "+ ex.Message+" @ "+ DateTime.Now.ToString(),ex);
+                // clsLog.WriteLogAzure("Exception while sending SMS : "+ ex.Message+" @ "+ DateTime.Now.ToString(),ex);
+                _logger.LogError(ex, "Exception while sending SMS : {0} @ {1}" , ex.Message, DateTime.Now.ToString());
                 flag = false;
             }
             return flag;
@@ -97,12 +99,14 @@ namespace QidWorkerRole
                         sb.Append(tempstring);
                     }
                 } while (count > 0);
-                clsLog.WriteLogAzure("SMS sent @ " + DateTime.Now.ToString(), null);
+                // clsLog.WriteLogAzure("SMS sent @ " + DateTime.Now.ToString(), null);
+                _logger.LogInformation("SMS sent @ {0}" , DateTime.Now.ToString());
                 flag = true;
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Exception while sending SMS : ", ex);
+                // clsLog.WriteLogAzure("Exception while sending SMS : ", ex);
+                _logger.LogError(ex, "Exception while sending SMS : {0}" , ex.Message);
                 flag = false;
             }
             return flag;

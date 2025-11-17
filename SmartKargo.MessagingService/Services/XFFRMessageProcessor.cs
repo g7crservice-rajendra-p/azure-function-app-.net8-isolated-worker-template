@@ -318,7 +318,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, "Error in {FunctionName} of {PageName}", FUN_NAME, PAGE_NAME);
             }
             return flag;
         }
@@ -381,7 +382,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, "Error in {FunctionName} of {PageName}", FUN_NAME, PAGE_NAME);
             }
         }
 
@@ -416,9 +418,10 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 strarr = null;
+                _logger.LogError(ex, "Error in stringsplitter");
             }
             return strarr;
         }
@@ -739,9 +742,10 @@ namespace QidWorkerRole
                     {
                         flightDate = DateTime.ParseExact(flightdate, "dd/MM/yyyy", null);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         flightDate = DateTime.UtcNow;
+                        _logger.LogError(ex, "Error in parsing flight date");
                     }
 
                     //objOpsAuditLog = new AWBOperations();
@@ -793,7 +797,8 @@ namespace QidWorkerRole
 
                     //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
                     if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParamsAudit))
-                        clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                        // clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                        _logger.LogError("AWB Audit log  for: {AWBNumber}", awbnum+ Environment.NewLine);
 
 
 
@@ -1075,7 +1080,8 @@ namespace QidWorkerRole
                                 //if (!dtb.UpdateData("spSaveFFRAWBRoute", paramNames, dataTypes, values))
 
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("spSaveFFRAWBRoute", sqlParamsInsertRoute))
-                                    clsLog.WriteLogAzure("Error in Save AWB Route FFR ");
+                                    // clsLog.WriteLogAzure("Error in Save AWB Route FFR ");
+                                    _logger.LogWarning("Error in Save AWB Route FFR ");
 
 
                                 //objOpsAuditLog = new AWBOperations();
@@ -1128,7 +1134,8 @@ namespace QidWorkerRole
 
                                 //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParamsAuditRoute))
-                                    clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                                    // clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                                    _logger.LogError("AWB Audit log  for: {AWBNumber}", awbnum + Environment.NewLine);
 
 
                                 #region : Refresh Capacity :
@@ -1161,7 +1168,8 @@ namespace QidWorkerRole
                                 //if (!dtb.UpdateData("spDeleteAWBDetailsNoRoute", QueryNames, QueryTypes, QueryValues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("spDeleteAWBDetailsNoRoute", sqlParamsDeleteAWBDetails))
                                 {
-                                    clsLog.WriteLogAzure("Error in Deleting AWB Details ");
+                                    // clsLog.WriteLogAzure("Error in Deleting AWB Details ");
+                                    _logger.LogWarning("Error in Deleting AWD Details");
                                 }
                             }
 
@@ -1197,7 +1205,8 @@ namespace QidWorkerRole
 
                             //if (!dtb.InsertData("SpDeleteDimensionThroughMessage", dparam, dbparamtypes, dbparamvalues))
                             if (!await _readWriteDao.ExecuteNonQueryAsync("SpDeleteDimensionThroughMessage", sqlParamsDeleteDimension))
-                                clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                _logger.LogWarning("Error  Delete Dimension Through Message : {0}" , awbnum);
                             else
                             {
 
@@ -1267,7 +1276,8 @@ namespace QidWorkerRole
 
                                     //if (!dtb.InsertData("SP_SaveAWBDimensions_FFR", param, dbtypes, value))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBDimensions_FFR", sqlParamsInsertDimension))
-                                        clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        _logger.LogWarning("Error in Inserting AWB Dimension for AWB : {0}", awbnum);
                                 }
                             }
                         }
@@ -1285,7 +1295,8 @@ namespace QidWorkerRole
 
                             //if (!dtb.InsertData("SpDeleteDimensionThroughMessage", dDparam, dDbparamtypes, dDbparamvalues))
                             if (!await _readWriteDao.ExecuteNonQueryAsync("SpDeleteDimensionThroughMessage", sqlParamsDeleteDimension))
-                                clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                _logger.LogWarning("Error Delete Dimension Throught Message: {0}", awbnum);
                         }
                         #endregion
 
@@ -1313,7 +1324,8 @@ namespace QidWorkerRole
                             //if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
                             if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", sqlParamsCalculateRates))
                             {
-                                clsLog.WriteLog("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                // clsLog.WriteLog("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                _logger.LogWarning("Rates Not Calculated for: {0}", awbnum+Environment.NewLine);
                             }
 
                         }
@@ -1333,7 +1345,8 @@ namespace QidWorkerRole
                         //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
 
                         if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", sqlParamsUpdateCapacity))
-                            clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                            // clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                            _logger.LogWarning("Error on Update capacity Plan : {0}", awbnum);
 
                         #endregion
 
@@ -1365,9 +1378,10 @@ namespace QidWorkerRole
                 }
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 ErrorMsg = string.Empty;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return flag;
             return (flag, ErrorMsg);
@@ -1428,6 +1442,7 @@ namespace QidWorkerRole
             {
                 //scm.logexception(ref ex);
                 //clsLog.WriteLogAzure(ex, "BLExpManifest", "GetAwbTabdetails_GHA");
+                _logger.LogError("Exception in CheckValidateFFRMessage");
                 return ds = null;
             }
             //finally
@@ -1462,10 +1477,11 @@ namespace QidWorkerRole
                 //dssitaMessage = dtb.SelectRecords("CheckAirlineForRateProcessing", paramname, paramvalue, paramtype);
                 dssitaMessage = await _readWriteDao.SelectRecords("CheckAirlineForRateProcessing", sqlParams);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
                 dssitaMessage = null;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dssitaMessage;
 

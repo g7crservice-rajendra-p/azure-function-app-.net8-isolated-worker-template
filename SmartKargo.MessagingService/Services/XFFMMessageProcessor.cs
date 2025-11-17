@@ -116,7 +116,7 @@ namespace QidWorkerRole
                 //for sequence app
                 unloadingport[unloadingport.Length - 1].sequencenum = unloadingport.Length.ToString();
                 unloadingportsequence = unloadingport.Length.ToString();
-                uldsequencenum = "";                
+                uldsequencenum = "";
 
 
                 for (int i = 0; i < ffmXmlDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows.Count; i++)
@@ -132,8 +132,8 @@ namespace QidWorkerRole
                     }
                     ulddata.uldtype = Convert.ToString(ffmXmlDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[i]["CharacteristicCode"]);
                     if (Convert.ToString(ffmXmlDataSet.Tables["UtilizedUnitLoadTransportEquipment"].Rows[i]["ID"]).Equals("BULK"))
-                    { 
-                        ulddata.uldno = "BULK"; 
+                    {
+                        ulddata.uldno = "BULK";
                     }
                     else
                     {
@@ -284,7 +284,8 @@ namespace QidWorkerRole
                             }
                             catch (Exception ex)
                             {
-                                clsLog.WriteLogAzure(ex);
+                                //clsLog.WriteLogAzure(ex);
+                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                             }
                             Array.Resize(ref movementinfo, movementinfo.Length + 1);
                             movementinfo[movementinfo.Length - 1] = movement;
@@ -317,7 +318,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -362,7 +364,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 strarr = null;
             }
             return strarr;
@@ -382,17 +385,17 @@ namespace QidWorkerRole
         /// <param name="strFromID">From emailID</param>
         /// <param name="strStatus">Message status</param>
         //public void SaveValidateFFMMessage(ref MessageData.ffminfo ffmdata, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
-       public async Task SaveValidateFFMMessageAsync(
-        MessageData.ffminfo ffmdata,
-        MessageData.consignmnetinfo[] consinfo,
-        MessageData.unloadingport[] unloadingport,
-        MessageData.dimensionnfo[] objDimension,
-        MessageData.ULDinfo[] uld,
-        int REFNo,
-        string strMessage,
-        string strMessageFrom,
-        string strFromID,
-        string strStatus)
+        public async Task SaveValidateFFMMessageAsync(
+         MessageData.ffminfo ffmdata,
+         MessageData.consignmnetinfo[] consinfo,
+         MessageData.unloadingport[] unloadingport,
+         MessageData.dimensionnfo[] objDimension,
+         MessageData.ULDinfo[] uld,
+         int REFNo,
+         string strMessage,
+         string strMessageFrom,
+         string strFromID,
+         string strStatus)
         {
             string source = string.Empty, dest = string.Empty;
             int ffmSequenceNo = 1, ManifestID = 0;
@@ -710,7 +713,8 @@ namespace QidWorkerRole
 
                                                 //if (!sqlServer.InsertData(procedure, paramname, paramtype, paramvalue))
                                                 if (!await _readWriteDao.ExecuteNonQueryAsync(procedure, parametersBDFFR))
-                                                    clsLog.WriteLogAzure("Error in XFFM AWB Add Error for:" + consinfo[i].awbnum);
+                                                    // clsLog.WriteLogAzure("Error in XFFM AWB Add Error for:" + consinfo[i].awbnum);
+                                                    _logger.LogWarning("Error in XFFM AWB Add Error for: {0}", consinfo[i].awbnum);
 
                                                 else
                                                 {
@@ -753,7 +757,7 @@ namespace QidWorkerRole
                                                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAWBAL))
                                                                     //removed sqlServer.LastErrorDescription not required
                                                                     //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
-                                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
+                                                                    _logger.LogWarning("AWB Audit log  for: {0}" , consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                             }
                                                         }
                                                     }
@@ -792,7 +796,7 @@ namespace QidWorkerRole
                                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", cnParameters))
                                                 {
                                                     //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
-                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
+                                                    _logger.LogWarning("AWB Audit log  for: {0}" , consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                 }
                                                 #endregion Save AWBNO On Audit Log for acceptance
                                             }
@@ -830,12 +834,12 @@ namespace QidWorkerRole
 
                                             if (!await ExportManifestDetails(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0.01" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, flightnum, consinfo[i].airlineprefix, consinfo[i].weightcode == "" ? "L" : consinfo[i].weightcode, ffmSequenceNo, TotalAWBPcs, REFNo, consinfo[i].IsBup == "true" ? true : false))
                                                 //clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
-                                                _logger.LogWarning("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                                _logger.LogWarning("Error in XFFM Manifest Details: {0}" , consinfo[i].awbnum);
                                             else
                                             {
                                                 if (!await ExportManifestULDAWBAssociation(ULDNo, ffmdata.fltairportcode, unloadingport[refNum].unloadingairport, consinfo[i].origin, consinfo[i].dest, consinfo[i].awbnum, consinfo[i].splhandling.Trim(',') == "" ? "GEN" : consinfo[i].splhandling.Trim(','), consinfo[i].volumeamt == "" ? "0" : consinfo[i].volumeamt, consinfo[i].pcscnt, consinfo[i].weight, consinfo[i].manifestdesc, flightdate, ManifestID, consinfo[i].airlineprefix, ffmdata.carriercode + ffmdata.fltnum, consinfo[i].numshp, consinfo[i].weight, consinfo[i].consigntype, TotalAWBPcs, ffmSequenceNo, consinfo[i].weightcode, REFNo, consinfo[i].IsBup == "true" ? true : false))
                                                     //clsLog.WriteLogAzure("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
-                                                    _logger.LogWarning("Error in XFFM Manifest Details:" + consinfo[i].awbnum);
+                                                    _logger.LogWarning("Error in XFFM Manifest Details: {0}" , consinfo[i].awbnum);
 
                                                 #region Status Message in Table
                                                 //sqlServer = new SQLServer();
@@ -892,7 +896,7 @@ namespace QidWorkerRole
                                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", CValues))
                                                 {
                                                     //clsLog.WriteLog("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: " + sqlServer.LastErrorDescription);
-                                                    _logger.LogWarning("AWB Audit log  for:" + consinfo[i].awbnum + Environment.NewLine + "Error: ");
+                                                    _logger.LogWarning("AWB Audit log  for: {0}" , consinfo[i].awbnum + Environment.NewLine + "Error: ");
                                                 }
                                                 #endregion Save AWBNO On Audit Log
                                             }
@@ -976,8 +980,9 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
-                                                
+                                                //clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+
                                             }
                                             #endregion AWB Dimensions
                                         }
@@ -1017,7 +1022,7 @@ namespace QidWorkerRole
                                         };
 
                                         //DataSet dscheckawbn = sqlServer.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname, ccheckpavlue, checkPtype);
-                                        DataSet dscheckawbn = await _readWriteDao.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname );
+                                        DataSet dscheckawbn = await _readWriteDao.SelectRecords("MSG_uSPCheckBookingDoneByEDIMessage", cPname);
 
                                         if (dscheckawbn != null && dscheckawbn.Tables.Count > 0 && dscheckawbn.Tables[0].Rows.Count > 0)
                                         {
@@ -1164,12 +1169,12 @@ namespace QidWorkerRole
                                                             new SqlParameter("@VolumeUnit", SqlDbType.VarChar)      { Value = dtWeightUpdate.Rows[route]["VolumeCode"].ToString() }
 
                                                         };
-                                                        
+
                                                         //sqlServer = new SQLServer();
                                                         //if (!sqlServer.UpdateData("MSG_spSaveFFMAWBRoute", RName, RType, RValue))
                                                         if (!await _readWriteDao.ExecuteNonQueryAsync("MSG_spSaveFFMAWBRoute", RParameters))
-                                                        //clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
-                                                        _logger.LogWarning("Error in Save AWB Route XFFM ");
+                                                            //clsLog.WriteLogAzure("Error in Save AWB Route XFFM " + sqlServer.LastErrorDescription);
+                                                            _logger.LogWarning("Error in Save AWB Route XFFM ");
                                                     }
                                                 }
                                                 #endregion Make AWB Route through XFFM Message
@@ -1262,9 +1267,9 @@ namespace QidWorkerRole
                                             new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = TotalChargeableWeight },
                                             new SqlParameter("@SystemDate", SqlDbType.DateTime)     { Value = DateTime.UtcNow }
                                         };
-                                        
+
                                         //sqlServer = new SQLServer();
-                                           
+
                                         //sqlServer.InsertData("MSG_spUpdateTotalWeightAndPiecesfromFFM", PVName, sqlType, PValues);
                                         await _readWriteDao.ExecuteNonQueryAsync("MSG_spUpdateTotalWeightAndPiecesfromFFM", pvValues);
                                         #endregion
@@ -1347,7 +1352,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                     try
                     {
@@ -1355,7 +1361,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                     //string[] paramname = new string[]
                     //{   "ULDNo",
@@ -1430,7 +1437,8 @@ namespace QidWorkerRole
                 {
                     for (int i = 0; i < consinfo.Length; i++)
                     {
-                        clsLog.WriteLogAzure("Billing Entry for :" + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum);
+                        // clsLog.WriteLogAzure("Billing Entry for :" + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum);
+                        _logger.LogInformation("Billing Entry for : {0} - {1}", consinfo[i].airlineprefix, consinfo[i].awbnum);
                         #region Prepare Parameters
                         object[] AWBInfo = new object[7];
                         int irow = 0;
@@ -1486,7 +1494,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         #endregion Public Methods
@@ -1530,7 +1539,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                     else
@@ -1543,7 +1553,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                 }
@@ -1610,7 +1621,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                 }
                 if (msg.Length > 2)
@@ -1621,7 +1633,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
 
                 }
@@ -1635,7 +1648,8 @@ namespace QidWorkerRole
                     }
                     catch (Exception ex)
                     {
-                        clsLog.WriteLogAzure(ex);
+                        //clsLog.WriteLogAzure(ex);
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                 }
                 try
@@ -1647,7 +1661,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure(ex);
+                    //clsLog.WriteLogAzure(ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 awbprefix = consig.airlineprefix;
                 awbnumber = consig.awbnum;
@@ -1657,7 +1672,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1695,7 +1711,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1777,7 +1794,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 ds = null;
             }
             //finally
@@ -1806,15 +1824,15 @@ namespace QidWorkerRole
                 //string[] param = { "FLTno", "POL", "POU", "FLTDate", "TailNo", "REFNo" };
                 //SqlDbType[] sqldbtypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int };
                 //object[] values = { FlightNo, POL, POU, FltDate, AircraftRegistration, REFNo };
-               var param = new SqlParameter[]
-                {
+                var param = new SqlParameter[]
+                 {
                     new SqlParameter("@FLTno", SqlDbType.VarChar)        { Value = FlightNo },
                     new SqlParameter("@POL", SqlDbType.VarChar)          { Value = POL },
                     new SqlParameter("@POU", SqlDbType.VarChar)          { Value = POU },
                     new SqlParameter("@FLTDate", SqlDbType.DateTime)     { Value = FltDate },
                     new SqlParameter("@TailNo", SqlDbType.VarChar)       { Value = AircraftRegistration },
                     new SqlParameter("@REFNo", SqlDbType.Int)           { Value = REFNo }
-                };
+                 };
 
                 //ID = slqServer.GetIntegerByProcedure("spExpManifestSummaryFFM", param, values, sqldbtypes);
                 ID = await _readWriteDao.GetIntegerByProcedureAsync("spExpManifestSummaryFFM", param);
@@ -1828,7 +1846,7 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                //clsLog.WriteLogAzure(ex);
+                ////clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, "Exception in ExportManifestSummary");
                 ID = 0;
             }
@@ -1873,7 +1891,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        res = false;
         //    }
         //    return res;
@@ -1940,13 +1958,14 @@ namespace QidWorkerRole
                 else
                 {
                     //clsLog.WriteLogAzure("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
-                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
+                    _logger.LogWarning("Failes ManifDetails Save: {0}" , AWBno);
                     res = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 res = false;
             }
             return res;
@@ -1986,21 +2005,22 @@ namespace QidWorkerRole
                 };
 
                 //if (db.InsertData("spExpManifestULDAWBFFM", param, sqldbtypes, values))
-                if ( await _readWriteDao.ExecuteNonQueryAsync("spExpManifestULDAWBFFM", param))
+                if (await _readWriteDao.ExecuteNonQueryAsync("spExpManifestULDAWBFFM", param))
                 {
                     res = true;
                 }
                 else
                 {
                     //clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
-                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
+                    _logger.LogWarning("Failes ManifDetails Save: {0}" , AWBno);
 
                     res = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 res = false;
             }
             return res;
@@ -2048,13 +2068,14 @@ namespace QidWorkerRole
                 else
                 {
                     //clsLog.WriteLog("Failes ManifDetails Save:" + AWBno + " Error: " + db.LastErrorDescription);
-                    _logger.LogWarning("Failes ManifDetails Save:" + AWBno);
+                    _logger.LogWarning("Failes ManifDetails Save: {0}" , AWBno);
                     res = false;
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 res = false;
             }
             return res;
@@ -2088,7 +2109,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        res = false;
         //    }
         //    return res;
@@ -2157,7 +2178,8 @@ namespace QidWorkerRole
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return "error";
             }
         }
@@ -2198,7 +2220,7 @@ namespace QidWorkerRole
 
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return "error";
         //    }
         //}
@@ -2239,7 +2261,7 @@ namespace QidWorkerRole
 
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return "error";
         //    }
         //}
@@ -2284,7 +2306,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return isAWBPresent;
         }
@@ -2931,14 +2954,15 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 sbXFFMMessage.Append("Error Occured while generating: " + ex.Message);
-                clsLog.WriteLogAzure("Error on Generate XFFMB Message Method:" + ex.ToString());
+                // clsLog.WriteLogAzure("Error on Generate XFFMB Message Method:" + ex.ToString());
+                _logger.LogError("Error on Generate XFFMB Message Method: {0}" , ex);
             }
             //return sbXFFMMessage.ToString();
-            return (sbXFFMMessage.ToString(),customsName);
+            return (sbXFFMMessage.ToString(), customsName);
 
         }
 
-        private async  Task<DataSet> GetRecordForAWBToGenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
+        private async Task<DataSet> GetRecordForAWBToGenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
         {
             DataSet dsFfm = new DataSet();
             try
@@ -2957,7 +2981,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dsFfm;
         }
