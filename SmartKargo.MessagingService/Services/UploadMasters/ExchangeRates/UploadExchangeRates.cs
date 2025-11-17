@@ -1,17 +1,33 @@
 ﻿using Excel;
-using QID.DataAccess;
-using System;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
 
 namespace QidWorkerRole.UploadMasters.ExchangeRates
 {
-    class UploadExchangeRates
+    public class UploadExchangeRates
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon _uploadMasterCommon = new UploadMasterCommon();
 
-        public bool UpdateExchangeRateUpload(DataSet dataSetFileData)
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadExchangeRates> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadExchangeRates(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadExchangeRates> logger,
+            UploadMasterCommon uploadMasterCommon
+         )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+
+        public async Task<bool> UpdateExchangeRateUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -21,21 +37,21 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "UploadExchangeRates", out uploadFilePath))
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "UploadExchangeRates", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -46,14 +62,14 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
                 return false;
             }
         }
-        public bool ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableExchangeRatesExcelData = new DataTable("dataTableExchangeRates");
             bool isBinaryReader = false;
             try
             {
                 string fileExtention = Path.GetExtension(filepath).ToLower();
-                 if (fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") || fileExtention.Equals(".xlsx"))
+                if (fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") || fileExtention.Equals(".xlsx"))
                 {
                     FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
 
@@ -71,7 +87,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
                     // Free resources (IExcelDataReader is IDisposable)
                     iExcelDataReader.Close();
 
-                    uploadMasterCommon.RemoveEmptyRows(dataTableExchangeRatesExcelData);
+                    _uploadMasterCommon.RemoveEmptyRows(dataTableExchangeRatesExcelData);
                 }
                 else
                 {
@@ -258,7 +274,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
                 }
 
                 string errorInSp = string.Empty;
-                ValidateAndInsertExchangeRates(srnoTBLMasterUploadSummaryLog, ExchangeRateType, errorInSp);
+                await ValidateAndInsertExchangeRates(srnoTBLMasterUploadSummaryLog, ExchangeRateType, errorInSp);
 
                 return true;
             }
@@ -269,26 +285,26 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
             }
             finally
             {
-
-
                 dataTableExchangeRatesExcelData = null;
             }
         }
-    
-        public DataSet ValidateAndInsertExchangeRates(int srNotblMasterUploadSummaryLog, DataTable dataTableMSRRatesType, string errorInSp)
+
+        public async Task<DataSet?> ValidateAndInsertExchangeRates(int srNotblMasterUploadSummaryLog, DataTable dataTableMSRRatesType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] {
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@ExchangeRateTableTypeInput", dataTableMSRRatesType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@ExchangeRateTableTypeInput", dataTableMSRRatesType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
                 sqlParameters[2].Direction = ParameterDirection.Output;
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("sp_AddExchangeRateDetails", sqlParameters);
+
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("sp_AddExchangeRateDetails", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("sp_AddExchangeRateDetails", sqlParameters);
 
                 return dataSetResult;
             }
