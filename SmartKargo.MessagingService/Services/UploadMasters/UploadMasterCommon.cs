@@ -1,15 +1,36 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Azure.Core;
+using Azure.Storage;
+using Azure.Storage.Blobs;
+using DocumentFormat.OpenXml.Packaging;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using QidWorkerRole.UploadMasters.Agent;
+using QidWorkerRole.UploadMasters.AircraftPattern;
+using QidWorkerRole.UploadMasters.Airports;
 using QidWorkerRole.UploadMasters.Booking;
+using QidWorkerRole.UploadMasters.CapacityAllocation;
+using QidWorkerRole.UploadMasters.CCAUpload;
+using QidWorkerRole.UploadMasters.Collection;
+using QidWorkerRole.UploadMasters.CostLine;
 using QidWorkerRole.UploadMasters.DCM;
 using QidWorkerRole.UploadMasters.ExchangeRates;
 using QidWorkerRole.UploadMasters.ExchangeRatesFromTo;
+using QidWorkerRole.UploadMasters.FlightBudget;
+using QidWorkerRole.UploadMasters.FlightSchedule;
+using QidWorkerRole.UploadMasters.FlightScheduleExcel;
+using QidWorkerRole.UploadMasters.MSRRates;
+using QidWorkerRole.UploadMasters.OtherCharges;
+using QidWorkerRole.UploadMasters.PartnerMaster;
+using QidWorkerRole.UploadMasters.PartnerSchedule;
 using QidWorkerRole.UploadMasters.RateLine;
+using QidWorkerRole.UploadMasters.RouteControl;
+using QidWorkerRole.UploadMasters.ShipperConsignee;
+using QidWorkerRole.UploadMasters.Taxline;
+using QidWorkerRole.UploadMasters.UserMaster;
 using QidWorkerRole.UploadMasters.Vendor;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System.Data;
-using System.Net;
 
 namespace QidWorkerRole.UploadMasters
 {
@@ -27,27 +48,109 @@ namespace QidWorkerRole.UploadMasters
         /// <param name="ErrorMessage"></param>
         /// <param name="IsSuccess"></param>
         /// <param name="IsRetryCountUpdate"></param>
-        
+
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadMasterCommon> _logger;
         private readonly GenericFunction _genericFunction;
         private readonly UploadVendorMaster _uploadVendorMaster;
         private readonly UploadRateLineMaster _uploadRateLineMaster;
+        private readonly UploadAgentMasterGeneralInfo _uploadAgentMasterGeneralInfo;
+        private readonly UploadAgentMaster _uploadAgentMaster;
+        private readonly UploadAgentMasterUpdate _uploadAgentMasterUpdate;
+        private readonly UploadShipperConsigneeMaster _uploadShipperConsigneeMaster;
+        private readonly UploadOtherChargesMaster _uploadOtherChargesMaster;
+        private readonly FlightCapacity.FlightCapacity _flightCapacity;
+        private readonly UploadFlightSchedule _uploadFlightSchedule;
+        private readonly UploadCapacityAllocation _uploadCapacityAllocation;
+        private readonly UploadCostMaster _uploadCostMaster;
+        private readonly UploadTaxLine _uploadTaxLine;
+        private readonly UploadFlightBudget _uploadFlightBudget;
+        private readonly UploadRouteControl _uploadRouteControl;
+        private readonly UploadAirportsMaster _uploadAirportsMaster;
+        private readonly UploadPartnerMaster _uploadPartnerMaster;
+        private readonly UploadPartnerSchedule _uploadPartnerSchedule;
+        private readonly UploadUserMaster _uploadUserMaster;
+        private readonly UploadFlightScheduleExcel _uploadFlightScheduleExcel;
+        private readonly UploadAircraftLoadingPattern _uploadAircraftLoadingPattern;
+        private readonly FlightPaxInfo.FlightPaxInfo _flightPaxInfo;
+        private readonly UploadExchangeRatesFromTo _uploadExchangeRatesFromTo;
+        private readonly PHCustomRegistry _phCustomRegistry;
+        private readonly InvoiceCollection _invoiceCollection;
+        private readonly CCAUploadFile _ccaUploadFile;
+        private readonly UploadMSRRates _uploadMSRRates;
+        private readonly UploadExchangeRates _uploadExchangeRates;
+        private readonly BookingExcelUpload _bookingExcelUpload;
+        private readonly UploadDCM _uploadDCM;
 
         #region Constructor
         public UploadMasterCommon(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadMasterCommon> logger,
             GenericFunction genericFunction,
             UploadVendorMaster uploadVendorMaster,
-            UploadRateLineMaster uploadRateLineMaster)
+            UploadRateLineMaster uploadRateLineMaster,
+            UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo,
+            UploadAgentMaster uploadAgentMaster,
+            UploadAgentMasterUpdate uploadAgentMasterUpdate,
+            UploadShipperConsigneeMaster uploadShipperConsigneeMaster,
+            UploadOtherChargesMaster uploadOtherChargesMaster,
+            FlightCapacity.FlightCapacity flightCapacity,
+            UploadFlightSchedule uploadFlightSchedule,
+            UploadCapacityAllocation uploadCapacityAllocation,
+            UploadCostMaster uploadCostMaster,
+            UploadTaxLine uploadTaxLine,
+            UploadFlightBudget uploadFlightBudget,
+            UploadRouteControl uploadRouteControl,
+            UploadAirportsMaster uploadAirportsMaster,
+            UploadPartnerMaster uploadPartnerMaster,
+            UploadPartnerSchedule uploadPartnerSchedule,
+            UploadUserMaster uploadUserMaster,
+            UploadFlightScheduleExcel uploadFlightScheduleExcel,
+            UploadAircraftLoadingPattern uploadAircraftLoadingPattern,
+            FlightPaxInfo.FlightPaxInfo flightPaxInfo,
+            UploadExchangeRatesFromTo uploadExchangeRatesFromTo,
+            PHCustomRegistry phCustomRegistry,
+            InvoiceCollection invoiceCollection,
+            CCAUploadFile ccaUploadFile,
+            UploadMSRRates uploadMSRRates,
+            UploadExchangeRates uploadExchangeRates,
+            BookingExcelUpload bookingExcelUpload,
+            UploadDCM uploadDCM)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _genericFunction = genericFunction;
             _uploadVendorMaster = uploadVendorMaster;
             _uploadRateLineMaster = uploadRateLineMaster;
+            _uploadAgentMasterGeneralInfo = uploadAgentMasterGeneralInfo;
+            _uploadAgentMaster = uploadAgentMaster;
+            _uploadAgentMasterUpdate = uploadAgentMasterUpdate;
+            _uploadShipperConsigneeMaster = uploadShipperConsigneeMaster;
+            _uploadOtherChargesMaster = uploadOtherChargesMaster;
+            _flightCapacity = flightCapacity;
+            _uploadFlightSchedule = uploadFlightSchedule;
+            _uploadCapacityAllocation = uploadCapacityAllocation;
+            _uploadCostMaster = uploadCostMaster;
+            _uploadTaxLine = uploadTaxLine;
+            _uploadFlightBudget = uploadFlightBudget;
+            _uploadRouteControl = uploadRouteControl;
+            _uploadAirportsMaster = uploadAirportsMaster;
+            _uploadPartnerMaster = uploadPartnerMaster;
+            _uploadPartnerSchedule = uploadPartnerSchedule;
+            _uploadUserMaster = uploadUserMaster;
+            _uploadFlightScheduleExcel = uploadFlightScheduleExcel;
+            _uploadAircraftLoadingPattern = uploadAircraftLoadingPattern;
+            _flightPaxInfo = flightPaxInfo;
+            _uploadExchangeRatesFromTo = uploadExchangeRatesFromTo;
+            _phCustomRegistry = phCustomRegistry;
+            _invoiceCollection = invoiceCollection;
+            _ccaUploadFile = ccaUploadFile;
+            _uploadMSRRates = uploadMSRRates;
+            _uploadExchangeRates = uploadExchangeRates;
+            _bookingExcelUpload = bookingExcelUpload;
+            _uploadDCM = uploadDCM;
         }
         #endregion
+
         //public void UpdateUploadMastersStatus(int UploadSummarySrNo, string STATUS, int RecordCount, int SuccessCount, int FailCount,
         //                                      int ProgressStatus, string ErrorMessage, int IsSuccess, int IsRetryCountUpdate = 0)
         public async Task UpdateUploadMastersStatus(int UploadSummarySrNo, string STATUS, int RecordCount, int SuccessCount, int FailCount,
@@ -58,16 +161,17 @@ namespace QidWorkerRole.UploadMasters
 
             try
             {
-                SqlParameter[] sqlParameter = new SqlParameter[] { new SqlParameter("@UploadSummarySrNo", UploadSummarySrNo),
-                                                                   new SqlParameter("@STATUS", STATUS),
-                                                                   new SqlParameter("@RecordCount", RecordCount),
-                                                                   new SqlParameter("@SuccessCount", SuccessCount),
-                                                                   new SqlParameter("@FailCount", FailCount),
-                                                                   new SqlParameter("@ProgressStatus", ProgressStatus),
-                                                                   new SqlParameter("@ErrorMessage", ErrorMessage),
-                                                                   new SqlParameter("@IsSuccess", IsSuccess),
-                                                                   new SqlParameter("@IsRetryCountUpdate", IsRetryCountUpdate)
-                                                                 };
+                SqlParameter[] sqlParameter = [
+                    new SqlParameter("@UploadSummarySrNo", UploadSummarySrNo),
+                      new SqlParameter("@STATUS", STATUS),
+                      new SqlParameter("@RecordCount", RecordCount),
+                      new SqlParameter("@SuccessCount", SuccessCount),
+                      new SqlParameter("@FailCount", FailCount),
+                      new SqlParameter("@ProgressStatus", ProgressStatus),
+                      new SqlParameter("@ErrorMessage", ErrorMessage),
+                      new SqlParameter("@IsSuccess", IsSuccess),
+                      new SqlParameter("@IsRetryCountUpdate", IsRetryCountUpdate)
+                ];
 
                 //dataSetResult =  sqlServer.SelectRecords("Masters.uspUpdateUploadMastersStatus", sqlParameter);
                 dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUpdateUploadMastersStatus", sqlParameter);
@@ -90,6 +194,7 @@ namespace QidWorkerRole.UploadMasters
         /// <param name="ProcessMethod"></param>
         /// <param name="ErrorMessage"></param>
         /// <param name="IsProcessed"></param>
+
         //public void UpdateUploadMasterSummaryLog(int SrNo, int RecordCount, int SuccessCount, int FailedCount, string Status,
         //                                         int ProgressStatus, string ProcessMethod, string ErrorMessage, bool IsProcessed)
 
@@ -100,16 +205,17 @@ namespace QidWorkerRole.UploadMasters
             //SQLServer sqlServer = new SQLServer();
             try
             {
-                SqlParameter[] sqlParameter = new SqlParameter[] { new SqlParameter("@SrNo", SrNo),
-                                                                   new SqlParameter("@RecordCount", RecordCount),
-                                                                   new SqlParameter("@SuccessCount", SuccessCount),
-                                                                   new SqlParameter("@FailedCount", FailedCount),
-                                                                   new SqlParameter("@Status", Status),
-                                                                   new SqlParameter("@ProgressStatus", ProgressStatus),
-                                                                   new SqlParameter("@ProcessMethod", ProcessMethod),
-                                                                   new SqlParameter("@ErrorMessage", ErrorMessage),
-                                                                   new SqlParameter("@IsProcessed", IsProcessed)
-                                                                 };
+                SqlParameter[] sqlParameter = [
+                    new SqlParameter("@SrNo", SrNo),
+                    new SqlParameter("@RecordCount", RecordCount),
+                    new SqlParameter("@SuccessCount", SuccessCount),
+                    new SqlParameter("@FailedCount", FailedCount),
+                    new SqlParameter("@Status", Status),
+                    new SqlParameter("@ProgressStatus", ProgressStatus),
+                    new SqlParameter("@ProcessMethod", ProcessMethod),
+                    new SqlParameter("@ErrorMessage", ErrorMessage),
+                    new SqlParameter("@IsProcessed", IsProcessed)
+                ];
 
                 //dataSetResult = sqlServer.SelectRecords("Masters.uspUpdateUploadMasterSummary", sqlParameter);
                 dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUpdateUploadMasterSummary", sqlParameter);
@@ -137,7 +243,9 @@ namespace QidWorkerRole.UploadMasters
                 ds = await _readWriteDao.SelectRecords("uspGetUplodedFile", sqlParams);
 
                 if (ds != null)
+                {
                     return (ds);
+                }
                 else
                 {
                     return (ds);
@@ -150,63 +258,66 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        public bool IsFileExistOnBlob(string filename, String containerName, out byte[] downloadStream)
-        {
-            try
-            {
-                containerName = containerName.ToLower();
-                StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filename));
-                downloadStream = blob.DownloadByteArray();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-                downloadStream = null;
-                return false;
-            }
+        /*Not in use*/
+        //public bool IsFileExistOnBlob(string filename, String containerName, out byte[] downloadStream)
+        //{
+        //    try
+        //    {
+        //        containerName = containerName.ToLower();
+        //        StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(getStorageName(), getStorageKey());
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filename));
+        //        downloadStream = blob.DownloadByteArray();
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //        downloadStream = null;
+        //        return false;
+        //    }
 
-        }
+        //}
 
-        public string getStorageKey()
-        {
-            string BlobKey = "";
-            try
-            {
-                //Cls_BL cls_BL = new Cls_BL();
-                
-                //GenericFunction genericFunction = new GenericFunction();
-                BlobKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
-                //BlobKey = sqlServer.GetMasterConfiguration("BlobStorageKey");
+        /*Not in use*/
+        //public string getStorageKey()
+        //{
+        //    string BlobKey = "";
+        //    try
+        //    {
+        //        //Cls_BL cls_BL = new Cls_BL();
 
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return BlobKey;
-        }
+        //        //GenericFunction genericFunction = new GenericFunction();
+        //        BlobKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
+        //        //BlobKey = sqlServer.GetMasterConfiguration("BlobStorageKey");
 
-        public string getStorageName()
-        {
-            string BlobName = "";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return BlobKey;
+        //}
 
-            try
-            {
-                //Cls_BL cls_BL = new Cls_BL();
-                //GenericFunction genericFunction = new GenericFunction();
-                BlobName = _genericFunction.ReadValueFromDb("BlobStorageName");
-            }
-            catch (Exception ex)
-            {
-                clsLog.WriteLogAzure(ex);
-            }
-            return BlobName;
-        }
+        /*Not in use*/
+        //public string getStorageName()
+        //{
+        //    string BlobName = "";
+
+        //    try
+        //    {
+        //        //Cls_BL cls_BL = new Cls_BL();
+        //        //GenericFunction genericFunction = new GenericFunction();
+        //        BlobName = _genericFunction.ReadValueFromDb("BlobStorageName");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        clsLog.WriteLogAzure(ex);
+        //    }
+        //    return BlobName;
+        //}
 
         /// <summary>
         /// To insert Master Upload Summary Log data.
@@ -318,8 +429,6 @@ namespace QidWorkerRole.UploadMasters
                 {
                     return ds;
                 }
-
-
             }
             catch (Exception ex)
             {
@@ -329,37 +438,95 @@ namespace QidWorkerRole.UploadMasters
             return null;
         }
 
-        public bool DoDownloadBLOB(string filename, String containerName, string FolderName, out String FilePath)
+        public bool DoDownloadBLOB(string filename, string containerName, string FolderName, out string FilePath)
         {
 
             try
             {
                 //Cls_BL cls_BL = new Cls_BL();
                 //GenericFunction genericFunction = new GenericFunction();
-                string BlobStorageName = _genericFunction.ReadValueFromDb("BlobStorageName");
-                string BlobStorageKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
-                //  This is standard code to interact with Blob storage.
-                StorageCredentialsAccountAndKey creds = new StorageCredentialsAccountAndKey(BlobStorageName, BlobStorageKey);
-                CloudStorageAccount storageAccount = new CloudStorageAccount(creds, useHttps: true);
-                CloudBlobClient client = storageAccount.CreateCloudBlobClient();
 
-                client.RetryPolicy = RetryPolicies.Retry(10, TimeSpan.FromSeconds(5));
+                //string BlobStorageName = _genericFunction.ReadValueFromDb("BlobStorageName");
+                //string BlobStorageKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
 
-                CloudBlobContainer container = client.GetContainerReference(containerName);
-                container.CreateIfNotExist();
+                ////  This is standard code to interact with Blob storage.
+                //StorageCredentialsAccountAndKey creds = new StorageCredentialsAccountAndKey(BlobStorageName, BlobStorageKey);
+                //CloudStorageAccount storageAccount = new CloudStorageAccount(creds, useHttps: true);
+                //CloudBlobClient client = storageAccount.CreateCloudBlobClient();
 
-                //// In this case, we will not pass a key and only pass the resolver because
-                //// this policy will only be used for downloading / decrypting.
-                //var list = container.ListBlobs();
-                //Dictionary<string, DateTimeOffset?> blobNames = list.OfType<CloudBlockBlob>().Select(b => new { BlobName = b.Name, ModifiedDate = b.Properties.LastModified }).ToDictionary(t => t.BlobName, t => t.ModifiedDate);
-                //Dictionary<string, DateTimeOffset?> d = new Dictionary<string, DateTimeOffset?>();
-                //var blobName = blobNames.FirstOrDefault(x => x.Value == blobNames.Values.Max()).Key;
-                CloudBlockBlob blob = container.GetBlockBlobReference(filename);
-                // Fetch container properties and write out their values.
-                blob.FetchAttributes();
-                //  create a local file
-                string filepath = @Convert.ToString(_genericFunction.ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
-                //string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\" + FolderName + "\\" + blob.Name.Trim();
+                //client.RetryPolicy = RetryPolicies.Retry(10, TimeSpan.FromSeconds(5));
+
+                //CloudBlobContainer container = client.GetContainerReference(containerName);
+                //container.CreateIfNotExist();
+
+                ////// In this case, we will not pass a key and only pass the resolver because
+                ////// this policy will only be used for downloading / decrypting.
+                ////var list = container.ListBlobs();
+                ////Dictionary<string, DateTimeOffset?> blobNames = list.OfType<CloudBlockBlob>().Select(b => new { BlobName = b.Name, ModifiedDate = b.Properties.LastModified }).ToDictionary(t => t.BlobName, t => t.ModifiedDate);
+                ////Dictionary<string, DateTimeOffset?> d = new Dictionary<string, DateTimeOffset?>();
+                ////var blobName = blobNames.FirstOrDefault(x => x.Value == blobNames.Values.Max()).Key;
+                //CloudBlockBlob blob = container.GetBlockBlobReference(filename);
+                //// Fetch container properties and write out their values.
+                //blob.FetchAttributes();
+                ////  create a local file
+                //string filepath = @Convert.ToString(_genericFunction.ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
+                ////string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\" + FolderName + "\\" + blob.Name.Trim();
+
+                //FileInfo fiFilePath = new FileInfo(filepath);
+                ////get last modified date 
+
+                ////  create a local file
+                //if (fiFilePath.Directory != null && !fiFilePath.Directory.Exists)
+                //{
+                //    fiFilePath.Directory.Create();
+                //}
+                //FileInfo[] filePaths = fiFilePath.Directory.GetFiles();
+                //foreach (FileInfo filePath in filePaths)
+                //    filePath.Delete();
+
+                //File.Delete(filepath);
+                //blob.DownloadToFile(filepath, null);
+                //FilePath = fiFilePath.FullName;
+
+                string accountName = ConfigCache.Get("BlobStorageName");
+                string accountKey = ConfigCache.Get("BlobStorageKey");
+
+                var sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+
+                // Configure retry policy: 10 retries, 5-second initial delay, exponential backoff
+                var options = new BlobClientOptions
+                {
+                    Retry =
+                    {
+                        MaxRetries = 10,
+                        Delay = TimeSpan.FromSeconds(5),
+                        Mode = RetryMode.Exponential,  
+                        // Optional: Cap max delay (e.g., 2 minutes) to prevent excessive waits
+                        MaxDelay = TimeSpan.FromMinutes(2)
+                    }
+                };
+
+                // BlobServiceClient with HTTPS enforced and retry options
+                var blobServiceClient = new BlobServiceClient(
+                    new Uri($"https://{accountName}.blob.core.windows.net"),
+                    sharedKeyCredential,
+                    options
+                );
+
+                // Get container and create if not exists
+                BlobContainerClient container = blobServiceClient.GetBlobContainerClient(containerName);
+                container.CreateIfNotExists();
+
+                // Get BlobClient (equivalent to CloudBlockBlob)
+                BlobClient blob = container.GetBlobClient(filename);
+
+                // Fetch blob attributes (equivalent to FetchAttributes())
+                blob.GetProperties();  // Retrieves properties like LastModified, ContentType, etc.
+
+                // Create local file path
+                string downloadFilePath = ConfigCache.Get("DownLoadFilePath");
+                string filepath = @Convert.ToString(downloadFilePath) + "\\" + FolderName + "\\" + blob.Name.Trim();
+
 
                 FileInfo fiFilePath = new FileInfo(filepath);
                 //get last modified date 
@@ -369,15 +536,19 @@ namespace QidWorkerRole.UploadMasters
                 {
                     fiFilePath.Directory.Create();
                 }
+
                 FileInfo[] filePaths = fiFilePath.Directory.GetFiles();
                 foreach (FileInfo filePath in filePaths)
+                {
                     filePath.Delete();
+                }
 
                 File.Delete(filepath);
-                blob.DownloadToFile(filepath, null);
+
+                // Download blob to local file (equivalent to DownloadToFile(filepath, null))
+                blob.DownloadTo(filepath);
+
                 FilePath = fiFilePath.FullName;
-
-
             }
             catch (Exception ex)
             {
@@ -406,7 +577,9 @@ namespace QidWorkerRole.UploadMasters
                 ds = await _readWriteDao.SelectRecords("uspUploadCapcityFile", sqlParams);
 
                 if (ds != null)
+                {
                     return (ds);
+                }
                 else
                 {
                     return (ds);
@@ -425,7 +598,7 @@ namespace QidWorkerRole.UploadMasters
             try
             {
                 SqlParameter[] sqlParameter = new SqlParameter[] {
-                    new SqlParameter("UploadSummarySrNo",SerialNumber)
+                     new SqlParameter("UploadSummarySrNo",SerialNumber)
                     ,new SqlParameter("MasterKey",MasterValue)
                     ,new SqlParameter("ErrorDescription",ErrorMessage)
                     ,new SqlParameter("IsSuccess",IsSuccess)
@@ -693,41 +866,43 @@ namespace QidWorkerRole.UploadMasters
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.AgentGeneralInfo.ToUpper())
                     {
-                        Agent.UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo = new Agent.UploadAgentMasterGeneralInfo();
-                        uploadAgentMasterGeneralInfo.AgentMasterUploadGeneralInfo(dsUploadRecord);
+                        //Agent.UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo = new Agent.UploadAgentMasterGeneralInfo();
+                        await _uploadAgentMasterGeneralInfo.AgentMasterUploadGeneralInfo(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.Agent.ToUpper())
                     {
-                        Agent.UploadAgentMaster uploadAgentMaster = new Agent.UploadAgentMaster();
-                        uploadAgentMaster.AgentMasterUpload(dsUploadRecord);
+                        //Agent.UploadAgentMaster uploadAgentMaster = new Agent.UploadAgentMaster();
+                        await _uploadAgentMaster.AgentMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.AgentUpdate.ToUpper())
                     {
-                        UploadAgentMasterUpdate uploadAgentMasterUpdate = new Agent.UploadAgentMasterUpdate();
-                        uploadAgentMasterUpdate.UpdateAgent(dsUploadRecord);
+                        //UploadAgentMasterUpdate uploadAgentMasterUpdate = new Agent.UploadAgentMasterUpdate();
+                        await _uploadAgentMasterUpdate.UpdateAgent(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.ShipperConsignee.ToUpper())
                     {
-                        ShipperConsignee.UploadShipperConsigneeMaster uploadShipperConsigneeMaster = new ShipperConsignee.UploadShipperConsigneeMaster();
-                        uploadShipperConsigneeMaster.ShipperConsigneeMasterUpload(dsUploadRecord);
+                        //ShipperConsignee.UploadShipperConsigneeMaster uploadShipperConsigneeMaster = new ShipperConsignee.UploadShipperConsigneeMaster();
+                        await _uploadShipperConsigneeMaster.ShipperConsigneeMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.OtherCharges.ToUpper())
                     {
-                        OtherCharges.UploadOtherChargesMaster uploadOtherChargesMaster = new OtherCharges.UploadOtherChargesMaster();
-                        uploadOtherChargesMaster.OtherChargesMasterUpload(dsUploadRecord);
+                        //OtherCharges.UploadOtherChargesMaster uploadOtherChargesMaster = new OtherCharges.UploadOtherChargesMaster();
+                        await _uploadOtherChargesMaster.OtherChargesMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.FlightCapacity.ToUpper())
                     {
-                        FlightCapacity.FlightCapacity flightCapacity = new FlightCapacity.FlightCapacity();
-                        flightCapacity.UploadFlightCapacity(dsUploadRecord);
+                        //FlightCapacity.FlightCapacity flightCapacity = new FlightCapacity.FlightCapacity();
+                        await _flightCapacity.UploadFlightCapacity(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.FlightSchedule.ToUpper())
                     {
-                        FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
-                        if (!uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
+                        //FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
+                        if (!await _uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
                         {
                             //GenericFunction genericFunction = new GenericFunction();
-                            string uploadAlertEmailID = await _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                            //string uploadAlertEmailID = _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+
+                            string uploadAlertEmailID = ConfigCache.Get("SSIMUploadAlertEmailID");
 
                             await _genericFunction.SaveMessageOutBox("Flight Schedule"
                                 , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
@@ -736,112 +911,111 @@ namespace QidWorkerRole.UploadMasters
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.CapacityAllocation.ToUpper())
                     {
-                        CapacityAllocation.UploadCapacityAllocation uploadCapacityAllocation = new CapacityAllocation.UploadCapacityAllocation();
-                        uploadCapacityAllocation.CapacityAllocation(dsUploadRecord);
+                        //CapacityAllocation.UploadCapacityAllocation uploadCapacityAllocation = new CapacityAllocation.UploadCapacityAllocation();
+                        await _uploadCapacityAllocation.CapacityAllocation(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.CostMaster.ToUpper())
                     {
-                        CostLine.UploadCostMaster uploadCostMaster = new CostLine.UploadCostMaster();
-                        uploadCostMaster.CostLineMasterUpload(dsUploadRecord);
+                        //CostLine.UploadCostMaster uploadCostMaster = new CostLine.UploadCostMaster();
+                        await _uploadCostMaster.CostLineMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.TaxLine.ToUpper())
                     {
-                        Taxline.UploadTaxLine uploadTaxLine = new Taxline.UploadTaxLine();
-                        uploadTaxLine.TaxLineMasterUpload(dsUploadRecord);
+                        //Taxline.UploadTaxLine uploadTaxLine = new Taxline.UploadTaxLine();
+                        await _uploadTaxLine.TaxLineMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.FlightBudget.ToUpper())
                     {
-                        FlightBudget.UploadFlightBudget uploadFlightBudget = new FlightBudget.UploadFlightBudget();
-                        uploadFlightBudget.FlightBudgetUpload(dsUploadRecord);
+                        //FlightBudget.UploadFlightBudget uploadFlightBudget = new FlightBudget.UploadFlightBudget();
+                        await _uploadFlightBudget.FlightBudgetUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.RouteControls.ToUpper())
                     {
-                        RouteControl.UploadRouteControl uploadRouteControl = new RouteControl.UploadRouteControl();
-                        uploadRouteControl.RouteControlsMasterUpload(dsUploadRecord);
+                        //RouteControl.UploadRouteControl uploadRouteControl = new RouteControl.UploadRouteControl();
+                        await _uploadRouteControl.RouteControlsMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.Airports.ToUpper())
                     {
-                        Airports.UploadAirportsMaster uploadAirports = new Airports.UploadAirportsMaster();
-                        uploadAirports.UpdateAirports(dsUploadRecord);
+                        //Airports.UploadAirportsMaster uploadAirports = new Airports.UploadAirportsMaster();
+                        await _uploadAirportsMaster.UpdateAirports(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.Partners.ToUpper())
                     {
-                        PartnerMaster.UploadPartnerMaster uploadPartnerMaster = new PartnerMaster.UploadPartnerMaster();
-                        uploadPartnerMaster.PartnerMasterUpload(dsUploadRecord);
+                        //PartnerMaster.UploadPartnerMaster uploadPartnerMaster = new PartnerMaster.UploadPartnerMaster();
+                        await _uploadPartnerMaster.PartnerMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.PartnerSchedule.ToUpper())
                     {
-                        PartnerSchedule.UploadPartnerSchedule uploadPartnerSchedule = new PartnerSchedule.UploadPartnerSchedule();
-                        uploadPartnerSchedule.PartnerScheduleUpload(dsUploadRecord);
+                        //PartnerSchedule.UploadPartnerSchedule uploadPartnerSchedule = new PartnerSchedule.UploadPartnerSchedule();
+                        await _uploadPartnerSchedule.PartnerScheduleUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.User.ToUpper())
                     {
-                        UserMaster.UploadUserMaster uploadUserMaster = new UserMaster.UploadUserMaster();
-                        uploadUserMaster.UserMasterUpload(dsUploadRecord);
+                        //UserMaster.UploadUserMaster uploadUserMaster = new UserMaster.UploadUserMaster();
+                        await _uploadUserMaster.UserMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.FlightScheduleExcel.ToUpper())
                     {
-                        FlightScheduleExcel.UploadFlightScheduleExcel uploadFlightScheduleExcel = new FlightScheduleExcel.UploadFlightScheduleExcel();
-                        uploadFlightScheduleExcel.GetUploadFlightSchedule(dsUploadRecord);
+                        //FlightScheduleExcel.UploadFlightScheduleExcel uploadFlightScheduleExcel = new FlightScheduleExcel.UploadFlightScheduleExcel();
+                        await _uploadFlightScheduleExcel.GetUploadFlightSchedule(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.AircraftLoadingPattern.ToUpper())
                     {
-                        AircraftPattern.UploadAircraftLoadingPattern uploadAircraftLoadingPattern = new AircraftPattern.UploadAircraftLoadingPattern();
-                        uploadAircraftLoadingPattern.AircraftPatternUpload();
+                        //AircraftPattern.UploadAircraftLoadingPattern uploadAircraftLoadingPattern = new AircraftPattern.UploadAircraftLoadingPattern();
+                        await _uploadAircraftLoadingPattern.AircraftPatternUpload();
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.FlightPaxInformation.ToUpper()
                         || uploadType.ToUpper() == UploadMasterType.FlightPaxForecast.ToUpper())
                     {
-                        FlightPaxInfo.FlightPaxInfo FlightPaxInfo = new FlightPaxInfo.FlightPaxInfo();
-                        FlightPaxInfo.PaxMasterUpload(dsUploadRecord, uploadType);
+                        //FlightPaxInfo.FlightPaxInfo FlightPaxInfo = new FlightPaxInfo.FlightPaxInfo();
+                        await _flightPaxInfo.PaxMasterUpload(dsUploadRecord, uploadType);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.ExchangeRateFromTo.ToUpper())
                     {
-                        UploadExchangeRatesFromTo uploadExchangeRatesFromTo = new UploadExchangeRatesFromTo();
-                        uploadExchangeRatesFromTo.ExchangeRatesFromTo(dsUploadRecord);
+                        //UploadExchangeRatesFromTo uploadExchangeRatesFromTo = new UploadExchangeRatesFromTo();
+                        await _uploadExchangeRatesFromTo.ExchangeRatesFromTo(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.PHCustomRegistry.ToUpper())
                     {
-                        PHCustomRegistry phCustomRegistry = new PHCustomRegistry();
-                        phCustomRegistry.PHCustomRegistyUpload(dsUploadRecord);
+                        //PHCustomRegistry phCustomRegistry = new PHCustomRegistry();
+                        await _phCustomRegistry.PHCustomRegistyUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.Collection.ToUpper())
                     {
-                        Collection.InvoiceCollection uploadCollection = new Collection.InvoiceCollection();
-                        uploadCollection.UpdateInvoiceCollection(dsUploadRecord);
+                        //Collection.InvoiceCollection uploadCollection = new Collection.InvoiceCollection();
+                        await _invoiceCollection.UpdateInvoiceCollection(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.CreditDebitNotes.ToUpper())
                     {
-                        CCAUpload.CCAUploadFile uploadCCA = new CCAUpload.CCAUploadFile();
-                        uploadCCA.UpdateCCAUpload(dsUploadRecord);
+                        //CCAUpload.CCAUploadFile uploadCCA = new CCAUpload.CCAUploadFile();
+                        await _ccaUploadFile.UpdateCCAUpload(dsUploadRecord);
                     }
-					else if(uploadType.ToUpper()== UploadMasterType.MSRRates.ToUpper())
+                    else if (uploadType.ToUpper() == UploadMasterType.MSRRates.ToUpper())
                     {
-                        MSRRates.UploadMSRRates uploadMSR = new MSRRates.UploadMSRRates();
-                        uploadMSR.UpdateMSRupload(dsUploadRecord);
+                        //MSRRates.UploadMSRRates uploadMSR = new MSRRates.UploadMSRRates();
+                        await _uploadMSRRates.UpdateMSRupload(dsUploadRecord);
                     }
-                    else if(uploadType.ToUpper()== UploadMasterType.ExchangeRate.ToUpper())
+                    else if (uploadType.ToUpper() == UploadMasterType.ExchangeRate.ToUpper())
                     {
-                        UploadExchangeRates uploadExchangeRates = new UploadExchangeRates();
-                        uploadExchangeRates.UpdateExchangeRateUpload(dsUploadRecord);
+                        //UploadExchangeRates uploadExchangeRates = new UploadExchangeRates();
+                        await _uploadExchangeRates.UpdateExchangeRateUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.Booking.ToUpper())
                     {
-                        BookingExcelUpload bookingExcelUpload = new BookingExcelUpload();
-                        bookingExcelUpload.BookingUpload(dsUploadRecord);
+                        //BookingExcelUpload bookingExcelUpload = new BookingExcelUpload();
+                        await _bookingExcelUpload.BookingUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.VendorMaster.ToUpper())
                     {
                         //UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
 
-                        _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
+                        await _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
                     }
                     else if (uploadType.ToUpper() == UploadMasterType.DCM.ToUpper())
                     {
-                        UploadDCM uploadDCMMaster = new UploadDCM();
-                        uploadDCMMaster.DCMUpload(dsUploadRecord);
+                        //UploadDCM uploadDCMMaster = new UploadDCM();
+                        await _uploadDCM.DCMUpload(dsUploadRecord);
                     }
-
                 }
             }
             catch (Exception ex)
@@ -888,154 +1062,155 @@ namespace QidWorkerRole.UploadMasters
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.AgentGeneralInfo.ToUpper())
                         {
-                            Agent.UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo = new Agent.UploadAgentMasterGeneralInfo();
-                            uploadAgentMasterGeneralInfo.AgentMasterUploadGeneralInfo(dsUploadRecord);
+                            //Agent.UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo = new Agent.UploadAgentMasterGeneralInfo();
+                            await _uploadAgentMasterGeneralInfo.AgentMasterUploadGeneralInfo(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.Agent.ToUpper())
                         {
-                            Agent.UploadAgentMaster uploadAgentMaster = new Agent.UploadAgentMaster();
-                            uploadAgentMaster.AgentMasterUpload(dsUploadRecord);
+                            //Agent.UploadAgentMaster uploadAgentMaster = new Agent.UploadAgentMaster();
+                            await _uploadAgentMaster.AgentMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.AgentUpdate.ToUpper())
                         {
-                            UploadAgentMasterUpdate uploadAgentMasterUpdate = new Agent.UploadAgentMasterUpdate();
-                            uploadAgentMasterUpdate.UpdateAgent(dsUploadRecord);
+                            //UploadAgentMasterUpdate uploadAgentMasterUpdate = new Agent.UploadAgentMasterUpdate();
+                            await _uploadAgentMasterUpdate.UpdateAgent(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.ShipperConsignee.ToUpper())
                         {
-                            ShipperConsignee.UploadShipperConsigneeMaster uploadShipperConsigneeMaster = new ShipperConsignee.UploadShipperConsigneeMaster();
-                            uploadShipperConsigneeMaster.ShipperConsigneeMasterUpload(dsUploadRecord);
+                            //ShipperConsignee.UploadShipperConsigneeMaster uploadShipperConsigneeMaster = new ShipperConsignee.UploadShipperConsigneeMaster();
+                            await _uploadShipperConsigneeMaster.ShipperConsigneeMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.OtherCharges.ToUpper())
                         {
-                            OtherCharges.UploadOtherChargesMaster uploadOtherChargesMaster = new OtherCharges.UploadOtherChargesMaster();
-                            uploadOtherChargesMaster.OtherChargesMasterUpload(dsUploadRecord);
+                            //OtherCharges.UploadOtherChargesMaster uploadOtherChargesMaster = new OtherCharges.UploadOtherChargesMaster();
+                            await _uploadOtherChargesMaster.OtherChargesMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.FlightCapacity.ToUpper())
                         {
-                            FlightCapacity.FlightCapacity flightCapacity = new FlightCapacity.FlightCapacity();
-                            flightCapacity.UploadFlightCapacity(dsUploadRecord);
+                            //FlightCapacity.FlightCapacity flightCapacity = new FlightCapacity.FlightCapacity();
+                            await _flightCapacity.UploadFlightCapacity(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.FlightSchedule.ToUpper())
                         {
-                            FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
-                            if (!uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
+                            //FlightSchedule.UploadFlightSchedule uploadFlightSchedule = new FlightSchedule.UploadFlightSchedule();
+                            if (!await _uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
                             {
                                 //GenericFunction genericFunction = new GenericFunction();
 
-                                string uploadAlertEmailID = await _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                                //string uploadAlertEmailID = _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                                string uploadAlertEmailID = ConfigCache.Get("SSIMUploadAlertEmailID");
 
-                               await _genericFunction.SaveMessageOutBox("Flight Schedule"
-                                    , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
-                                    , "", uploadAlertEmailID, "", 0);
+                                await _genericFunction.SaveMessageOutBox("Flight Schedule"
+                                     , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
+                                     , "", uploadAlertEmailID, "", 0);
                             }
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.CapacityAllocation.ToUpper())
                         {
-                            CapacityAllocation.UploadCapacityAllocation uploadCapacityAllocation = new CapacityAllocation.UploadCapacityAllocation();
-                            uploadCapacityAllocation.CapacityAllocation(dsUploadRecord);
+                            //CapacityAllocation.UploadCapacityAllocation uploadCapacityAllocation = new CapacityAllocation.UploadCapacityAllocation();
+                            await _uploadCapacityAllocation.CapacityAllocation(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.CostMaster.ToUpper())
                         {
-                            CostLine.UploadCostMaster uploadCostMaster = new CostLine.UploadCostMaster();
-                            uploadCostMaster.CostLineMasterUpload(dsUploadRecord);
+                            //CostLine.UploadCostMaster uploadCostMaster = new CostLine.UploadCostMaster();
+                            await _uploadCostMaster.CostLineMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.TaxLine.ToUpper())
                         {
-                            Taxline.UploadTaxLine uploadTaxLine = new Taxline.UploadTaxLine();
-                            uploadTaxLine.TaxLineMasterUpload(dsUploadRecord);
+                            //Taxline.UploadTaxLine uploadTaxLine = new Taxline.UploadTaxLine();
+                            await _uploadTaxLine.TaxLineMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.FlightBudget.ToUpper())
                         {
-                            FlightBudget.UploadFlightBudget uploadFlightBudget = new FlightBudget.UploadFlightBudget();
-                            uploadFlightBudget.FlightBudgetUpload(dsUploadRecord);
+                            //FlightBudget.UploadFlightBudget uploadFlightBudget = new FlightBudget.UploadFlightBudget();
+                            await _uploadFlightBudget.FlightBudgetUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.RouteControls.ToUpper())
                         {
-                            RouteControl.UploadRouteControl uploadRouteControl = new RouteControl.UploadRouteControl();
-                            uploadRouteControl.RouteControlsMasterUpload(dsUploadRecord);
+                            //RouteControl.UploadRouteControl uploadRouteControl = new RouteControl.UploadRouteControl();
+                            await _uploadRouteControl.RouteControlsMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.Airports.ToUpper())
                         {
-                            Airports.UploadAirportsMaster uploadAirports = new Airports.UploadAirportsMaster();
-                            uploadAirports.UpdateAirports(dsUploadRecord);
+                            //Airports.UploadAirportsMaster uploadAirports = new Airports.UploadAirportsMaster();
+                            await _uploadAirportsMaster.UpdateAirports(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.Partners.ToUpper())
                         {
-                            PartnerMaster.UploadPartnerMaster uploadPartnerMaster = new PartnerMaster.UploadPartnerMaster();
-                            uploadPartnerMaster.PartnerMasterUpload(dsUploadRecord);
+                            //PartnerMaster.UploadPartnerMaster uploadPartnerMaster = new PartnerMaster.UploadPartnerMaster();
+                            await _uploadPartnerMaster.PartnerMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.PartnerSchedule.ToUpper())
                         {
-                            PartnerSchedule.UploadPartnerSchedule uploadPartnerSchedule = new PartnerSchedule.UploadPartnerSchedule();
-                            uploadPartnerSchedule.PartnerScheduleUpload(dsUploadRecord);
+                            //PartnerSchedule.UploadPartnerSchedule uploadPartnerSchedule = new PartnerSchedule.UploadPartnerSchedule();
+                            await _uploadPartnerSchedule.PartnerScheduleUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.User.ToUpper())
                         {
-                            UserMaster.UploadUserMaster uploadUserMaster = new UserMaster.UploadUserMaster();
-                            uploadUserMaster.UserMasterUpload(dsUploadRecord);
+                            //UserMaster.UploadUserMaster uploadUserMaster = new UserMaster.UploadUserMaster();
+                            await _uploadUserMaster.UserMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.FlightScheduleExcel.ToUpper())
                         {
-                            FlightScheduleExcel.UploadFlightScheduleExcel uploadFlightScheduleExcel = new FlightScheduleExcel.UploadFlightScheduleExcel();
-                            uploadFlightScheduleExcel.GetUploadFlightSchedule(dsUploadRecord);
+                            //FlightScheduleExcel.UploadFlightScheduleExcel uploadFlightScheduleExcel = new FlightScheduleExcel.UploadFlightScheduleExcel();
+                            await _uploadFlightScheduleExcel.GetUploadFlightSchedule(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.AircraftLoadingPattern.ToUpper())
                         {
-                            AircraftPattern.UploadAircraftLoadingPattern uploadAircraftLoadingPattern = new AircraftPattern.UploadAircraftLoadingPattern();
-                            uploadAircraftLoadingPattern.AircraftPatternUpload();
+                            //AircraftPattern.UploadAircraftLoadingPattern uploadAircraftLoadingPattern = new AircraftPattern.UploadAircraftLoadingPattern();
+                            await _uploadAircraftLoadingPattern.AircraftPatternUpload();
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.FlightPaxInformation.ToUpper()
                             || uploadType.ToUpper() == UploadMasterType.FlightPaxForecast.ToUpper())
                         {
-                            FlightPaxInfo.FlightPaxInfo FlightPaxInfo = new FlightPaxInfo.FlightPaxInfo();
-                            FlightPaxInfo.PaxMasterUpload(dsUploadRecord, uploadType);
+                            //FlightPaxInfo.FlightPaxInfo FlightPaxInfo = new FlightPaxInfo.FlightPaxInfo();
+                            await _flightPaxInfo.PaxMasterUpload(dsUploadRecord, uploadType);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.ExchangeRateFromTo.ToUpper())
                         {
-                            UploadExchangeRatesFromTo uploadExchangeRatesFromTo = new UploadExchangeRatesFromTo();
-                            uploadExchangeRatesFromTo.ExchangeRatesFromTo(dsUploadRecord);
+                            //UploadExchangeRatesFromTo uploadExchangeRatesFromTo = new UploadExchangeRatesFromTo();
+                            await _uploadExchangeRatesFromTo.ExchangeRatesFromTo(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.PHCustomRegistry.ToUpper())
                         {
-                            PHCustomRegistry phCustomRegistry = new PHCustomRegistry();
-                            phCustomRegistry.PHCustomRegistyUpload(dsUploadRecord);
+                            //PHCustomRegistry phCustomRegistry = new PHCustomRegistry();
+                            await _phCustomRegistry.PHCustomRegistyUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.Collection.ToUpper())
                         {
-                            Collection.InvoiceCollection uploadCollection = new Collection.InvoiceCollection();
-                            uploadCollection.UpdateInvoiceCollection(dsUploadRecord);
+                            //Collection.InvoiceCollection uploadCollection = new Collection.InvoiceCollection();
+                            await _invoiceCollection.UpdateInvoiceCollection(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.CreditDebitNotes.ToUpper())
                         {
-                            CCAUpload.CCAUploadFile uploadCCA = new CCAUpload.CCAUploadFile();
-                            uploadCCA.UpdateCCAUpload(dsUploadRecord);
+                            //CCAUpload.CCAUploadFile uploadCCA = new CCAUpload.CCAUploadFile();
+                            await _ccaUploadFile.UpdateCCAUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.MSRRates.ToUpper())
                         {
-                            MSRRates.UploadMSRRates uploadMSR = new MSRRates.UploadMSRRates();
-                            uploadMSR.UpdateMSRupload(dsUploadRecord);
+                            //MSRRates.UploadMSRRates uploadMSR = new MSRRates.UploadMSRRates();
+                            await _uploadMSRRates.UpdateMSRupload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.ExchangeRate.ToUpper())
                         {
-                            UploadExchangeRates uploadExchangeRates = new UploadExchangeRates();
-                            uploadExchangeRates.UpdateExchangeRateUpload(dsUploadRecord);
+                            //UploadExchangeRates uploadExchangeRates = new UploadExchangeRates();
+                            await _uploadExchangeRates.UpdateExchangeRateUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.Booking.ToUpper())
                         {
-                            BookingExcelUpload bookingExcelUpload = new BookingExcelUpload();
-                            bookingExcelUpload.BookingUpload(dsUploadRecord);
+                            //BookingExcelUpload bookingExcelUpload = new BookingExcelUpload();
+                            await _bookingExcelUpload.BookingUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.VendorMaster.ToUpper())
                         {
                             //UploadVendorMaster uploadVendorMaster = new UploadVendorMaster();
 
-                            _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
+                            await _uploadVendorMaster.VendorMasterUpload(dsUploadRecord);
                         }
                         else if (uploadType.ToUpper() == UploadMasterType.DCM.ToUpper())
                         {
-                            UploadDCM uploadDCMMaster = new UploadDCM();
-                            uploadDCMMaster.DCMUpload(dsUploadRecord);
+                            //UploadDCM uploadDCMMaster = new UploadDCM();
+                            await _uploadDCM.DCMUpload(dsUploadRecord);
                         }
                     }
                 }

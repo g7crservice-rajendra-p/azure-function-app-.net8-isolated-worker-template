@@ -10,7 +10,7 @@ using System.Text;
 
 namespace QidWorkerRole.UploadMasters.CCAUpload
 {
-    class CCAUploadFile
+    public class CCAUploadFile
     {
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 

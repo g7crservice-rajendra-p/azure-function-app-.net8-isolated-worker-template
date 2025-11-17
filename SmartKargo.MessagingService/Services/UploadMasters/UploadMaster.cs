@@ -1,106 +1,118 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Services;
 using System.Data;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole.UploadMasters
 {
     public class UploadMaster
     {
+        private readonly ILogger<UploadMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public UploadMaster(
+            ILogger<UploadMaster> logger,
+            UploadMasterCommon uploadMasterCommon,
+            GenericFunction genericFunction
+         )
+        {
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+            _genericFunction = genericFunction;
+        }
+        #endregion
+
         /// <summary>
         /// Method to upload master files to blob
         /// </summary>
-        internal void UploadMasterFile(string UploadType)
+        public async Task UploadMasterFile(string UploadType)
         {
             string ContainerName = string.Empty;
-            UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+            //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
             try
             {
                 if (UploadType == UploadMasterType.RateLine)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.RATELINE, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.RATELINE, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.Agent)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.AGENT, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.AGENT, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.ShipperConsignee)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.SHIPPERCONSIGNEE, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.SHIPPERCONSIGNEE, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.OtherCharges)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.OTHERCHARGES, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.OTHERCHARGES, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.FlightCapacity)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.FLIGHTCAPACITY, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.FLIGHTCAPACITY, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.FlightSchedule)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.SCHEDULEUPLOAD, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.SCHEDULEUPLOAD, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.AgentUpdate)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.AGENTUPDATE, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.AGENTUPDATE, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.CapacityAllocation)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.CAPACITYALLOCATION, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.CAPACITYALLOCATION, ContainerName);
                 }
                 else if (UploadType == UploadMasterType.TaxLine)
                 {
-                    DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
+                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadType);
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                     {
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                     }
-                    UploadMasters(UploadType, MessageData.MessageTypeName.TAXLINE, ContainerName);
+                    await UploadMasters(UploadType, MessageData.MessageTypeName.TAXLINE, ContainerName);
                 }
-
             }
             catch (Exception ex)
             {
@@ -108,12 +120,13 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        private void UploadMasters(string UploadType, string MessageType, string ContainerName)
+        private async Task UploadMasters(string UploadType, string MessageType, string ContainerName)
         {
             try
             {
-                UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-                DataSet dsUploadMasterConfiguration = uploadMasterCommon.GetUploadMasterMessageConfiguration(MessageType);
+                //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+                DataSet? dsUploadMasterConfiguration = await _uploadMasterCommon.GetUploadMasterMessageConfiguration(MessageType);
                 if (dsUploadMasterConfiguration != null && dsUploadMasterConfiguration.Tables.Count > 0 && dsUploadMasterConfiguration.Tables[0].Rows.Count > 0)
                 {
                     string FilePath = dsUploadMasterConfiguration.Tables[0].Rows[0]["FileSharePath"].ToString().Trim();
@@ -121,19 +134,27 @@ namespace QidWorkerRole.UploadMasters
                     {
                         if (UploadType == UploadMasterType.AgentUpdate)
                         {
-                            GenericFunction genericFunction = new GenericFunction();
-                            if (genericFunction.ReadValueFromDb("AgentUpdateDateInterval") == string.Empty || DateTime.ParseExact(genericFunction.ReadValueFromDb("AgentUpdateDateInterval"), genericFunction.ReadValueFromDb("SystemDateFormat"), null) < DateTime.Now)
-                            {
-                                uploadMasterCommon.AgentUpdateDateInterval(DateTime.Now.AddDays(1).ToString(genericFunction.ReadValueFromDb("SystemDateFormat") + " hh:mm:ss"));
-                                Configuration.ConfigurationValues.Remove("AgentUpdateDateInterval");
-                                Configuration.ConfigurationValues.Add("AgentUpdateDateInterval", DateTime.Now.AddDays(1).ToString(genericFunction.ReadValueFromDb("SystemDateFormat")));
+                            //GenericFunction genericFunction = new GenericFunction();
+                            string agentUpdateDateInterval = ConfigCache.Get("AgentUpdateDateInterval");
+                            string systemDateFormat = ConfigCache.Get("SystemDateFormat");
 
-                                UploadUpdateAgentMasterFileToBlob(UploadType, FilePath, ContainerName);
+                            //if (genericFunction.ReadValueFromDb("AgentUpdateDateInterval") == string.Empty || DateTime.ParseExact(genericFunction.ReadValueFromDb("AgentUpdateDateInterval"), genericFunction.ReadValueFromDb("SystemDateFormat"), null) < DateTime.Now)
+                            if (agentUpdateDateInterval == string.Empty || DateTime.ParseExact(agentUpdateDateInterval, systemDateFormat, null) < DateTime.Now)
+                            {
+                                //_uploadMasterCommon.AgentUpdateDateInterval(DateTime.Now.AddDays(1).ToString(genericFunction.ReadValueFromDb("SystemDateFormat") + " hh:mm:ss"));
+                                await _uploadMasterCommon.AgentUpdateDateInterval(DateTime.Now.AddDays(1).ToString(systemDateFormat + " hh:mm:ss"));
+
+                                /*In function app config updates are not allowed as it is not persistent*/
+
+                                //Configuration.ConfigurationValues.Remove("AgentUpdateDateInterval");
+                                //Configuration.ConfigurationValues.Add("AgentUpdateDateInterval", DateTime.Now.AddDays(1).ToString(genericFunction.ReadValueFromDb("SystemDateFormat")));
+
+                                await UploadUpdateAgentMasterFileToBlob(UploadType, FilePath, ContainerName);
                             }
                         }
                         else
                         {
-                            UploadMasterFileToBlob(UploadType, FilePath, ContainerName);
+                            await UploadMasterFileToBlob(UploadType, FilePath, ContainerName);
                         }
                     }
                 }
@@ -144,14 +165,15 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        private void UploadMasterFileToBlob(string UploadType, string FilePath, string ContainerName)
+        private async Task UploadMasterFileToBlob(string UploadType, string FilePath, string ContainerName)
         {
             try
             {
-                Cls_BL cls_BL = new Cls_BL();
-                UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+                //Cls_BL cls_BL = new Cls_BL();
+                //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+                //GenericFunction genericFunction = new GenericFunction();
+
                 string FileName = string.Empty;
-                GenericFunction genericFunction = new GenericFunction();
                 int ProgressStatus = 0;
                 int RecordCount = 0;
                 int SuccessCount = 0;
@@ -161,19 +183,20 @@ namespace QidWorkerRole.UploadMasters
                 string ProcessMethod = string.Empty;
                 string ErrorMessage = string.Empty;
                 string Status = "Process will start shortly";
-                string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                //string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                string BlobName = ConfigCache.Get("BlobStorageName");
                 foreach (string file in Directory.GetFiles(FilePath))
                 {
                     FileName = Path.GetFileNameWithoutExtension(file) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(file);
                     FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
-                    genericFunction.UploadMastersToBlob(fileStream, FileName, ContainerName);
+                    _genericFunction.UploadMastersToBlob(fileStream, FileName, ContainerName);
                     fileStream.Close();
                     string UserName = string.Empty;
                     DateTime IT = System.DateTime.Now;
                     string Station = string.Empty;
-                    DataSet dsSerialNumber = uploadMasterCommon.InsertMasterSummaryLog(0,           FileName,       UploadType,     UserName,       RecordCount,    SuccessCount,
-                                                                                       FailCount,   Station,        Status,         ProgressStatus, BlobName,       ContainerName,
-                                                                                       FolderName,  ProcessMethod,  ErrorMessage,   IsProcessed);
+                    DataSet? dsSerialNumber = await _uploadMasterCommon.InsertMasterSummaryLog(0, FileName, UploadType, UserName, RecordCount, SuccessCount,
+                                                                                       FailCount, Station, Status, ProgressStatus, BlobName, ContainerName,
+                                                                                       FolderName, ProcessMethod, ErrorMessage, IsProcessed);
 
                     File.Delete(file);
 
@@ -194,14 +217,15 @@ namespace QidWorkerRole.UploadMasters
             }
         }
 
-        private void UploadUpdateAgentMasterFileToBlob(string UploadType, string FilePath, string ContainerName)
+        private async Task UploadUpdateAgentMasterFileToBlob(string UploadType, string FilePath, string ContainerName)
         {
             try
             {
-                Cls_BL cls_BL = new Cls_BL();
-                UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+                //Cls_BL cls_BL = new Cls_BL();
+                //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+                //GenericFunction genericFunction = new GenericFunction();
+
                 string FileName = string.Empty;
-                GenericFunction genericFunction = new GenericFunction();
                 int ProgressStatus = 0;
                 int RecordCount = 0;
                 int SuccessCount = 0;
@@ -211,19 +235,20 @@ namespace QidWorkerRole.UploadMasters
                 string ProcessMethod = string.Empty;
                 string ErrorMessage = string.Empty;
                 string Status = "Process will start shortly";
-                string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                //string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
+                string BlobName = ConfigCache.Get("BlobStorageName");
                 foreach (string file in Directory.GetFiles(FilePath, "*.json"))
                 {
                     FileName = Path.GetFileNameWithoutExtension(file) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(file);
                     FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
-                    genericFunction.UploadMastersToBlob(fileStream, FileName, ContainerName);
+                    _genericFunction.UploadMastersToBlob(fileStream, FileName, ContainerName);
                     fileStream.Close();
                     string UserName = string.Empty;
                     DateTime IT = System.DateTime.Now;
                     string Station = string.Empty;
-                    DataSet dsSerialNumber = uploadMasterCommon.InsertMasterSummaryLog(0,               FileName,       UploadType, UserName,       RecordCount,
-                                                                                       SuccessCount,    FailCount,      Station,    Status,         ProgressStatus,
-                                                                                       BlobName,        ContainerName,  FolderName, ProcessMethod,  ErrorMessage,
+                    DataSet? dsSerialNumber = await _uploadMasterCommon.InsertMasterSummaryLog(0, FileName, UploadType, UserName, RecordCount,
+                                                                                       SuccessCount, FailCount, Station, Status, ProgressStatus,
+                                                                                       BlobName, ContainerName, FolderName, ProcessMethod, ErrorMessage,
                                                                                        IsProcessed);
 
                     File.Delete(file);

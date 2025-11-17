@@ -7,7 +7,7 @@ using System.Data;
 
 namespace QidWorkerRole.UploadMasters.Collection
 {
-    class InvoiceCollection
+    public class InvoiceCollection
     {
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
