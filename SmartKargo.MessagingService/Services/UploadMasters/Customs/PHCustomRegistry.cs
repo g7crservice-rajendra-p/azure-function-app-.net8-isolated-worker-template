@@ -40,7 +40,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
 
                     if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PHCustomRegistry", out FilePath))
                     {
-                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);                       
+                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
 
                     else
@@ -53,7 +53,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
         }
@@ -65,7 +66,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             try
             {
                 string fileExtention = Path.GetExtension(filepath).ToLower();
-               
+
                 if (fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") || fileExtention.Equals(".xlsx"))
                 {
                     FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
@@ -88,7 +89,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    // clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    _logger.LogWarning("Invalid file: {filePath}", filepath);
                     return false;
                 }
                 foreach (DataColumn dataColumn in dataTablePHRegistery.Columns)
@@ -103,18 +105,18 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                 dataTablePHCustomRegistery.Columns.Add("Origin", System.Type.GetType("System.String"));
                 dataTablePHCustomRegistery.Columns.Add("ETA", System.Type.GetType("System.String"));
                 dataTablePHCustomRegistery.Columns.Add("REGNO", System.Type.GetType("System.String"));
-                dataTablePHCustomRegistery.Columns.Add("DateOfArrival", System.Type.GetType("System.String"));               
+                dataTablePHCustomRegistery.Columns.Add("DateOfArrival", System.Type.GetType("System.String"));
                 dataTablePHCustomRegistery.Columns.Add("ValidationDetails", System.Type.GetType("System.String"));
                 #endregion
 
                 string validationDetailsExchangeRates = string.Empty;
                 //DateTime tempDate;
-                
+
 
                 for (int i = 0; i < dataTablePHRegistery.Rows.Count; i++)
                 {
                     validationDetailsExchangeRates = string.Empty;
-                   
+
                     DataRow dataRowExchangeRates = dataTablePHCustomRegistery.NewRow();
 
                     dataRowExchangeRates["FileRowNo"] = i + 1;
@@ -139,7 +141,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                     {
                         validationDetailsExchangeRates = validationDetailsExchangeRates + "Origin not found;";
                     }
-                    else if (dataTablePHRegistery.Rows[i]["Origin"].ToString().Trim().Length <2)
+                    else if (dataTablePHRegistery.Rows[i]["Origin"].ToString().Trim().Length < 2)
                     {
                         validationDetailsExchangeRates = validationDetailsExchangeRates + "Origin not found;";
                     }
@@ -158,7 +160,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                     {
                         //if (isBinaryReader)
                         //{
-                            dataRowExchangeRates["ETA"] =  dataTablePHRegistery.Rows[i]["ETA"].ToString() ;
+                        dataRowExchangeRates["ETA"] = dataTablePHRegistery.Rows[i]["ETA"].ToString();
                         //}                         
                     }
                     #endregion Effective_Date
@@ -176,7 +178,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                     }
                     else
                     {
-                            dataRowExchangeRates["RegNo"] = dataTablePHRegistery.Rows[i]["RegNo"].ToString().Trim();
+                        dataRowExchangeRates["RegNo"] = dataTablePHRegistery.Rows[i]["RegNo"].ToString().Trim();
 
                     }
                     #endregion RegNo
@@ -195,9 +197,9 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                         else
                         {
                             DateTime tempDate;
-                           if (DateTime.TryParseExact(dataTablePHRegistery.Rows[i]["DateOfArrival"].ToString().Trim().Replace('-', '/'), "M/d/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate))                                 
-                            dataRowExchangeRates["DateOfArrival"] =  dataTablePHRegistery.Rows[i]["DateOfArrival"].ToString().Trim();
-                              else
+                            if (DateTime.TryParseExact(dataTablePHRegistery.Rows[i]["DateOfArrival"].ToString().Trim().Replace('-', '/'), "M/d/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate))
+                                dataRowExchangeRates["DateOfArrival"] = dataTablePHRegistery.Rows[i]["DateOfArrival"].ToString().Trim();
+                            else
                                 validationDetailsExchangeRates = validationDetailsExchangeRates + "Invalid Date Format";
                         }
                     }
@@ -215,7 +217,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
             finally
@@ -244,7 +247,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return dataSetResult;
             }
         }

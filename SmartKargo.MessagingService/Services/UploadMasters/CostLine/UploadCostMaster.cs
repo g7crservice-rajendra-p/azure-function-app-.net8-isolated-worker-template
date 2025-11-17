@@ -66,7 +66,8 @@ namespace QidWorkerRole.UploadMasters.CostLine
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \n StackTrace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " \n StackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
         }
@@ -1641,7 +1642,8 @@ namespace QidWorkerRole.UploadMasters.CostLine
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
             finally
@@ -1690,7 +1692,8 @@ namespace QidWorkerRole.UploadMasters.CostLine
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", exception.Message, exception.StackTrace);
                 return dataSetResult;
             }
         }
