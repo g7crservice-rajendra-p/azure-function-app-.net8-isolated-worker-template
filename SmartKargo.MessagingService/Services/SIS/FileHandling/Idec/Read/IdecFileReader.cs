@@ -79,9 +79,10 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
                 }
                 //Logger.Info("End of IDEC Record types Initialization.");
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(exception);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
             }
             finally
@@ -140,14 +141,16 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Record length is not of 500 characters.");
+                    // clsLog.WriteLogAzure("Record length is not of 500 characters.");
+                    _logger.LogWarning("Record length is not of 500 characters.");
                     return null;
                 }
             }
             catch (Exception exception)
             {
                 // Invalid record sequence number.
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(exception);
+                _logger.LogError(exception, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -239,7 +242,8 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
 
             if (!File.Exists(filePath))
             {
-                clsLog.WriteLogAzure(string.Format("File [{0}] does not exist." + filePath));
+                // clsLog.WriteLogAzure(string.Format("File [{0}] does not exist." + filePath));
+                _logger.LogWarning("File [{FilePath}] does not exist.", filePath);
 
                 throw new FileNotFoundException(string.Format("File [{0}] not found.", filePath));
             }
@@ -258,35 +262,43 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
         /// <returns>List of Invoices.</returns>
         private IEnumerable<Invoice> DoRead(string data, bool isFilePath)
         {
-            // Check whether it is safe to proceed.
-            if ((multiRecordEngine == null) || ((multiRecordEngine != null) && (multiRecordEngine.RecordSelector == null)))
+            try
             {
-                throw new InvalidOperationException("MultiRecordEngine is not initialized.");
+                // Check whether it is safe to proceed.
+                if ((multiRecordEngine == null) || ((multiRecordEngine != null) && (multiRecordEngine.RecordSelector == null)))
+                {
+                    throw new InvalidOperationException("MultiRecordEngine is not initialized.");
+                }
+    
+                if (isFilePath)
+                {
+                    // Begin reading the file.
+                    multiRecordEngine.BeginReadFile(data);
+                }
+                else
+                {
+                    multiRecordEngine.BeginReadString(data);
+                }
+    
+                // Read each record - till the end of the file.
+                if (multiRecordEngine.ReadNext() != null)
+                {
+                    //if (Logger.IsInfoEnabled)
+                    //{
+                    //    Logger.DebugFormat(string.Format("Record of type [{0}] found.", multiRecordEngine.LastRecord.GetType().Name));
+                    //}
+    
+                    // Read the record hierarchy and convert it into a class.
+                    return ReadRecordHierarchy(multiRecordEngine);
+                }
+    
+                return null;
             }
-
-            if (isFilePath)
+            catch (System.Exception ex)
             {
-                // Begin reading the file.
-                multiRecordEngine.BeginReadFile(data);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
-            else
-            {
-                multiRecordEngine.BeginReadString(data);
-            }
-
-            // Read each record - till the end of the file.
-            if (multiRecordEngine.ReadNext() != null)
-            {
-                //if (Logger.IsInfoEnabled)
-                //{
-                //    Logger.DebugFormat(string.Format("Record of type [{0}] found.", multiRecordEngine.LastRecord.GetType().Name));
-                //}
-
-                // Read the record hierarchy and convert it into a class.
-                return ReadRecordHierarchy(multiRecordEngine);
-            }
-
-            return null;
         }
 
         /// <summary>
