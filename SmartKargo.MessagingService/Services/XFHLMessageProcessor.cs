@@ -129,80 +129,88 @@ namespace QidWorkerRole
         #region Decode Consigment Details
         private void DecodeFHLConsigmentDetails(DataSet fhlXmlDataSet, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] custominfo)
         {
-            DataRow[] drs;
-            for (int row = 0; row < fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows.Count; row++)
+            try
             {
-                MessageData.consignmnetinfo consig = new MessageData.consignmnetinfo("");
-                drs = fhlXmlDataSet.Tables["TransportContractDocument"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
+                DataRow[] drs;
+                for (int row = 0; row < fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows.Count; row++)
                 {
-                    consig.awbnum = Convert.ToString(drs[0]["ID"]);
-                }
-
-                drs = fhlXmlDataSet.Tables["OriginLocation"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
-                {
-                    consig.origin = Convert.ToString(drs[0]["ID"]);
-                    //Convert.ToString(drs[0]["Name"]);
-                }
-
-                drs = fhlXmlDataSet.Tables["FinalDestinationLocation"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
-                {
-                    consig.dest = Convert.ToString(drs[0]["ID"]);
-                    //Convert.ToString(drs[0]["Name"]);
-                }
-
-                consig.consigntype = "";
-                consig.pcscnt = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["TotalPieceQuantity"]);
-                drs = fhlXmlDataSet.Tables["GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
-                {
-                    if (Convert.ToString(drs[0]["unitCode"]).Equals("KGM"))
+                    MessageData.consignmnetinfo consig = new MessageData.consignmnetinfo("");
+                    drs = fhlXmlDataSet.Tables["TransportContractDocument"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
                     {
-                        consig.weightcode = "K";
+                        consig.awbnum = Convert.ToString(drs[0]["ID"]);
                     }
-                    else
+
+                    drs = fhlXmlDataSet.Tables["OriginLocation"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
                     {
-                        consig.weightcode = "L";
+                        consig.origin = Convert.ToString(drs[0]["ID"]);
+                        //Convert.ToString(drs[0]["Name"]);
                     }
-                    consig.weight = Convert.ToString(drs[0]["GrossWeightMeasure_Text"]);
+
+                    drs = fhlXmlDataSet.Tables["FinalDestinationLocation"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
+                    {
+                        consig.dest = Convert.ToString(drs[0]["ID"]);
+                        //Convert.ToString(drs[0]["Name"]);
+                    }
+
+                    consig.consigntype = "";
+                    consig.pcscnt = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["TotalPieceQuantity"]);
+                    drs = fhlXmlDataSet.Tables["GrossWeightMeasure"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
+                    {
+                        if (Convert.ToString(drs[0]["unitCode"]).Equals("KGM"))
+                        {
+                            consig.weightcode = "K";
+                        }
+                        else
+                        {
+                            consig.weightcode = "L";
+                        }
+                        consig.weight = Convert.ToString(drs[0]["GrossWeightMeasure_Text"]);
+                    }
+
+                    consig.manifestdesc = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["SummaryDescription"]);
+                    consig.slac = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["PackageQuantity"]);
+
+                    //Free Text
+                    consig.freetextGoodDesc = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["SummaryDescription"]);
+
+                    // Harmonised Tariff Schedule                
+                    //consinfo[consinfo.Length - 1].commodity = consinfo[consinfo.Length - 1].commodity + msg[1] + ",";
+
+                    //Splhandling
+                    drs = fhlXmlDataSet.Tables["HandlingSPHInstructions"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
+                    {
+                        //Convert.ToString(drs[0]["Description"]);
+                        consig.splhandling = Convert.ToString(drs[0]["DescriptionCode"]);
+                    }
+
+
+                    Array.Resize(ref consinfo, consinfo.Length + 1);
+                    consinfo[consinfo.Length - 1] = consig;
+
+                    //custom extra info                
+                    MessageData.customsextrainfo custom = new MessageData.customsextrainfo("");
+                    drs = fhlXmlDataSet.Tables["IncludedCustomsNote"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
+                    if (drs.Length > 0)
+                    {
+                        custom.CsrIdentifierOci = Convert.ToString(drs[0]["ContentCode"]);
+                        custom.SupplementaryCsrIdentifierOci = Convert.ToString(drs[0]["Content"]);
+                        custom.InformationIdentifierOci = Convert.ToString(drs[0]["SubjectCode"]);
+                        custom.IsoCountryCodeOci = Convert.ToString(drs[0]["CountryID"]);
+                    }
+                    custom.consigref = "";
+                    Array.Resize(ref custominfo, custominfo.Length + 1);
+                    custominfo[custominfo.Length - 1] = custom;
                 }
-
-                consig.manifestdesc = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["SummaryDescription"]);
-                consig.slac = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["PackageQuantity"]);
-
-                //Free Text
-                consig.freetextGoodDesc = Convert.ToString(fhlXmlDataSet.Tables["IncludedHouseConsignment"].Rows[row]["SummaryDescription"]);
-
-                // Harmonised Tariff Schedule                
-                //consinfo[consinfo.Length - 1].commodity = consinfo[consinfo.Length - 1].commodity + msg[1] + ",";
-
-                //Splhandling
-                drs = fhlXmlDataSet.Tables["HandlingSPHInstructions"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
-                {
-                    //Convert.ToString(drs[0]["Description"]);
-                    consig.splhandling = Convert.ToString(drs[0]["DescriptionCode"]);
-                }
-
-
-                Array.Resize(ref consinfo, consinfo.Length + 1);
-                consinfo[consinfo.Length - 1] = consig;
-
-                //custom extra info                
-                MessageData.customsextrainfo custom = new MessageData.customsextrainfo("");
-                drs = fhlXmlDataSet.Tables["IncludedCustomsNote"].Select("IncludedHouseConsignment_Id=" + Convert.ToString(row));
-                if (drs.Length > 0)
-                {
-                    custom.CsrIdentifierOci = Convert.ToString(drs[0]["ContentCode"]);
-                    custom.SupplementaryCsrIdentifierOci = Convert.ToString(drs[0]["Content"]);
-                    custom.InformationIdentifierOci = Convert.ToString(drs[0]["SubjectCode"]);
-                    custom.IsoCountryCodeOci = Convert.ToString(drs[0]["CountryID"]);
-                }
-                custom.consigref = "";
-                Array.Resize(ref custominfo, custominfo.Length + 1);
-                custominfo[custominfo.Length - 1] = custom;
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
         }
         #endregion
@@ -348,10 +356,11 @@ namespace QidWorkerRole
                 //catch (Exception ex) { clsLog.WriteLogAzure(ex.Message); }
                 #endregion
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ex);
                 flag = false;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return flag;
             return (flag, fhl, consinfo, customextrainfo);
@@ -491,54 +500,62 @@ namespace QidWorkerRole
             //paramtype[32] = SqlDbType.VarChar;
             //paramtype[33] = SqlDbType.VarChar;
             //paramtype[34] = SqlDbType.VarChar;
-
-            var parameters = new SqlParameter[]
+            try
             {
-                new SqlParameter("@MAWBNo", SqlDbType.VarChar) { Value = MAWBNo },
-                new SqlParameter("@HAWBNo", SqlDbType.VarChar) { Value = HAWBNo },
-                new SqlParameter("@HAWBPcs", SqlDbType.Int) { Value = HAWBPcs },
-                new SqlParameter("@HAWBWt", SqlDbType.Float) { Value = HAWBWt },
-                new SqlParameter("@Description", SqlDbType.VarChar) { Value = Description },
-                new SqlParameter("@CustID", SqlDbType.VarChar) { Value = CustID },
-                new SqlParameter("@CustName", SqlDbType.VarChar) { Value = CustName },
-                new SqlParameter("@CustAddress", SqlDbType.VarChar) { Value = CustAddress },
-                new SqlParameter("@CustCity", SqlDbType.VarChar) { Value = CustCity },
-                new SqlParameter("@Zipcode", SqlDbType.VarChar) { Value = Zipcode },
-                new SqlParameter("@Origin", SqlDbType.VarChar) { Value = Origin },
-                new SqlParameter("@Destination", SqlDbType.VarChar) { Value = Destination },
-                new SqlParameter("@SHC", SqlDbType.VarChar) { Value = SHC },
-                new SqlParameter("@HAWBPrefix", SqlDbType.VarChar) { Value = HAWBPrefix },
-                new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
-                new SqlParameter("@ArrivalStatus", SqlDbType.VarChar) { Value = ArrivalStatus },
-                new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
-                new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now : DateTime.Parse(FlightDt) },
-                new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FltOrigin },
-                new SqlParameter("@flightDest", SqlDbType.VarChar) { Value = FltDest },
-                new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = ConsigneeName },
-                new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = ConsigneeAddress },
-                new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = ConsigneeCity },
-                new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = ConsigneeState },
-                new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = ConsigneeCountry },
-                new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = ConsigneePostalCode },
-                new SqlParameter("@CustState", SqlDbType.VarChar) { Value = CustState },
-                new SqlParameter("@CustCountry", SqlDbType.VarChar) { Value = CustCountry },
-                new SqlParameter("@UOM", SqlDbType.VarChar) { Value = UOM },
-                new SqlParameter("@SLAC", SqlDbType.Int) { Value = string.IsNullOrEmpty(SLAC) ? "0" : SLAC },
-                new SqlParameter("@ConsigneeID", SqlDbType.VarChar) { Value = ConsigneeID },
-                new SqlParameter("@ShipperEmail", SqlDbType.VarChar) { Value = ShipperEmail },
-                new SqlParameter("@ShipperTelephone", SqlDbType.VarChar) { Value = ShipperTelephone },
-                new SqlParameter("@ConsigneeEmail", SqlDbType.VarChar) { Value = ConsigneeEmail },
-                new SqlParameter("@ConsigneeTelephone", SqlDbType.VarChar) { Value = ConsigneeTelephone }
-            };
 
-            //if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
-            if (await _readWriteDao.ExecuteNonQueryAsync("SP_PutHAWBDetails_V2", parameters))
-            {
-                return true;
+                var parameters = new SqlParameter[]
+                {
+                    new SqlParameter("@MAWBNo", SqlDbType.VarChar) { Value = MAWBNo },
+                    new SqlParameter("@HAWBNo", SqlDbType.VarChar) { Value = HAWBNo },
+                    new SqlParameter("@HAWBPcs", SqlDbType.Int) { Value = HAWBPcs },
+                    new SqlParameter("@HAWBWt", SqlDbType.Float) { Value = HAWBWt },
+                    new SqlParameter("@Description", SqlDbType.VarChar) { Value = Description },
+                    new SqlParameter("@CustID", SqlDbType.VarChar) { Value = CustID },
+                    new SqlParameter("@CustName", SqlDbType.VarChar) { Value = CustName },
+                    new SqlParameter("@CustAddress", SqlDbType.VarChar) { Value = CustAddress },
+                    new SqlParameter("@CustCity", SqlDbType.VarChar) { Value = CustCity },
+                    new SqlParameter("@Zipcode", SqlDbType.VarChar) { Value = Zipcode },
+                    new SqlParameter("@Origin", SqlDbType.VarChar) { Value = Origin },
+                    new SqlParameter("@Destination", SqlDbType.VarChar) { Value = Destination },
+                    new SqlParameter("@SHC", SqlDbType.VarChar) { Value = SHC },
+                    new SqlParameter("@HAWBPrefix", SqlDbType.VarChar) { Value = HAWBPrefix },
+                    new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
+                    new SqlParameter("@ArrivalStatus", SqlDbType.VarChar) { Value = ArrivalStatus },
+                    new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
+                    new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now : DateTime.Parse(FlightDt) },
+                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FltOrigin },
+                    new SqlParameter("@flightDest", SqlDbType.VarChar) { Value = FltDest },
+                    new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = ConsigneeName },
+                    new SqlParameter("@ConsigneeAddress", SqlDbType.VarChar) { Value = ConsigneeAddress },
+                    new SqlParameter("@ConsigneeCity", SqlDbType.VarChar) { Value = ConsigneeCity },
+                    new SqlParameter("@ConsigneeState", SqlDbType.VarChar) { Value = ConsigneeState },
+                    new SqlParameter("@ConsigneeCountry", SqlDbType.VarChar) { Value = ConsigneeCountry },
+                    new SqlParameter("@ConsigneePostalCode", SqlDbType.VarChar) { Value = ConsigneePostalCode },
+                    new SqlParameter("@CustState", SqlDbType.VarChar) { Value = CustState },
+                    new SqlParameter("@CustCountry", SqlDbType.VarChar) { Value = CustCountry },
+                    new SqlParameter("@UOM", SqlDbType.VarChar) { Value = UOM },
+                    new SqlParameter("@SLAC", SqlDbType.Int) { Value = string.IsNullOrEmpty(SLAC) ? "0" : SLAC },
+                    new SqlParameter("@ConsigneeID", SqlDbType.VarChar) { Value = ConsigneeID },
+                    new SqlParameter("@ShipperEmail", SqlDbType.VarChar) { Value = ShipperEmail },
+                    new SqlParameter("@ShipperTelephone", SqlDbType.VarChar) { Value = ShipperTelephone },
+                    new SqlParameter("@ConsigneeEmail", SqlDbType.VarChar) { Value = ConsigneeEmail },
+                    new SqlParameter("@ConsigneeTelephone", SqlDbType.VarChar) { Value = ConsigneeTelephone }
+                };
+
+                //if (da.ExecuteProcedure("SP_PutHAWBDetails_V2", paramname, paramtype, paramvalue))
+                if (await _readWriteDao.ExecuteNonQueryAsync("SP_PutHAWBDetails_V2", parameters))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
             }
-            else
+            catch (System.Exception ex)
             {
-                return false;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
         }
         #endregion
