@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace QidWorkerRole.SIS.Model.SupportingModels
+﻿namespace QidWorkerRole.SIS.Model.SupportingModels
 {
     public class RMProrateSlipDetails
     {
