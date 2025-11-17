@@ -321,7 +321,7 @@ namespace QidWorkerRole
                     slac = consinfo[i].slac.Length > 0 ? consinfo[i].slac : consinfo[i].pcscnt;
 
 
-                    flag = PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
+                    flag = await PutHAWBDetails(AWBNum, HAWBNo, HAWBPcs, HAWBWt, description, CustID, CustName, CustAddress, City, Zipcode, Origin, Destination, SHC, HAWBPrefix, AWBPrefix, "", "", "", "", "",
                         fhl.consname, fhl.consadd.Trim(','), fhl.consplace.Trim(','), fhl.consstate, fhl.conscountrycode.Trim(','), fhl.conspostcode, fhl.shipperstate, fhl.shippercountrycode, "", slac, "", "",
                         fhl.shippercontactnum, "", fhl.conscontactnum);
 
@@ -842,14 +842,14 @@ namespace QidWorkerRole
         //}
         #endregion
 
-        public String GenerateXFZBMessage(string awbPrefix, string awbNumber, string hawbNumber)
+        public async Task<String> GenerateXFZBMessage(string awbPrefix, string awbNumber, string hawbNumber)
         {
             StringBuilder sbXFZBMessage = new StringBuilder();
             try
             {
                 //GenericFunction generalFuncation = new GenericFunction();
 
-                DataSet dsFzbMessage = GetRecordforHAWBToGenerateXFZBMessage(awbPrefix, awbNumber, hawbNumber);
+                DataSet dsFzbMessage = await GetRecordforHAWBToGenerateXFZBMessage(awbPrefix, awbNumber, hawbNumber);
 
                 if (dsFzbMessage != null && dsFzbMessage.Tables.Count > 0 && dsFzbMessage.Tables[1].Rows.Count > 0 && dsFzbMessage.Tables[2].Rows.Count > 0 && dsFzbMessage.Tables[3].Rows.Count > 0 && dsFzbMessage.Tables[4].Rows.Count > 0 && dsFzbMessage.Tables[5].Rows.Count > 0 && dsFzbMessage.Tables[7].Rows.Count > 0)
                 {
@@ -2068,7 +2068,9 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 sbXFZBMessage.Append("Error Occured while generating: " + ex.Message);
-                clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
+                //clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
+                _logger.LogError("Error on Generate XFZB Message Method:" + ex.ToString());
+
             }
 
 
@@ -2098,7 +2100,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error on Get Record for AWB ToGenerate XFZBMessage Method:" + ex.ToString());
+                //clsLog.WriteLogAzure("Error on Get Record for AWB ToGenerate XFZBMessage Method:" + ex.ToString());
+                _logger.LogError("Error on Get Record for AWB ToGenerate XFZBMessage Method:" + ex.ToString());
             }
             return dsFwb;
         }
