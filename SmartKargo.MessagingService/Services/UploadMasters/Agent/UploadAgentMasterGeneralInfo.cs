@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using ExcelDataReader;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using QID.DataAccess;
+using System.Text;
 
 namespace QidWorkerRole.UploadMasters.Agent
 {
@@ -17,13 +12,26 @@ namespace QidWorkerRole.UploadMasters.Agent
     /// </summary>
     public class UploadAgentMasterGeneralInfo
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadAgentMasterGeneralInfo> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadAgentMasterGeneralInfo(ISqlDataHelperFactory sqlDataHelperFactory,
+        ILogger<UploadAgentMasterGeneralInfo> logger,UploadMasterCommon uploadmasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadmasterCommon;
+        }
+        #endregion
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
         /// <summary>
         /// Method to Uplaod Agent Master (General Info only).
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean AgentMasterUploadGeneralInfo(DataSet dataSetFileData)
+        public async Task<Boolean> AgentMasterUploadGeneralInfo(DataSet dataSetFileData)
         {
             try
             {
@@ -32,28 +40,36 @@ namespace QidWorkerRole.UploadMasters.Agent
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "AgentMasterGeneralInfoUploadFile", out uploadFilePath))
+                        //if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "AgentMasterGeneralInfoUploadFile", out uploadFilePath))
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "AgentMasterGeneralInfoUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            //uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} \nStackTrace: {StackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
         }
@@ -64,7 +80,7 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Agent Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableAgentGeneralInfoExcelData = new DataTable("dataTableAgentGeneralInfoExcelData");
 
@@ -72,25 +88,54 @@ namespace QidWorkerRole.UploadMasters.Agent
 
             try
             {
-                FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
+                //New latest package ExcelDatareader 3.8.0 and ExcelDataReader.Dataset 3.8.0 isnstalled so old code commeneted and added new Code
+                //FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
 
-                IExcelDataReader iExcelDataReader = null;
-                string fileExtention = Path.GetExtension(filepath).ToLower();
 
-                isBinaryReader = fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") ? true : false;
 
-                iExcelDataReader = isBinaryReader ? ExcelReaderFactory.CreateBinaryReader(fileStream) // for Reading from a binary Excel file ('97-2003 format; *.xls)
-                                                  : ExcelReaderFactory.CreateOpenXmlReader(fileStream); // for Reading from a OpenXml Excel file (2007 format; *.xlsx)
+                //IExcelDataReader iExcelDataReader = null;
+                //string fileExtention = Path.GetExtension(filepath).ToLower();
 
-                // DataSet - Create column names from first row
-                iExcelDataReader.IsFirstRowAsColumnNames = true;
-                dataTableAgentGeneralInfoExcelData = iExcelDataReader.AsDataSet().Tables[0];
+                //isBinaryReader = fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") ? true : false;
 
-                // Free resources (IExcelDataReader is IDisposable)
-                iExcelDataReader.Close();
+                //iExcelDataReader = isBinaryReader ? ExcelReaderFactory.CreateBinaryReader(fileStream) // for Reading from a binary Excel file ('97-2003 format; *.xls)
+                // : ExcelReaderFactory.CreateOpenXmlReader(fileStream); // for Reading from a OpenXml Excel file (2007 format; *.xlsx)
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableAgentGeneralInfoExcelData);
+                //// DataSet - Create column names from first row
+                //iExcelDataReader.IsFirstRowAsColumnNames = true;
+                //dataTableAgentGeneralInfoExcelData = iExcelDataReader.AsDataSet().Tables[0];
 
+                //// Free resources (IExcelDataReader is IDisposable)
+                //iExcelDataReader.Close();
+
+                //uploadMasterCommon.RemoveEmptyRows(dataTableAgentGeneralInfoExcelData);
+
+                //foreach (DataColumn dataColumn in dataTableAgentGeneralInfoExcelData.Columns)
+                //{
+                //    dataColumn.ColumnName = dataColumn.ColumnName.ToLower().Trim();
+                //}
+
+                using FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
+
+                using IExcelDataReader iExcelDataReader = ExcelReaderFactory.CreateReader(fileStream);
+
+                // Configure dataset (similar to IsFirstRowAsColumnNames)
+                var excelConfig = new ExcelDataSetConfiguration
+                {
+                    ConfigureDataTable = _ => new ExcelDataTableConfiguration
+                    {
+                        UseHeaderRow = true   // replaces IsFirstRowAsColumnNames
+                    }
+                };
+
+                // Read DataTable
+                dataTableAgentGeneralInfoExcelData =
+                    iExcelDataReader.AsDataSet(excelConfig).Tables[0];
+
+                // Remove empty rows (your existing method)
+                _uploadMasterCommon.RemoveEmptyRows(dataTableAgentGeneralInfoExcelData);
+
+                // Convert all column names to lowercase/trimmed
                 foreach (DataColumn dataColumn in dataTableAgentGeneralInfoExcelData.Columns)
                 {
                     dataColumn.ColumnName = dataColumn.ColumnName.ToLower().Trim();
@@ -3238,9 +3283,9 @@ namespace QidWorkerRole.UploadMasters.Agent
 
                 // Database Call to Validate & Insert/Update Agent Master
                 string errorInSp = string.Empty;
-                DataSet dataSetResult = new DataSet();
+                DataSet ?dataSetResult = new DataSet();
 
-                dataSetResult = ValidateAndInsertUpdateAgentMasterGeneralInfo(srNotblMasterUploadSummaryLog, AgentType, errorInSp);
+                dataSetResult = await ValidateAndInsertUpdateAgentMasterGeneralInfo(srNotblMasterUploadSummaryLog, AgentType, errorInSp);
 
                 #region Send Messages after Agent Upload
 
@@ -3512,7 +3557,9 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
+
                 return false;
             }
             finally
@@ -3528,25 +3575,42 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="agentType"> Agent Master Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertUpdateAgentMasterGeneralInfo(int srNotblMasterUploadSummaryLog, DataTable agentType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertUpdateAgentMasterGeneralInfo(int srNotblMasterUploadSummaryLog, DataTable agentType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet ?dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@AgentTableType", agentType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                //SqlParameter[] sqlParameters = new SqlParameter[] { 
+                //                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                //                                                      new SqlParameter("@AgentTableType", agentType),
+                //                                                      new SqlParameter("@Error", errorInSp)
+                //                                                  };
+                var sqlParameters = new[]
+                {
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog", srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@AgentTableType", agentType),
+                    new SqlParameter
+                    {
+                        ParameterName = "@Error",
+                        SqlDbType = System.Data.SqlDbType.NVarChar,
+                        Size = 500,
+                        Direction = System.Data.ParameterDirection.Output,
+                        Value = errorInSp
+                    }
+                };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("Masters.uspUploadAgentMasterGeneralInfo", sqlParameters);
+
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("Masters.uspUploadAgentMasterGeneralInfo", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("Masters.uspUploadAgentMasterGeneralInfo", sqlParameters);
+
 
                 return dataSetResult;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
                 return dataSetResult;
             }
         }
@@ -3698,7 +3762,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
             }
             return sb.ToString();
         }
@@ -3754,7 +3819,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
             }
             return strbuilder.ToString();
         }
@@ -3765,23 +3831,25 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="tblOutboxType"> tblOutbox Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet BulkInsertToTblOutbox(DataTable tblOutboxType, string errorInSp)
+        public async Task<DataSet?> BulkInsertToTblOutbox(DataTable tblOutboxType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet ?dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@TblOutboxTableType", tblOutboxType),
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
 
                 return dataSetResult;
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                //clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError("Message: {Message} Stack Trace: {StackTrace}", exception.Message, exception.StackTrace);
                 return dataSetResult;
             }
         }
