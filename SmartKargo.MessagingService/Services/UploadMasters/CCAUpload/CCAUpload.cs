@@ -1,18 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using System.Globalization;
-using System.Xml;
-using System.Xml.Serialization;
+using System.Text;
 
 
 
@@ -21,8 +12,30 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
 {
     class CCAUploadFile
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-        public Boolean UpdateCCAUpload(DataSet dataSetFileData)
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<CCAUploadFile> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly cls_SCMBL _clscmbl;
+        private readonly GenericFunction _genericFunction;
+
+        #region Constructor
+        public CCAUploadFile(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<CCAUploadFile> logger,
+            UploadMasterCommon uploadMasterCommon,
+            cls_SCMBL clscmbl,
+            GenericFunction genericFunction)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+            _clscmbl = clscmbl;
+            _genericFunction = genericFunction;
+        }
+        #endregion
+
+        public async Task<Boolean> UpdateCCAUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -34,22 +47,22 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "CCAUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -60,7 +73,7 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                 return false;
             }
         }
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableCCAExcelData = new DataTable("dataTableCCAExcelData");
 
@@ -85,7 +98,7 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableCCAExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableCCAExcelData);
 
                 foreach (DataColumn dataColumn in dataTableCCAExcelData.Columns)
                 {
@@ -606,16 +619,16 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
 
                 }
 
-                DataSet dsResult = new DataSet("ds_CCAUpdateResult");
-                cls_SCMBL clscmbl = new cls_SCMBL();
-                GenericFunction genericFunction = new GenericFunction();
+                DataSet? dsResult = new DataSet("ds_CCAUpdateResult");
+                //cls_SCMBL clscmbl = new cls_SCMBL();
+                //GenericFunction genericFunction = new GenericFunction();
                 
                 // Database Call to Validate & Insert Route Controls Master
                 string errorInSp = string.Empty;
                 string Approve, Reject,link;
                 string Subject,ToEmail,credittype;
                 
-                dsResult =ValidateAndInsertCCAMaster(srNotblMasterUploadSummaryLog, dataTableCCAType, errorInSp);
+                dsResult =await ValidateAndInsertCCAMaster(srNotblMasterUploadSummaryLog, dataTableCCAType, errorInSp);
                 if (dsResult != null)
                 {
                     for (int i = 0; i < dsResult.Tables[0].Rows.Count; i++)
@@ -750,7 +763,7 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                         sb.Append("</td> </ tr ></ table ></ center > ");
 
                         ToEmail = Convert.ToString(dsResult.Tables[0].Rows[i]["ToMail"].ToString());
-                        bool res = clscmbl.addMsgToOutBox(Subject, Convert.ToString(sb), "", ToEmail.Trim(','));
+                        bool res = await _clscmbl.addMsgToOutBox(Subject, Convert.ToString(sb), "", ToEmail.Trim(','));
 
                     }
                     
@@ -777,10 +790,10 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
         /// <param name="dataTableRateLineParamType"> Route Config Params Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertCCAMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableCCAType,
+        public async Task<DataSet?> ValidateAndInsertCCAMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableCCAType,
                                                                                                 string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
@@ -789,8 +802,10 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("USPCCAUpload", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("USPCCAUpload", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("USPCCAUpload", sqlParameters);
+
 
                 return dataSetResult;
             }
@@ -803,9 +818,9 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
 
 
 
-        public String GetNextCCAIDNumber(string strRotationId, int intYear, string strUserName)
+        public async Task<String> GetNextCCAIDNumber(string strRotationId, int intYear, string strUserName)
         {
-            DataSet res = new DataSet();
+            DataSet? res = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@strRotationId",strRotationId),
@@ -814,8 +829,9 @@ namespace QidWorkerRole.UploadMasters.CCAUpload
                                                                       new SqlParameter("@strOutput", ParameterDirection.Output)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                res = sQLServer.SelectRecords("spGenerateRotationNoNew", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //res = sQLServer.SelectRecords("spGenerateRotationNoNew", sqlParameters);
+                res = await _readWriteDao.SelectRecords("spGenerateRotationNoNew", sqlParameters);
                 string s = res.Tables[0].Rows[0][0].ToString();
                 return s;
             }

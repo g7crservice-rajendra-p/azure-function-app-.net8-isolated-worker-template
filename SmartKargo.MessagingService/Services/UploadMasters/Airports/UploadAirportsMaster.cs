@@ -1,24 +1,31 @@
 ﻿using Excel;
-using Newtonsoft.Json;
-using QID.DataAccess;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole.UploadMasters.Airports
 {
     public class UploadAirportsMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
-        public Boolean UpdateAirports(DataSet dsFiles)
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadAirportsMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadAirportsMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadAirportsMaster> logger,
+            UploadMasterCommon uploadMasterCommon)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+
+        public async Task<Boolean> UpdateAirports(DataSet dsFiles)
         {
             try
             {
@@ -29,21 +36,21 @@ namespace QidWorkerRole.UploadMasters.Airports
                 foreach (DataRow dr in dsFiles.Tables[0].Rows)
                 {
                     // to upadate retry count only.
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
-                    if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Airports", out FilePath))
+                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Airports", out FilePath))
                     {
-                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
+                        await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
                     else
                     {
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
 
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                    uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                 }
             }
             catch (Exception ex)
@@ -53,7 +60,7 @@ namespace QidWorkerRole.UploadMasters.Airports
             return false;
         }
 
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableAirpotsExcelData = new DataTable("dataTableAirpotsExcelData");
 
@@ -78,7 +85,7 @@ namespace QidWorkerRole.UploadMasters.Airports
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableAirpotsExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableAirpotsExcelData);
 
                 foreach (DataColumn dataColumn in dataTableAirpotsExcelData.Columns)
                 {
@@ -1966,7 +1973,7 @@ namespace QidWorkerRole.UploadMasters.Airports
 
                 // Database Call to Validate & Insert/Update AirportMaster Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertUpdateAirportMaster(srNotblMasterUploadSummaryLog, AirportMasterType, errorInSp);
+                await ValidateAndInsertUpdateAirportMaster(srNotblMasterUploadSummaryLog, AirportMasterType, errorInSp);
 
                 return true;
             }
@@ -1980,9 +1987,9 @@ namespace QidWorkerRole.UploadMasters.Airports
                 dataTableAirpotsExcelData = null;
             }
         }
-        public DataSet ValidateAndInsertUpdateAirportMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertUpdateAirportMaster(int srNotblMasterUploadSummaryLog, DataTable shipperConsigneeType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] { 
@@ -1991,8 +1998,9 @@ namespace QidWorkerRole.UploadMasters.Airports
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadAirportsMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadAirportsMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadAirportsMaster", sqlParameters);
 
                 return dataSetResult;
             }

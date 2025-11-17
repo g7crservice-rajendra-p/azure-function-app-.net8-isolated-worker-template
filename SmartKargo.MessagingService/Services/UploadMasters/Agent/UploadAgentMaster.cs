@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using QID.DataAccess;
-using System.Globalization;
+using System.Text;
 
 namespace QidWorkerRole.UploadMasters.Agent
 {
@@ -18,13 +12,28 @@ namespace QidWorkerRole.UploadMasters.Agent
     /// </summary>
     public class UploadAgentMaster
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
         /// <summary>
         /// Method to Uplaod Agent Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean AgentMasterUpload(DataSet dataSetFileData)
+        /// 
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadAgentMaster> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadAgentMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadAgentMaster> logger,
+            UploadMasterCommon uploadAgentMaster)
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadAgentMaster;
+        }
+        #endregion
+        public async Task<Boolean> AgentMasterUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -36,22 +45,22 @@ namespace QidWorkerRole.UploadMasters.Agent
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "AgentMasterUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -69,7 +78,7 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Agent Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableAgentExcelData = new DataTable("dataTableAgentExcelData");
 
@@ -94,7 +103,7 @@ namespace QidWorkerRole.UploadMasters.Agent
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableAgentExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableAgentExcelData);
 
                 foreach (DataColumn dataColumn in dataTableAgentExcelData.Columns)
                 {
@@ -4073,7 +4082,7 @@ namespace QidWorkerRole.UploadMasters.Agent
                 string errorInSp = string.Empty;
                 DataSet dataSetResult = new DataSet();
 
-                dataSetResult = ValidateAndInsertUpdateAgentMaster(srNotblMasterUploadSummaryLog, AgentType, CreditType, errorInSp);
+                dataSetResult = await ValidateAndInsertUpdateAgentMaster(srNotblMasterUploadSummaryLog, AgentType, CreditType, errorInSp);
 
                 #region Send Messages after Agent Upload
 
@@ -4362,9 +4371,9 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="creditType"> Credit Master Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertUpdateAgentMaster(int srNotblMasterUploadSummaryLog, DataTable agentType, DataTable creditType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertUpdateAgentMaster(int srNotblMasterUploadSummaryLog, DataTable agentType, DataTable creditType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] { 
@@ -4374,8 +4383,9 @@ namespace QidWorkerRole.UploadMasters.Agent
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadAgentMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadAgentMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadAgentMaster", sqlParameters);
 
                 return dataSetResult;
             }
@@ -4600,17 +4610,18 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// <param name="tblOutboxType"> tblOutbox Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet BulkInsertToTblOutbox(DataTable tblOutboxType, string errorInSp)
+        public async Task<DataSet?> BulkInsertToTblOutbox(DataTable tblOutboxType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
                 SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@TblOutboxTableType", tblOutboxType),
                                                                       new SqlParameter("@Error", errorInSp)
                                                                   };
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspBulkInsertToTblOutbox", sqlParameters);
 
                 return dataSetResult;
             }
