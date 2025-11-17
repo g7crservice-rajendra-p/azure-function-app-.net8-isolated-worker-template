@@ -32,13 +32,16 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FWRMessageProcessor> _logger;
+        private static ILoggerFactory? _loggerFactory;
+        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
 
         #region Constructor
         public FWRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FWRMessageProcessor> logger)
+            ILogger<FWRMessageProcessor> logger, ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _loggerFactory = loggerFactory;
         }
         #endregion
         #region FWR Message Decoding for Update Dateabse
@@ -118,7 +121,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure("Error in Decoding FSB Message REF TAG " + ex.ToString());
+                                                // clsLog.WriteLogAzure("Error in Decoding FSB Message REF TAG " + ex.ToString());
+                                                _logger.LogError("Error in Decoding FSB Message REF TAG {0}", ex);
                                             }
                                             break;
 
@@ -138,7 +142,8 @@ namespace QidWorkerRole
             {
                 // //scm.logexception(ref ex);
                 flag = false;
-                clsLog.WriteLogAzure("Error in Decoding FWR Message " + ex.ToString());
+                // clsLog.WriteLogAzure("Error in Decoding FWR Message " + ex.ToString());
+                _logger.LogError("Error in Decoding FWR Message {0}", ex);
             }
             return flag;
         }
@@ -274,7 +279,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //scm.logexception(ref ex);
-                clsLog.WriteLogAzure("Error on FWR Message Processing " + ex.ToString());
+                // clsLog.WriteLogAzure("Error on FWR Message Processing " + ex.ToString());
+                _logger.LogError("Error on FWR Message Processing {0}", ex);
                 MessageStatus = false;
             }
             return MessageStatus;
@@ -307,12 +313,13 @@ namespace QidWorkerRole
                     new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = strAwbPrefix }
                 };
                 //dssitaMessage = da.SelectRecords("SP_GetAWBRecordForFWB", paramname, paramvalue, paramtype);
-                dssitaMessage = await _readWriteDao.SelectRecords( "SP_GetAWBRecordForFWB", sqlParameters);
+                dssitaMessage = await _readWriteDao.SelectRecords("SP_GetAWBRecordForFWB", sqlParameters);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 //scm.logexception(ref ex);
                 dssitaMessage = null;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dssitaMessage;
         }
@@ -686,6 +693,7 @@ namespace QidWorkerRole
             {
                 //SCMExceptionHandling.logexception(ref ex);
                 Error = ex.Message;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return FWBMsg;
         }
@@ -1057,6 +1065,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 FWBMsg = ex.Message;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return FWBMsg;
         }
@@ -1148,7 +1157,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Error :", ex);
+                    // clsLog.WriteLogAzure("Error :", ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -1202,7 +1212,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Error :", ex);
+                    // clsLog.WriteLogAzure("Error :", ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -1239,7 +1250,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Error :", ex);
+                    // clsLog.WriteLogAzure("Error :", ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -1292,7 +1304,8 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex)
                 {
-                    clsLog.WriteLogAzure("Error :", ex);
+                    // clsLog.WriteLogAzure("Error :", ex);
+                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -1694,9 +1707,10 @@ namespace QidWorkerRole
                 }
                 #endregion
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 fwbstr = "ERR";
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return fwbstr;
         }
@@ -1841,9 +1855,10 @@ namespace QidWorkerRole
                 }
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 Ratestr = null;
+                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return Ratestr;
         }

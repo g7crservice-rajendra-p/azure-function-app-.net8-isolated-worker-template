@@ -54,7 +54,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure("Error :", ex);
-                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 //Thread.Sleep(1000 * 60 * int.Parse(Convert.ToString(genericFunction.ReadValueFromDb("Interval"))));//ConfigurationSettings.AppSettings["Interval"].ToString()
                 Thread.Sleep(1000 * 60 * int.Parse(Convert.ToString(ConfigCache.Get("Interval"))));//ConfigurationSettings.AppSettings["Interval"].ToString()

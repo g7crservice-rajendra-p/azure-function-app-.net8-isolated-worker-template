@@ -28,17 +28,19 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ISqlDataHelperDao _readOnlyDao;
         private readonly ILogger<cls_Encode_Decode> _logger;
-        private static ILogger<cls_Encode_Decode> _staticLogger;
+         private static ILoggerFactory? _loggerFactory;
+        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
         private readonly PSNMessageProcessor _pSNMessageProcessor;
         public cls_Encode_Decode(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<cls_Encode_Decode> logger,
+            ILoggerFactory loggerFactory,
             PSNMessageProcessor pSNMessageProcessor)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _readOnlyDao = sqlDataHelperFactory.Create(readOnly: true);
             _logger = logger;
-            _staticLogger ??= logger;
+            _loggerFactory = loggerFactory;
             _pSNMessageProcessor = pSNMessageProcessor;
         }
         #endregion
@@ -119,7 +121,7 @@ namespace QidWorkerRole
                                         catch (Exception ex)
                                         {
                                             // clsLog.WriteLogAzure(ex.Message);
-                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         }
                                         Array.Resize(ref fltroute, fltroute.Length + 1);
                                         fltroute[fltroute.Length - 1] = flight;
@@ -129,7 +131,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     continue;
                                 }
                             }
@@ -277,7 +279,7 @@ namespace QidWorkerRole
                                         catch (Exception ex)
                                         {
                                             // clsLog.WriteLogAzure(ex.Message);
-                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         }
                                         Array.Resize(ref objDimension, objDimension.Length + 1);
                                         objDimension[objDimension.Length - 1] = dimension;
@@ -287,7 +289,7 @@ namespace QidWorkerRole
                                 catch (Exception e8)
                                 {
                                     // clsLog.WriteLogAzure(e8, PAGE_NAME, FUN_NAME);
-                                    _logger.LogError(e8, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(e8, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -514,7 +516,7 @@ namespace QidWorkerRole
                                                     catch (Exception ex)
                                                     {
                                                         //  clsLog.WriteLogAzure(ex.Message);
-                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                     }
                                                     Array.Resize(ref objDimension, objDimension.Length + 1);
                                                     objDimension[objDimension.Length - 1] = dimension;
@@ -524,7 +526,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure(ex.Message); }
-                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                         }
 
@@ -738,7 +740,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message); 
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                      }
                 #endregion
 
@@ -771,7 +773,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                 #endregion
 
@@ -994,7 +996,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message);
-                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                       }
                 #endregion
 
@@ -1047,7 +1049,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message); 
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");}
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");}
                 #endregion
 
                 #region Line 12
@@ -1079,7 +1081,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message); 
-                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                     _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                      }
                 #endregion
 
@@ -1178,7 +1180,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex) {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1254,7 +1256,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     continue;
                                 }
                             }
@@ -1281,7 +1283,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     continue;
                                 }
                             }
@@ -1304,7 +1306,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message); 
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -1324,7 +1326,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex) {
                                     // clsLog.WriteLogAzure(ex.Message); 
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -1348,7 +1350,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message); 
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -1368,7 +1370,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex) {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1392,7 +1394,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1749,7 +1751,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
 
                                  }
                             }
@@ -1810,7 +1812,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     continue;
                                 }
                             }
@@ -1841,7 +1843,7 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex) {
                                         // clsLog.WriteLogAzure(ex.Message); 
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                     dimension.AWBPrefix = AWBPrefix;
                                     dimension.AWBNumber = AWBNumber;
@@ -1852,7 +1854,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex) {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1892,7 +1894,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1914,7 +1916,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message); 
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -1938,7 +1940,7 @@ namespace QidWorkerRole
                                 }
                                 catch (Exception ex) {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                  }
                             }
                             #endregion
@@ -1976,7 +1978,7 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex) {
                                             // clsLog.WriteLogAzure(ex.Message);
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                          }
                                         Array.Resize(ref consorginfo, consorginfo.Length + 1);
                                         consorginfo[consorginfo.Length - 1] = consorg;
@@ -2026,7 +2028,7 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex) {
                                             // clsLog.WriteLogAzure(ex.Message);
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                          }
                                         Array.Resize(ref dimensioinfo, dimensioinfo.Length + 1);
                                         dimensioinfo[dimensioinfo.Length - 1] = dimension;
@@ -2627,7 +2629,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 fbl = "ERR";
             }
             return fbl;
@@ -2674,7 +2676,7 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex) {
                                         // clsLog.WriteLogAzure(ex.Message); 
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
                                 #endregion
@@ -2708,7 +2710,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                      }
                                 }
                                 #endregion
@@ -2747,7 +2749,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref unloadingport, unloadingport.Length + 1);
                                                 unloadingport[unloadingport.Length - 1] = unloading;
@@ -2800,7 +2802,7 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex) {
                                                 // clsLog.WriteLogAzure(ex.Message);
-                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                              }
                                             // line = 0;
                                             //decodeconsigmentdetails(str[i],ref consinfo);
@@ -2812,7 +2814,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         continue;
                                     }
                                 }
@@ -2851,7 +2853,7 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex) {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                      }
                                 }
                                 #endregion
@@ -2886,7 +2888,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                      }
                                     Array.Resize(ref uld, uld.Length + 1);
                                     uld[uld.Length - 1] = ulddata;
@@ -2918,7 +2920,7 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex) {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                      }
                                 }
                                 #endregion
@@ -2968,7 +2970,7 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex) {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                      }
                                 }
                                 #endregion
@@ -3008,7 +3010,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref movementinfo, movementinfo.Length + 1);
                                                 movementinfo[movementinfo.Length - 1] = movement;
@@ -3026,7 +3028,7 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex) {
                                             // clsLog.WriteLogAzure(ex.Message);
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                          }
                                         #endregion
 
@@ -3058,7 +3060,7 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex) {
                                                 // clsLog.WriteLogAzure(ex.Message); 
-                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                             lastrec = "NA";
                                         }
@@ -3085,7 +3087,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message); 
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
                                 #endregion
@@ -3097,14 +3099,14 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     flag = false;
                 }
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -3204,7 +3206,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 ffm = "ERR";
             }
             return ffm;
@@ -3353,7 +3355,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 output = "ERR";
             }
             return output;
@@ -3387,7 +3389,7 @@ namespace QidWorkerRole
                             }
                             catch (Exception ex) {
                                 // clsLog.WriteLogAzure(ex.Message);
-                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                              }
                         }
                         #endregion
@@ -3448,7 +3450,7 @@ namespace QidWorkerRole
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex.Message); 
-                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                         #endregion
 
@@ -3498,7 +3500,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -3531,7 +3533,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message);
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                          }
                                                     }
                                                     if (msg.Length > 5)
@@ -3545,7 +3547,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -3579,7 +3581,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message); 
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                         }
                                                     }
                                                     if (msg.Length > 6)
@@ -3593,7 +3595,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -3630,7 +3632,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message);
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                          }
                                                     }
                                                     if (msg.Length > 4)
@@ -3640,7 +3642,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); 
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -3876,7 +3878,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error :", ex);
-                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                             Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                             fsanodes[fsanodes.Length - 1] = recdata;
@@ -3933,7 +3935,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message); 
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                         }
                                                     }
                                                     //4 PCS Indicator
@@ -3954,7 +3956,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message); 
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                         }
                                                     }
                                                     try
@@ -3981,7 +3983,7 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex) {
                                                                 // clsLog.WriteLogAzure(ex.Message);
-                                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                              }
                                                         }
                                                         if (msg.Length > 6)
@@ -4006,19 +4008,19 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex) {
                                                                 // clsLog.WriteLogAzure(ex.Message);
-                                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                              }
                                                         }
                                                     }
                                                     catch (Exception ex) {
                                                         // clsLog.WriteLogAzure(ex.Message); 
-                                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                     }
 
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -4080,7 +4082,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); 
+                                                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -4110,7 +4112,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -4143,7 +4145,7 @@ namespace QidWorkerRole
                                                         }
                                                         catch (Exception ex) {
                                                             // clsLog.WriteLogAzure(ex.Message);
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                          }
                                                     }
                                                     if (msg.Length > 5)
@@ -4161,7 +4163,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -4209,7 +4211,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message); 
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                 }
                                                 Array.Resize(ref fsanodes, fsanodes.Length + 1);
                                                 fsanodes[fsanodes.Length - 1] = recdata;
@@ -4235,7 +4237,7 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                                 Array.Resize(ref custominfo, custominfo.Length + 1);
                                                 custominfo[custominfo.Length - 1] = custom;
@@ -4269,7 +4271,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure(ex.Message); 
-                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                             #endregion
 
@@ -4290,7 +4292,7 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex) {
                                                 // clsLog.WriteLogAzure(ex.Message); 
-                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                             #endregion
 
@@ -4333,7 +4335,7 @@ namespace QidWorkerRole
                                                 catch (Exception ex)
                                                 {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                             }
                                             #endregion
@@ -4350,7 +4352,7 @@ namespace QidWorkerRole
             {
                 flag = false;
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return flag;
         }
@@ -4391,7 +4393,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 strarr = null;
             }
             return strarr;
@@ -4590,7 +4592,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 FSAStr = "ERR";
             }
             return FSAStr;
@@ -7444,7 +7446,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message); 
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 }
                 #endregion
 
@@ -7504,7 +7506,7 @@ namespace QidWorkerRole
                 }
                 catch (Exception ex) {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                  }
                 #endregion
 
@@ -7542,7 +7544,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 fhl = "";
             }
             return fhl;
@@ -7671,7 +7673,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 output = "ERR";
             }
             return output;
@@ -7711,7 +7713,7 @@ namespace QidWorkerRole
             }
             catch (Exception ex) {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             Array.Resize(ref consinfo, consinfo.Length + 1);
             consinfo[consinfo.Length - 1] = consig;
@@ -7741,7 +7743,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         #endregion
@@ -7810,14 +7812,14 @@ namespace QidWorkerRole
                                                 }
                                                 catch (Exception ex) {
                                                     // clsLog.WriteLogAzure(ex.Message);
-                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                  }
                                             }
                                         }
                                         catch (Exception ex)
                                         {
                                             // clsLog.WriteLogAzure(ex.Message); 
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         }
 
                                         try
@@ -7833,7 +7835,7 @@ namespace QidWorkerRole
                                         }
                                         catch (Exception ex) {
                                             // clsLog.WriteLogAzure(ex.Message); 
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         }
                                     }
                                     #endregion
@@ -7876,7 +7878,7 @@ namespace QidWorkerRole
                                                             }
                                                             catch (Exception ex) {
                                                                 // clsLog.WriteLogAzure(ex.Message);
-                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}"); }
+                                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); }
                                                         }
                                                         else
                                                         {
@@ -7904,14 +7906,14 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     flag = false;
                 }
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -8034,7 +8036,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 UCM = "ERR";
             }
             return UCM;
@@ -8866,7 +8868,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
         }
@@ -9901,7 +9903,7 @@ namespace QidWorkerRole
                                         catch (Exception ex)
                                         {
                                             // clsLog.WriteLogAzure(ex.Message); 
-                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                         }
                                     }
                                     #endregion
@@ -10012,14 +10014,14 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     flag = false;
                 }
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -10253,7 +10255,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex);
-                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                     #endregion Get bulk info
 
@@ -10317,7 +10319,7 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex);
-                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                                        _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                     #endregion Get Cart info
                                 }
@@ -10331,7 +10333,7 @@ namespace QidWorkerRole
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex);
-                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                         if (UWSMsg != null)
                         {
@@ -10346,7 +10348,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return UWSMsg;
         }
@@ -10578,7 +10580,7 @@ namespace QidWorkerRole
             {
                 UWS = "ERR";
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return UWS;
         }
@@ -10605,7 +10607,7 @@ namespace QidWorkerRole
            }
            catch (System.Exception ex)
            {
-            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             throw;
            }
         }
@@ -10662,7 +10664,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dsData;
         }
@@ -10707,7 +10709,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return ds;
         }
@@ -11055,7 +11057,7 @@ namespace QidWorkerRole
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex);
-                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                         if (NTMinfo != null)
                         {
@@ -11070,7 +11072,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return NTMinfo;
         }
@@ -11380,7 +11382,7 @@ namespace QidWorkerRole
             {
                 BUILDNTM = "ERR";
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return BUILDNTM.ToUpper();
         }
@@ -11418,7 +11420,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dsData;
         }
@@ -11525,7 +11527,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -11561,7 +11563,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod().Name}");
+                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dtOCIInfo;
         }
