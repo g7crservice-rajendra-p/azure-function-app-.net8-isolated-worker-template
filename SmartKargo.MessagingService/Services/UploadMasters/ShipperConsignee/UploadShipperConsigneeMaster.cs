@@ -68,7 +68,8 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + ex.Message + " \nStackTrace: " + ex.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", ex.Message, ex.StackTrace);
                 return false;
             }
         }
@@ -1907,7 +1908,8 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", ex.Message, ex.StackTrace);
                 return false;
             }
             finally
@@ -1942,7 +1944,8 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
+                //  .WriteLogAzure("Message: " + ex.Message + " Stack Trace: " + ex.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", ex.Message, ex.StackTrace);
                 return dataSetResult;
             }
         }
