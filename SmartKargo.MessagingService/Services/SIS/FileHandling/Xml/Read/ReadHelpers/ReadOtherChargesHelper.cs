@@ -2,6 +2,7 @@
 using System.Collections;
 using QidWorkerRole.SIS.Model;
 using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {
@@ -114,8 +115,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadOtherChargeDetails: ", xmlException);
-                return 0;
+                // clsLog.WriteLogAzure("Error Occurred in ReadOtherChargeDetails: ", xmlException);
+                _staticLogger.LogError("Error Occurred in ReadOtherChargeDetails: {0}", xmlException);
+                throw;
             }
         }
     }
