@@ -1,9 +1,11 @@
-﻿using ExcelDataReader;
+﻿
+using Excel;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
 using System.Text;
+
 
 namespace QidWorkerRole.UploadMasters.Agent
 {
@@ -89,53 +91,28 @@ namespace QidWorkerRole.UploadMasters.Agent
             try
             {
                 //New latest package ExcelDatareader 3.8.0 and ExcelDataReader.Dataset 3.8.0 isnstalled so old code commeneted and added new Code
-                //FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
+                FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
 
 
 
-                //IExcelDataReader iExcelDataReader = null;
-                //string fileExtention = Path.GetExtension(filepath).ToLower();
+                IExcelDataReader iExcelDataReader = null;
+                string fileExtention = Path.GetExtension(filepath).ToLower();
 
-                //isBinaryReader = fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") ? true : false;
+                isBinaryReader = fileExtention.Equals(".xls") || fileExtention.Equals(".xlsb") ? true : false;
 
-                //iExcelDataReader = isBinaryReader ? ExcelReaderFactory.CreateBinaryReader(fileStream) // for Reading from a binary Excel file ('97-2003 format; *.xls)
-                // : ExcelReaderFactory.CreateOpenXmlReader(fileStream); // for Reading from a OpenXml Excel file (2007 format; *.xlsx)
+                iExcelDataReader = isBinaryReader ? ExcelReaderFactory.CreateBinaryReader(fileStream) // for Reading from a binary Excel file ('97-2003 format; *.xls)
+                 : ExcelReaderFactory.CreateOpenXmlReader(fileStream); // for Reading from a OpenXml Excel file (2007 format; *.xlsx)
 
-                //// DataSet - Create column names from first row
-                //iExcelDataReader.IsFirstRowAsColumnNames = true;
-                //dataTableAgentGeneralInfoExcelData = iExcelDataReader.AsDataSet().Tables[0];
+                // DataSet - Create column names from first row
+                iExcelDataReader.IsFirstRowAsColumnNames = true;
+                dataTableAgentGeneralInfoExcelData = iExcelDataReader.AsDataSet().Tables[0];
 
-                //// Free resources (IExcelDataReader is IDisposable)
-                //iExcelDataReader.Close();
+                // Free resources (IExcelDataReader is IDisposable)
+                iExcelDataReader.Close();
 
                 //uploadMasterCommon.RemoveEmptyRows(dataTableAgentGeneralInfoExcelData);
-
-                //foreach (DataColumn dataColumn in dataTableAgentGeneralInfoExcelData.Columns)
-                //{
-                //    dataColumn.ColumnName = dataColumn.ColumnName.ToLower().Trim();
-                //}
-
-                using FileStream fileStream = File.Open(filepath, FileMode.Open, FileAccess.Read);
-
-                using IExcelDataReader iExcelDataReader = ExcelReaderFactory.CreateReader(fileStream);
-
-                // Configure dataset (similar to IsFirstRowAsColumnNames)
-                var excelConfig = new ExcelDataSetConfiguration
-                {
-                    ConfigureDataTable = _ => new ExcelDataTableConfiguration
-                    {
-                        UseHeaderRow = true   // replaces IsFirstRowAsColumnNames
-                    }
-                };
-
-                // Read DataTable
-                dataTableAgentGeneralInfoExcelData =
-                    iExcelDataReader.AsDataSet(excelConfig).Tables[0];
-
-                // Remove empty rows (your existing method)
                 _uploadMasterCommon.RemoveEmptyRows(dataTableAgentGeneralInfoExcelData);
 
-                // Convert all column names to lowercase/trimmed
                 foreach (DataColumn dataColumn in dataTableAgentGeneralInfoExcelData.Columns)
                 {
                     dataColumn.ColumnName = dataColumn.ColumnName.ToLower().Trim();
