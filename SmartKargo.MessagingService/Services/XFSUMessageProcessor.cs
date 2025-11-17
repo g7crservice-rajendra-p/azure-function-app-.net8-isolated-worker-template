@@ -34,7 +34,7 @@ namespace QidWorkerRole
 
         #region Constructor
         public XFSUMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<XFSUMessageProcessor> logger,GenericFunction genericFunction,
+            ILogger<XFSUMessageProcessor> logger, GenericFunction genericFunction,
             cls_SCMBL cl_SCMBL, FFRMessageProcessor fFRMessageProcessor, CustomsImportBAL objCustoms)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -50,19 +50,27 @@ namespace QidWorkerRole
 
         #region :: Public Methods ::
 
-        
+
         public async Task GenerateAndSendXFSUMessages()
         {
-            DataSet dsAWBRecords = new DataSet();
-            dsAWBRecords = await GetAWBRecordsToAutoSendXFSUMessage();
-
-            if (dsAWBRecords != null && dsAWBRecords.Tables != null && dsAWBRecords.Tables.Count > 0 && dsAWBRecords.Tables[0].Rows.Count > 0)
+            try
             {
-                for (int i = 0; i < dsAWBRecords.Tables[0].Rows.Count; i++)
+                DataSet dsAWBRecords = new DataSet();
+                dsAWBRecords = await GetAWBRecordsToAutoSendXFSUMessage();
+
+                if (dsAWBRecords != null && dsAWBRecords.Tables != null && dsAWBRecords.Tables.Count > 0 && dsAWBRecords.Tables[0].Rows.Count > 0)
                 {
-                    await GenerateXFSUMessageofTheAWB(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBPrefix"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBNumber"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["Status"]));
-                    await _genericFunction.updateAWBStatusMSG(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["TID"]));
+                    for (int i = 0; i < dsAWBRecords.Tables[0].Rows.Count; i++)
+                    {
+                        await GenerateXFSUMessageofTheAWB(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBPrefix"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["AWBNumber"]), Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["Status"]));
+                        await _genericFunction.updateAWBStatusMSG(Convert.ToString(dsAWBRecords.Tables[0].Rows[i]["TID"]));
+                    }
                 }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
         }
         public async Task<string> GenerateXFSUMessageofTheAWBV3(string AWBPrefix, string AWBNumber, string orgDest,
@@ -747,7 +755,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
             return Convert.ToString(sbgenerateXFSUMessage); ;
@@ -767,7 +776,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 dsAWBRecords = null;
             }
             return dsAWBRecords;
@@ -1144,7 +1154,7 @@ namespace QidWorkerRole
                             strGenerateXFSUMessage.Insert(0, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
 
                             //cls_SCMBL cls_scmbl = new cls_SCMBL();
-                            
+
                             await _cl_SCMBL.addMsgToOutBox("XFSU", Convert.ToString(strGenerateXFSUMessage), "", Convert.ToString(dsxfsuMessage.Tables[7].Rows[0]["PartnerEmailiD"]));
 
 
@@ -1154,7 +1164,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strGenerateXFSUMessage.ToString();
         }
@@ -1547,7 +1558,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
         //    return sbgenerateXFSUMessage.ToString();
         //}
@@ -2799,7 +2810,7 @@ namespace QidWorkerRole
 
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
 
         //    return sbgenerateXFSUMessage.ToString();
@@ -3418,7 +3429,7 @@ namespace QidWorkerRole
         //         }
         //         catch (Exception ex)
         //         {
-        //             clsLog.WriteLogAzure(ex);
+        //             //clsLog.WriteLogAzure(ex);
         //         }
         //         return Convert.ToString(sbgenerateXFSUMessage);
 
@@ -3937,7 +3948,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
 
 
@@ -4349,7 +4360,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
 
         //    return sbgenerateXFSUMessage.ToString();
@@ -4382,7 +4393,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 dsmessage = null;
             }
             return dsmessage;
@@ -4404,7 +4416,7 @@ namespace QidWorkerRole
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        dsmessage = null;
         //    }
         //    return dsmessage;
@@ -4419,18 +4431,19 @@ namespace QidWorkerRole
                 //string[] paramname = new string[] { "AWBPrefix", "AWBNumber", "EventStatus" };
                 //object[] paramvalue = new object[] { AWBPrefix, AWBNumber, EventStatus };
                 //SqlDbType[] paramtype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
-                
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
+
+                SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
                     new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = AWBNumber },
                     new SqlParameter("@EventStatus", SqlDbType.VarChar) { Value = EventStatus }
                 };
                 //dsmessage = da.SelectRecords("uspGetAWBRecordToGenerateAutoSendXFSUMessage", paramname, paramvalue, paramtype);
-                dsmessage = await _readWriteDao.SelectRecords( "uspGetAWBRecordToGenerateAutoSendXFSUMessage", sqlParameters);
+                dsmessage = await _readWriteDao.SelectRecords("uspGetAWBRecordToGenerateAutoSendXFSUMessage", sqlParameters);
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 dsmessage = null;
             }
             return dsmessage;
@@ -4443,57 +4456,65 @@ namespace QidWorkerRole
         /// <returns></returns>
         public string ReplacingNodeNames(string xmlMsg)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xmlMsg);
-            XmlNode nodeToFind;
-            XmlElement root = doc.DocumentElement;
-            XmlNodeList xmlNodelst;
-            if (root.Name.Equals("rsm:StatusMessage"))
+            try
             {
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(xmlMsg);
+                XmlNode nodeToFind;
+                XmlElement root = doc.DocumentElement;
+                XmlNodeList xmlNodelst;
+                if (root.Name.Equals("rsm:StatusMessage"))
                 {
-                    if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_GrossWeightMeasure");
+                        if (xmlNode.ParentNode.Name.Equals("rsm:MasterConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:MasterConsignment_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedStatusConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:AssociatedStatusConsignment_GrossWeightMeasure");
+                        }
+                        else if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_GrossWeightMeasure");
+                        }
                     }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:AssociatedStatusConsignment"))
+
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:AssociatedStatusConsignment_GrossWeightMeasure");
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TransportContractDocument");
+                        }
                     }
-                    else if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TotalGrossWeightMeasure')]");
+                    foreach (XmlNode xmlNode in xmlNodelst)
                     {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_GrossWeightMeasure");
+                        if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
+                        {
+                            nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
+                        }
                     }
+
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("MasterConsignment_GrossWeightMeasure", "ram:MasterConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("AssociatedStatusConsignment_GrossWeightMeasure", "ram:AssociatedStatusConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_GrossWeightMeasure", "ram:IncludedHouseConsignment_GrossWeightMeasure");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TransportContractDocument", "ram:IncludedHouseConsignment_TransportContractDocument");
+                    xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
                 }
 
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TransportContractDocument')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TransportContractDocument");
-                    }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:TotalGrossWeightMeasure')]");
-                foreach (XmlNode xmlNode in xmlNodelst)
-                {
-                    if (xmlNode.ParentNode.Name.Equals("ram:IncludedHouseConsignment"))
-                    {
-                        nodeToFind = RenameNode(xmlNode, "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
-                    }
-                }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("MasterConsignment_GrossWeightMeasure", "ram:MasterConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("AssociatedStatusConsignment_GrossWeightMeasure", "ram:AssociatedStatusConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_GrossWeightMeasure", "ram:IncludedHouseConsignment_GrossWeightMeasure");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TransportContractDocument", "ram:IncludedHouseConsignment_TransportContractDocument");
-                xmlMsg = xmlMsg.Replace("IncludedHouseConsignment_TotalGrossWeightMeasure", "ram:IncludedHouseConsignment_TotalGrossWeightMeasure");
+                return xmlMsg;
             }
-
-            return xmlMsg;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                return xmlMsg;
+            }
         }
 
         #region Decoding Functionality
@@ -6100,7 +6121,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 flag = false;
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 ErrorMsg = "Error Occured when XML Decoding: [[" + ex.Message + "]];"; //[[" + ex.StackTrace + "]]";
                 flag = false;
             }
@@ -6793,18 +6815,18 @@ namespace QidWorkerRole
         //    catch (Exception ex)
         //    {
         //        flag = false;
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //    }
         //    return flag;
         //} 
         #endregion
-        public async Task<(bool,  MessageData.FSAInfo fsadata,  MessageData.CommonStruct[] fsanodes,
-             MessageData.customsextrainfo[] customextrainfo,  MessageData.ULDinfo[] ulddata,  MessageData.otherserviceinfo[] othinfoarray, string ErrorMsg)> SaveandUpdateXFSUMessage(string strMsg, MessageData.FSAInfo fsadata,  MessageData.CommonStruct[] fsanodes,
-             MessageData.customsextrainfo[] customextrainfo,  MessageData.ULDinfo[] ulddata, MessageData.otherserviceinfo[] othinfoarray,
+        public async Task<(bool, MessageData.FSAInfo fsadata, MessageData.CommonStruct[] fsanodes,
+             MessageData.customsextrainfo[] customextrainfo, MessageData.ULDinfo[] ulddata, MessageData.otherserviceinfo[] othinfoarray, string ErrorMsg)> SaveandUpdateXFSUMessage(string strMsg, MessageData.FSAInfo fsadata, MessageData.CommonStruct[] fsanodes,
+             MessageData.customsextrainfo[] customextrainfo, MessageData.ULDinfo[] ulddata, MessageData.otherserviceinfo[] othinfoarray,
             int refNo, string strMessage, string strMessageFrom, string strFromID, string strStatus, string ErrorMsg)
         {
             //SQLServer dtb = new SQLServer();
-            
+
             bool flag = false;
             string strFSUBooking = string.Empty;
             //Cls_BL objBL = new Cls_BL();
@@ -6816,7 +6838,7 @@ namespace QidWorkerRole
                 //GenericFunction genericfunction = new GenericFunction();
                 //genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, 
                 //    string.Empty, string.Empty, string.Empty, MessagePrefix, "xFSU", DateTime.Parse("1900-01-01"));
-                
+
                 _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum,
                     fsanodes[0].flightnum, string.Empty, string.Empty, MessagePrefix, strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
 
@@ -6830,7 +6852,7 @@ namespace QidWorkerRole
 
                 //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
 
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
+                SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = fsadata.awbnum },
                     new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = fsadata.airlineprefix },
                     new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo }
@@ -7135,14 +7157,14 @@ namespace QidWorkerRole
                 ///Make  AWB Accepted Throgh  RCS Message 
                 bool isAcceptedbyFSURCS = false;
                 bool isAcceptedbyFSURCT = false;
-                if (!string.IsNullOrEmpty( _genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
+                if (!string.IsNullOrEmpty(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCS").Trim()))
                 {
                     if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCS")
                     {
                         isAcceptedbyFSURCS = true;
                     }
                 }
-                if (!string.IsNullOrEmpty( _genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
+                if (!string.IsNullOrEmpty(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()) && Convert.ToBoolean(_genericFunction.ReadValueFromDb("isAcceptedbyFSURCT").Trim()))
                 {
                     if (fsadata.awbnum.Length > 0 && fsanodes.Length > 0 && fsadata.awbnum.Length > 0 && fsanodes[0].messageprefix.ToUpper().Trim() == "RCT")
                     {
@@ -7263,7 +7285,7 @@ namespace QidWorkerRole
                             //                    SqlDbType.VarChar,
                             //                    SqlDbType.Int
                             //                };
-                            SqlParameter[] sqlParameters1 = new SqlParameter[] { 
+                            SqlParameter[] sqlParameters1 = new SqlParameter[] {
                                 new SqlParameter("@AWBPrefix", SqlDbType.VarChar)   { Value = fsadata.airlineprefix },
                                 new SqlParameter("@AWBNo", SqlDbType.VarChar)       { Value = fsadata.awbnum },
                                 new SqlParameter("@Origin", SqlDbType.VarChar)      { Value = fsadata.origin },
@@ -7301,7 +7323,7 @@ namespace QidWorkerRole
                                 };
                                 //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", parameters))
-                                    clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                                    clsLog.WriteLogAzure("Error  on Update capacity Plan : {0}" , awbnum);
 
                                 #endregion
                             }
@@ -7394,7 +7416,8 @@ namespace QidWorkerRole
                                                                     }
                                                                     catch (Exception ex)
                                                                     {
-                                                                        clsLog.WriteLogAzure(ex);
+                                                                        //clsLog.WriteLogAzure(ex);
+                                                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                                                     }
                                                                     #endregion
                                                                 }
@@ -7409,7 +7432,8 @@ namespace QidWorkerRole
                                             }
                                             catch (Exception ex)
                                             {
-                                                clsLog.WriteLogAzure(ex);
+                                                //clsLog.WriteLogAzure(ex);
+                                                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                             }
                                         }
                                         else
@@ -7421,7 +7445,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        //clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
 
                                 }
@@ -7635,7 +7660,7 @@ namespace QidWorkerRole
                                 new SqlParameter("@FltDestination", SqlDbType.VarChar){ Value = fsanodes[i].fltdest },
                                 new SqlParameter("@FlightDate", SqlDbType.DateTime)  { Value = fsanodes[i].fltday }
                             };
-                            
+
                             //if (!dtb.ExecuteProcedure("USPUpdateRCForARRRecord", ParaNames, ParaTypes, ParaValues))
                             //{
                             //    clsLog.WriteLogAzure("Error on RCF -Arrived Falied :" + awbnum);
@@ -8139,7 +8164,8 @@ namespace QidWorkerRole
                                     catch (Exception ex)
                                     {
                                         UpdatedON = DateTime.Parse((fsanodes[k].fltday + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime)));
-                                        clsLog.WriteLogAzure("DLV date exception:- " + ex);
+                                        // clsLog.WriteLogAzure("DLV date exception:- " + ex);
+                                        _logger.LogError("DLV date exception:- {0}", ex);
                                     }
                                     Date = DateTime.Parse((fsanodes[k].fltday + " " + Convert.ToString(fsanodes[k].flttime.Contains("(UTC)") == true ? fsanodes[k].flttime.Substring(0, 8) : fsanodes[k].flttime))); ;
                                     origin = Convert.ToString(fsanodes[k].fltorg) == "" ? fsadata.origin : Convert.ToString(fsanodes[k].fltorg);
@@ -8309,7 +8335,7 @@ namespace QidWorkerRole
                             if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAudit))
                             {
                                 //clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
-                                clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine);
+                                clsLog.WriteLog("AWB Audit log  for:{0}" , awbnum + Environment.NewLine);
                             }
                         }
                     }
@@ -8321,7 +8347,8 @@ namespace QidWorkerRole
                 flag = false;
                 ErrorMsg = "Error occure while saving data through xFSU: [[" + ex.Message + "]]";
 
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on SaveandUpdateXFSUMessage");
             }
 
             ErrorMsg = "";
@@ -8343,20 +8370,28 @@ namespace QidWorkerRole
         /// <returns></returns>
         private XmlNode RenameNode(XmlNode e, string newName)
         {
-            XmlDocument doc = e.OwnerDocument;
-            XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
-            while (e.HasChildNodes)
+            try
             {
-                newNode.AppendChild(e.FirstChild);
+                XmlDocument doc = e.OwnerDocument;
+                XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
+                while (e.HasChildNodes)
+                {
+                    newNode.AppendChild(e.FirstChild);
+                }
+                XmlAttributeCollection ac = e.Attributes;
+                while (ac.Count > 0)
+                {
+                    newNode.Attributes.Append(ac[0]);
+                }
+                XmlNode parent = e.ParentNode;
+                parent.ReplaceChild(newNode, e);
+                return newNode;
             }
-            XmlAttributeCollection ac = e.Attributes;
-            while (ac.Count > 0)
+            catch (System.Exception ex)
             {
-                newNode.Attributes.Append(ac[0]);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
             }
-            XmlNode parent = e.ParentNode;
-            parent.ReplaceChild(newNode, e);
-            return newNode;
         }
 
         #endregion Private Methods
