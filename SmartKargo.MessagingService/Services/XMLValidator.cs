@@ -1,11 +1,17 @@
 ﻿using System.Xml;
 using System.Xml.Schema;
+using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole
 {
     class XMLValidator
     {
         private string errormsg = string.Empty;
+        private readonly ILogger<XMLValidator> _logger;
+        public XMLValidator(ILogger<XMLValidator> logger)
+        {
+            _logger = logger;
+        }
         public string CTeXMLValidator(string xml, string MessageType)
         {
             try
@@ -54,13 +60,15 @@ namespace QidWorkerRole
                         errormsg = errormsg.Replace("http://www.portalfiscal.inf.br/cte:", "");
                         break;
                     }
-                };
+                }
+                ;
 
                 //clsLog.WriteLogAzure("In CTeXMLValidator() error 1 " + errormsg);
             }
             catch (System.Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return errormsg;
         }

@@ -506,7 +506,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                     if (fwbXmlDataSet.Tables["SpecifiedLogisticsTransportMovement"].Columns.Contains("SequenceNumeric"))
@@ -874,7 +875,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                 }
@@ -1591,7 +1593,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
 
                     }
@@ -1650,7 +1653,8 @@ namespace QidWorkerRole
                         }
                         catch (Exception ex)
                         {
-                            clsLog.WriteLogAzure(ex);
+                            //clsLog.WriteLogAzure(ex);
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
 
                     }
@@ -1663,7 +1667,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 ErrorMsg = "Error Occured when XML Decoding: [[" + ex.Message + "]];"; //[[" + ex.StackTrace + "]]";
                 flag = false;
             }
@@ -1710,9 +1715,10 @@ namespace QidWorkerRole
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 strarr = null;
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strarr;
         }
@@ -2507,7 +2513,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                         if (!success)
                                         {
 
-                                            clsLog.WriteLogAzure("Error for deleteing AWB throught XFWB:" + errormessage + " " + awbnum);
+                                            // clsLog.WriteLogAzure("Error for deleteing AWB throught XFWB:" + errormessage + " " + awbnum);
+                                            _logger.LogWarning($"Error for deleteing AWB throught XFWB: {errormessage} {awbnum}");
                                             ErrorMsg = "Error for deleteing AWB throught XFWB:" + errormessage + " " + awbnum;
                                             flag = false;
                                         }
@@ -2547,7 +2554,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                         if (!flag)
                                         {
 
-                                            clsLog.WriteLogAzure("Error for CANCELLED AWB throught XFWB:" + errormessage + " " + awbnum);
+                                            // clsLog.WriteLogAzure("Error for CANCELLED AWB throught XFWB:" + errormessage + " " + awbnum);
+                                            _logger.LogWarning($"Error for CANCELLED AWB throught XFWB: {errormessage} {awbnum}");
                                             ErrorMsg = "Error for CANCELLED AWB throught XFWB:" + errormessage + " " + awbnum;
                                             flag = false;
                                         }
@@ -2605,7 +2613,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                             //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
                                             if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParams))
-                                                clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
+                                                // clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
+                                                _logger.LogWarning($"AWB Audit log for: {fwbdata.awbnum+ Environment.NewLine}");
 
                                             flag = true;
                                         }
@@ -3107,7 +3116,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                         //if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
                                         if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", sqlParamsRate))
                                         {
-                                            clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                            // clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                            _logger.LogWarning("Rates Not Calculated for:{0}" , awbnum+Environment.NewLine);
                                         }
                                     }
                                     #endregion
@@ -3781,7 +3791,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                                 //if (!dtb.UpdateData("Messaging.uspSaveXFFRAWBRoute", paramNames, dataTypes, values))
                                                 if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveXFFRAWBRoute", sqlParamsInsert))
                                                 {
-                                                    clsLog.WriteLogAzure("Error in Save AWB Route FWB");
+                                                    // clsLog.WriteLogAzure("Error in Save AWB Route FWB");
+                                                    _logger.LogWarning("Error in Save AWB Route FWB");
                                                 }
 
                                                 //    string[] CANname = new string[] { "AWBPrefix", "AWBNumber", "Origin", "Destination", "Pieces", "Weight",
@@ -3824,7 +3835,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                                 //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
                                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParamsAudit))
                                                 {
-                                                    clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
+                                                    // clsLog.WriteLog("AWB Audit log  for:" + fwbdata.awbnum + Environment.NewLine);
+                                                    _logger.LogWarning("AWB Audit log  for: {0}" , fwbdata.awbnum + Environment.NewLine);
                                                 }
                                             }
                                         }
@@ -3844,7 +3856,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                             //if (!dtb.UpdateData("spDeleteAWBDetailsNoRoute", QueryNames, QueryTypes, QueryValues))
                                             if (!await _readWriteDao.ExecuteNonQueryAsync("spDeleteAWBDetailsNoRoute", sqlParamsDelete))
                                             {
-                                                clsLog.WriteLogAzure("Error in Deleting AWB Details");
+                                                // clsLog.WriteLogAzure("Error in Deleting AWB Details");
+                                                _logger.LogWarning("Error in Deleting AWB Details");
                                             }
                                         }
 
@@ -4037,7 +4050,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                     //if (!dtb.UpdateData("SP_SaveAWBRatesviaMsg", param, dbtypes, values))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBRatesviaMsg", sqlParamsFWBRates))
-                                        clsLog.WriteLogAzure("Error Saving FWB rates for:" + awbnum);
+                                        // clsLog.WriteLogAzure("Error Saving FWB rates for:" + awbnum);
+                                        _logger.LogWarning("Error Saving FWB rates for: {0}" , awbnum);
 
                                 }
 
@@ -4077,7 +4091,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                     //if (!dtb.InsertData("SP_SaveAWBOCRatesDetails", param, dbtypes, values))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBOCRatesDetails", sqlParamsOtherCharges))
-                                        clsLog.WriteLogAzure("Error Saving FWB OCRates for:" + awbnum);
+                                        // clsLog.WriteLogAzure("Error Saving FWB OCRates for:" + awbnum);
+                                        _logger.LogWarning("Error Saving FWB OCRates for: {0}" , awbnum);
 
                                 }
                                 #endregion
@@ -4118,7 +4133,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                     //if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspDeleteDimensionThroughXMLMessage", sqlParamsDeleteDims))
-                                        clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                        _logger.LogWarning("Error  Delete Dimension Through Message: {0}" , awbnum);
                                     else
                                     {
 
@@ -4196,7 +4212,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                             //if (!dtb.InsertData("Messaging.uspSaveAWBDimensionsXFFR", param, dbtypes, value))
                                             if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveAWBDimensionsXFFR", sqlParamsDims))
                                             {
-                                                clsLog.WriteLogAzure("Error Saving  Dimension Through Message :" + awbnum);
+                                                // clsLog.WriteLogAzure("Error Saving  Dimension Through Message :" + awbnum);
+                                                _logger.LogError("Error Saving  Dimension Through Message: {0}", awbnum);
                                             }
                                         }
                                     }
@@ -4225,7 +4242,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                         //if (!dtb.InsertData("Messaging.uspDeleteDimensionThroughXMLMessage", dparam, dbparamtypes, dbparamvalues))
                                         if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspDeleteDimensionThroughXMLMessage", sqlParamsDeleteDims))
-                                            clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                            // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + awbnum);
+                                            _logger.LogError("Error  Delete Dimension Through Message: {0}", awbnum);
                                     }
 
 
@@ -4282,7 +4300,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                             if (!await _readWriteDao.ExecuteNonQueryAsync("Messaging.uspSaveandUpdateShippperBUPThroughXFWB", sqlParamsBUP))
                                             {
                                                 //string str = dtb.LastErrorDescription.ToString();
-                                                clsLog.WriteLogAzure("BUP ULD is not Updated  for:" + awbnum + Environment.NewLine);
+                                                // clsLog.WriteLogAzure("BUP ULD is not Updated  for:" + awbnum + Environment.NewLine);
+                                                _logger.LogError("BUP ULD is not Updated  for: {0}" , awbnum + Environment.NewLine);
 
                                             }
                                         }
@@ -4316,7 +4335,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                     //if (!dtb.ExecuteProcedure("sp_CalculateAWBRatesReprocess", CRNname, CRType, CRValues))
                                     if (!await _readWriteDao.ExecuteNonQueryAsync("sp_CalculateAWBRatesReprocess", sqlParamsCalculateRates))
                                     {
-                                        clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                        // clsLog.WriteLogAzure("Rates Not Calculated for:" + awbnum + Environment.NewLine);
+                                        _logger.LogError("Rates Not Calculated for: {0}" , awbnum + Environment.NewLine);
                                     }
                                 }
 
@@ -4339,7 +4359,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                 //if (!dtb.UpdateData("UpdateStatustoExecuted", QueryName, QueryType, QueryValue))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateStatustoExecuted", sqlParamsUpdateStatus))
-                                    clsLog.WriteLogAzure("Error in updating AWB status");
+                                    // clsLog.WriteLogAzure("Error in updating AWB status");
+                                    _logger.LogError("Error in updating AWB status");
 
                                 #region capacity
                                 //string[] cparam = { "AWBPrefix", "AWBNumber" };
@@ -4354,7 +4375,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
                                 //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", sqlParamsCapacity))
-                                    clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                                    // clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
+                                    _logger.LogError("Error  on Update capacity Plan :{0}" , awbnum);
 
                                 #endregion
 
@@ -4366,7 +4388,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                     else
                     {
                         //clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum + "-" + dtb.LastErrorDescription);
-                        clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum);
+                        // clsLog.WriteLogAzure("Error while save FWB Message:" + awbnum);
+                        _logger.LogWarning("Error while save FWB Message: {0}" , awbnum);
 
                     }
                 }
@@ -4376,7 +4399,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
             catch (Exception ex)
             {
                 //SCMExceptionHandling.logexception(ref ex);
-                clsLog.WriteLogAzure("Error on FWB  message:" + ex.ToString());
+                // clsLog.WriteLogAzure("Error on FWB  message:" + ex.ToString());
+                _logger.LogError("Error on FWB  message: {0}" , ex);
                 ErrorMsg = "Error while saving AWB data through xFWB";
                 flag = false;
             }
@@ -4464,7 +4488,8 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 dsResult = null;
                 errormessage = "msgExceptionError";
                 //return false;
@@ -5390,50 +5415,58 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
 
         private string ReplacingNodeNames(string xmlMsg)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xmlMsg);
-            XmlElement root = doc.DocumentElement;
-            if (root != null && root.Name.Equals("rsm:Waybill"))
+            try
             {
-                XmlNodeList xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
-                if (xmlNodelst != null)
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(xmlMsg);
+                XmlElement root = doc.DocumentElement;
+                if (root != null && root.Name.Equals("rsm:Waybill"))
                 {
-                    foreach (XmlNode xmlNode in xmlNodelst)
+                    XmlNodeList xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:PostalStructuredAddress')]");
+                    if (xmlNodelst != null)
                     {
-                        if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
+                        foreach (XmlNode xmlNode in xmlNodelst)
                         {
-                            RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
-                        }
-                        else if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
-                        {
-                            RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
-                        }
-                        else if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
-                        {
-                            RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
+                            if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:ConsignorParty"))
+                            {
+                                RenameNode(xmlNode, "ram:ConsignorParty_PostalStructuredAddress");
+                            }
+                            else if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:ConsigneeParty"))
+                            {
+                                RenameNode(xmlNode, "ram:ConsigneeParty_PostalStructuredAddress");
+                            }
+                            else if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:AssociatedParty"))
+                            {
+                                RenameNode(xmlNode, "ram:AssociatedParty_PostalStructuredAddress");
+                            }
                         }
                     }
-                }
-
-                xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossVolumeMeasure')]");
-                if (xmlNodelst != null)
-                {
-                    foreach (XmlNode xmlNode in xmlNodelst)
+    
+                    xmlNodelst = root.SelectNodes("//*[starts-with(name(), 'ram:GrossVolumeMeasure')]");
+                    if (xmlNodelst != null)
                     {
-                        if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
+                        foreach (XmlNode xmlNode in xmlNodelst)
                         {
-                            RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
+                            if (xmlNode.ParentNode != null && xmlNode.ParentNode.Name.Equals("ram:IncludedMasterConsignmentItem"))
+                            {
+                                RenameNode(xmlNode, "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
+                            }
                         }
                     }
+    
+                    xmlMsg = doc.OuterXml;
+                    xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
+                    xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
                 }
-
-                xmlMsg = doc.OuterXml;
-                xmlMsg = xmlMsg.Replace("ConsignorParty_PostalStructuredAddress", "ram:ConsignorParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("ConsigneeParty_PostalStructuredAddress", "ram:ConsigneeParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("AssociatedParty_PostalStructuredAddress", "ram:AssociatedParty_PostalStructuredAddress");
-                xmlMsg = xmlMsg.Replace("IncludedMasterConsignmentItem_GrossVolumeMeasure", "ram:IncludedMasterConsignmentItem_GrossVolumeMeasure");
+                return xmlMsg;
             }
-            return xmlMsg;
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
+            }
         }
 
         public async Task<string> GenerateXFWBMessageV3(string awbPrefix, string awbNumber, string customsName)
@@ -6887,7 +6920,9 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
             catch (Exception ex)
             {
                 generateMessage.Append("Error Occured while generating: " + ex.Message);
-                clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
+                // clsLog.WriteLogAzure("Error on Generate XFWB Message Method:" + ex.ToString());
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogWarning("Error on Generate XFWB Message MMethod");
             }
 
 
@@ -6926,38 +6961,48 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure("Error on Get Record for AWB ToGenerate XFWBMessage Method:" + ex.ToString());
+                // clsLog.WriteLogAzure("Error on Get Record for AWB ToGenerate XFWBMessage Method:" + ex.ToString());
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogWarning("Erro in Get Record for AWB ToGenerate XFWBMessage Method");
             }
             return dsFwb;
         }
 
         private XmlNode RenameNode(XmlNode e, string newName)
         {
-            XmlDocument doc = e.OwnerDocument;
-            if (doc != null)
+            try
             {
-                XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
-                while (e.HasChildNodes)
+                XmlDocument doc = e.OwnerDocument;
+                if (doc != null)
                 {
-                    newNode.AppendChild(e.FirstChild);
-                }
-                XmlAttributeCollection ac = e.Attributes;
-                while (ac != null && ac.Count > 0)
-                {
-                    if (newNode.Attributes != null)
+                    XmlNode newNode = doc.CreateNode(e.NodeType, newName, null);
+                    while (e.HasChildNodes)
                     {
-                        newNode.Attributes.Append(ac[0]);
+                        newNode.AppendChild(e.FirstChild);
                     }
+                    XmlAttributeCollection ac = e.Attributes;
+                    while (ac != null && ac.Count > 0)
+                    {
+                        if (newNode.Attributes != null)
+                        {
+                            newNode.Attributes.Append(ac[0]);
+                        }
+                    }
+                    XmlNode parent = e.ParentNode;
+                    if (parent != null)
+                    {
+                        parent.ReplaceChild(newNode, e);
+                    }
+    
+                    return newNode;
                 }
-                XmlNode parent = e.ParentNode;
-                if (parent != null)
-                {
-                    parent.ReplaceChild(newNode, e);
-                }
-
-                return newNode;
+                return null;
             }
-            return null;
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
+            }
         }
 
         #endregion Private Methods

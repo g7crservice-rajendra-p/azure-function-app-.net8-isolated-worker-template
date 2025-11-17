@@ -1,26 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using QID.DataAccess;
-using System.Threading;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
 using System.Globalization;
-using System.Xml;
-using System.Xml.Serialization;
-using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace QidWorkerRole.UploadMasters.DCM
 {
-    class UploadDCM
+    public class UploadDCM
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-        public Boolean DCMUpload(DataSet dataSetFileData)
+        //UploadMasterCommon _uploadMasterCommon = new UploadMasterCommon();
+
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadDCM> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadDCM(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadDCM> logger,
+            UploadMasterCommon uploadMasterCommon
+         )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
+        public async Task<bool> DCMUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -32,22 +40,22 @@ namespace QidWorkerRole.UploadMasters.DCM
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "dcm", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -58,7 +66,7 @@ namespace QidWorkerRole.UploadMasters.DCM
                 return false;
             }
         }
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableDCMExcelData = new DataTable("dataTableDCMExcelData");
 
@@ -83,7 +91,7 @@ namespace QidWorkerRole.UploadMasters.DCM
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                uploadMasterCommon.RemoveEmptyRows(dataTableDCMExcelData);
+                _uploadMasterCommon.RemoveEmptyRows(dataTableDCMExcelData);
 
                 foreach (DataColumn dataColumn in dataTableDCMExcelData.Columns)
                 {
@@ -129,9 +137,9 @@ namespace QidWorkerRole.UploadMasters.DCM
 
 
                 string validationErrorDetailsDCM = string.Empty;
-                DateTime tempDate; string Cr = string.Empty;string  Dr = string.Empty;
-                decimal tempDecimalValue, GrossWt,CW = 0;
-                string[] formats = {  "dd-MMM-yyyy" };
+                DateTime tempDate; string Cr = string.Empty; string Dr = string.Empty;
+                decimal tempDecimalValue, GrossWt, CW = 0;
+                string[] formats = { "dd-MMM-yyyy" };
                 CultureInfo ukCulture = new CultureInfo("en-GB");
 
                 for (int i = 0; i < dataTableDCMExcelData.Rows.Count; i++)
@@ -178,14 +186,14 @@ namespace QidWorkerRole.UploadMasters.DCM
                         {
                             validationErrorDetailsDCM = validationErrorDetailsDCM + "Credit is required ;";
                         }
-                        else if(dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Length > 1)
+                        else if (dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Length > 1)
                         {
                             validationErrorDetailsDCM += "Credit must be a single character;";
                         }
                         else
                         {
-                            dataRowDCMType["Credit"] = dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Substring(0,1);
-                            Cr = dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Substring(0,1);
+                            dataRowDCMType["Credit"] = dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Substring(0, 1);
+                            Cr = dataTableDCMExcelData.Rows[i]["Credit"].ToString().Trim().Trim(',').Substring(0, 1);
                         }
                     }
 
@@ -198,7 +206,7 @@ namespace QidWorkerRole.UploadMasters.DCM
                         {
                             validationErrorDetailsDCM = validationErrorDetailsDCM + "Debit is required ;";
                         }
-                        else if(dataTableDCMExcelData.Rows[i]["Debit"].ToString().Trim().Trim(',').Length > 1)
+                        else if (dataTableDCMExcelData.Rows[i]["Debit"].ToString().Trim().Trim(',').Length > 1)
                         {
                             validationErrorDetailsDCM += "Debit must be a single character;";
                         }
@@ -728,7 +736,7 @@ namespace QidWorkerRole.UploadMasters.DCM
 
                 // Database Call to Validate & Insert Route Controls Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertDCMMaster(srNotblMasterUploadSummaryLog, dataTableDCMType, errorInSp);
+                await ValidateAndInsertDCMMaster(srNotblMasterUploadSummaryLog, dataTableDCMType, errorInSp);
 
                 return true;
 
@@ -744,20 +752,20 @@ namespace QidWorkerRole.UploadMasters.DCM
             }
         }
 
-        public DataSet ValidateAndInsertDCMMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableDCMType,
-                                                                                                string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertDCMMaster(int srNotblMasterUploadSummaryLog, DataTable dataTableDCMType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] {   new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@DCMType", dataTableDCMType),
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@DCMType", dataTableDCMType),
+                    new SqlParameter("@Error", errorInSp)
+                 ];
 
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
-
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("USPDCMUpload", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("USPDCMUpload", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("USPDCMUpload", sqlParameters);
 
                 return dataSetResult;
             }
