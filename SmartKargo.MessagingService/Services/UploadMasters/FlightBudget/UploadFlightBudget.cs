@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Excel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using System.IO;
-using Excel;
-using System.Data.SqlClient;
-using QID.DataAccess;
-using System.Globalization;
 
 namespace QidWorkerRole.UploadMasters.FlightBudget
 {
@@ -18,13 +11,30 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
     /// </summary>
     public class UploadFlightBudget
     {
-        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+        private readonly ISqlDataHelperDao _readWriteDao;
+        private readonly ILogger<UploadFlightBudget> _logger;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+
+        #region Constructor
+        public UploadFlightBudget(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadFlightBudget> logger,
+            UploadMasterCommon uploadMasterCommon
+         )
+        {
+            _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
+            _logger = logger;
+            _uploadMasterCommon = uploadMasterCommon;
+        }
+        #endregion
 
         /// <summary>
         /// Method to Uplaod Flight Budget.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        public Boolean FlightBudgetUpload(DataSet dataSetFileData)
+        public async Task<bool> FlightBudgetUpload(DataSet dataSetFileData)
         {
             try
             {
@@ -36,22 +46,22 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "FlightBudgetUploadFile", out uploadFilePath))
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -62,14 +72,14 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                 return false;
             }
         }
-    
+
         /// <summary>
         /// Method to Process Flight Budget Upload File.
         /// </summary>
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Flight Budget Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableFlightBudgetExcelData = new DataTable("dataTableFlightBudgetExcelData");
 
@@ -93,8 +103,8 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
 
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
-                
-                uploadMasterCommon.RemoveEmptyRows(dataTableFlightBudgetExcelData);
+
+                _uploadMasterCommon.RemoveEmptyRows(dataTableFlightBudgetExcelData);
 
                 foreach (DataColumn dataColumn in dataTableFlightBudgetExcelData.Columns)
                 {
@@ -107,39 +117,39 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
 
                 DataTable FlightBudgetType = new DataTable("FlightBudgetType");
                 FlightBudgetType.Columns.Add("FlightBudgetIndex", System.Type.GetType("System.Int32"));
-		        FlightBudgetType.Columns.Add("ID", System.Type.GetType("System.Int32"));
-		        FlightBudgetType.Columns.Add("FlightNo", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("Origin", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("Destination", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("AircraftType", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("No_Of_Flights", System.Type.GetType("System.Int32"));
-		        FlightBudgetType.Columns.Add("Frequency", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("WtCapacity", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("CubMCapacity", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("CargoDensity", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("TargetTonnage", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("UoM", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("TargetRevenues", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("RevCurrency", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("TargetCost", System.Type.GetType("System.Decimal"));
-		        FlightBudgetType.Columns.Add("CostCurrency", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("UpdatedOn", System.Type.GetType("System.DateTime"));
-		        FlightBudgetType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("ValidFrom", System.Type.GetType("System.DateTime"));
-		        FlightBudgetType.Columns.Add("ValidTo", System.Type.GetType("System.DateTime"));
-		        FlightBudgetType.Columns.Add("IsActive", System.Type.GetType("System.Byte"));
-		        FlightBudgetType.Columns.Add("FlightDate", System.Type.GetType("System.DateTime"));
-		        FlightBudgetType.Columns.Add("FlightBudgetOrigin", System.Type.GetType("System.String"));
-		        FlightBudgetType.Columns.Add("FlightBudgetDestination", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("ID", System.Type.GetType("System.Int32"));
+                FlightBudgetType.Columns.Add("FlightNo", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("Origin", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("Destination", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("AircraftType", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("No_Of_Flights", System.Type.GetType("System.Int32"));
+                FlightBudgetType.Columns.Add("Frequency", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("WtCapacity", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("CubMCapacity", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("CargoDensity", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("TargetTonnage", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("UoM", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("TargetRevenues", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("RevCurrency", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("TargetCost", System.Type.GetType("System.Decimal"));
+                FlightBudgetType.Columns.Add("CostCurrency", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("UpdatedOn", System.Type.GetType("System.DateTime"));
+                FlightBudgetType.Columns.Add("UpdatedBy", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("ValidFrom", System.Type.GetType("System.DateTime"));
+                FlightBudgetType.Columns.Add("ValidTo", System.Type.GetType("System.DateTime"));
+                FlightBudgetType.Columns.Add("IsActive", System.Type.GetType("System.Byte"));
+                FlightBudgetType.Columns.Add("FlightDate", System.Type.GetType("System.DateTime"));
+                FlightBudgetType.Columns.Add("FlightBudgetOrigin", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("FlightBudgetDestination", System.Type.GetType("System.String"));
                 FlightBudgetType.Columns.Add("TargetUOM", System.Type.GetType("System.Byte"));
-		        FlightBudgetType.Columns.Add("ValidationDetailsFlightBudget", System.Type.GetType("System.String"));
+                FlightBudgetType.Columns.Add("ValidationDetailsFlightBudget", System.Type.GetType("System.String"));
 
                 #endregion Creating FlightBudgetType DataTable
 
                 string validationDetailsFlightBudget = string.Empty;
                 int intValue;
                 decimal tempDecimalValue = 0;
-                DateTime tempDate;                
+                DateTime tempDate;
 
                 for (int i = 0; i < dataTableFlightBudgetExcelData.Rows.Count; i++)
                 {
@@ -152,13 +162,13 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                     #region FlightBudgetIndex [INT] NULL
 
                     dataRowFlightBudgetType["FlightBudgetIndex"] = i + 1;
-                    
+
                     #endregion FlightBudgetIndex
 
                     #region ID [INT] NULL
 
                     dataRowFlightBudgetType["ID"] = DBNull.Value;
-                    
+
                     #endregion ID
 
                     #region FlightNo [VARCHAR] (20) NULL
@@ -173,8 +183,8 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                         {
                             dataRowFlightBudgetType["FlightNo"] = dataTableFlightBudgetExcelData.Rows[i]["flightno"].ToString().Trim().ToUpper().Trim(',');
                         }
-                    }                    
-                    
+                    }
+
                     #endregion FlightNo
 
                     #region Origin [VARCHAR] (50) NULL
@@ -189,7 +199,7 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                         {
                             dataRowFlightBudgetType["Origin"] = dataTableFlightBudgetExcelData.Rows[i]["origin"].ToString().Trim().ToUpper().Trim(',');
                         }
-                    } 
+                    }
 
                     #endregion Origin
 
@@ -205,7 +215,7 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                         {
                             dataRowFlightBudgetType["Destination"] = dataTableFlightBudgetExcelData.Rows[i]["destination"].ToString().Trim().ToUpper().Trim(',');
                         }
-                    } 
+                    }
 
                     #endregion Destination
 
@@ -221,7 +231,7 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                         {
                             dataRowFlightBudgetType["AircraftType"] = dataTableFlightBudgetExcelData.Rows[i]["aircrafttype"].ToString().Trim().ToUpper().Trim(',');
                         }
-                    } 
+                    }
 
                     #endregion AircraftType
 
@@ -426,7 +436,7 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
                     #region UpdatedOn [DATETIME] NULL
 
                     dataRowFlightBudgetType["UpdatedOn"] = DateTime.Now;
-                    
+
                     #endregion UpdatedOn
 
                     #region UpdatedBy [VARCHAR] (100) NULL
@@ -597,8 +607,8 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
 
                 // Database Call to Validate & Insert/Update Flight Budget
                 string errorInSp = string.Empty;
-                DataSet dataSetResult = new DataSet();
-                dataSetResult = ValidateAndInsertUpdateFlightBudgetMaster(srNotblMasterUploadSummaryLog, FlightBudgetType, errorInSp);
+                DataSet? dataSetResult = new DataSet();
+                dataSetResult = await ValidateAndInsertUpdateFlightBudgetMaster(srNotblMasterUploadSummaryLog, FlightBudgetType, errorInSp);
 
                 return true;
             }
@@ -620,19 +630,20 @@ namespace QidWorkerRole.UploadMasters.FlightBudget
         /// <param name="agentType"> Flight Budget Master Table Type </param>
         /// <param name="errorInSp"> Error Message from Stored Procedure </param>
         /// <returns> Selected Data Set from Stored Procedure </returns>
-        public DataSet ValidateAndInsertUpdateFlightBudgetMaster(int srNotblMasterUploadSummaryLog, DataTable flightBudgetType, string errorInSp)
+        public async Task<DataSet?> ValidateAndInsertUpdateFlightBudgetMaster(int srNotblMasterUploadSummaryLog, DataTable flightBudgetType, string errorInSp)
         {
-            DataSet dataSetResult = new DataSet();
+            DataSet? dataSetResult = new DataSet();
             try
             {
-                SqlParameter[] sqlParameters = new SqlParameter[] { 
-                                                                      new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
-                                                                      new SqlParameter("@FightBudgetTableType", flightBudgetType),
-                                                                      new SqlParameter("@Error", errorInSp)
-                                                                  };
+                SqlParameter[] sqlParameters = [
+                    new SqlParameter("@SrNotblMasterUploadSummaryLog",srNotblMasterUploadSummaryLog),
+                    new SqlParameter("@FightBudgetTableType", flightBudgetType),
+                    new SqlParameter("@Error", errorInSp)
+                ];
 
-                SQLServer sQLServer = new SQLServer();
-                dataSetResult = sQLServer.SelectRecords("uspUploadFlightBudgetMaster", sqlParameters);
+                //SQLServer sQLServer = new SQLServer();
+                //dataSetResult = sQLServer.SelectRecords("uspUploadFlightBudgetMaster", sqlParameters);
+                dataSetResult = await _readWriteDao.SelectRecords("uspUploadFlightBudgetMaster", sqlParameters);
 
                 return dataSetResult;
             }
