@@ -45,7 +45,10 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+
+                // //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -209,7 +212,9 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             finally
             {
@@ -271,7 +276,8 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -290,7 +296,8 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -360,7 +367,8 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
 
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
 

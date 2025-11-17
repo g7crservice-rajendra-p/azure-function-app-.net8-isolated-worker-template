@@ -56,7 +56,8 @@ namespace QidWorkerRole.UploadMasters.MSRRates
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
         }
@@ -90,7 +91,8 @@ namespace QidWorkerRole.UploadMasters.MSRRates
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    // clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    _logger.LogInformation("Invalid file: {filePath}", filepath);
                     return false;
                 }
                 foreach (DataColumn dataColumn in dataTableMSRRates.Columns)
@@ -276,7 +278,8 @@ namespace QidWorkerRole.UploadMasters.MSRRates
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
             finally
@@ -305,7 +308,8 @@ namespace QidWorkerRole.UploadMasters.MSRRates
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return dataSetResult;
             }
         }

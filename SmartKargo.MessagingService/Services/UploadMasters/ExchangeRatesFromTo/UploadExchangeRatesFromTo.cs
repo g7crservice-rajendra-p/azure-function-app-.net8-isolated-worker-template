@@ -52,7 +52,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
         }
@@ -106,7 +107,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    // clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    _logger.LogWarning("Invalid file: {filePath}", filepath);
                     return false;
                 }
                 foreach (DataColumn dataColumn in dataTableExchangeRatesFromTo.Columns)
@@ -232,8 +234,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
-                return false;
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); return false;
             }
             finally
             {
@@ -264,8 +266,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
-                return dataSetResult;
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); return dataSetResult;
             }
         }
     }

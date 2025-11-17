@@ -38,53 +38,62 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
 
         public async Task<bool> GetUploadFlightSchedule(DataSet dsFiles)
         {
-
-            //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-
-            string carrier = string.Empty;
-            //DataSet dsFiles = new DataSet();
-            //dsFiles = uploadMasterCommon.GetUploadedFileData(UploadMasterType.FlightSchedule);
-
-            if (dsFiles != null && dsFiles.Tables[0].Rows.Count > 0)
+            try
             {
-                foreach (DataRow dr in dsFiles.Tables[0].Rows)
+
+                //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+                string carrier = string.Empty;
+                //DataSet dsFiles = new DataSet();
+                //dsFiles = uploadMasterCommon.GetUploadedFileData(UploadMasterType.FlightSchedule);
+
+                if (dsFiles != null && dsFiles.Tables[0].Rows.Count > 0)
                 {
-                    // to upadate retry count only.
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
-
-                    string FilePath = "";
-                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Schedule", out FilePath))
+                    foreach (DataRow dr in dsFiles.Tables[0].Rows)
                     {
-                        clsLog.WriteLogAzure("Schedule File Path:" + FilePath);
-                        DataSet dsSSIMUpdateResult = new DataSet();
+                        // to upadate retry count only.
+                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
-                        if (!await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, Convert.ToString(dr["FileName"]), out carrier))
-                            return false;
-
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule start", 0, 0, 0, 1, "", 1);
-                        dsSSIMUpdateResult = await SSIMUpdate(carrier);
-                        if (dsSSIMUpdateResult != null && dsSSIMUpdateResult.Tables.Count > 0)
+                        string FilePath = "";
+                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Schedule", out FilePath))
                         {
-                            foreach (DataTable dt in dsSSIMUpdateResult.Tables)
-                            {
-                                if (dt.Columns.Contains("SuccessStatus") && !Convert.ToBoolean(dsSSIMUpdateResult.Tables[0].Rows[0]["SuccessStatus"].ToString()))
-                                    return false;
-                            }
-                        }
+                            // clsLog.WriteLogAzure("Schedule File Path:" + FilePath);
+                            _logger.LogInformation("Schedule File Path: {filePath}", FilePath);
+                            DataSet dsSSIMUpdateResult = new DataSet();
 
-                        await GetRefereshSchedule();
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule End", 0, 0, 0, 1, "", 1);
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
-                        await RefreshCapacity();
-                    }
-                    else
-                    {
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            if (!await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, Convert.ToString(dr["FileName"]), out carrier))
+                                return false;
+
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule start", 0, 0, 0, 1, "", 1);
+                            dsSSIMUpdateResult = await SSIMUpdate(carrier);
+                            if (dsSSIMUpdateResult != null && dsSSIMUpdateResult.Tables.Count > 0)
+                            {
+                                foreach (DataTable dt in dsSSIMUpdateResult.Tables)
+                                {
+                                    if (dt.Columns.Contains("SuccessStatus") && !Convert.ToBoolean(dsSSIMUpdateResult.Tables[0].Rows[0]["SuccessStatus"].ToString()))
+                                        return false;
+                                }
+                            }
+
+                            await GetRefereshSchedule();
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule End", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                            await RefreshCapacity();
+                        }
+                        else
+                        {
+                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        }
                     }
                 }
+                return true;
             }
-            return true;
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                throw;
+            }
         }
 
         private async Task<bool> RefreshCapacity()
@@ -111,7 +120,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
         }
@@ -232,7 +242,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
             catch (Exception ex)
             {
                 carrier = string.Empty;
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
             return true;
@@ -265,7 +276,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
         //        catch (Exception ex)
         //        {
 
-        //            clsLog.WriteLogAzure(ex);
+        //            //clsLog.WriteLogAzure(ex);
         //            CloudBlob blob = blobClient.GetBlobReference(str);
         //            downloadStream = blob.DownloadByteArray();
         //        }
@@ -275,7 +286,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return null;
         //    }
 
@@ -300,7 +311,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
         //    }
         //    catch (Exception ex)
         //    {
-        //        clsLog.WriteLogAzure(ex);
+        //        //clsLog.WriteLogAzure(ex);
         //        return false;
         //    }
 
@@ -317,7 +328,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
 
@@ -338,7 +350,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dsResult;
         }

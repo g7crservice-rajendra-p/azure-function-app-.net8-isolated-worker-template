@@ -60,7 +60,8 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError("Message: {message} Stack Trace: {stackTrace}", exception.Message, exception.StackTrace);
                 return false;
             }
         }
@@ -159,12 +160,14 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
                 }
                 else
                 {
-                    clsLog.WriteLogAzure(filename + ": PAX file is not processed due to fileds count mismatched filed count should be 27 in text file");
+                    // clsLog.WriteLogAzure(filename + ": PAX file is not processed due to fileds count mismatched filed count should be 27 in text file");
+                    _logger.LogWarning(filename + ": PAX file is not processed due to fileds count mismatched filed count should be 27 in text file");
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                // clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");  
             }
         }
 
@@ -269,33 +272,41 @@ namespace QidWorkerRole.UploadMasters.FlightPaxInfo
 
         private DataTable CreatePaxDataTable()
         {
-            DataTable dt = new DataTable();
-            dt.Columns.Add("SerialNumber", typeof(string));
-            dt.Columns.Add("DepartureDate", typeof(string));
-            dt.Columns.Add("Origin", typeof(string));
-            dt.Columns.Add("CarrierCode", typeof(string));
-            dt.Columns.Add("FlightID", typeof(string));
-            dt.Columns.Add("ExpectedInfants", typeof(string));
-            dt.Columns.Add("ExpectedAdults", typeof(string));
-            dt.Columns.Add("ExpectedChild", typeof(string));
-            dt.Columns.Add("ExpectedTotalPax", typeof(string));
-            dt.Columns.Add("ActualInfants", typeof(string));
-            dt.Columns.Add("ActualAdults", typeof(string));
-            dt.Columns.Add("ActualChild", typeof(string));
-            dt.Columns.Add("ActualTotalPax", typeof(string));
-            dt.Columns.Add("FileName", typeof(string));
-            dt.Columns.Add("UpdatedOn", typeof(string));
-            dt.Columns.Add("UpdatedBy", typeof(string));
-            dt.Columns.Add("ExpectedBaggage", typeof(string));
-            dt.Columns.Add("ActualBaggage", typeof(string));
-
-            dt.Columns.Add("AircraftCode", typeof(string));
-            dt.Columns.Add("AircraftRegistration", typeof(string));
-            dt.Columns.Add("AircraftType", typeof(string));
-            dt.Columns.Add("DepartureTime", typeof(string));
-            dt.Columns.Add("Destination", typeof(string));
-            dt.Columns.Add("GroupBooked", typeof(string));
-            return dt;
+           try
+           {
+             DataTable dt = new DataTable();
+             dt.Columns.Add("SerialNumber", typeof(string));
+             dt.Columns.Add("DepartureDate", typeof(string));
+             dt.Columns.Add("Origin", typeof(string));
+             dt.Columns.Add("CarrierCode", typeof(string));
+             dt.Columns.Add("FlightID", typeof(string));
+             dt.Columns.Add("ExpectedInfants", typeof(string));
+             dt.Columns.Add("ExpectedAdults", typeof(string));
+             dt.Columns.Add("ExpectedChild", typeof(string));
+             dt.Columns.Add("ExpectedTotalPax", typeof(string));
+             dt.Columns.Add("ActualInfants", typeof(string));
+             dt.Columns.Add("ActualAdults", typeof(string));
+             dt.Columns.Add("ActualChild", typeof(string));
+             dt.Columns.Add("ActualTotalPax", typeof(string));
+             dt.Columns.Add("FileName", typeof(string));
+             dt.Columns.Add("UpdatedOn", typeof(string));
+             dt.Columns.Add("UpdatedBy", typeof(string));
+             dt.Columns.Add("ExpectedBaggage", typeof(string));
+             dt.Columns.Add("ActualBaggage", typeof(string));
+ 
+             dt.Columns.Add("AircraftCode", typeof(string));
+             dt.Columns.Add("AircraftRegistration", typeof(string));
+             dt.Columns.Add("AircraftType", typeof(string));
+             dt.Columns.Add("DepartureTime", typeof(string));
+             dt.Columns.Add("Destination", typeof(string));
+             dt.Columns.Add("GroupBooked", typeof(string));
+             return dt;
+           }
+           catch (System.Exception ex)
+           {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                 throw;
+           }
         }
     }
 }
