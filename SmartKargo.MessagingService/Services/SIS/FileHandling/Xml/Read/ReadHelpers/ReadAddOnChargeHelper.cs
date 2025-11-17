@@ -1,4 +1,5 @@
-﻿using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+﻿using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
 using QidWorkerRole.SIS.Model;
 using System.Collections;
 using System.Xml;
@@ -56,7 +57,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadBillingCodeTotalAddonCharges", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in ReadBillingCodeTotalAddonCharges", xmlException);
+                _staticLogger.LogError(xmlException, "Error Occurred in ReadBillingCodeTotalAddonCharges");
+
             }
         }
 
@@ -229,7 +232,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadLineItemdetailAddonCharges", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in ReadLineItemdetailAddonCharges", xmlException);
+                _staticLogger.LogError(xmlException, "Error Occurred in ReadLineItemdetailAddonCharges");
             }
         }
 
@@ -297,7 +301,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in AssignAddOnCharges", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in AssignAddOnCharges", xmlException);
+                _staticLogger.LogError(xmlException, "Error Occurred in AssignAddOnCharges");
             }
         }
 
@@ -351,7 +356,8 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             }
             catch (XmlException xmlException)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadInvoiceSummaryAddonCharges", xmlException);
+                //clsLog.WriteLogAzure("Error Occurred in ReadInvoiceSummaryAddonCharges", xmlException);
+                _staticLogger.LogError(xmlException, "Error Occurred in ReadInvoiceSummaryAddonCharges");
             }
         }
 
