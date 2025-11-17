@@ -67,7 +67,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " \nStackTrace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} \nStackTrace: {exception.StackTrace}");
                 return false;
             }
         }
@@ -4354,7 +4355,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return false;
             }
             finally
@@ -4391,7 +4393,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return dataSetResult;
             }
         }
@@ -4543,7 +4546,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
             }
             return sb.ToString();
         }
@@ -4599,7 +4603,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
             }
             return strbuilder.ToString();
         }
@@ -4627,7 +4632,8 @@ namespace QidWorkerRole.UploadMasters.Agent
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                // clsLog.WriteLogAzure("Message: " + exception.Message + " Stack Trace: " + exception.StackTrace);
+                _logger.LogError($"Message: {exception.Message} Stack Trace: {exception.StackTrace}");
                 return dataSetResult;
             }
         }

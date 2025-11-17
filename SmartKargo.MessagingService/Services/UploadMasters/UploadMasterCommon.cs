@@ -178,7 +178,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(exception);
+                _logger.LogError(exception, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -222,7 +223,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(exception);
+                _logger.LogError(exception, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -253,7 +255,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -372,7 +375,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure(exception);
+                // clsLog.WriteLogAzure(exception);
+                _logger.LogError(exception, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return dataSetResult;
         }
@@ -399,7 +403,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
 
@@ -432,7 +437,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
             return null;
@@ -553,7 +559,8 @@ namespace QidWorkerRole.UploadMasters
             catch (Exception ex)
             {
                 FilePath = string.Empty;
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
             return true;
@@ -587,7 +594,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return (null);
             }
 
@@ -616,7 +624,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -645,7 +654,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return IsSuccess;
         }
@@ -729,7 +739,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -810,7 +821,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -830,7 +842,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1020,7 +1033,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1217,7 +1231,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1256,7 +1271,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1268,7 +1284,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1280,7 +1297,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1292,7 +1310,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1304,7 +1323,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1316,7 +1336,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
 
@@ -1362,7 +1383,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1373,7 +1395,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1400,7 +1423,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1411,7 +1435,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1422,7 +1447,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1433,7 +1459,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1444,7 +1471,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".txt" };
@@ -1455,7 +1483,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".txt" };
@@ -1466,7 +1495,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx", ".csv" };
@@ -1477,7 +1507,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx", ".xlsb" };
@@ -1488,7 +1519,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1499,7 +1531,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1510,7 +1543,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1521,7 +1555,8 @@ namespace QidWorkerRole.UploadMasters
                     string OnlyFileName = Path.GetFileNameWithoutExtension(FileName);
                     if (OnlyFileName.Contains("-"))
                     {
-                        clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        // clsLog.WriteLogAzure("Please remove '-' sign from file name: " + FileName);
+                        _logger.LogInformation("Please remove '-' sign from file name: {0}", FileName);
                         return false;
                     }
                     string[] allowedExtensions = { ".xls", ".xlsx" };
@@ -1530,7 +1565,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return false;
         }
@@ -1554,7 +1590,8 @@ namespace QidWorkerRole.UploadMasters
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return IsFileOK;
         }
