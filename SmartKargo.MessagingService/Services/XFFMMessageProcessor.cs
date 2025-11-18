@@ -1319,14 +1319,19 @@ namespace QidWorkerRole
                                 //string[] PStatusName = new string[] { "ManifestID", "FFMStatus", "FlightNumber", "FlightDate", "FlightOrigin", "FlightDestination", "FFMSequenceNo" };
                                 //object[] PStatusValues = new object[] { ManifestID, ffmdata.endmesgcode, ffmdata.carriercode + ffmdata.fltnum, flightdate, ffmdata.fltairportcode, unloadingport[k].unloadingairport, ffmSequenceNo };
                                 //SqlDbType[] sqlStatusType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int };
-
+                                
                                 var psValues = new SqlParameter[]
                                 {
                                     new SqlParameter("@ManifestID", SqlDbType.VarChar)        { Value = ManifestID },
                                     new SqlParameter("@FFMStatus", SqlDbType.VarChar)        { Value = ffmdata.endmesgcode },
                                     new SqlParameter("@FlightNumber", SqlDbType.VarChar)     { Value = ffmdata.carriercode + ffmdata.fltnum },
                                     new SqlParameter("@FlightDate", SqlDbType.DateTime)      { Value = flightdate },
+                                    new SqlParameter("@FlightOrigin", SqlDbType.VarChar)     { Value = ffmdata.fltairportcode },
+                                    new SqlParameter("@FlightDestination", SqlDbType.VarChar){ Value = unloadingport[k].unloadingairport },
+                                    new SqlParameter("@FFMSequenceNo", SqlDbType.Int)        { Value = ffmSequenceNo }
                                 };
+
+
 
                                 //sqlServer.InsertData("MSG_uSPCheckFFMFlightStatus", PStatusName, sqlStatusType, PStatusValues);
                                 await _readWriteDao.ExecuteNonQueryAsync("MSG_uSPCheckFFMFlightStatus", psValues);
