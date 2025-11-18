@@ -1,9 +1,5 @@
-﻿
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using ModelClass = QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.DAL
@@ -14,11 +10,15 @@ namespace QidWorkerRole.SIS.DAL
     public class ReadDBData
     {
 
-        public SIS.DAL.SISDBEntities _sisDB;
+        //public SIS.DAL.SISDBEntities _sisDB;
+        private readonly SISDBEntities _sisDB;
+        private readonly ILogger<ReadDBData> _logger;
 
-        public ReadDBData()
+        public ReadDBData(SISDBEntities sisDB, ILogger<ReadDBData> logger)
         {
-            _sisDB = new SIS.DAL.SISDBEntities();
+            //_sisDB = new SIS.DAL.SISDBEntities();
+            _sisDB = sisDB;
+            _logger = logger;
         }
 
         /// <summary>
@@ -70,7 +70,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetFileData()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetFileData()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetFileData()");
                 return fileData;
             }
         }
@@ -98,7 +99,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure(exception.Message);
+                //clsLog.WriteLogAzure(exception.Message);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetInvoiceList()");
                 return invoiceList;
             }
         }
@@ -204,7 +206,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoice()" + exception.Message);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoice()" + exception.Message);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetInvoice()");
                 return invoice;
             }
         }
@@ -282,7 +285,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure(exception.Message);
+                //clsLog.WriteLogAzure(exception.Message);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetAirWayBillList()");
                 return airWayBillList;
             }
         }
@@ -322,7 +326,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetAWBVATList()" + exception.Message);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetAWBVATList()" + exception.Message);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetAWBVATList()");
                 return awbVatList;
             }
         }
@@ -363,7 +368,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetAWBOtherChargesList()");
                 return awbOtherChargesList;
             }
         }
@@ -441,7 +447,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRejectionMemoList()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRejectionMemoList()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRejectionMemoList()");
                 return rejectionMemoList;
             }
         }
@@ -532,7 +539,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAirWayBillList()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAirWayBillList()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRMAirWayBillList()");
                 return rMAirWayBillList;
             }
         }
@@ -574,7 +582,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBOtherChargesList()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBOtherChargesList()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRMAWBOtherChargesList()");
                 return rMAWBOtherChargesList;
             }
         }
@@ -616,7 +625,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBProrateLadderList()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBProrateLadderList()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRMAWBProrateLadderList()");
                 return rMAWBProrateLadderList;
             }
         }
@@ -657,7 +667,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRMAWBVATList()");
                 return rMAWBVATList;
             }
         }
@@ -700,7 +711,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMVATList()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetRMVATList()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetRMVATList()");
                 return rMVATList;
             }
         }
@@ -765,7 +777,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingMemoList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingMemoList(), Error Messaage: {0}, Exception: {1}", exception);
+                 _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBillingMemoList()");
                 return billingMemoList;
             }
         }
@@ -843,7 +856,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAirWayBillList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAirWayBillList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBMAirWayBillList()");
                 return bMAirWayBillList;
             }
         }
@@ -885,7 +899,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBMAWBOtherChargesList()");
                 return bMAWBOtherChargesList;
             }
         }
@@ -927,7 +942,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBProrateLadderList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBProrateLadderList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBMAWBProrateLadderList()");
                 return bMAWBProrateLadderList;
             }
         }
@@ -968,7 +984,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBMAWBVATList()");
                 return bMAWBVATList;
             }
         }
@@ -1011,7 +1028,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBMVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBMVATList()");
                 return bMVATList;
             }
         }
@@ -1076,7 +1094,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCreditMemoList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCreditMemoList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCreditMemoList()");
                 return creditMemoList;
             }
         }
@@ -1154,7 +1173,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAirWayBillList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAirWayBillList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCMAirWayBillList()");
                 return cMAirWayBillList;
             }
         }
@@ -1196,7 +1216,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBOtherChargesList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCMAWBOtherChargesList()");
                 return cMAWBOtherChargesList;
             }
         }
@@ -1238,7 +1259,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBProrateLadderList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBProrateLadderList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCMAWBProrateLadderList()");
                 return cMAWBProrateLadderList;
             }
         }
@@ -1279,7 +1301,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMAWBVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCMAWBVATList()");
                 return cMAWBVATList;
             }
         }
@@ -1322,7 +1345,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCMVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCMVATList()");
                 return cMVATList;
             }
         }
@@ -1367,7 +1391,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoiceTotalVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoiceTotalVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetInvoiceTotalVATList()");
                 return invoiceTotalVATList;
             }
         }
@@ -1414,7 +1439,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalList()");
                 return billingCodeSubTotalList;
             }
         }
@@ -1456,7 +1482,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalVATList(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetBillingCodeSubTotalVATList()");
                 return billingCodeSubTotalVATList;
             }
         }
@@ -1529,7 +1556,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetReferenceDataForAirline(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetReferenceDataForAirline(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetReferenceDataForAirline()");
                 return referenceDataForAirline;
             }
         }
@@ -1572,7 +1600,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoiceTotal(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetInvoiceTotal(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetInvoiceTotal()");
                 return invoiceTotal;
             }
         }
@@ -1616,7 +1645,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetFileTotal(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetFileTotal(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetFileTotal()");
                 return fileTotal;
             }
         }
@@ -1639,7 +1669,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCurrentOpenBillingPeriod(), Error Messaage: {0}, Exception: {1}", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetCurrentOpenBillingPeriod(), Error Messaage: {0}, Exception: {1}", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetCurrentOpenBillingPeriod()");
                 return Convert.ToDateTime("1900-01-01");
             }
         }
@@ -1735,7 +1766,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedFileData()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedFileData()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetUnProcessedSISFiles()");
                 return FileHeaderList;
             }
         }
@@ -1760,7 +1792,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedSISValidationFiles()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedSISValidationFiles()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetUnProcessedSISValidationFiles()");
                 return ValidationFileHeaderList;
             }
         }
@@ -1786,7 +1819,8 @@ namespace QidWorkerRole.SIS.DAL
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedSISReceivableFiles()", exception);
+                //clsLog.WriteLogAzure("Exception occurred in ReadDBData.cs, GetUnProcessedSISReceivableFiles()", exception);
+                _logger.LogError(exception, "Exception occurred in ReadDBData.cs, GetUnProcessedSISReceivableFiles()");
                 return FileHeaderList;
             }
         }

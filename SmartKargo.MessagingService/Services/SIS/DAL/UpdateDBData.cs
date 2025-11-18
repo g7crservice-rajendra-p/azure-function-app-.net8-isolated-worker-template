@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using ModelClass = QidWorkerRole.SIS.Model;
+﻿using Microsoft.Extensions.Logging;
 using DbEntity = QidWorkerRole.SIS.DAL;
+using ModelClass = QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.DAL
 {
@@ -11,11 +9,17 @@ namespace QidWorkerRole.SIS.DAL
     /// </summary>
     public class UpdateDBData
     {
-        public SIS.DAL.SISDBEntities _sisDB;
+        //public SIS.DAL.SISDBEntities _sisDB;
+        private readonly SISDBEntities _sisDB;
+        private readonly ILogger<UpdateDBData> _logger;
+        private readonly SISBAL _sISBAL;
 
-        public UpdateDBData()
+        public UpdateDBData(SISDBEntities sisDB, ILogger<UpdateDBData> logger, SISBAL sISBAL)
         {
-            _sisDB = new SIS.DAL.SISDBEntities();
+            //_sisDB = new SIS.DAL.SISDBEntities();
+            _sisDB = sisDB;
+            _logger = logger;
+            _sISBAL = sISBAL;
         }
 
         /// <summary>
@@ -187,7 +191,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <param name="fileHeaderID"> File Header ID</param>
         /// <param name="userName"> Updated By User Name </param>
         /// <returns></returns>
-        public bool UpdateStatusToFileUploaded(int fileHeaderID, string userName)
+        public async Task<bool> UpdateStatusToFileUploaded(int fileHeaderID, string userName)
         {
             using (var context = _sisDB)
             {
@@ -296,17 +300,20 @@ namespace QidWorkerRole.SIS.DAL
                             _sisDB.SaveChanges();
                             dbContextTransaction.Commit();
 
-                            SIS.SISBAL objSISBAL = new SIS.SISBAL();
+                            //SIS.SISBAL objSISBAL = new SIS.SISBAL();
                             string strMsgKey = string.Empty;
-                            objSISBAL.CreateInterlineAuditLog("FileUploaded", fileHeaderID.ToString(), userName, DateTime.Now, strMsgKey);
+                            //objSISBAL.CreateInterlineAuditLog("FileUploaded", fileHeaderID.ToString(), userName, DateTime.Now, strMsgKey);
+                            await _sISBAL.CreateInterlineAuditLog("FileUploaded", fileHeaderID.ToString(), userName, DateTime.Now, strMsgKey);
+
                             return true;
 
                             #endregion
                         }
                         return false;
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         dbContextTransaction.Rollback();
                         return false;
                     }
@@ -432,8 +439,9 @@ namespace QidWorkerRole.SIS.DAL
                         }
                         return false;
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         dbContextTransaction.Rollback();
                         return false;
                     }
@@ -445,7 +453,7 @@ namespace QidWorkerRole.SIS.DAL
 
         public bool UpdateSISFileProcessed(int fileHeaderID)
         {
-            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
+            FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
 
             if (updatingFileHeader != null)
             {
@@ -458,7 +466,7 @@ namespace QidWorkerRole.SIS.DAL
         }
         public bool UpdateSISReceivableFileProcessed(int fileHeaderID)
         {
-            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
+            FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
 
             if (updatingFileHeader != null)
             {
