@@ -2411,7 +2411,7 @@ namespace QidWorkerRole
                                         new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Updated Through FWB" },
                                         new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FWB" },
                                         new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = DateTime.UtcNow.ToString() },
-                                        new SqlParameter("@Public", SqlDbType.Bit) { Value = true },
+                                        new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
                                         new SqlParameter("@Volume", SqlDbType.VarChar) { Value = string.IsNullOrWhiteSpace(VolumeAmount) ? "0" : VolumeAmount }
                                     };
 
@@ -2906,7 +2906,7 @@ namespace QidWorkerRole
                     new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = fwbdata.agentaccnum },
                     new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = fwbdata.agentIATAnumber },
                     new SqlParameter("@CustName", SqlDbType.VarChar) { Value = fwbdata.agentname },
-                    new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now },
+                    new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now.ToString("yyyy-MM-dd") },
                     new SqlParameter("@MeasureUnit", SqlDbType.VarChar) { Value = "" },
                     new SqlParameter("@Length", SqlDbType.VarChar) { Value = "" },
                     new SqlParameter("@Breadth", SqlDbType.VarChar) { Value = "" },
@@ -3198,9 +3198,9 @@ namespace QidWorkerRole
                                             new SqlParameter("@date", SqlDbType.DateTime) { Value = dtFlightDate },
                                             new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
                                             new SqlParameter("@carrierCode", SqlDbType.VarChar) { Value = fltroute[lstIndex].carriercode },
-                                            new SqlParameter("@schedid", SqlDbType.Int) { Value = string.IsNullOrWhiteSpace(fltroute[lstIndex].scheduleid) ? 0 : Convert.ToInt32(fltroute[lstIndex].scheduleid) },
+                                            new SqlParameter("@schedid", SqlDbType.Int) { Value = fltroute[lstIndex].scheduleid.Trim() == string.Empty ? "0" : fltroute[lstIndex].scheduleid.Trim() },
                                             new SqlParameter("@voluemcode", SqlDbType.VarChar) { Value = volcode },
-                                            new SqlParameter("@volume", SqlDbType.Decimal) { Value = string.IsNullOrEmpty(VolumeAmount) ? 0 : Convert.ToDecimal(VolumeAmount) }
+                                            new SqlParameter("@volume", SqlDbType.Decimal) { Value = VolumeAmount==""?"0":VolumeAmount }
                                         };
 
                                         try
@@ -3276,14 +3276,14 @@ namespace QidWorkerRole
                                             new SqlParameter("@Pieces", SqlDbType.VarChar) { Value = fwbdata.pcscnt },
                                             new SqlParameter("@Weight", SqlDbType.VarChar) { Value = fwbdata.weight },
                                             new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = fltroute[lstIndex].carriercode + fltroute[lstIndex].fltnum },
-                                            new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = dtFlightDate },
+                                            new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = dtFlightDate.ToString() },
                                             new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltdept },
                                             new SqlParameter("@FlightDestination", SqlDbType.VarChar) { Value = fltroute[lstIndex].fltarrival },
                                             new SqlParameter("@Action", SqlDbType.VarChar) { Value = "Booked" },
                                             new SqlParameter("@Message", SqlDbType.VarChar) { Value = "AWB Booked" },
                                             new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Flight Information" },
                                             new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "FWB" },
-                                            new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.UtcNow },
+                                            new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = DateTime.UtcNow.ToString() },
                                             new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
                                             new SqlParameter("@Volume", SqlDbType.VarChar) { Value = string.IsNullOrWhiteSpace(VolumeAmount) ? "0" : VolumeAmount }
                                         };
@@ -3692,7 +3692,7 @@ namespace QidWorkerRole
                                     SqlParameter[] sqlParametersSaveAWB = new SqlParameter[]
                                     {
                                         new SqlParameter("@AWBNumber", SqlDbType.VarChar) { Value = awbnum },
-                                        new SqlParameter("@RowIndex", SqlDbType.Int) { Value = 1 },
+                                        new SqlParameter("@RowIndex", SqlDbType.Int) { Value = "1" },
                                         new SqlParameter("@Length", SqlDbType.Int) { Value = objDimension[i].length },
                                         new SqlParameter("@Breadth", SqlDbType.Int) { Value = objDimension[i].width },
                                         new SqlParameter("@Height", SqlDbType.Int) { Value = objDimension[i].height },
@@ -3865,7 +3865,7 @@ namespace QidWorkerRole
                             new SqlParameter("@ChargeableWeight", SqlDbType.Decimal) { Value = ChargeableWeight },
                             new SqlParameter("@Priority", SqlDbType.VarChar) { Value = Priority },
                             new SqlParameter("@REFNo", SqlDbType.Int) { Value = REFNo },
-                            new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fwbdata.shippername.Trim() },
+                            new SqlParameter("@ShipperName", SqlDbType.VarChar) { Value = fwbdata.shippername.Trim(' ') },
                             new SqlParameter("@DimsFlag", SqlDbType.Bit) { Value = DimsFlag }
                         };
 
