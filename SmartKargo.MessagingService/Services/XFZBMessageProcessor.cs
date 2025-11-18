@@ -249,7 +249,6 @@ namespace QidWorkerRole
                 //object[] values = new object[] { AWBNum };
                 //SqlDbType[] ptype = new SqlDbType[] { SqlDbType.VarChar };
                 SqlParameter[] pname = new SqlParameter[] {
-                    new SqlParameter("@AWBPrefix",AWBPrefix),
                     new SqlParameter("@AWBNumber",AWBNum)
                 };
                 //ds = db.SelectRecords("sp_getawbdetails", pname, values, ptype);

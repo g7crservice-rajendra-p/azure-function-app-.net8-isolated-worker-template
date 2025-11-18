@@ -522,7 +522,7 @@ namespace QidWorkerRole
                     new SqlParameter("@AWBPrefix", SqlDbType.VarChar) { Value = AWBPrefix },
                     new SqlParameter("@ArrivalStatus", SqlDbType.VarChar) { Value = ArrivalStatus },
                     new SqlParameter("@FlightNo", SqlDbType.VarChar) { Value = FlightNo },
-                    new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now : DateTime.Parse(FlightDt) },
+                    new SqlParameter("@FlightDt", SqlDbType.DateTime) { Value = string.IsNullOrEmpty(FlightDt) ? DateTime.Now.ToString() : FlightDt },
                     new SqlParameter("@FlightOrigin", SqlDbType.VarChar) { Value = FltOrigin },
                     new SqlParameter("@flightDest", SqlDbType.VarChar) { Value = FltDest },
                     new SqlParameter("@ConsigneeName", SqlDbType.VarChar) { Value = ConsigneeName },
