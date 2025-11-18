@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-
-using ModelClass = QidWorkerRole.SIS.Model;
-using DbEntity = QidWorkerRole.SIS.DAL;
+﻿using Microsoft.Extensions.Logging;
 using System.Data.Entity.Validation;
-
-
+using DbEntity = QidWorkerRole.SIS.DAL;
+using ModelClass = QidWorkerRole.SIS.Model;
 
 namespace QidWorkerRole.SIS.DAL
 {
@@ -19,15 +13,19 @@ namespace QidWorkerRole.SIS.DAL
         // For Logging.
 
 
-        public SIS.DAL.SISDBEntities _sisDB;
+        //public SIS.DAL.SISDBEntities _sisDB;
 
         // Constants for Last Updated By and Created By
         private const string ByFileReader = "FileReaderSISAutomation";
         private const string ByFileWriter = "FileWriterSISAutomation";
 
-        public CreateDBData()
+        private readonly SISDBEntities _sisDB;
+        private readonly ILogger<CreateDBData> _logger;
+
+        public CreateDBData(SISDBEntities sisDB, ILogger<CreateDBData> logger)
         {
-            _sisDB = new SIS.DAL.SISDBEntities();
+            _sisDB = sisDB;
+            _logger = logger;
         }
 
         /// <summary>
@@ -1277,10 +1275,13 @@ namespace QidWorkerRole.SIS.DAL
                     {
                         dbContextTransaction.Rollback();
                         newFileHeaderIdRetrived = 0;
-                        clsLog.WriteLogAzure("Exception occured in InsertReceivedFileData: ");
+                        //clsLog.WriteLogAzure("Exception occured in InsertReceivedFileData: ");
+                        //_logger.Log(exception,"Exception occured in InsertReceivedFileData: ");
+                        _logger.LogError(exception, "Exception occured in InsertReceivedFileData: ");
                         foreach (var item in ((System.Data.Entity.Validation.DbEntityValidationException)exception).EntityValidationErrors.FirstOrDefault().ValidationErrors)
                         {
-                            clsLog.WriteLogAzure("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
+                            //clsLog.WriteLogAzure("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
+                            _logger.LogError("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
                         }
 
                         return false;
@@ -1289,7 +1290,9 @@ namespace QidWorkerRole.SIS.DAL
                     {
                         dbContextTransaction.Rollback();
                         newFileHeaderIdRetrived = 0;
-                        clsLog.WriteLogAzure(exception.InnerException);
+
+                        //clsLog.WriteLogAzure(exception.InnerException);
+                        _logger.LogError(exception, "Exception occured in InsertReceivedFileData: ");
 
                         return false;
                     }
@@ -1461,7 +1464,10 @@ namespace QidWorkerRole.SIS.DAL
                     try
                     {
                         #region Update statuses in DB & Update Id in list.
-                        clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 start");
+
+                        //clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 start");
+                        _logger.LogInformation("UpdateStatusAndInsertISValidationReportR1R2 start");
+
                         bool fileStatusErrorInValidation = false;
 
                         var isValidationSummaryReport = listISValidationSummaryReportR1.FirstOrDefault();
@@ -1584,7 +1590,8 @@ namespace QidWorkerRole.SIS.DAL
                                                 newAirWayBill.LastUpdatedOn = DateTime.UtcNow;
                                                 _sisDB.Entry(newAirWayBill).State = System.Data.Entity.EntityState.Modified;
                                                 _sisDB.SaveChanges();
-                                                clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 AirWayBill Saved");
+                                                //clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 AirWayBill Saved");
+                                                _logger.LogInformation("UpdateStatusAndInsertISValidationReportR1R2 AirWayBill Saved");
                                             }
 
                                             // Rejection Memo
@@ -1843,7 +1850,8 @@ namespace QidWorkerRole.SIS.DAL
                                             invoiceHeader.LastUpdatedOn = DateTime.UtcNow;
                                             _sisDB.Entry(invoiceHeader).State = System.Data.Entity.EntityState.Modified;
                                             _sisDB.SaveChanges();
-                                            clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 InvoiceHeader Saved");
+                                            //clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 InvoiceHeader Saved");
+                                            _logger.LogInformation("UpdateStatusAndInsertISValidationReportR1R2 InvoiceHeader Saved");
                                         }
                                     }
                                     // Reject Invoice In Error
@@ -1859,11 +1867,15 @@ namespace QidWorkerRole.SIS.DAL
                             }
                             else
                             {
-                                clsLog.WriteLogAzure("File {0} not found in System." + iSValidationSummaryReportR1FileName);
+                                //clsLog.WriteLogAzure("File {0} not found in System." + iSValidationSummaryReportR1FileName);
+                                _logger.LogInformation("File {0} not found in System." + iSValidationSummaryReportR1FileName);
                             }
                         }
                         _sisDB.SaveChanges();
-                        clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 FileHeader Saved");
+
+                        //clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 FileHeader Saved");
+                        _logger.LogInformation("UpdateStatusAndInsertISValidationReportR1R2 FileHeader Saved");
+
                         #endregion
 
                         #region Insert R1 to DB
@@ -1950,13 +1962,19 @@ namespace QidWorkerRole.SIS.DAL
 
                         context.SaveChanges();
                         dbContextTransaction.Commit();
-                        clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 Final Commit");
+
+                        //clsLog.WriteLogAzure("UpdateStatusAndInsertISValidationReportR1R2 Final Commit");
+                        _logger.LogInformation("UpdateStatusAndInsertISValidationReportR1R2 Final Commit");
+
                         return true;
                     }
                     catch (Exception exception)
                     {
                         dbContextTransaction.Rollback();
-                        clsLog.WriteLogAzure("Error Occurred in UpdateStatusAndInsertISValidationReportR1R2", exception.InnerException);
+
+                        //clsLog.WriteLogAzure("Error Occurred in UpdateStatusAndInsertISValidationReportR1R2", exception.InnerException);
+                        _logger.LogError("Error Occurred in UpdateStatusAndInsertISValidationReportR1R2", exception.InnerException);
+
                         return false;
                     }
                 }
@@ -2005,7 +2023,8 @@ namespace QidWorkerRole.SIS.DAL
                 }
                 catch (Exception exception)
                 {
-                    clsLog.WriteLogAzure("Error Occurred in CreateReceivedISValidationFileHeaderData", exception.InnerException);
+                    //clsLog.WriteLogAzure("Error Occurred in CreateReceivedISValidationFileHeaderData", exception.InnerException);
+                    _logger.LogError("Error Occurred in CreateReceivedISValidationFileHeaderData", exception.InnerException);
                     return false;
                 }
             }
@@ -2058,10 +2077,14 @@ namespace QidWorkerRole.SIS.DAL
                     {
                         dbContextTransaction.Rollback();
                         newFileHeaderIdRetrived = 0;
-                        clsLog.WriteLogAzure("Exception occured in InsertReceivedFileData: ");
+
+                        //clsLog.WriteLogAzure("Exception occured in InsertReceivedFileData: ");
+                        _logger.LogError(exception,"Exception occured in InsertReceivedFileData: ");
+
                         foreach (var item in ((System.Data.Entity.Validation.DbEntityValidationException)exception).EntityValidationErrors.FirstOrDefault().ValidationErrors)
                         {
-                            clsLog.WriteLogAzure("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
+                            //clsLog.WriteLogAzure("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
+                            _logger.LogError("Entity Validation Error: {0}" + item.ErrorMessage.ToString());
                         }
 
                         return false;
@@ -2070,7 +2093,9 @@ namespace QidWorkerRole.SIS.DAL
                     {
                         dbContextTransaction.Rollback();
                         newFileHeaderIdRetrived = 0;
-                        clsLog.WriteLogAzure(exception.InnerException);
+
+                        //clsLog.WriteLogAzure(exception.InnerException);
+                        _logger.LogError(exception, "Exception occured in InsertReceivedFileData: ");
 
                         return false;
                     }
