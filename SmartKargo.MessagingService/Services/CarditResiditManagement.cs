@@ -1012,13 +1012,13 @@ namespace QidWorkerRole
                                                 new SqlParameter("@FltOrigin", SqlDbType.VarChar)      { Value = strOrigin },
                                                 new SqlParameter("@FltDestination", SqlDbType.VarChar) { Value = strdestination },
                                                 new SqlParameter("@FltNumber", SqlDbType.VarChar)      { Value = strFltNumber },
-                                                new SqlParameter("@FltDate", SqlDbType.DateTime)       { Value = dtFlightDate },
+                                                new SqlParameter("@FltDate", SqlDbType.DateTime)       { Value = dtFlightDate.ToShortDateString() },
                                                 new SqlParameter("@Status", SqlDbType.VarChar)         { Value = "C" },
                                                 new SqlParameter("@UpdatedBy", SqlDbType.VarChar)      { Value = "CARDIT" },
                                                 new SqlParameter("@UpdatedOn", SqlDbType.DateTime)     { Value = DateTime.Now },
                                                 new SqlParameter("@IsFFR", SqlDbType.Bit)             { Value = 0 },
                                                 new SqlParameter("@REFNo", SqlDbType.Int)             { Value = 0 },
-                                                new SqlParameter("@date", SqlDbType.DateTime)         { Value = dtFlightDate },
+                                                new SqlParameter("@date", SqlDbType.DateTime)         { Value = dtFlightDate.ToShortDateString() },
                                                 new SqlParameter("@AWBPrefix", SqlDbType.VarChar)     { Value = cd.PAWBPrefix }
                                             };
 
