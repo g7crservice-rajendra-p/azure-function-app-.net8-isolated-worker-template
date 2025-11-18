@@ -84,7 +84,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -132,7 +132,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -1063,11 +1063,11 @@ namespace QidWorkerRole
                     new("@ASNStatusCode", SqlDbType.VarChar) { Value = QueryValues[61] },
                     new("@ASNActionExplanation", SqlDbType.VarChar) { Value = QueryValues[62] },
                     new("@CSNActionCode", SqlDbType.VarChar) { Value = QueryValues[63] },
-                    new("@CSNPieces", SqlDbType.Int) { Value = QueryValues[64] },
+                    new("@CSNPieces", SqlDbType.VarChar) { Value = QueryValues[64] },
                     new("@TransactionDate", SqlDbType.VarChar) { Value = QueryValues[65] },
                     new("@TransactionTime", SqlDbType.VarChar) { Value = QueryValues[66] },
                     new("@CSNEntryType", SqlDbType.VarChar) { Value = QueryValues[67] },
-                    new("@CSNEntryNumber", SqlDbType.VarChar) { Value = QueryValues[68] },
+                    new("@CSNEntryNumber", SqlDbType.NVarChar) { Value = QueryValues[68] },
                     new("@CSNRemarks", SqlDbType.VarChar) { Value = QueryValues[69] },
                     new("@ErrorCode", SqlDbType.VarChar) { Value = QueryValues[70] },
                     new("@ErrorMessage", SqlDbType.VarChar) { Value = QueryValues[71] },
@@ -1083,7 +1083,7 @@ namespace QidWorkerRole
                     new("@CreatedOn", SqlDbType.DateTime) { Value = QueryValues[81] },
                     new("@CreatedBy", SqlDbType.VarChar) { Value = QueryValues[82] },
                     new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[83] },
-                    new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[84] },
+                    new("@FlightDate", SqlDbType.VarChar) { Value = QueryValues[84] },
                     new("@ControlLocation", SqlDbType.VarChar) { Value = QueryValues[85] },
                     new("@WBLArrivalDatePermitToProceed", SqlDbType.VarChar) { Value = QueryValues[86] },
                 };

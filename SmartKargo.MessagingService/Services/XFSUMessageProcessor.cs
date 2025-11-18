@@ -7642,9 +7642,9 @@ namespace QidWorkerRole
                         //fltdate = DateTime.Parse((fsanodes[i].fltday + " " + Convert.ToString(fsanodes[i].flttime.Contains("(UTC)") == true ? fsanodes[i].flttime.Substring(0, 8) : fsanodes[i].flttime)));
                         if (fsanodes[i].messageprefix.ToUpper().Trim() == "RCF")
                         {
-                            string[] ParaNames = new string[] { "AWBPrefix", "AWBNumber", "Destination", "ConsignmentType", "Pieces", "Weight", "FlighNumber", "ArrivedDate", "WTCode", "RefNo", "FltOrigin", "FltDestination", "FlightDate" };
-                            SqlDbType[] ParaTypes = new System.Data.SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
-                            object[] ParaValues = new object[] { fsadata.airlineprefix, fsadata.awbnum, string.Empty, fsanodes[i].pcsindicator, fsanodes[i].numofpcs, (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight)), fsanodes[i].flightnum, DateTime.Now, fsanodes[i].weightcode, refNo, fsanodes[i].fltorg, fsanodes[i].fltdest, fsanodes[i].fltday };
+                            // string[] ParaNames = new string[] { "AWBPrefix", "AWBNumber", "Destination", "ConsignmentType", "Pieces", "Weight", "FlighNumber", "ArrivedDate", "WTCode", "RefNo", "FltOrigin", "FltDestination", "FlightDate" };
+                            // SqlDbType[] ParaTypes = new System.Data.SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime };
+                            // object[] ParaValues = new object[] { fsadata.airlineprefix, fsadata.awbnum, string.Empty, fsanodes[i].pcsindicator, fsanodes[i].numofpcs, (((fsanodes[i].weight).Length == 0) ? "0" : (fsanodes[i].weight)), fsanodes[i].flightnum, DateTime.Now, fsanodes[i].weightcode, refNo, fsanodes[i].fltorg, fsanodes[i].fltdest, fsanodes[i].fltday };
                             SqlParameter[] parameters = new SqlParameter[] {
                                 new SqlParameter("@AWBPrefix", SqlDbType.VarChar)    { Value = fsadata.airlineprefix },
                                 new SqlParameter("@AWBNumber", SqlDbType.VarChar)    { Value = fsadata.awbnum },
