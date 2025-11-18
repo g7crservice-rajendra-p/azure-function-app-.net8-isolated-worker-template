@@ -698,7 +698,7 @@ namespace QidWorkerRole
                                                     new("@CustAccNo", SqlDbType.VarChar)           { Value = "" },
                                                     new("@IATACargoAgentCode", SqlDbType.VarChar)  { Value = "" },
                                                     new("@CustName", SqlDbType.VarChar)            { Value = "" },
-                                                    new("@SystemDate", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
+                                                    new("@SystemDate", SqlDbType.DateTime)         { Value = DateTime.UtcNow.ToString("yyyy-MM-dd") },
                                                     new("@MeasureUnit", SqlDbType.VarChar)         { Value = "" },
                                                     new("@Length", SqlDbType.VarChar)              { Value = "" },
                                                     new("@Breadth", SqlDbType.VarChar)             { Value = "" },
@@ -749,8 +749,8 @@ namespace QidWorkerRole
                                                                     new("@Message", SqlDbType.VarChar)            { Value = "AWB " + arrMilestone[z] },
                                                                     new("@Description", SqlDbType.VarChar)        { Value = "AWB " + arrMilestone[z] + " through XFFM" },
                                                                     new("@UpdatedBy", SqlDbType.VarChar)          { Value = "XFFM" },
-                                                                    new("@UpdatedOn", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
-                                                                    new("@Public", SqlDbType.Bit)                 { Value = true },
+                                                                    new("@UpdatedOn", SqlDbType.VarChar)         { Value = DateTime.UtcNow.ToString() },
+                                                                    new("@Public", SqlDbType.Bit)                 { Value = 1 },
                                                                     new("@ULDNo", SqlDbType.VarChar)              { Value = string.Empty }
                                                                 };
                                                                 //if (!sqlServer.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
@@ -787,8 +787,8 @@ namespace QidWorkerRole
                                                     new SqlParameter("@Message", SqlDbType.VarChar) { Value = "AWB Accepted" },
                                                     new SqlParameter("@Description", SqlDbType.VarChar) { Value = "AWB Accepted by XFFM" },
                                                     new SqlParameter("@UpdatedBy", SqlDbType.VarChar) { Value = "XFFM" },
-                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime) { Value = DateTime.UtcNow },
-                                                    new SqlParameter("@Public", SqlDbType.Bit) { Value = true },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.VarChar) { Value = DateTime.UtcNow.ToString() },
+                                                    new SqlParameter("@Public", SqlDbType.Bit) { Value = 1 },
                                                     new SqlParameter("@ULDNo", SqlDbType.VarChar) { Value = string.Empty }
                                                 };
 
@@ -887,8 +887,8 @@ namespace QidWorkerRole
                                                     new SqlParameter("@Message", SqlDbType.VarChar)            { Value = "AWB Departed" },
                                                     new SqlParameter("@Description", SqlDbType.VarChar)        { Value = "AWB Departed In (" + ULDNo.ToUpper() + ")" },
                                                     new SqlParameter("@UpdatedBy", SqlDbType.VarChar)          { Value = "XFFM" },
-                                                    new SqlParameter("@UpdatedOn", SqlDbType.DateTime)         { Value = DateTime.UtcNow },
-                                                    new SqlParameter("@Public", SqlDbType.Bit)                 { Value = true },
+                                                    new SqlParameter("@UpdatedOn", SqlDbType.VarChar)         { Value = DateTime.UtcNow.ToString() },
+                                                    new SqlParameter("@Public", SqlDbType.Bit)                 { Value = 1 },
                                                     new SqlParameter("@ULDNo", SqlDbType.VarChar)              { Value = ULDNo.ToUpper() }
                                                 };
 
@@ -1488,9 +1488,9 @@ namespace QidWorkerRole
                     //};
                     var sqlParameter = new SqlParameter[]
                     {
-                        new SqlParameter("@FlightID", SqlDbType.VarChar)    { Value = (ffmdata.carriercode + ffmdata.fltnum).Trim() },
+                        new SqlParameter("@FlightID", SqlDbType.VarChar)    { Value = (ffmdata.carriercode + ffmdata.fltnum) },
                         new SqlParameter("@FlightDate", SqlDbType.DateTime) { Value = flightdate },
-                        new SqlParameter("@Source", SqlDbType.VarChar)      { Value = source.Trim() }
+                        new SqlParameter("@Source", SqlDbType.VarChar)      { Value = source}
                     };
                     //DataSet dsRefreshCapacity = sqlServer.SelectRecords("uspRefreshCapacity", sqlParameter);
                     DataSet? dsRefreshCapacity = await _readWriteDao.SelectRecords("uspRefreshCapacity", sqlParameter);
