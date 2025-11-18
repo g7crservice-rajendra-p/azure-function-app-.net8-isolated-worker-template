@@ -17,16 +17,24 @@ namespace QidWorkerRole
         private readonly ILogger<Cls_BL> _logger;
         private readonly GenericFunction _genericFunction;
         private readonly cls_SCMBL _clsSCMBL;
+        private readonly FBLMessageProcessor _fBLMessageProcessor;
+        private readonly FFAMessageProcessor _fFAMessageProcessor;
+
         public DataBaseMessageProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<Cls_BL> logger,
             GenericFunction genericFunction,
-            cls_SCMBL clsSCMBL)
+            cls_SCMBL clsSCMBL,
+            FBLMessageProcessor fBLMessageProcessor,
+            FFAMessageProcessor fFAMessageProcessor
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _genericFunction = genericFunction;
             _clsSCMBL = clsSCMBL;
+            _fBLMessageProcessor = fBLMessageProcessor;
+            _fFAMessageProcessor = fFAMessageProcessor;
         }
 
 
@@ -137,7 +145,7 @@ namespace QidWorkerRole
                         if (!dbRes)
                         {
                             // clsLog.WriteLogAzure("Error Status Update:" + ds.Tables[0].Rows[row][0].ToString());
-                            _logger.LogWarning("Error Status Update: {0}" , ds.Tables[0].Rows[row][0]);
+                            _logger.LogWarning("Error Status Update: {0}", ds.Tables[0].Rows[row][0]);
                         }
                     }
                 }
@@ -156,7 +164,7 @@ namespace QidWorkerRole
         #endregion
 
         #region  AutoGenerateMessage
-        private void AutogenearateMessageandsend()
+        private async Task AutogenearateMessageandsend()
         {
             //#region  Auto Send FSU Message
             //SQLServer dbfusdlvConnection = new SQLServer();
@@ -170,8 +178,10 @@ namespace QidWorkerRole
                 #region Check FFA for send
                 // clsLog.WriteLogAzure("FFA Processing");
                 _logger.LogInformation("FFA Processing");
-                FFAMessageProcessor ffmMessage = new FFAMessageProcessor();
-                ffmMessage.MakeanSendFFAMessage();
+
+                //FFAMessageProcessor ffmMessage = new FFAMessageProcessor();
+
+                await _fFAMessageProcessor.MakeanSendFFAMessage();
 
                 #endregion
 
@@ -184,8 +194,8 @@ namespace QidWorkerRole
 
                 if (f_AutoFBL.Equals("TRUE", StringComparison.OrdinalIgnoreCase))
                 {
-                    FBLMessageProcessor fblprocessor = new FBLMessageProcessor();
-                    fblprocessor.GenerateAutoFBLMessage();
+                    //FBLMessageProcessor fblprocessor = new FBLMessageProcessor();
+                    await _fBLMessageProcessor.GenerateAutoFBLMessage();
                 }
             }
             catch (Exception ex)
@@ -193,7 +203,7 @@ namespace QidWorkerRole
                 //SCMExceptionHandling.logexception(ref ex);
 
                 // clsLog.WriteLog("Exception in Auto FBL process:" + ex.Message);
-                _logger.LogError("Exception in Auto FBL process: {0}" , ex.Message);
+                _logger.LogError(ex, "Exception in Auto FBL process: {0}", ex.Message);
             }
             #endregion
         }

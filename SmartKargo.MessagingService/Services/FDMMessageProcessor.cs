@@ -1,13 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-//using QID.DataAccess;
-using QidWorkerRole;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System;
-using System.Configuration;
 using System.Data;
-using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace QidWorkerRole
@@ -18,18 +12,26 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FDMMessageProcessor> _logger;
         private static ILoggerFactory? _loggerFactory;
+        private readonly GenericFunction _genericFunction;
         private static ILogger<FDMMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<FDMMessageProcessor>();
 
         #region Constructor
-        public FDMMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,ILogger<FDMMessageProcessor> logger, ILoggerFactory loggerFactory)
+        public FDMMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FDMMessageProcessor> logger,
+            ILoggerFactory loggerFactory,
+            GenericFunction genericFunction
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _loggerFactory = loggerFactory;
+            _genericFunction = genericFunction;
         }
         #endregion
-        public FDM objFDM = null;
-        DataSet ds;
+        //public FDM objFDM = null;
+
+        //DataSet ds;
         //SQLServer db = new SQLServer();
 
         #region FDM Class
@@ -51,28 +53,28 @@ namespace QidWorkerRole
                     //Message Identifier
                     sbFDM.AppendLine(StandardMessageIdentifier.StandardMessageIdentifier);
 
-                    if (!String.IsNullOrEmpty(DEP.ComponentIdentifier))
+                    if (!string.IsNullOrEmpty(DEP.ComponentIdentifier))
                     {
-                        String strTemp = "";
+                        string strTemp = "";
 
                         strTemp += DEP.ComponentIdentifier;
-                        if (!String.IsNullOrEmpty(DEP.ImportingCarrier))
+                        if (!string.IsNullOrEmpty(DEP.ImportingCarrier))
                         {
                             strTemp += "/" + DEP.ImportingCarrier;
                         }
-                        if (!String.IsNullOrEmpty(DEP.FlightNumber))
+                        if (!string.IsNullOrEmpty(DEP.FlightNumber))
                         {
                             strTemp += DEP.FlightNumber;
                         }
-                        if (!String.IsNullOrEmpty(DEP.DateOfScheduledArrival))
+                        if (!string.IsNullOrEmpty(DEP.DateOfScheduledArrival))
                         {
                             strTemp += "/" + DEP.DateOfScheduledArrival;
                         }
-                        if (!String.IsNullOrEmpty(DEP.LiftoffDate))
+                        if (!string.IsNullOrEmpty(DEP.LiftoffDate))
                         {
                             strTemp += "/" + DEP.LiftoffDate + DEP.LiftoffTime;
                         }
-                        if (!String.IsNullOrEmpty(DEP.ActualImportingCarrier) || !String.IsNullOrEmpty(DEP.ActualFlightNumber))
+                        if (!string.IsNullOrEmpty(DEP.ActualImportingCarrier) || !string.IsNullOrEmpty(DEP.ActualFlightNumber))
                         {
                             strTemp += "/" + DEP.ActualImportingCarrier + DEP.ActualFlightNumber;
                         }
@@ -84,7 +86,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -132,7 +134,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex);
-                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -142,6 +144,7 @@ namespace QidWorkerRole
         #endregion
 
         #region SubClasses
+
         #region Standard Message Identifier SMI
         public class SMI
         {
@@ -179,10 +182,10 @@ namespace QidWorkerRole
         #region AWB Air Waybill (FSQ/FSC messages only):
         public class AWB2
         {
-            public String AWBPrefix = string.Empty;      //	3AN	M	The standard air carrier prefix. The International Air Transport Association (IATA) may issue air waybill prefixes.
-            public String AWBNumber = string.Empty;     //	8N	M	An 8-digit number composed of a 7-digit serial number and the MOD 7 check-digit number.
-            public String HAWBNumber = string.Empty;      //	1/12AN	C	The alphanumeric house air waybill number  
-            public String ArrivalReference = string.Empty;      //	1A	C	The alpha code referring to a specific part arrival of a split shipment identified to an air waybill.
+            public string AWBPrefix = string.Empty;      //	3AN	M	The standard air carrier prefix. The International Air Transport Association (IATA) may issue air waybill prefixes.
+            public string AWBNumber = string.Empty;     //	8N	M	An 8-digit number composed of a 7-digit serial number and the MOD 7 check-digit number.
+            public string HAWBNumber = string.Empty;      //	1/12AN	C	The alphanumeric house air waybill number  
+            public string ArrivalReference = string.Empty;      //	1A	C	The alpha code referring to a specific part arrival of a split shipment identified to an air waybill.
 
         }
 
@@ -361,11 +364,11 @@ namespace QidWorkerRole
         public class RFA
         {
             //C Must be RFA.
-            public String ComponentIdentifier = null;
-            public String AmendmentCode = null;
+            public string ComponentIdentifier = null;
+            public string AmendmentCode = null;
 
             //C	Free format explanation for the amendment code.
-            public String AmendmentExplanation = null;
+            public string AmendmentExplanation = null;
         }
 
         #endregion
@@ -373,9 +376,9 @@ namespace QidWorkerRole
         #region ASN Airline Status Notification
         public class ASN
         {
-            public String ComponentIdentifier = null;     //	3A	M	Must be ASN.
-            public String StatusCode = null;               //1N	M	Valid status codes are located in Appendix A.
-            public String ActionExplanation = null;    //	1-20AN	O	Optional field to explain the reason for the notification.
+            public string ComponentIdentifier = null;     //	3A	M	Must be ASN.
+            public string StatusCode = null;               //1N	M	Valid status codes are located in Appendix A.
+            public string ActionExplanation = null;    //	1-20AN	O	Optional field to explain the reason for the notification.
 
         }
         #endregion
@@ -383,14 +386,14 @@ namespace QidWorkerRole
         #region DEP Departure
         public class DEP
         {
-            public String ComponentIdentifier = null;      //3A	M	Must be DEP.
-            public String ImportingCarrier = null;	    //2-3AN	M	The carrier code of the airline that sent the DEP message.
-            public String FlightNumber = null;     //	3-5AN	M	Valid flight number formats are: three numeric (003), three numeric followed by an alpha character (003A), four numeric (1234), or four numeric followed by an alpha character (1234A).
-            public String DateOfScheduledArrival = null;     //	5AN	M	Scheduled date of arrival at the first US airport in NNAAA format.
-            public String LiftoffDate = null;     //	5AN	C	Actual departure date in NNAAA format at last foreign airport.  
-            public String LiftoffTime = null;     //	4N	C	Actual departure time (GMT) in HHMM (hour, minute) format. 
-            public String ActualImportingCarrier = null;     //	2-3AN	M	The carrier code of the actual airline that is carrying the freight.
-            public String ActualFlightNumber = null;     //	3-5AN	M	Flight number for actual flight that is carrying the freight.  Valid flight number formats are: three numeric (NNN), three numeric followed by an alpha character (NNNA), four numeric (NNNN), or four numeric following by an alpha character (NNNNA).
+            public string ComponentIdentifier = null;      //3A	M	Must be DEP.
+            public string ImportingCarrier = null;	    //2-3AN	M	The carrier code of the airline that sent the DEP message.
+            public string FlightNumber = null;     //	3-5AN	M	Valid flight number formats are: three numeric (003), three numeric followed by an alpha character (003A), four numeric (1234), or four numeric followed by an alpha character (1234A).
+            public string DateOfScheduledArrival = null;     //	5AN	M	Scheduled date of arrival at the first US airport in NNAAA format.
+            public string LiftoffDate = null;     //	5AN	C	Actual departure date in NNAAA format at last foreign airport.  
+            public string LiftoffTime = null;     //	4N	C	Actual departure time (GMT) in HHMM (hour, minute) format. 
+            public string ActualImportingCarrier = null;     //	2-3AN	M	The carrier code of the actual airline that is carrying the freight.
+            public string ActualFlightNumber = null;     //	3-5AN	M	Flight number for actual flight that is carrying the freight.  Valid flight number formats are: three numeric (NNN), three numeric followed by an alpha character (NNNA), four numeric (NNNN), or four numeric following by an alpha character (NNNNA).
 
         }
 
@@ -400,9 +403,9 @@ namespace QidWorkerRole
 
         public class ERF
         {
-            public String ImportingCarrier = null;//	2-3AN	C	Air carrier code.  Valid codes can be located in the IATA Coding Directory
-            public String FlightNumber = null;//	3N(N)(A)	C	Number assigned by importing carrier.  Format must be NNN, NNNA, NNNN or NNNNA.
-            public String Date = null;//	5AN	M	NNAAA format, where the NN is the two-character numerical day of the month and AAA is the first three alpha characters of the month, e.g., DEC equal December.
+            public string ImportingCarrier = null;//	2-3AN	C	Air carrier code.  Valid codes can be located in the IATA Coding Directory
+            public string FlightNumber = null;//	3N(N)(A)	C	Number assigned by importing carrier.  Format must be NNN, NNNA, NNNN or NNNNA.
+            public string Date = null;//	5AN	M	NNAAA format, where the NN is the two-character numerical day of the month and AAA is the first three alpha characters of the month, e.g., DEC equal December.
 
         }
         #endregion
@@ -411,9 +414,9 @@ namespace QidWorkerRole
 
         public class ERR
         {
-            public String ComponentIdentifier = null;//	3A	M	Must be ERR.  The ERR line identifier will be repeated for each type of error that is reported. The number of error codes that will be reported is constrained by the maximum number of characters that can be supported in the output message, not to exceed the CRLF of the last complete ERR line.  
-            public String ErrorCode = null;  //	3N	M	Valid Error codes are located in Appendix A.
-            public String ErrorMessageText = null;//	40AN	M	A brief message describing the error.  Refer to the error codes in Appendix A for further information.  A number of these text messages contain characters that are not supported by the IATA Cargo-IMP message system.
+            public string ComponentIdentifier = null;//	3A	M	Must be ERR.  The ERR line identifier will be repeated for each type of error that is reported. The number of error codes that will be reported is constrained by the maximum number of characters that can be supported in the output message, not to exceed the CRLF of the last complete ERR line.  
+            public string ErrorCode = null;  //	3N	M	Valid Error codes are located in Appendix A.
+            public string ErrorMessageText = null;//	40AN	M	A brief message describing the error.  Refer to the error codes in Appendix A for further information.  A number of these text messages contain characters that are not supported by the IATA Cargo-IMP message system.
 
         }
         #endregion
@@ -422,9 +425,9 @@ namespace QidWorkerRole
 
         public class CED
         {
-            public String ComponentIdentifier = null;
-            public String EntryType = null;
-            public String EntryNumber = null;
+            public string ComponentIdentifier = null;
+            public string EntryType = null;
+            public string EntryNumber = null;
 
         }
         #endregion
@@ -432,8 +435,8 @@ namespace QidWorkerRole
         #region FSQ Freight Status Query
         public class FSQSub
         {
-            public String ComponentIdentifier = null;
-            public String StatusRequestCode = null;
+            public string ComponentIdentifier = null;
+            public string StatusRequestCode = null;
 
         }
         #endregion
@@ -466,7 +469,7 @@ namespace QidWorkerRole
 
 
 
-                //String strMsg = txtMsgType.Text.Trim().ToUpper();
+                //string strMsg = txtMsgType.Text.Trim().ToUpper();
 
                 //--------------------AWB----------------------------------
                 //if (objAWB1 != null) 
@@ -807,7 +810,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -1109,23 +1112,24 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
         }
         #endregion
 
         #region Encoding FDM Message
-        public FDM EncodingFDMMessage(object[] QueryValues)
+        public async Task<FDM> EncodingFDMMessage(object[] QueryValues)
         {
             //SQLServer db = new SQLServer();
-            DataSet Dset = new DataSet("Dset_CustomsImportsBAL_EncodingFDMMessage");
+            DataSet? Dset = new DataSet("Dset_CustomsImportsBAL_EncodingFDMMessage");
             try
             {
                 //string[] QueryNames = { "AWBNumber", "FlightNo", "FlightDate", "FlightOrigin" };
                 //SqlDbType[] QueryTypes = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.VarChar };
 
                 //Dset = db.SelectRecords("sp_GetFDMDataAutoMsg_HAWB", QueryNames, QueryValues, QueryTypes);
+
 
                 var parameters = new SqlParameter[]
                 {
@@ -1134,6 +1138,8 @@ namespace QidWorkerRole
                  new("@FlightDate", SqlDbType.DateTime) { Value = QueryValues[2] },
                  new("@FlightOrigin", SqlDbType.VarChar) { Value = QueryValues[3] }
                 };
+                Dset = await _readWriteDao.SelectRecords("sp_GetFDMDataAutoMsg_HAWB", parameters);
+
                 if (Dset != null && Dset.Tables.Count > 0)
                 {
                     FDM FDM = new FDM();
@@ -1150,7 +1156,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 //db = null;
                 return null;
 
@@ -1177,6 +1183,7 @@ namespace QidWorkerRole
                 //QueryTypes[0] = SqlDbType.VarChar;
                 //QueryTypes[1] = SqlDbType.DateTime;
                 //QueryTypes[2] = SqlDbType.VarChar;
+
                 var parameters = new SqlParameter[]
                 {
                  new("@FlightNo", SqlDbType.VarChar) { Value = QueryValues[0] },
@@ -1185,7 +1192,7 @@ namespace QidWorkerRole
                 };
 
                 //ds = db.SelectRecords("sp_CheckCustomsApplicabilityFDM", QueryNames, QueryValues, QueryTypes);
-                ds = await _readWriteDao.SelectRecords("sp_CheckCustomsApplicabilityFDM", parameters);
+                DataSet? ds = await _readWriteDao.SelectRecords("sp_CheckCustomsApplicabilityFDM", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
 
@@ -1200,7 +1207,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -1226,7 +1233,7 @@ namespace QidWorkerRole
                 };
 
                 //ds = db.SelectRecords("uspGetLocalFlightDate", QueryNames, QueryValues, QueryTypes);
-                ds = await _readWriteDao.SelectRecords("uspGetLocalFlightDate", parameters);
+                DataSet? ds = await _readWriteDao.SelectRecords("uspGetLocalFlightDate", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     return Convert.ToDateTime(ds.Tables[0].Rows[0]["FlightDate"].ToString());
@@ -1239,7 +1246,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return Convert.ToDateTime(QueryValues[1]);
             }
         }
@@ -1272,7 +1279,7 @@ namespace QidWorkerRole
                     QueryVal = null;
                     //object[] QueryValFDM = { string.Empty, FlightNo, txtFlightDate.Value, (Session["Station"] != null ? Session["Station"].ToString() : string.Empty) };
                     object[] QueryValFDM = { string.Empty, FlightNo, FlightDate, FlightOrigin, true };
-                    FDM sbFDM = EncodingFDMMessage(QueryValFDM);
+                    FDM sbFDM = await EncodingFDMMessage(QueryValFDM);
 
                     readQueryValuesFDM(sbFDM, ref QueryValues, sbFDM.ToString(), string.Empty, string.Empty, FlightNo, FlightDate, "AutoGeneratedMessage", DateTime.UtcNow);
                     if (sbFDM != null && await UpdateCustomsMessages(QueryValues, sbFDM.StandardMessageIdentifier.StandardMessageIdentifier))
@@ -1281,9 +1288,10 @@ namespace QidWorkerRole
                         {
                             #region Wrap SITA Address
 
-                            GenericFunction GF = new GenericFunction();
+                            //GenericFunction GF = new GenericFunction();
+
                             string SitaMessageHeader = string.Empty, SFTPHeaderSITAddress = string.Empty, FWBMessageversion = string.Empty, Emailaddress = string.Empty, error = string.Empty;
-                            DataSet dsmessage = GF.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FDM", "AIR", FlightOrigin, string.Empty, FlightNo, string.Empty);
+                            DataSet dsmessage = await _genericFunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FDM", "AIR", FlightOrigin, string.Empty, FlightNo, string.Empty);
 
                             //DataSet dsChecmMessageType = GF.GetRecordofSitaAddressandSitaMessageVersionandMessageType("", "", "", "", "FDM");
                             //DataSet dsMsgCongig = GF.GetSitaAddressandMessageVersion(AirlineCode, "FDM", "AIR", "", "", "", string.Empty);
@@ -1297,38 +1305,38 @@ namespace QidWorkerRole
                                     FWBMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
 
                                     if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Trim().Length > 0)
-                                        SitaMessageHeader = GF.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
 
                                     if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Trim().Length > 0)
-                                        SFTPHeaderSITAddress = GF.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                                 }
 
                             }
 
                             if (SitaMessageHeader != "")
                             {
-                                GF.SaveMessageOutBox("FDM", SitaMessageHeader + "\r\n" + sbFDM.ToString().ToUpper(), "SITAFTP", "SITAFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
+                                await _genericFunction.SaveMessageOutBox("FDM", SitaMessageHeader + "\r\n" + sbFDM.ToString().ToUpper(), "SITAFTP", "SITAFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
                                 // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
-                                _logger.LogInformation("FDM message in SaveMessageOutBox SitaMessageHeader {0}" , DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox SitaMessageHeader {0}", DateTime.Now);
                             }
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
                             {
-                                GF.SaveMessageOutBox("FDM", SFTPHeaderSITAddress + "\r\n" + sbFDM.ToString().ToUpper(), "SFTP", "SFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
+                                await _genericFunction.SaveMessageOutBox("FDM", SFTPHeaderSITAddress + "\r\n" + sbFDM.ToString().ToUpper(), "SFTP", "SFTP", FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
                                 // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
-                                _logger.LogInformation("FDM message in SaveMessageOutBox SFTPHeaderSITAddress {0}" , DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox SFTPHeaderSITAddress {0}", DateTime.Now);
                             }
                             if (Emailaddress.Trim().Length > 0)
                             {
-                                GF.SaveMessageOutBox("FDM", sbFDM.ToString().ToUpper(), string.Empty, Emailaddress, FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
+                                await _genericFunction.SaveMessageOutBox("FDM", sbFDM.ToString().ToUpper(), string.Empty, Emailaddress, FlightOrigin, "", FlightNo, FlightDate.ToString(), "");
                                 // clsLog.WriteLogAzure("FDM message in SaveMessageOutBox Email" + DateTime.Now);
-                                _logger.LogInformation("FDM message in SaveMessageOutBox Email {0}" , DateTime.Now);
+                                _logger.LogInformation("FDM message in SaveMessageOutBox Email {0}", DateTime.Now);
                             }
 
                             #endregion
                         }
 
                         // clsLog.WriteLogAzure("FDM Message generated successfully:" + FlightNo + "-" + FlightDate.ToString());
-                        _logger.LogInformation("FDM Message generated successfully: {0} - {1}" , FlightNo , FlightDate);
+                        _logger.LogInformation("FDM Message generated successfully: {0} - {1}", FlightNo, FlightDate);
                         return true;
                     }
                     else
@@ -1338,21 +1346,17 @@ namespace QidWorkerRole
                 else
                 {
                     // clsLog.WriteLogAzure("FDM cannot be sent as the flight is not applicable for customs:" + FlightNo + "-" + FlightDate.ToString());
-                    _logger.LogInformation("FDM cannot be sent as the flight is not applicable for customs: {0} - {1}" , FlightNo , FlightDate.ToString());
+                    _logger.LogInformation("FDM cannot be sent as the flight is not applicable for customs: {0} - {1}", FlightNo, FlightDate.ToString());
                     return false;
                 }
-
-
                 #endregion
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return false;
             }
         }
-
     }
-
 }

@@ -45,7 +45,9 @@ namespace QidWorkerRole
                     message = message.Substring(endIndexOfXMLTag + 2);
                     var xmlText = new StringReader(message);
                     dsCustomsResponse.ReadXml(xmlText);
-                    GenericFunction genericFunction = new GenericFunction();
+                    
+                    //GenericFunction genericFunction = new GenericFunction();
+
                     if (dsCustomsResponse != null && dsCustomsResponse.Tables.Count > 2 && dsCustomsResponse.Tables[2].Rows.Count > 0)
                     {
                         if (dsCustomsResponse.Tables["MessageHeader"].Columns.Contains("ResponseCode") && dsCustomsResponse.Tables["MessageHeader"].Columns.Contains("MessageInID") && dsCustomsResponse.Tables["Codes"].Columns.Contains("Code"))
@@ -79,13 +81,13 @@ namespace QidWorkerRole
                         }
                         else
                         {
-                            genericFunction.UpdateErrorMessageToInbox(messageSerialNumber, "Incomplete response information");
+                            await _genericFunction.UpdateErrorMessageToInbox(messageSerialNumber, "Incomplete response information");
                             isMessageProcessed = false;
                         }
                     }
                     else
                     {
-                        genericFunction.UpdateErrorMessageToInbox(messageSerialNumber, "XML format not recognised");
+                        await _genericFunction.UpdateErrorMessageToInbox(messageSerialNumber, "XML format not recognised");
                         isMessageProcessed = false;
                     }
                 }
@@ -268,7 +270,7 @@ namespace QidWorkerRole
                             string subject = FlightNumber.ToLower().Trim() + "_" + FlightDate.Day.ToString().PadLeft(2, '0') + FlightDate.Month.ToString().PadLeft(2, '0') + FlightDate.Year.ToString() + "_" + "imp" + "_" + DateTime.UtcNow.Year.ToString() + DateTime.UtcNow.Month.ToString().PadLeft(2, '0') + DateTime.UtcNow.Day.ToString().PadLeft(2, '0') + DateTime.UtcNow.Hour.ToString() + DateTime.UtcNow.Minute.ToString() + ".xml";
 
                             //GenericFunction genericFunction = new GenericFunction();
-                            if (_genericFunction.SaveMessageOutBox(subject, sbAWB.ToString(), "", "SFTP", FlightOrigin, FlightDestination, FlightNumber, FlightDate.ToString("yyyy-MM-dd HH:mm:ss"), "", "FFM", MessageData.MessageTypeName.PHCUSTOM_M))
+                            if (await _genericFunction.SaveMessageOutBox(subject, sbAWB.ToString(), "", "SFTP", FlightOrigin, FlightDestination, FlightNumber, FlightDate.ToString("yyyy-MM-dd HH:mm:ss"), "", "FFM", MessageData.MessageTypeName.PHCUSTOM_M))
                             {
                                 // clsLog.WriteLogAzure("Custom Message Saved to the outbox: " + subject);
                                 _logger.LogInformation("Custom Message Saved to the outbox: {0}" , subject);

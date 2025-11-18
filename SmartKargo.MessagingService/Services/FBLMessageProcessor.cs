@@ -36,15 +36,18 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FBLMessageProcessor> _logger;
         private readonly GenericFunction _genericFunction;
+        private readonly FNAMessageProcessor _fNAMessageProcessor;
 
         public FBLMessageProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<FBLMessageProcessor> logger,
-            GenericFunction genericFunction)
+            GenericFunction genericFunction,
+            FNAMessageProcessor fNAMessageProcessor)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _genericFunction = genericFunction;
+            _fNAMessageProcessor = fNAMessageProcessor;
         }
         #endregion
 
@@ -705,7 +708,7 @@ namespace QidWorkerRole
                         for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
                         {
                             DataRow dr = ds.Tables[0].Rows[i];
-                            FBRMessageProcessor Fbr = new FBRMessageProcessor();
+                            //FBRMessageProcessor Fbr = new FBRMessageProcessor();
                             await GenerateFBLMessage(dr["Source"].ToString(), dr["Dest"].ToString(), dr["FlightID"].ToString(), dr["Date"].ToString());
                         }
 
@@ -794,7 +797,7 @@ namespace QidWorkerRole
 
 
 
-                _genericFunction.UpdateInboxFromMessageParameter(RefNo, string.Empty, flightnum, source, dest, "FBL", strmessageFrom == "" ? strFromID : strmessageFrom, flightdate);
+                await _genericFunction.UpdateInboxFromMessageParameter(RefNo, string.Empty, flightnum, source, dest, "FBL", strmessageFrom == "" ? strFromID : strmessageFrom, flightdate);
 
                 #region Reprocess the Consigment Info--commented for GHA logic
                 for (int k = 0; k < unloadingport.Length; k++)
@@ -809,7 +812,9 @@ namespace QidWorkerRole
                 #endregion
 
                 //priyanka:-check pcs,wt,volume not for 0.
-                FNAMessageProcessor FNA = new FNAMessageProcessor();
+
+                //FNAMessageProcessor FNA = new FNAMessageProcessor();
+
                 int invalidAWBS = 0;
                 string strErrorMessage = string.Empty, AWBPcszero = string.Empty, AllAWBS = string.Empty, AWBWtzero = string.Empty, AWBVolzero = string.Empty;
                 if (consinfo.Length > 0)
@@ -824,7 +829,7 @@ namespace QidWorkerRole
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
                             bookawb = false;
                             invalidAWBS++;
-                            FNA.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
 
                         }
                         if (consinfo[i].weight == "" || consinfo[i].weight == "0")
@@ -834,7 +839,7 @@ namespace QidWorkerRole
                             bookawb = false;
                             invalidAWBS++;
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
-                            FNA.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
                         }
                         if (consinfo[i].volumecode != "" && (consinfo[i].volumeamt == "" || decimal.Parse(consinfo[i].volumeamt) == 0))
                         {
@@ -844,7 +849,7 @@ namespace QidWorkerRole
                             bookawb = false;
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
                             invalidAWBS++;
-                            FNA.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
 
                         }
 
@@ -1295,14 +1300,14 @@ namespace QidWorkerRole
                     }
                     else
                     {
-                        FNA.GenerateFNAMessage(strMessage, "We will book AWBS shortly.", "", "", strFromID);
+                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, "We will book AWBS shortly.", "", "", strFromID);
 
                     }
                 }
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, $"Error on SaveandUpdagteFBLMessageinDatabase");
                 ErrorMsg = string.Empty;
                 flag = false;
@@ -1654,7 +1659,8 @@ namespace QidWorkerRole
                                     }
                                     catch (Exception ex)
                                     {
-                                        clsLog.WriteLogAzure(ex);
+                                        // clsLog.WriteLogAzure(ex);
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
                                 #endregion
@@ -1694,7 +1700,7 @@ namespace QidWorkerRole
                 DataSet? dsData = await GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                 if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    DataSet dsmessage = _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), messageType, "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
+                    DataSet dsmessage = await _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), messageType, "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
                     if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -1829,24 +1835,24 @@ namespace QidWorkerRole
                                         foreach (string FBLMessage in MulitpartFBL)
                                         {
                                             if (SitaMessageHeader != "")
-                                                _genericFunction.SaveMessageOutBox(messageType, SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                                await _genericFunction.SaveMessageOutBox(messageType, SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                             if (Emailaddress != "")
-                                                _genericFunction.SaveMessageOutBox(messageType, FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                                await _genericFunction.SaveMessageOutBox(messageType, FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                             if (SFTPMessageHeader.Trim().Length > 0)
-                                                _genericFunction.SaveMessageOutBox(messageType, SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                                await _genericFunction.SaveMessageOutBox(messageType, SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                         }
                                     }
                                     else
                                     {
                                         if (SitaMessageHeader != "")
-                                            _genericFunction.SaveMessageOutBox(messageType, SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                            await _genericFunction.SaveMessageOutBox(messageType, SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                         if (Emailaddress != "")
-                                            _genericFunction.SaveMessageOutBox(messageType, FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                            await _genericFunction.SaveMessageOutBox(messageType, FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                         if (SFTPMessageHeader.Trim().Length > 0)
                                             if (SFTPMessageHeader.Trim() == "WITHOUT SFTP HEADER")
-                                                _genericFunction.SaveMessageOutBox(messageType, FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                                await _genericFunction.SaveMessageOutBox(messageType, FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                             else
-                                                _genericFunction.SaveMessageOutBox(messageType, SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
+                                                await _genericFunction.SaveMessageOutBox(messageType, SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate, String.Empty, "Auto", messageType);
                                     }
                                 }
                             }

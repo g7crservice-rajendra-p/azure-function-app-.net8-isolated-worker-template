@@ -15,7 +15,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
 using System.Data;
 
 
@@ -23,21 +22,25 @@ namespace QidWorkerRole
 {
     public class FBRMessageProcessor
     {
-        string unloadingportsequence = string.Empty;
-        string uldsequencenum = string.Empty;
-        string awbref = string.Empty;
-        static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        const string PAGE_NAME = "FBRMessageProcessor";
+        //string unloadingportsequence = string.Empty;
+        //string uldsequencenum = string.Empty;
+        //string awbref = string.Empty;
+        //static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //const string PAGE_NAME = "FBRMessageProcessor";
+        //SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FBRMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
 
-        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
         public FBRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FBRMessageProcessor> logger)
+            ILogger<FBRMessageProcessor> logger,
+            GenericFunction genericFunction
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _genericFunction = genericFunction;
         }
 
         #region FBR Message Decoding for Update Dateabse
@@ -108,7 +111,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
 
                                 break;
@@ -150,7 +153,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                                 break;
 
@@ -166,7 +169,7 @@ namespace QidWorkerRole
             {
                 flag = false;
                 // clsLog.WriteLogAzure("Error in Decoding FBR Message " + ex.ToString());
-                _logger.LogError("Error in Decoding FBR Message {0}" , ex.ToString());
+                _logger.LogError("Error in Decoding FBR Message {0}", ex.ToString());
             }
             return flag;
         }
@@ -175,7 +178,8 @@ namespace QidWorkerRole
 
         public async Task<bool> ValidatandGenerateFBLMessage(MessageData.FBRInformation fwrInformation, string strMessage, int refNo, string strmessageFrom, string strFromID, string strStatus)
         {
-            GenericFunction GF = new GenericFunction();
+            //GenericFunction GF = new GenericFunction();
+
             bool flag = false;
             try
             {
@@ -209,8 +213,9 @@ namespace QidWorkerRole
                     commtype = "EMAIL";
 
 
-                GenericFunction gf = new GenericFunction();
-                gf.UpdateInboxFromMessageParameter(refNo, string.Empty, fwrInformation.FlightNo, FlightOrigin, FlightDestination, "FBR", "FBR", flightdate);
+                //GenericFunction gf = new GenericFunction();
+
+                await _genericFunction.UpdateInboxFromMessageParameter(refNo, string.Empty, fwrInformation.FlightNo, FlightOrigin, FlightDestination, "FBR", "FBR", flightdate);
 
                 string strCarriercode = fwrInformation.FlightNo.Substring(0, 2);
 
@@ -240,7 +245,7 @@ namespace QidWorkerRole
                 dsData = await GetRecordforGenerateFBLMessage(FlightOrigin, FlightDestination, strFLight, flightdate1);
                 if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    DataSet dscheckconfiguration = gf.GetSitaAddressandMessageVersion(strCarriercode, "FBL", "AIR", "", "", "", string.Empty, "");
+                    DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion(strCarriercode, "FBL", "AIR", "", "", "", string.Empty, "");
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -354,24 +359,24 @@ namespace QidWorkerRole
 
                                 if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Trim().Length > 0)
                                 {
-                                    SitaMessageHeader = gf.MakeMailMessageFormat(strmessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                    gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
+                                    SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strmessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                                    await _genericFunction.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
                                 }
                                 if (commtype.Contains("SFTP") && dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Trim().Length > 0)
                                 {
 
-                                    SitaMessageHeader = gf.MakeMailMessageFormat(strmessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                    gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
+                                    SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strmessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                                    await _genericFunction.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
 
                                 }
                                 if (commtype == "FTP")
-                                    gf.SaveMessageOutBox("FBL", FBLMsg, "FTP", "FTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
+                                    await _genericFunction.SaveMessageOutBox("FBL", FBLMsg, "FTP", "FTP", FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
 
                                 else
                                 {
                                     string ToEmailAddress = (strmessageFrom == string.Empty ? Emailaddress : strmessageFrom + "," + Emailaddress);
                                     ToEmailAddress = (ToEmailAddress == string.Empty ? "priyanka@smartkargo.com" : ToEmailAddress);
-                                    gf.SaveMessageOutBox("FBL", FBLMsg.ToString(), string.Empty, ToEmailAddress, FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
+                                    await _genericFunction.SaveMessageOutBox("FBL", FBLMsg.ToString(), string.Empty, ToEmailAddress, FlightOrigin, "", objFBLInfo.carriercode + objFBLInfo.fltnum, dtFlight.ToString(), "");
                                 }
 
 
@@ -386,7 +391,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -421,8 +426,8 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-             }
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            }
 
             return dsData;
         }
@@ -434,7 +439,9 @@ namespace QidWorkerRole
             try
             {
                 string SitaMessageHeader = string.Empty, FblMessageversion = string.Empty, Emailaddress = string.Empty, SFTPMessageHeader = string.Empty;
-                GenericFunction gf = new GenericFunction();
+
+                //GenericFunction gf = new GenericFunction();
+
                 MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
                 MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
                 MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
@@ -443,16 +450,16 @@ namespace QidWorkerRole
                 DataSet dsData = await GetRecordforGenerateFBLMessage(strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                 if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    DataSet dsmessage = gf.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FBL", "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty);
+                    DataSet dsmessage = await _genericFunction.GetSitaAddressandMessageVersion(FlightNo.Substring(0, 2), "FBL", "AIR", strFlightOrigin, strFlightDestination, FlightNo, string.Empty);
                     if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
                         string MessageCommunicationType = dsmessage.Tables[0].Rows[0]["MsgCommType"].ToString();
                         FblMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
                         if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
-                            SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                         if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
-                            SFTPMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString(), dsmessage.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
+                            SFTPMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString(), dsmessage.Tables[0].Rows[0]["SFTPHeaderType"].ToString());
                     }
                     if (Emailaddress.Trim() != string.Empty || SitaMessageHeader.Trim() != string.Empty || SFTPMessageHeader.Trim() != string.Empty)
                     {
@@ -466,9 +473,9 @@ namespace QidWorkerRole
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex.Message);
-                            _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                         }
-    
+                            _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                        }
+
                         objFBLInfo.month = dtFlight.ToString("MMM").ToUpper();
                         objFBLInfo.fltairportcode = strFlightOrigin;
                         objFBLInfo.endmesgcode = "LAST";
@@ -514,7 +521,7 @@ namespace QidWorkerRole
                         {
                             objFBLInfo.carriercode = dsData.Tables[1].Rows[0]["CarrierCode"].ToString();
                             objFBLInfo.fltnum = dsData.Tables[1].Rows[0]["FlightNo"].ToString();
-    
+
                             count2 = 1;
                             foreach (DataRow dr in dsData.Tables[1].Rows)
                             {
@@ -530,7 +537,7 @@ namespace QidWorkerRole
                                     objTempConsInfo.pcscnt = dr["FlightPcs"].ToString();
                                     objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
                                     objTempConsInfo.weight = dr["AWBGwt"].ToString();
-    
+
                                     objTempConsInfo.TotalConsignmentType = "T";
                                     objTempConsInfo.AWBPieces = dr["AWBPcs"].ToString();
                                 }
@@ -541,13 +548,13 @@ namespace QidWorkerRole
                                     objTempConsInfo.weightcode = dr["UOM"].ToString().Trim();
                                     objTempConsInfo.weight = dr["AWBGwt"].ToString();
                                 }
-    
+
                                 objTempConsInfo.volumecode = dr["VolumeCode"].ToString();
                                 objTempConsInfo.volumeamt = dr["Volume"].ToString();
-    
+
                                 objTempConsInfo.manifestdesc = dr["CommDesc"].ToString().Trim().ToUpper();
                                 objTempConsInfo.splhandling = dr["SHCCodes"].ToString().Trim().ToUpper();
-    
+
                                 Array.Resize(ref objConsInfo, count2);
                                 objConsInfo[count2 - 1] = objTempConsInfo;
                                 count2++;
@@ -569,37 +576,38 @@ namespace QidWorkerRole
                                     if (FBLMsg.Contains("#"))
                                     {
                                         string[] MulitpartFBL = FBLMsg.Split('#');
-    
+
                                         foreach (string FBLMessage in MulitpartFBL)
                                         {
                                             if (SitaMessageHeader != "")
-                                                gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                                await _genericFunction.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMessage, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                             if (Emailaddress != "")
-                                                gf.SaveMessageOutBox("FBL", FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                                await _genericFunction.SaveMessageOutBox("FBL", FBLMessage, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                             if (SFTPMessageHeader.Trim().Length > 0)
-                                                gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                                await _genericFunction.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMessage, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                         }
                                     }
                                     else
                                     {
                                         if (SitaMessageHeader != "")
-                                            gf.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                            await _genericFunction.SaveMessageOutBox("FBL", SitaMessageHeader + "\r\n" + FBLMsg, "SITAFTP", "SITAFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                         if (Emailaddress != "")
-                                            gf.SaveMessageOutBox("FBL", FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                            await _genericFunction.SaveMessageOutBox("FBL", FBLMsg, string.Empty, Emailaddress, strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                         if (SFTPMessageHeader.Trim().Length > 0)
-                                            gf.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
+                                            await _genericFunction.SaveMessageOutBox("FBL", SFTPMessageHeader + "\r\n" + FBLMsg, "SFTP", "SFTP", strFlightOrigin, strFlightDestination, FlightNo, FlightDate);
                                     }
                                 }
                             }
                         }
                     }
                 }
-    
+
             }
-            catch (System.Exception ex)
-            {   
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
-            }        }
+            }
+        }
     }
 }

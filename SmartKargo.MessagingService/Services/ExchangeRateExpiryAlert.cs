@@ -14,13 +14,16 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<ExchangeRateExpiryAlert> _logger;
+        private readonly GenericFunction _genericFunction;
         public ExchangeRateExpiryAlert(
             ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<ExchangeRateExpiryAlert> logger
+            ILogger<ExchangeRateExpiryAlert> logger,
+            GenericFunction genericFunction
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _genericFunction = genericFunction;
         }
 
         #region Main function
@@ -41,7 +44,9 @@ namespace QidWorkerRole
                     {
                         string htmlContent;
                         StringBuilder StbExRateExpiryData = new StringBuilder(string.Empty);
-                        GenericFunction genericFunction = new GenericFunction();
+
+                        //GenericFunction genericFunction = new GenericFunction();
+
                         for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
                         {
                             StbExRateExpiryData.Append(Convert.ToString(ds.Tables[0].Rows[i]["body"].ToString()));
@@ -58,7 +63,7 @@ namespace QidWorkerRole
                         var pdfbyteArray = htmlToPdfConverter.GeneratePdf(htmlContent);
                         memoryStream = new MemoryStream(pdfbyteArray);
                         string Docfilename = "Exchange Rate Expiry Details" + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".pdf";
-                        String FileUrl = genericFunction.UploadToBlob(memoryStream, Docfilename, "sis");
+                        string FileUrl = _genericFunction.UploadToBlob(memoryStream, Docfilename, "sis");
 
                         string emailBody = "Hi, the followed exchange rate will be expired soon. Please see the attached file.";
                         string emailtext = "Hi, " + "</BR></BR>" + htmlContent;
@@ -73,7 +78,7 @@ namespace QidWorkerRole
             {
 
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //finally
             //{
@@ -157,7 +162,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 SerialNo = 0;
             }
 

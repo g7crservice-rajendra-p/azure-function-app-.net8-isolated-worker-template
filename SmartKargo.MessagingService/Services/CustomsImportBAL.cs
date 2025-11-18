@@ -1,6 +1,5 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using QidWorkerRole;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
 using System.Text;
