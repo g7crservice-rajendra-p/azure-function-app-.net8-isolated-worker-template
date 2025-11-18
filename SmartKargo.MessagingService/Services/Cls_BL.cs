@@ -171,7 +171,8 @@ namespace QidWorkerRole
             _fHLMessageProcessor = fHLMessageProcessor;
             _rapidException = rapidException;
             _rateExpiryAlert = rateExpiryAlert;
-            _tcpIMAP=tcpIMAP;
+            _tcpIMAP = tcpIMAP;
+            _appConfig = appConfig;
             //GenericFunction genericFunction = new GenericFunction();
             //smsUID = ConfigCache.Get("SMSUN");
             //smspswd = ConfigCache.Get("SMSPASS");
@@ -3129,21 +3130,26 @@ namespace QidWorkerRole
             }
         }
 
-        static async Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync()
+        private async Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync()
         {
-            string connectionString = ConfigurationManager.AppSettings["ServiceBusConnectionString"].ToString();
-            string queueName = ConfigurationManager.AppSettings["QueueName"].ToString();
-            string Receive_Mode = ConfigurationManager.AppSettings["IsPeekLock"].ToString();
+            //string connectionString = ConfigurationManager.AppSettings["ServiceBusConnectionString"].ToString();
+            //string queueName = ConfigurationManager.AppSettings["QueueName"].ToString();
+            //string Receive_Mode = ConfigurationManager.AppSettings["IsPeekLock"].ToString();
+
+            string connectionString = _appConfig.ServiceBus.ServiceBusConnectionString;
+            string queueName = _appConfig.ServiceBus.QueueName;
+            bool Receive_Mode = _appConfig.ServiceBus.IsPeekLock;
+
             try
             {
                 // clsLog.WriteLogAzure("connectionString: " + connectionString);
                 // clsLog.WriteLogAzure("queueName: " + queueName);
 
                 // clsLog.WriteLogAzure("Initializing connection");
-                _staticLogger?.LogInformation("connectionString: {0}", connectionString);
-                _staticLogger?.LogInformation("queueName: {0}", queueName);
+                _logger?.LogInformation("connectionString: {0}", connectionString);
+                _logger?.LogInformation("queueName: {0}", queueName);
+                _logger?.LogInformation("Initializing connection");
 
-                _staticLogger?.LogInformation("Initializing connection");
                 var client = new ServiceBusClient(connectionString);
 
                 #region Send
@@ -3165,15 +3171,20 @@ namespace QidWorkerRole
 
                 #region Receive
                 // create a receiver that we can use to receive the message
+
                 // clsLog.WriteLogAzure("Creating receiver");
-                _staticLogger?.LogInformation("Creating receiver");
+                _logger?.LogInformation("Creating receiver");
+
                 ServiceBusReceiverOptions sbro = new ServiceBusReceiverOptions();
-                sbro.ReceiveMode = Receive_Mode.ToUpper() == "TRUE" ? ServiceBusReceiveMode.PeekLock : ServiceBusReceiveMode.ReceiveAndDelete;
+
+                //sbro.ReceiveMode = Receive_Mode.ToUpper() == "TRUE" ? ServiceBusReceiveMode.PeekLock : ServiceBusReceiveMode.ReceiveAndDelete;
+                sbro.ReceiveMode = Receive_Mode ? ServiceBusReceiveMode.PeekLock : ServiceBusReceiveMode.ReceiveAndDelete;
+
                 //sbro.ReceiveMode = ServiceBusReceiveMode.PeekLock;
 
                 ServiceBusReceiver receiver = client.CreateReceiver(queueName, "", sbro);
-                // clsLog.WriteLogAzure("Receiver created");
 
+                // clsLog.WriteLogAzure("Receiver created");
                 // clsLog.WriteLogAzure("receiver.PrefetchCount: " + Convert.ToString(receiver.PrefetchCount));
                 // clsLog.WriteLogAzure("receiver.IsClosed: " + Convert.ToString(receiver.IsClosed));
                 // clsLog.WriteLogAzure("receiver.ReceiveMode: " + Convert.ToString(receiver.ReceiveMode));
@@ -3182,19 +3193,22 @@ namespace QidWorkerRole
 
                 // // the received message is a different type as it contains some service set properties
                 // clsLog.WriteLogAzure("Receive message");
-                _staticLogger?.LogInformation("Receiver created");
 
-                _staticLogger?.LogInformation("receiver.PrefetchCount: {0}", (receiver.PrefetchCount));
-                _staticLogger?.LogInformation("receiver.IsClosed: {0}", (receiver.IsClosed));
-                _staticLogger?.LogInformation("receiver.ReceiveMode: {0}", (receiver.ReceiveMode));
-                _staticLogger?.LogInformation("receiver.EntityPath: {0}", (receiver.EntityPath));
-                _staticLogger?.LogInformation("receiver.FullyQualifiedNamespace: {0}", (receiver.FullyQualifiedNamespace));
+                _logger?.LogInformation("Receiver created");
+
+                _logger?.LogInformation("receiver.PrefetchCount: {0}", (receiver.PrefetchCount));
+                _logger?.LogInformation("receiver.IsClosed: {0}", (receiver.IsClosed));
+                _logger?.LogInformation("receiver.ReceiveMode: {0}", (receiver.ReceiveMode));
+                _logger?.LogInformation("receiver.EntityPath: {0}", (receiver.EntityPath));
+                _logger?.LogInformation("receiver.FullyQualifiedNamespace: {0}", (receiver.FullyQualifiedNamespace));
 
                 // the received message is a different type as it contains some service set properties
-                _staticLogger?.LogInformation("Receive message");
+                _logger?.LogInformation("Receive message");
+
                 IReadOnlyList<ServiceBusReceivedMessage> receivedMessages = await receiver.ReceiveMessagesAsync(10, TimeSpan.FromSeconds(10));
+
                 // clsLog.WriteLogAzure($"Received {receivedMessages.Count} from the queue {queueName} ");
-                _staticLogger?.LogInformation($"Received {receivedMessages.Count} from the queue {queueName} ");
+                _logger?.LogInformation($"Received {receivedMessages.Count} from the queue {queueName} ");
 
                 #endregion Receive
 
@@ -3203,7 +3217,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger?.LogError(ex, "Error on ReceiveMessagesAsync");
+                _logger?.LogError(ex, "Error on ReceiveMessagesAsync");
                 return null;
             }
         }
@@ -3761,7 +3775,7 @@ namespace QidWorkerRole
                 {
                     int incomingport = 143;
                     incomingport = int.Parse(inPortNo == "" ? "143" : inPortNo);
-                    
+
                     //TcpIMAP imap = new TcpIMAP();
 
                     _tcpIMAP.Connect(host, incomingport);
@@ -8451,8 +8465,12 @@ namespace QidWorkerRole
                         var client = new RestClient(accessTokenUrl);
                         client.Timeout = -1;
                         var request = new RestRequest(Method.POST);
-                        string ClientId = ConfigurationManager.AppSettings["ClientId"].ToString();
-                        string ClientSeceret = ConfigurationManager.AppSettings["ClientSeceret"].ToString();
+
+                        //string ClientId = ConfigurationManager.AppSettings["ClientId"].ToString();
+                        //string ClientSeceret = ConfigurationManager.AppSettings["ClientSeceret"].ToString();
+
+                        string ClientId = _appConfig.Authentication.ClientId;
+                        string ClientSeceret = _appConfig.Authentication.ClientSecret;
 
                         request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
 
@@ -8534,7 +8552,8 @@ namespace QidWorkerRole
                     request.AddHeader("Accept", "application/json");
                 }
 
-                string eventDefinitionKey = ConfigurationManager.AppSettings["EventDefinitionKey"].ToString();
+                //string eventDefinitionKey = ConfigurationManager.AppSettings["EventDefinitionKey"].ToString();
+                string eventDefinitionKey = _appConfig.Sms.EventDefinitionKey;
 
                 //if (SMSNewAPI.ToUpper() == "TRUE")
                 if (isSMSNewApi)

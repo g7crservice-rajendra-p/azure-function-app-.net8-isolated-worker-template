@@ -26,6 +26,8 @@ namespace SmartKargo.MessagingService.Configurations
     {
         public string AccessTokenUrl { get; set; } = string.Empty;
         public string BasicAuthenticationHeader { get; set; } = string.Empty;
+        public string ClientId { get; set; } = string.Empty;
+        public string ClientSecret { get; set; } = string.Empty;
 
     }
 
@@ -35,6 +37,7 @@ namespace SmartKargo.MessagingService.Configurations
         public string SMSPass { get; set; } = string.Empty;
         public string SendSMSUrl { get; set; } = string.Empty;
         public bool IsSMSNewApi { get; set; } = false;
+        public string EventDefinitionKey { get; set; } = string.Empty;
     }
 
     public class PollingConfig
@@ -52,7 +55,7 @@ namespace SmartKargo.MessagingService.Configurations
         public string UTCORLOCALTIME { get; set; } = string.Empty;
         public string DownLoadFilePath { get; set; } = string.Empty;
         public string XMLFilePath { get; set; } = string.Empty;
-        
+
     }
 
     //SFTP config
@@ -62,6 +65,13 @@ namespace SmartKargo.MessagingService.Configurations
         public string UserName { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string SshHostKeyFingerprint { get; set; } = string.Empty;
+    }
+
+    public class ServiceBusConfig
+    {
+        public string ServiceBusConnectionString { get; set; } = string.Empty;
+        public string QueueName { get; set; } = string.Empty;
+        public bool IsPeekLock { get; set; } = false;
     }
 
     public class AppConfig
@@ -74,7 +84,6 @@ namespace SmartKargo.MessagingService.Configurations
         public AlertConfig Alert { get; set; } = new();
         public MiscellaneousConfig Miscellaneous { get; set; } = new();
         public SftpConfig Sftp { get; set; } = new();
-
-
+        public ServiceBusConfig ServiceBus { get; set; } = new();
     }
 }
