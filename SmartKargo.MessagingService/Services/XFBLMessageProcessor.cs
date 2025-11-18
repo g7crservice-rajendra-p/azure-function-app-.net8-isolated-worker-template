@@ -765,7 +765,7 @@ namespace QidWorkerRole
                                 new SqlParameter("@CustAccNo", SqlDbType.VarChar) { Value = "" },
                                 new SqlParameter("@IATACargoAgentCode", SqlDbType.VarChar) { Value = "" },
                                 new SqlParameter("@CustName", SqlDbType.VarChar) { Value = "" },
-                                new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now },
+                                new SqlParameter("@SystemDate", SqlDbType.DateTime) { Value = DateTime.Now.ToString("yyyy-MM-dd") },
                                 new SqlParameter("@MeasureUnit", SqlDbType.VarChar) { Value = "" },
                                 new SqlParameter("@Length", SqlDbType.VarChar) { Value = "" },
                                 new SqlParameter("@Breadth", SqlDbType.VarChar) { Value = "" },
@@ -963,7 +963,7 @@ namespace QidWorkerRole
                                         new SqlParameter("@Message", "XFBL"),
                                         new SqlParameter("@Description", "AWB Flight Information"),
                                         new SqlParameter("@UpdatedBy", "XFBL"),
-                                        new SqlParameter("@UpdatedOn", DateTime.Today),
+                                        new SqlParameter("@UpdatedOn", DateTime.Today.ToString()),
                                         new SqlParameter("@Public", 1)
                                     };
                                     //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CNname, CType, CValues))
