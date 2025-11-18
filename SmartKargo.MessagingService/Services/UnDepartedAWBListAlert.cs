@@ -145,13 +145,13 @@ namespace QidWorkerRole
                     new SqlParameter("@IsBlog", SqlDbType.Bit) { Value = IsBlog },
                     new SqlParameter("@FromId", SqlDbType.VarChar) { Value = FromEmailId },
                     new SqlParameter("@ToId", SqlDbType.VarChar) { Value = ToEmailId },
-                    new SqlParameter("@Attachment", SqlDbType.VarBinary) { Value = (object?)objBytes ?? DBNull.Value },
+                    new SqlParameter("@Attachment", SqlDbType.VarBinary) { Value = objBytes },
                     new SqlParameter("@Extension", SqlDbType.VarChar) { Value = AttachmentExtension },
                     new SqlParameter("@FileUrl", SqlDbType.VarChar) { Value = FileUrl },
                     new SqlParameter("@isProcessed", SqlDbType.VarChar) { Value = isProcessed },
                     new SqlParameter("@MessageBoxType", SqlDbType.VarChar) { Value = MessageBoxType },
                     new SqlParameter("@AttachmentName", SqlDbType.VarChar) { Value = AttachmentName },
-                    new SqlParameter("@AttachmentExcel", SqlDbType.VarBinary) { Value = (object?)attachExcel?.ToArray() ?? DBNull.Value },
+                    new SqlParameter("@AttachmentExcel", SqlDbType.VarBinary) { Value = attachExcel },
                     new SqlParameter("@FileUrlExcel", SqlDbType.VarChar) { Value = FileUrlExcel }
                 };
                 //objDS = dtb.SelectRecords(procedure, paramname, paramvalue, paramtype);
