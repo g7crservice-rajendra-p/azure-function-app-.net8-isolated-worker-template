@@ -223,7 +223,7 @@ namespace QidWorkerRole
         #region validateAndInsertFHLData
         //public bool validateAndInsertFHLData(ref MessageData.fhlinfo fhl, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.customsextrainfo[] customextrainfo, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
         public async Task<(bool success, MessageData.fhlinfo fhl, MessageData.consignmnetinfo[] consinfo, MessageData.customsextrainfo[] extra)>
-        ValidateAndInsertFHLDataAsync(
+        ValidateAndInsertFHLData(
         MessageData.fhlinfo fhl,
         MessageData.consignmnetinfo[] consinfo,
         MessageData.customsextrainfo[] customextrainfo,

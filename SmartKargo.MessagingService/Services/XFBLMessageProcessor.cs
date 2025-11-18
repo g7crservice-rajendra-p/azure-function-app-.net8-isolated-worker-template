@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Configuration;
 using System.Data;
+using static QidWorkerRole.MessageData;
 
 namespace QidWorkerRole
 {
@@ -448,7 +449,7 @@ namespace QidWorkerRole
         //}
 
         //public void SaveandUpdagteFBLMessageinDatabase(ref MessageData.fblinfo fbldata, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo[] othinfoarray, ref MessageData.consignmentorigininfo[] consigmnentOrigin, ref MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
-        public async Task<(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin)> SaveandUpdagteFBLMessageinDatabase(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin, MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
+        public async Task<(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin, consignmnetinfo[] consinfo)> SaveandUpdagteFBLMessageinDatabase(MessageData.fblinfo fbldata, MessageData.unloadingport[] unloadingport, MessageData.dimensionnfo[] objDimension, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray, MessageData.consignmentorigininfo[] consigmnentOrigin, MessageData.consignmnetinfo[] consinfo, int RefNo, string strMessage, string strmessageFrom, string strFromID, string strStatus)
         {
 
             try
@@ -978,14 +979,14 @@ namespace QidWorkerRole
                     }
                     #endregion
                 }
-                return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin);
+                return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin,consinfo);
 
             }
             catch (Exception ex)
             {
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin); ;
+                return (fbldata, unloadingport, objDimension, uld, othinfoarray, consigmnentOrigin, consinfo); ;
             }
 
         }

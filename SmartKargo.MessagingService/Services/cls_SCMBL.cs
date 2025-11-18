@@ -12,7 +12,7 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<cls_SCMBL> _logger;
-         private static ILoggerFactory? _loggerFactory;
+        private static ILoggerFactory? _loggerFactory;
         private static ILogger<cls_SCMBL> _staticLogger => _loggerFactory?.CreateLogger<cls_SCMBL>();
 
         private readonly GenericFunction _genericFunction;
@@ -26,6 +26,27 @@ namespace QidWorkerRole
         private readonly CustomsMessageProcessor _customsMessageProcessor;
         private readonly FHLMessageProcessor _fHLMessageProcessor;
         private readonly LDMMessageProcessor _lDMMessageProcessor;
+        private readonly FFRMessageProcessor _fFRMessageProcessor;
+        private readonly FWRMessageProcessor _fWRMessageProcessor;
+        private readonly FSBMessageProcessor _fSBMessageProcessor;
+        private readonly FBRMessageProcessor _fBRMessageProcessor;
+        private readonly FSUMessageProcessor _fSUMessageProcessor;
+        private readonly FFMMessageProcessor _fFMMessageProcessor;
+        private readonly FNAMessageProcessor _fNAMessageProcessor;
+        private readonly FWBMessageProcessor _fWBMessageProcessor;
+        private readonly FFAMessageProcessor _fFAMessageProcessor;
+        private readonly FSRMessageProcessor _fSRMessageProcessor;
+        private readonly FRPMessageProcessor _fRPMessageProcessor;
+        private readonly XFFMMessageProcessor _xffmMessageProcessor;
+        private readonly XFWBMessageProcessor _xfwbMessageProcessor;
+        private readonly XFZBMessageProcessor _xfzbMessageProcessor;
+        private readonly XFSUMessageProcessor _xFSUMessageProcessor;
+        private readonly XFNMMessageProcessor _xfNMMessageProcessor;
+        private readonly XFBLMessageProcessor _xfBLMessageProcessor;
+        private readonly XFHLMessageProcessor _xfHLMessageProcessor;
+        private readonly SSM _sSM;
+        private readonly XFFRMessageProcessor _xffrMessageProcessor;
+
         public cls_SCMBL(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<cls_SCMBL> logger,
@@ -39,8 +60,28 @@ namespace QidWorkerRole
             FBLMessageProcessor fBLMessageProcessor,
             CustomsMessageProcessor customsMessageProcessor,
             FHLMessageProcessor fHLMessageProcessor,
-            LDMMessageProcessor lDMMessageProcessor.
-            ILoggerFactory loggerFactory
+            LDMMessageProcessor lDMMessageProcessor,
+            ILoggerFactory loggerFactory,
+            FFRMessageProcessor fFRMessageProcessor,
+            FWRMessageProcessor fWRMessageProcessor,
+            FSBMessageProcessor fSBMessageProcessor,
+            FBRMessageProcessor fBRMessageProcessor,
+            FSUMessageProcessor fSUMessageProcessor,
+            FFMMessageProcessor fFMMessageProcessor,
+            FNAMessageProcessor fNAMessageProcessor,
+            FWBMessageProcessor fWBMessageProcessor,
+            FFAMessageProcessor fFAMessageProcessor,
+            FSRMessageProcessor fSRMessageProcessor,
+            FRPMessageProcessor fRPMessageProcessor,
+            XFFMMessageProcessor xffmMessageProcessor,
+            XFWBMessageProcessor xfwbMessageProcessor,
+            XFZBMessageProcessor xfzbMessageProcessor,
+            XFSUMessageProcessor xFSUMessageProcessor,
+            XFNMMessageProcessor xfNMMessageProcessor,
+            XFBLMessageProcessor xfBLMessageProcessor,
+            XFHLMessageProcessor xfHLMessageProcessor,
+            XFFRMessageProcessor xffrMessageProcessor,
+            SSM sSM
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -57,6 +98,26 @@ namespace QidWorkerRole
             _customsMessageProcessor = customsMessageProcessor;
             _fHLMessageProcessor = fHLMessageProcessor;
             _lDMMessageProcessor = lDMMessageProcessor;
+            _fFRMessageProcessor = fFRMessageProcessor;
+            _fWRMessageProcessor = fWRMessageProcessor;
+            _fSBMessageProcessor = fSBMessageProcessor;
+            _fBRMessageProcessor = fBRMessageProcessor;
+            _fSUMessageProcessor = fSUMessageProcessor;
+            _fFMMessageProcessor = fFMMessageProcessor;
+            _fNAMessageProcessor = fNAMessageProcessor;
+            _fWBMessageProcessor = fWBMessageProcessor;
+            _fFAMessageProcessor = fFAMessageProcessor;
+            _fSRMessageProcessor = fSRMessageProcessor;
+            _fRPMessageProcessor = fRPMessageProcessor;
+            _xffmMessageProcessor = xffmMessageProcessor;
+            _xfwbMessageProcessor = xfwbMessageProcessor;
+            _xfzbMessageProcessor = xfzbMessageProcessor;
+            _xFSUMessageProcessor = xFSUMessageProcessor;
+            _xfNMMessageProcessor = xfNMMessageProcessor;
+            _xfBLMessageProcessor = xfBLMessageProcessor;
+            _xfHLMessageProcessor = xfHLMessageProcessor;
+            _xffrMessageProcessor = xffrMessageProcessor;
+            _sSM = sSM;
         }
 
 
@@ -480,38 +541,39 @@ namespace QidWorkerRole
             return flag;
         }
 
-        private static void ReProcessConsigment(ref MessageData.consignmnetinfo[] FFMConsig, ref MessageData.consignmnetinfo[] consinfo)
-        {
-            try
-            {
-                bool AWBMatch = false;
-                Array.Resize(ref consinfo, consinfo.Length + 1);
-                Array.Copy(FFMConsig, consinfo, 1);
-                for (int i = 1; i < FFMConsig.Length; i++)
-                {
-                    AWBMatch = false;
-                    for (int j = 0; j < consinfo.Length; j++)
-                    {
-                        if (consinfo[j].awbnum.Equals(FFMConsig[i].awbnum) && consinfo[j].origin.Equals(FFMConsig[i].origin) && consinfo[j].dest.Equals(FFMConsig[i].dest))
-                        {
-                            AWBMatch = true;
-                            consinfo[j].weight = (Convert.ToDecimal(consinfo[j].weight) + Convert.ToDecimal(FFMConsig[i].weight)).ToString();
-                            consinfo[j].pcscnt = (Convert.ToDecimal(consinfo[j].pcscnt) + Convert.ToDecimal(FFMConsig[i].pcscnt)).ToString();
-                        }
-                    }
-                    if (!AWBMatch)
-                    {
-                        Array.Resize(ref consinfo, consinfo.Length + 1);
-                        Array.Copy(FFMConsig, i, consinfo, consinfo.Length - 1, 1);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // clsLog.WriteLogAzure(ex); 
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-            }
-        }
+        /*Not in use*/
+        //private static void ReProcessConsigment(ref MessageData.consignmnetinfo[] FFMConsig, ref MessageData.consignmnetinfo[] consinfo)
+        //{
+        //    try
+        //    {
+        //        bool AWBMatch = false;
+        //        Array.Resize(ref consinfo, consinfo.Length + 1);
+        //        Array.Copy(FFMConsig, consinfo, 1);
+        //        for (int i = 1; i < FFMConsig.Length; i++)
+        //        {
+        //            AWBMatch = false;
+        //            for (int j = 0; j < consinfo.Length; j++)
+        //            {
+        //                if (consinfo[j].awbnum.Equals(FFMConsig[i].awbnum) && consinfo[j].origin.Equals(FFMConsig[i].origin) && consinfo[j].dest.Equals(FFMConsig[i].dest))
+        //                {
+        //                    AWBMatch = true;
+        //                    consinfo[j].weight = (Convert.ToDecimal(consinfo[j].weight) + Convert.ToDecimal(FFMConsig[i].weight)).ToString();
+        //                    consinfo[j].pcscnt = (Convert.ToDecimal(consinfo[j].pcscnt) + Convert.ToDecimal(FFMConsig[i].pcscnt)).ToString();
+        //                }
+        //            }
+        //            if (!AWBMatch)
+        //            {
+        //                Array.Resize(ref consinfo, consinfo.Length + 1);
+        //                Array.Copy(FFMConsig, i, consinfo, consinfo.Length - 1, 1);
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // clsLog.WriteLogAzure(ex); 
+        //        _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+        //    }
+        //}
 
         private XmlNode RenameNode(XmlNode e, string newName)
         {
@@ -811,11 +873,13 @@ namespace QidWorkerRole
                             MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
                             MessageData.FltRoute[] objRouteInfo = new MessageData.FltRoute[0];
                             MessageData.dimensionnfo[] objDimension = new MessageData.dimensionnfo[0];
-                            FFRMessageProcessor ffrMessage = new FFRMessageProcessor();
-                            flag = ffrMessage.DecodeFFRReceiveMessage(refNO, strMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension, out ErrorMsg);
+
+                            //FFRMessageProcessor ffrMessage = new FFRMessageProcessor();
+
+                            flag = _fFRMessageProcessor.DecodeFFRReceiveMessage(refNO, strMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension, out ErrorMsg);
 
                             if (flag == true)
-                                flag = ffrMessage.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg, objULDInfo);
+                                (flag, ErrorMsg) = await _fFRMessageProcessor.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg, objULDInfo);
 
                             if (!flag)
                             {
@@ -835,7 +899,7 @@ namespace QidWorkerRole
                                     //ReconstructFFRoute(objConsInfo, ref objRouteInfo, refNO);
                                     objRouteInfo = await ReconstructFFRoute(objConsInfo, objRouteInfo, refNO);
 
-                                    flag = ffrMessage.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg, objULDInfo);
+                                    (flag, ErrorMsg) = await _fFRMessageProcessor.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg, objULDInfo);
                                     Errmsg = ErrorMsg;
                                 }
                             }
@@ -854,18 +918,19 @@ namespace QidWorkerRole
                             MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
                             MessageData.dimensionnfo[] objDimension = new MessageData.dimensionnfo[0];
                             MessageData.AWBBuildBUP[] objAwbBup = new MessageData.AWBBuildBUP[0];
-                            FWBMessageProcessor fwbProcessor = new FWBMessageProcessor();
+
+                            //FWBMessageProcessor fwbProcessor = new FWBMessageProcessor();
 
                             //CIMPMessageValidation cimpMessageValidation = new CIMPMessageValidation();
 
-                            flag = fwbProcessor.DecodeReceiveFWBMessage(strMsg, ref fwbdata, ref fltroute, ref OtherCharges, ref othinfoarray, ref fwbrates,
+                            flag = _fWBMessageProcessor.DecodeReceiveFWBMessage(strMsg, ref fwbdata, ref fltroute, ref OtherCharges, ref othinfoarray, ref fwbrates,
                                 ref customextrainfo, ref objDimension, ref objAwbBup, refNO, out ErrorMsg);
 
                             //if (flag == true && _cIMPMessageValidation.ValidateFWB(strMsg, refNO, out ErrorMsg))
                             bool success = false;
                             (success, ErrorMsg) = await _cIMPMessageValidation.ValidateFWB(strMsg, refNO, ErrorMsg);
                             if (flag == true && success)
-                                flag = fwbProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, strOriginalMessage, strMessageFrom, strFromID, strStatus, PIMAAddress, out ErrorMsg);
+                                (flag, ErrorMsg) = await _fWBMessageProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, strOriginalMessage, strMessageFrom, strFromID, strStatus, PIMAAddress, ErrorMsg);
                             else
                                 flag = false;
 
@@ -874,13 +939,13 @@ namespace QidWorkerRole
                                 Errmsg = ErrorMsg;
                                 if (Errmsg.Trim().Length > 0)
                                 {
-                                    FNAMessageProcessor fnaMessageProcessor = new FNAMessageProcessor();
+                                    //FNAMessageProcessor fnaMessageProcessor = new FNAMessageProcessor();
                                     string commtype = string.Empty;
                                     if (strFromID.Contains("SITA"))
                                         commtype = "SITAFTP";
                                     else
                                         commtype = "EMAIL";
-                                    fnaMessageProcessor.GenerateFNAMessage(strOriginalMessage, Errmsg, fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
+                                    _fNAMessageProcessor.GenerateFNAMessage(strOriginalMessage, Errmsg, fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
                                 }
                             }
 
@@ -902,9 +967,15 @@ namespace QidWorkerRole
                             MessageData.otherserviceinfo[] othinfoarray = new MessageData.otherserviceinfo[0];
                             MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
                             MessageData.movementinfo[] movementinfo = new MessageData.movementinfo[0];
-                            FFMMessageProcessor ffmMessage = new FFMMessageProcessor();
+
+                            //FFMMessageProcessor ffmMessage = new FFMMessageProcessor();
+
                             //string ErrorMsg = string.Empty;
-                            flag = ffmMessage.DecodeReceiveFFMMessage(refNO, strMsg, ref ffmdata, ref unloadingport, ref consinfo, ref dimensioinfo, ref uld, ref othinfoarray, ref custominfo, ref movementinfo, out ErrorMsg);
+                            //flag = ffmMessage.DecodeReceiveFFMMessage(refNO, strMsg, ref ffmdata, ref unloadingport, ref consinfo, ref dimensioinfo, ref uld, ref othinfoarray, ref custominfo, ref movementinfo, out ErrorMsg);
+
+                            (flag, ffmdata, unloadingport, consinfo, dimensioinfo, uld, othinfoarray, custominfo, movementinfo, ErrorMsg) = await _fFMMessageProcessor.DecodeReceiveFFMMessage(refNO, strMsg, ffmdata, unloadingport, consinfo, dimensioinfo, uld, othinfoarray, custominfo, movementinfo, ErrorMsg);
+
+
                             bool IsRelayFFM = false;
                             fltlevel = true;
 
@@ -914,11 +985,13 @@ namespace QidWorkerRole
                             {
                                 carrierCode = ffmdata.carriercode;
                                 flightdate = DateTime.Parse(DateTime.Parse("1." + ffmdata.month + " 2008").Month.ToString().PadLeft(2, '0') + "/" + ffmdata.fltdate.PadLeft(2, '0') + "/" + +System.DateTime.Today.Year);
-                                RelayMessages("FFM", strMsg, carrierCode, flightdate, fltlevel, ffmdata.fltairportcode, unloadingport[0].unloadingairport, carrierCode + ffmdata.fltnum, awbnumber);
+                                await RelayMessages("FFM", strMsg, carrierCode, flightdate, fltlevel, ffmdata.fltairportcode, unloadingport[0].unloadingairport, carrierCode + ffmdata.fltnum, awbnumber);
                             }
                             if (flag == true)
                             {
-                                flag = ffmMessage.SaveValidateFFMMessage(ref ffmdata, ref consinfo, ref unloadingport, ref dimensioinfo, ref uld, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, strMsg, PIMAAddress, out ErrorMsg);
+                                //flag = ffmMessage.SaveValidateFFMMessage(ref ffmdata, ref consinfo, ref unloadingport, ref dimensioinfo, ref uld, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, strMsg, PIMAAddress, out ErrorMsg);
+                                (flag, ffmdata, consinfo, unloadingport, dimensioinfo, uld, ErrorMsg) = await _fFMMessageProcessor.SaveValidateFFMMessage(ffmdata, consinfo, unloadingport, dimensioinfo, uld, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, strMsg, PIMAAddress, ErrorMsg);
+
                             }
                             if (!flag)
                             {
@@ -937,11 +1010,14 @@ namespace QidWorkerRole
                             MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
                             MessageData.ULDinfo[] ulddata = new MessageData.ULDinfo[0];
                             MessageData.otherserviceinfo[] othinfoarray = new MessageData.otherserviceinfo[0];
-                            FSUMessageProcessor fsumeessage = new FSUMessageProcessor();
-                            flag = fsumeessage.DecodeReceivedFSUMessage(refNO, strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray);
+
+                            //FSUMessageProcessor fsumeessage = new FSUMessageProcessor();
+                            flag = _fSUMessageProcessor.DecodeReceivedFSUMessage(refNO, strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray);
 
                             if (flag == true)
-                                flag = fsumeessage.SaveandUpdateFSUMessage(strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                //flag = fsumeessage.SaveandUpdateFSUMessage(strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                (flag, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray) = await _fSUMessageProcessor.SaveandUpdateFSUMessage(strMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+
 
                             if (!flag)
                             {
@@ -992,14 +1068,16 @@ namespace QidWorkerRole
                         {
                             #region FFA
                             msgType = "FFA";
-                            FFAMessageProcessor ffaProcessor = new FFAMessageProcessor();
+
+                            //FFAMessageProcessor ffaProcessor = new FFAMessageProcessor();
+
                             MessageData.ffainfo objFFAData = new MessageData.ffainfo("");
                             MessageData.ffainfo[] flightinfo = new MessageData.ffainfo[0];
 
-                            flag = ffaProcessor.DecodeReceivedFFAMessage(strMsg, ref objFFAData, ref flightinfo);
+                            flag = _fFAMessageProcessor.DecodeReceivedFFAMessage(strMsg, ref objFFAData, ref flightinfo);
 
                             if (flag)
-                                ffaProcessor.SaveandUpdateFFAMessage(objFFAData, refNO, flightinfo);
+                                await _fFAMessageProcessor.SaveandUpdateFFAMessage(objFFAData, refNO, flightinfo);
 
                             #endregion
                         }
@@ -1014,22 +1092,25 @@ namespace QidWorkerRole
                             {
                                 msgType = "FMA";
                             }
-                            FNAMessageProcessor fnaprocessor = new FNAMessageProcessor();
+
+                            //FNAMessageProcessor fnaprocessor = new FNAMessageProcessor();
+
                             MessageData.FNA objfnadata = new MessageData.FNA("");
-                            flag = fnaprocessor.DecodeFNAMessage(strMsg, ref objfnadata);
+
+                            flag = _fNAMessageProcessor.DecodeFNAMessage(strMsg, ref objfnadata);
                             if (flag)
-                                fnaprocessor.SaveAndValidateFNAMessage(refNO, objfnadata);
+                                await _fNAMessageProcessor.SaveAndValidateFNAMessage(refNO, objfnadata);
                         }
                         else if (strMsg.Trim().StartsWith("FBR", StringComparison.OrdinalIgnoreCase) || strMsg.Trim().StartsWith("FBR/"))
                         {
                             #region FWR Decoding and save the record
                             msgType = "FBR";
-                            FBRMessageProcessor fbrProcessor = new FBRMessageProcessor();
+                            //FBRMessageProcessor fbrProcessor = new FBRMessageProcessor();
                             MessageData.FBRInformation fbrMessageInformation = new MessageData.FBRInformation();
 
-                            flag = fbrProcessor.DecodingFBRMessge(strMsg, fbrMessageInformation);
+                            flag = _fBRMessageProcessor.DecodingFBRMessge(strMsg, fbrMessageInformation);
                             if (flag == true)
-                                flag = fbrProcessor.ValidatandGenerateFBLMessage(fbrMessageInformation, strOriginalMessage, refNO, strMessageFrom, strFromID, strStatus);
+                                flag = await _fBRMessageProcessor.ValidatandGenerateFBLMessage(fbrMessageInformation, strOriginalMessage, refNO, strMessageFrom, strFromID, strStatus);
                             #endregion
                         }
 
@@ -1078,10 +1159,12 @@ namespace QidWorkerRole
                             var RouteIformation = new List<MessageData.RouteInformation>();
                             var Dimensionformation = new List<MessageData.FSBDimensionInformation>();
                             var bublistinformation = new List<MessageData.AWBBUPInformation>();
-                            FSBMessageProcessor fsbProcessor = new FSBMessageProcessor();
-                            flag = fsbProcessor.DecodingFSBMessge(strMsg, fsbMessage, fsbShipper, fsbConsignee, RouteIformation, Dimensionformation, bublistinformation);
+
+                            //FSBMessageProcessor fsbProcessor = new FSBMessageProcessor();
+
+                            flag = _fSBMessageProcessor.DecodingFSBMessge(strMsg, fsbMessage, fsbShipper, fsbConsignee, RouteIformation, Dimensionformation, bublistinformation);
                             if (flag == true)
-                                flag = fsbProcessor.ValidateAndSaveFSBMessage(fsbMessage, fsbShipper, fsbConsignee, RouteIformation, Dimensionformation, bublistinformation, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+                                flag = await _fSBMessageProcessor.ValidateAndSaveFSBMessage(fsbMessage, fsbShipper, fsbConsignee, RouteIformation, Dimensionformation, bublistinformation, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
                             else
                                 // clsLog.WriteLogAzure("FSB Message not reprossed");
                                 _logger.LogWarning("FSB Message not reprossed");
@@ -1091,20 +1174,24 @@ namespace QidWorkerRole
                         {
                             #region FWR Decoding and save the record
                             msgType = "FWR";
-                            FWRMessageProcessor fwrProcessor = new FWRMessageProcessor();
+
+                            //FWRMessageProcessor fwrProcessor = new FWRMessageProcessor();
+
                             MessageData.FWRInformation fwrMessageInformation = new MessageData.FWRInformation();
-                            flag = fwrProcessor.DecodingFWRMessge(strMsg, fwrMessageInformation);
+                            flag = _fWRMessageProcessor.DecodingFWRMessge(strMsg, fwrMessageInformation);
                             if (flag == true)
-                                flag = fwrProcessor.ValidateAndSendFWBMessage(fwrMessageInformation, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
+                                flag = await _fWRMessageProcessor.ValidateAndSendFWBMessage(fwrMessageInformation, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus);
 
                             #endregion
                         }
                         else if (strMsg.Trim().StartsWith("FSR", StringComparison.OrdinalIgnoreCase) || strMsg.Trim().StartsWith("FSR/"))
                         {
                             msgType = "FSR";
-                            FSRMessageProcessor fsrMessageProcessor = new FSRMessageProcessor();
+
+                            //FSRMessageProcessor fsrMessageProcessor = new FSRMessageProcessor();
+
                             strMessageFrom = strFromID.Contains("@") ? strFromID : strMessageFrom;
-                            fsrMessageProcessor.DecodeFSR(strMsg.Trim(), strMessageFrom, PIMAAddress);
+                            _fSRMessageProcessor.DecodeFSR(strMsg.Trim(), strMessageFrom, PIMAAddress);
                         }
                         else if (strMsg.Trim().StartsWith("UCM", StringComparison.OrdinalIgnoreCase))
                         {
@@ -1130,7 +1217,9 @@ namespace QidWorkerRole
                             try
                             {
                                 //cls_Encode_Decode objDecode = new cls_Encode_Decode();
-                                await _cls_Encode_Decode.DecodeCustomsMessage(strMsg, strOriginalMessage, strMessageFrom, out msgType);
+                                //await _cls_Encode_Decode.DecodeCustomsMessage(strMsg, strOriginalMessage, strMessageFrom, out msgType);
+                                bool success = false;
+                                (success, msgType) = await _cls_Encode_Decode.DecodeCustomsMessage(strMsg, strOriginalMessage, strMessageFrom, msgType);
                             }
                             catch (Exception ex)
                             {
@@ -1190,13 +1279,15 @@ namespace QidWorkerRole
                             #region FRP
                             string errorMessage = string.Empty;
                             msgType = "FRP";
-                            FRPMessageProcessor frpMessageProcessor = new FRPMessageProcessor();
+
+                            //FRPMessageProcessor frpMessageProcessor = new FRPMessageProcessor();
+
                             MessageData.fwbinfo[] fwbinfo = new MessageData.fwbinfo[1];
                             MessageData.frpinfo[] frpinfo = new MessageData.frpinfo[1];
 
-                            flag = frpMessageProcessor.DecodeFRPReceiveMessage(strMsg, ref fwbinfo, ref frpinfo, ref errorMessage);
+                            flag = _fRPMessageProcessor.DecodeFRPReceiveMessage(strMsg, ref fwbinfo, ref frpinfo, ref errorMessage);
                             if (flag == true)
-                                flag = frpMessageProcessor.ValidateAndSaveFRPMessage(fwbinfo, frpinfo);
+                                flag = await _fRPMessageProcessor.ValidateAndSaveFRPMessage(fwbinfo, frpinfo);
 
                             #endregion
                         }
@@ -1210,8 +1301,10 @@ namespace QidWorkerRole
                             {
                                 flag = false;
                                 msgType = MessageData.MessageTypeName.OMCUSTOM_M;
-                                CustomsMessageProcessor customsMessageProcessor = new CustomsMessageProcessor();
-                                flag = customsMessageProcessor.DecodeAndSaveCustomsMessage(xmlMsg, refNO);
+
+                                //CustomsMessageProcessor customsMessageProcessor = new CustomsMessageProcessor();
+
+                                flag = await _customsMessageProcessor.DecodeAndSaveCustomsMessage(xmlMsg, refNO);
 
                             }
 
@@ -1234,12 +1327,16 @@ namespace QidWorkerRole
                                     MessageData.otherserviceinfo[] othinfoarray = new MessageData.otherserviceinfo[0];
                                     MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
                                     MessageData.movementinfo[] movementinfo = new MessageData.movementinfo[0];
-                                    XFFMMessageProcessor xffmMessageprocessor = new XFFMMessageProcessor();
 
-                                    flag = xffmMessageprocessor.DecodeReceiveFFMMessage(refNO, xmlMsg, ref ffmdata, ref unloadingport, ref consinfo, ref dimensioinfo, ref uld, ref othinfoarray, ref custominfo, ref movementinfo);
+                                    //XFFMMessageProcessor xffmMessageprocessor = new XFFMMessageProcessor();
+
+
+                                    flag = _xffmMessageProcessor.DecodeReceiveFFMMessage(refNO, xmlMsg, ref ffmdata, ref unloadingport, ref consinfo, ref dimensioinfo, ref uld, ref othinfoarray, ref custominfo, ref movementinfo);
 
                                     if (flag == true)
-                                        xffmMessageprocessor.SaveValidateFFMMessage(ref ffmdata, ref consinfo, ref unloadingport, ref dimensioinfo, ref uld, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        //xffmMessageprocessor.SaveValidateFFMMessage(ref ffmdata, ref consinfo, ref unloadingport, ref dimensioinfo, ref uld, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        await _xffmMessageProcessor.SaveValidateFFMMessage(ffmdata, consinfo, unloadingport, dimensioinfo, uld, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+
 
 
                                 }
@@ -1254,11 +1351,15 @@ namespace QidWorkerRole
                                     MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
                                     MessageData.dimensionnfo[] objDimension = new MessageData.dimensionnfo[0];
                                     MessageData.AWBBuildBUP[] objAwbBup = new MessageData.AWBBuildBUP[0];
-                                    XFWBMessageProcessor xfwbProcessor = new XFWBMessageProcessor();
-                                    flag = xfwbProcessor.DecodeReceiveFWBMessage(xmlMsg, ref fwbdata, ref fltroute,
+
+                                    //XFWBMessageProcessor xfwbProcessor = new XFWBMessageProcessor();
+
+                                    flag = _xfwbMessageProcessor.DecodeReceiveFWBMessage(xmlMsg, ref fwbdata, ref fltroute,
                                          ref OtherCharges, ref othinfoarray, ref fwbrates, ref customextrainfo, ref objDimension, ref objAwbBup, out ErrorMsg);
                                     if (flag == true)
-                                        flag = xfwbProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, originalXMLMsg, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                        //flag = _xfwbMessageProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, originalXMLMsg, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                        (flag, ErrorMsg) = await _xfwbMessageProcessor.SaveandValidateFWBMessage(fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, refNO, objAwbBup, originalXMLMsg, strMessageFrom, strFromID, strStatus, ErrorMsg);
+
 
                                     if (!flag)
                                     {
@@ -1272,11 +1373,14 @@ namespace QidWorkerRole
                                     MessageData.fhlinfo fhl = new MessageData.fhlinfo("");
                                     MessageData.consignmnetinfo[] consinfo = new MessageData.consignmnetinfo[0];
                                     MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
-                                    XFZBMessageProcessor xfzbMessage = new XFZBMessageProcessor();
 
-                                    flag = xfzbMessage.DecodeReceiveFHLMessage(xmlMsg, ref fhl, ref consinfo, ref customextrainfo);
+                                    //XFZBMessageProcessor xfzbMessage = new XFZBMessageProcessor();
+
+                                    flag = _xfzbMessageProcessor.DecodeReceiveFHLMessage(xmlMsg, ref fhl, ref consinfo, ref customextrainfo);
                                     if (flag == true)
-                                        flag = xfzbMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        //flag = xfzbMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        (flag, fhl, consinfo, customextrainfo) = await _xfzbMessageProcessor.ValidateAndInsertFHLData(fhl, consinfo, customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+
 
                                 }
                                 else if (xmlMessageName.Equals("rsm:BookingRequest"))
@@ -1287,11 +1391,14 @@ namespace QidWorkerRole
                                     MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
                                     MessageData.FltRoute[] objRouteInfo = new MessageData.FltRoute[0];
                                     MessageData.dimensionnfo[] objDimension = new MessageData.dimensionnfo[0];
-                                    XFFRMessageProcessor xffrMessage = new XFFRMessageProcessor();
-                                    flag = xffrMessage.DecodeFFRReceiveMessage(xmlMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension);
+
+                                    //XFFRMessageProcessor xffrMessage = new XFFRMessageProcessor();
+
+                                    flag = _xffrMessageProcessor.DecodeFFRReceiveMessage(xmlMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension);
 
                                     if (flag == true)
-                                        flag = xffrMessage.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                        //flag = xffrMessage.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                        (flag, ErrorMsg) = await _xffrMessageProcessor.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus, ErrorMsg);
 
                                     if (!flag)
                                     {
@@ -1305,12 +1412,14 @@ namespace QidWorkerRole
                                     MessageData.fhlinfo fhl = new MessageData.fhlinfo("");
                                     MessageData.consignmnetinfo[] consinfo = new MessageData.consignmnetinfo[0];
                                     MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
-                                    XFHLMessageProcessor xfhlMessage = new XFHLMessageProcessor();
-                                    flag = xfhlMessage.DecodeReceiveFHLMessage(xmlMsg, ref fhl, ref consinfo, ref customextrainfo);
+
+                                    //XFHLMessageProcessor xfhlMessage = new XFHLMessageProcessor();
+
+                                    flag = _xfHLMessageProcessor.DecodeReceiveFHLMessage(xmlMsg, ref fhl, ref consinfo, ref customextrainfo);
 
                                     if (flag == true)
-                                        flag = xfhlMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
-
+                                        //flag = xfhlMessage.validateAndInsertFHLData(ref fhl, ref consinfo, ref customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        (flag, fhl, consinfo, customextrainfo) = await _xfHLMessageProcessor.validateAndInsertFHLData(fhl, consinfo, customextrainfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
                                 }
                                 else if (xmlMessageName.Equals("rsm:FreightBookedList"))
                                 {
@@ -1325,21 +1434,27 @@ namespace QidWorkerRole
                                     MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
                                     MessageData.consignmentorigininfo[] consigmnentOrigin = new MessageData.consignmentorigininfo[0];
                                     MessageData.movementinfo[] movementinfo = new MessageData.movementinfo[0];
-                                    XFBLMessageProcessor xfblProcessor = new XFBLMessageProcessor();
-                                    flag = xfblProcessor.DecodeReceiveFBLMessage(xmlMsg, ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, ref othinfoarray);
+
+                                    //XFBLMessageProcessor xfblProcessor = new XFBLMessageProcessor();
+
+                                    flag = _xfBLMessageProcessor.DecodeReceiveFBLMessage(xmlMsg, ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, ref othinfoarray);
 
                                     if (flag == true)
-                                        xfblProcessor.SaveandUpdagteFBLMessageinDatabase(ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        //xfblProcessor.SaveandUpdagteFBLMessageinDatabase(ref fbldata, ref unloadingport, ref dimensioinfo, ref uld, ref othinfoarray, ref consigmnentOrigin, ref consinfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+                                        (fbldata, unloadingport, dimensioinfo, uld, othinfoarray, consigmnentOrigin, consinfo) = await _xfBLMessageProcessor.SaveandUpdagteFBLMessageinDatabase(fbldata, unloadingport, dimensioinfo, uld, othinfoarray, consigmnentOrigin, consinfo, refNO, originalXMLMsg, strMessageFrom, strFromID, strStatus);
+
 
                                 }
                                 else if (xmlMessageName.Equals("rsm:Response"))
                                 {
                                     msgType = "XFNM";
-                                    XFNMMessageProcessor xfnmprocessor = new XFNMMessageProcessor();
+
+                                    //XFNMMessageProcessor xfnmprocessor = new XFNMMessageProcessor();
+
                                     MessageData.FNA objfnadata = new MessageData.FNA("");
-                                    flag = xfnmprocessor.DecodeXFNMMessage(xmlMsg, ref objfnadata);
+                                    flag = _xfNMMessageProcessor.DecodeXFNMMessage(xmlMsg, ref objfnadata);
                                     if (flag)
-                                        xfnmprocessor.SaveAndValidateFNAMessage(refNO, objfnadata);
+                                        await _xfNMMessageProcessor.SaveAndValidateFNAMessage(refNO, objfnadata);
                                 }
                                 else if (xmlMessageName.Equals("rsm:StatusMessage"))
                                 {
@@ -1349,12 +1464,14 @@ namespace QidWorkerRole
                                     MessageData.customsextrainfo[] customextrainfo = new MessageData.customsextrainfo[0];
                                     MessageData.ULDinfo[] ulddata = new MessageData.ULDinfo[0];
                                     MessageData.otherserviceinfo[] othinfoarray = new MessageData.otherserviceinfo[0];
-                                    XFSUMessageProcessor xfsumessage = new XFSUMessageProcessor();
-                                    flag = xfsumessage.DecodeReceivedXFSUMessage(refNO, xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, out ErrorMsg);
+
+                                    //XFSUMessageProcessor xfsumessage = new XFSUMessageProcessor();
+
+                                    flag = _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, out ErrorMsg);
 
                                     if (flag == true)
-                                        flag = xfsumessage.SaveandUpdateXFSUMessage(xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
-
+                                        //flag = xfsumessage.SaveandUpdateXFSUMessage(xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
+                                        (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessor.SaveandUpdateXFSUMessage(xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg);
                                 }
                                 #endregion
                             }
@@ -1400,12 +1517,13 @@ namespace QidWorkerRole
                             {
                                 if (SSMBodyLine[i].ToString().Trim() != string.Empty)
                                 {
-                                    SSM objSSM = new SSM();
+                                    //SSM objSSM = new SSM();
+
                                     strMsg = SSMBodyLine[i].ToString().Replace("\r\n", "$");
                                     strMsg = strMsg.Replace("\n", "$");
                                     strMsg = strMsg.Replace("$$", "$");
                                     strMsg = strMsg.Trim('$');
-                                    objSSM.ToSSM(strMsg, refNO, strOriginalMessage, strMessageFrom, out flag);
+                                    _sSM.ToSSM(strMsg, refNO, strOriginalMessage, strMessageFrom, out flag);
                                 }
                             }
                         }
@@ -1636,7 +1754,7 @@ namespace QidWorkerRole
             }
         }
 
-        public void RelayMessages(string MessageName, String strMsg, string carrierCode, DateTime flightdate, bool FltLevel, string org = "", string dest = "", string fltnumber = "", string awbnumber = "")
+        public async Task RelayMessages(string MessageName, String strMsg, string carrierCode, DateTime flightdate, bool FltLevel, string org = "", string dest = "", string fltnumber = "", string awbnumber = "")
         {
 
             //GenericFunction genericFunction = new GenericFunction();
@@ -1644,7 +1762,7 @@ namespace QidWorkerRole
 
             string MessageVersion = "8", SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, SFTPHeaderSITAddress = string.Empty;
 
-            DataSet dsconfiguration = _genericFunction.GetSitaAddressandMessageVersion(carrierCode, MessageName, "AIR", org, dest, fltnumber, string.Empty);
+            DataSet dsconfiguration = await _genericFunction.GetSitaAddressandMessageVersion(carrierCode, MessageName, "AIR", org, dest, fltnumber, string.Empty);
 
             if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
             {
@@ -1670,13 +1788,13 @@ namespace QidWorkerRole
 
 
                     if (SitaMessageHeader.Trim().Length > 0)
-                        _genericFunction.SaveMessageOutBox("SITA" + MessageName, SitaMessageHeader.ToString() + "\r\n" + strMsg, "", "SITAFTP", org, dest, fltnumber, flightdate.ToString());
+                        await _genericFunction.SaveMessageOutBox("SITA" + MessageName, SitaMessageHeader.ToString() + "\r\n" + strMsg, "", "SITAFTP", org, dest, fltnumber, flightdate.ToString());
 
                     if (SFTPHeaderSITAddress.Trim().Length > 0)
-                        _genericFunction.SaveMessageOutBox("SFTP" + MessageName, SFTPHeaderSITAddress.ToString() + "\r\n" + strMsg, "", "SFTP", org, dest, fltnumber, flightdate.ToString());
+                        await _genericFunction.SaveMessageOutBox("SFTP" + MessageName, SFTPHeaderSITAddress.ToString() + "\r\n" + strMsg, "", "SFTP", org, dest, fltnumber, flightdate.ToString());
 
                     if (strEmailid.Trim().Length > 0)
-                        _genericFunction.SaveMessageOutBox(MessageName, strMsg, "", strEmailid, org, dest, fltnumber, flightdate.ToString());
+                        await _genericFunction.SaveMessageOutBox(MessageName, strMsg, "", strEmailid, org, dest, fltnumber, flightdate.ToString());
 
                 }
             }
@@ -2125,7 +2243,7 @@ namespace QidWorkerRole
                 string ffmCountMessage = string.Empty, ffmLastMessage = string.Empty;
                 int count1 = 0;
                 int count2 = 0;
-                DataSet dsData? = new DataSet();
+                DataSet? dsData = new DataSet();
                 DataSet? ds = new DataSet();
                 ds = await GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
@@ -5512,7 +5630,7 @@ namespace QidWorkerRole
 
             try
             {
-                _genericFunction.UpdateInboxFromMessageParameter(refNO, csnInfo.awbPrefix + "-" + csnInfo.awbNumber, csnInfo.flightNumber, csnInfo.pol, csnInfo.pou, "CSN", strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse(flightDate));
+                await _genericFunction.UpdateInboxFromMessageParameter(refNO, csnInfo.awbPrefix + "-" + csnInfo.awbNumber, csnInfo.flightNumber, csnInfo.pol, csnInfo.pou, "CSN", strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse(flightDate));
 
                 SqlParameter[] sqlParameter = [
                     new SqlParameter("VersionNumber", csnInfo.versionNumber)

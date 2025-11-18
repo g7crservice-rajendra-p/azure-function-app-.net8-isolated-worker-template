@@ -385,7 +385,7 @@ namespace QidWorkerRole
         /// <param name="strFromID">From emailID</param>
         /// <param name="strStatus">Message status</param>
         //public void SaveValidateFFMMessage(ref MessageData.ffminfo ffmdata, ref MessageData.consignmnetinfo[] consinfo, ref MessageData.unloadingport[] unloadingport, ref MessageData.dimensionnfo[] objDimension, ref MessageData.ULDinfo[] uld, int REFNo, string strMessage, string strMessageFrom, string strFromID, string strStatus)
-        public async Task SaveValidateFFMMessageAsync(
+        public async Task SaveValidateFFMMessage(
          MessageData.ffminfo ffmdata,
          MessageData.consignmnetinfo[] consinfo,
          MessageData.unloadingport[] unloadingport,
