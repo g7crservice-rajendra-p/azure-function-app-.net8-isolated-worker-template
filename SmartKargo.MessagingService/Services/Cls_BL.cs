@@ -115,6 +115,7 @@ namespace QidWorkerRole
         private readonly FHLMessageProcessor _fHLMessageProcessor;
         private readonly RapidException _rapidException;
         private readonly RateExpiryAlert _rateExpiryAlert;
+        private readonly TcpIMAP _tcpIMAP;
 
         #endregion
 
@@ -143,7 +144,8 @@ namespace QidWorkerRole
             FWBMessageProcessor fWBMessageProcessor,
             FHLMessageProcessor fHLMessageProcessor,
             RapidException rapidException,
-            RateExpiryAlert rateExpiryAlert
+            RateExpiryAlert rateExpiryAlert,
+            TcpIMAP tcpIMAP
             )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
@@ -169,6 +171,7 @@ namespace QidWorkerRole
             _fHLMessageProcessor = fHLMessageProcessor;
             _rapidException = rapidException;
             _rateExpiryAlert = rateExpiryAlert;
+            _tcpIMAP=tcpIMAP;
             //GenericFunction genericFunction = new GenericFunction();
             //smsUID = ConfigCache.Get("SMSUN");
             //smspswd = ConfigCache.Get("SMSPASS");
@@ -3758,13 +3761,15 @@ namespace QidWorkerRole
                 {
                     int incomingport = 143;
                     incomingport = int.Parse(inPortNo == "" ? "143" : inPortNo);
-                    TcpIMAP imap = new TcpIMAP();
-                    imap.Connect(host, incomingport);
-                    imap.AuthenticateUser(username, password);
-                    imap.SelectInbox();
+                    
+                    //TcpIMAP imap = new TcpIMAP();
+
+                    _tcpIMAP.Connect(host, incomingport);
+                    _tcpIMAP.AuthenticateUser(username, password);
+                    _tcpIMAP.SelectInbox();
                     int totalMessageCount = 0;
-                    string[] arrUnreadMsgUids = imap.GetUnreadMsgUids();
-                    string[] arrReadMsgUids = imap.GetReadMsgUids();
+                    string[] arrUnreadMsgUids = _tcpIMAP.GetUnreadMsgUids();
+                    string[] arrReadMsgUids = _tcpIMAP.GetReadMsgUids();
                     string[] strArrAllUids;
                     int[] intArrAllUids;
                     DateTime[] dateTimeArrAllUids;
@@ -3795,7 +3800,7 @@ namespace QidWorkerRole
                         }
                         for (int i = 0; i < strArrAllUids.Length; i++)
                         {
-                            dateTimeArrAllUids[i] = Convert.ToDateTime(imap.GetDateByUid(strArrAllUids[i]));
+                            dateTimeArrAllUids[i] = Convert.ToDateTime(this._tcpIMAP.GetDateByUid(strArrAllUids[i]));
                             uidsAndDate.Add(strArrAllUids[i], dateTimeArrAllUids[i]);
                         }
 
@@ -3808,11 +3813,11 @@ namespace QidWorkerRole
                             strArrAllUids[index] = item.Key;
                             index++;
                         }
-                        await StoreEmailToInbox(strArrAllUids, imap);
+                        await StoreEmailToInbox(strArrAllUids, _tcpIMAP);
                     }
                     else
                     {
-                        await StoreEmailToInbox(arrUnreadMsgUids, imap);
+                        await StoreEmailToInbox(arrUnreadMsgUids, _tcpIMAP);
                     }
                 }
             }
@@ -5293,7 +5298,7 @@ namespace QidWorkerRole
                                     {
                                         isMessageSent = false;
                                         // clsLog.WriteLogAzure(ex);
-                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod().?Name}");
+                                        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
                                 #endregion
@@ -5905,22 +5910,22 @@ namespace QidWorkerRole
         {
             try
             {
-                TcpIMAP imap = new TcpIMAP();
+                //TcpIMAP _tcpIMAP = new TcpIMAP();
                 //imap.Connect(host, 993);
 
-                imap.Connect(sServer, 143);
-                imap.AuthenticateUser(sUserName, sPassword);
+                _tcpIMAP.Connect(sServer, 143);
+                _tcpIMAP.AuthenticateUser(sUserName, sPassword);
 
                 //Console.WriteLine("Total Messages " + imap.MailCount());
                 //Console.WriteLine("Total Unread Messages " + imap.MailUnreadCount());
 
                 // You need to select the inbox in order to view the your messages
-                imap.SelectInbox();
+                _tcpIMAP.SelectInbox();
 
                 // clsLog.WriteLogAzure("Server Connected..[" + DateTime.Now + "]");
                 _logger.LogInformation("Server Connected..[{0}]", DateTime.Now);
                 int Count = 0;
-                Count = imap.MailCount();
+                Count = _tcpIMAP.MailCount();
                 if (Count > 0)
                 {
                     // clsLog.WriteLogAzure("Message Count:" + Count);
@@ -5929,7 +5934,7 @@ namespace QidWorkerRole
                     {
                         //try
                         //{
-                        string strHeaders = imap.GetMessageHeaders(i).ToString().ToLower();
+                        string strHeaders = _tcpIMAP.GetMessageHeaders(i).ToString().ToLower();
                         string status = "Active";
                         string Subject = "Message", fromEmail = "", toEmail = "", recievedDate = "";
                         if (strHeaders.Contains("from:") && strHeaders.Contains("subject:"))
@@ -5944,7 +5949,7 @@ namespace QidWorkerRole
                         {
                             string strSub = strHeaders.Substring(strHeaders.IndexOf("subject:")).Trim();
                         }
-                        string MailBody = System.Web.HttpUtility.HtmlEncode(imap.GetMessage(i).ToString());
+                        string MailBody = System.Web.HttpUtility.HtmlEncode(_tcpIMAP.GetMessage(i).ToString());
                         DateTime dtRec = DateTime.Now;
                         DateTime dtSend = DateTime.Now;
                         try
