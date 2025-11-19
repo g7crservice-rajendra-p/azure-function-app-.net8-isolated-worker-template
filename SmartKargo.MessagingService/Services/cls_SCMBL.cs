@@ -875,9 +875,8 @@ namespace QidWorkerRole
                             MessageData.dimensionnfo[] objDimension = new MessageData.dimensionnfo[0];
 
                             //FFRMessageProcessor ffrMessage = new FFRMessageProcessor();
-
-                            flag = _fFRMessageProcessor.DecodeFFRReceiveMessage(refNO, strMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension, out ErrorMsg);
-
+                            //flag = await _fFRMessageProcessor.DecodeFFRReceiveMessage(refNO, strMsg, ref objFFRData, ref objULDInfo, ref objConsInfo, ref objRouteInfo, ref objDimension, out ErrorMsg);
+                            (flag, objFFRData, objULDInfo, objConsInfo, objRouteInfo, objDimension, ErrorMsg) = await _fFRMessageProcessor.DecodeFFRReceiveMessage(refNO, strMsg, objFFRData, objULDInfo, objConsInfo, objRouteInfo, objDimension, ErrorMsg);
                             if (flag == true)
                                 (flag, ErrorMsg) = await _fFRMessageProcessor.ValidaeSaveFFRMessage(objFFRData, objConsInfo, objRouteInfo, objDimension, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg, objULDInfo);
 
