@@ -114,7 +114,7 @@ namespace QidWorkerRole
                 //SQLServer sqlServer = new SQLServer();
                 //sqlServer.SelectRecords("uspSaveLDMMessage", paramName, paramValue, paramSqlType);
 
-                await _readWriteDao.ExecuteNonQueryAsync("uspSaveLDMMessage", sqlParameters);
+                await _readWriteDao.SelectRecords("uspSaveLDMMessage", sqlParameters);
                 flag = true;
             }
             catch (Exception ex)

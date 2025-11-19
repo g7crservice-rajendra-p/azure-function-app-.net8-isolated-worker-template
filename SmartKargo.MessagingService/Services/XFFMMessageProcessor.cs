@@ -864,6 +864,7 @@ namespace QidWorkerRole
                                                     new SqlParameter("@UpdatedBy", SqlDbType.VarChar)   { Value = "XFFM" },
                                                     new SqlParameter("@UpdatedOn", SqlDbType.DateTime)  { Value = flightdate }
                                                 };
+                                                await _readWriteDao.ExecuteNonQueryAsync("spInsertAWBMessageStatus", statusParameters);
                                                 #endregion Status Message in Table
 
                                                 #region Save AWBNO On Audit Log
