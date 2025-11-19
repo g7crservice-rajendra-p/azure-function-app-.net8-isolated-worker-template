@@ -2851,7 +2851,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return BlobName;
         }
@@ -2871,7 +2871,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return BlobKey;
         }

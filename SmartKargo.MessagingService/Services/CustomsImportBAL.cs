@@ -1529,7 +1529,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -1667,7 +1667,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -1789,7 +1789,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -1940,7 +1940,7 @@ namespace BAL
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex.Message);
-                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                            _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
 
@@ -1949,7 +1949,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2088,7 +2088,7 @@ namespace BAL
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message); 
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                        _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
 
@@ -2104,7 +2104,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -2176,7 +2176,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2248,7 +2248,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -2309,7 +2309,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2357,7 +2357,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -2433,7 +2433,7 @@ namespace BAL
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex.Message);
-                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                            _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                     return sbFRX.ToString();
@@ -2441,7 +2441,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2504,7 +2504,7 @@ namespace BAL
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                        _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
                                 }
 
@@ -2520,7 +2520,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -2568,7 +2568,7 @@ namespace BAL
                         catch (Exception ex)
                         {
                             // clsLog.WriteLogAzure(ex.Message);
-                            _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                            _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                         }
                     }
                     foreach (ERR ERRLoop in ERR)
@@ -2586,7 +2586,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2640,7 +2640,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -2702,7 +2702,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
 
@@ -2846,7 +2846,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -3015,7 +3015,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -3086,7 +3086,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -3158,7 +3158,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -3206,7 +3206,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -3241,7 +3241,7 @@ namespace BAL
                                     catch (Exception ex)
                                     {
                                         // clsLog.WriteLogAzure(ex.Message);
-                                        _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                        _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                     }
 
                                 }
@@ -3277,7 +3277,7 @@ namespace BAL
                 catch (Exception ex)
                 {
                     // clsLog.WriteLogAzure(ex.Message);
-                    _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }
@@ -5958,7 +5958,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -6331,7 +6331,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -6706,7 +6706,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -7060,7 +7060,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -7433,7 +7433,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -7783,7 +7783,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -8153,7 +8153,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -8522,7 +8522,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -8888,7 +8888,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -9262,7 +9262,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -9614,7 +9614,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
 
         }
@@ -9983,7 +9983,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             //return null;
         }
@@ -10045,7 +10045,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return string.Empty;
             }
         }
@@ -10081,7 +10081,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -10118,7 +10118,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }
@@ -10155,7 +10155,7 @@ namespace BAL
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex.Message);
-                _staticLogger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
         }

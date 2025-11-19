@@ -156,7 +156,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in AssignChargeAmounts", xmlException);
-                _staticLogger.LogInformation("Error Occurred in AssignChargeAmounts: {0}", xmlException.Message);
+                _staticLogger?.LogInformation("Error Occurred in AssignChargeAmounts: {0}", xmlException.Message);
 
             }
         }

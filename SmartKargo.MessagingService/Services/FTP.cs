@@ -237,7 +237,7 @@ namespace QidWorkerRole
             {
 
                 // Console.WriteLine(e.ToString());
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
         #endregion FTP Short List

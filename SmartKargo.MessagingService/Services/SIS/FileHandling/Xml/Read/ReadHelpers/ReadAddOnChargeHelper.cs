@@ -58,7 +58,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadBillingCodeTotalAddonCharges", xmlException);
-                _staticLogger.LogError(xmlException, "Error Occurred in ReadBillingCodeTotalAddonCharges");
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadBillingCodeTotalAddonCharges");
 
             }
         }
@@ -233,7 +233,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadLineItemdetailAddonCharges", xmlException);
-                _staticLogger.LogError(xmlException, "Error Occurred in ReadLineItemdetailAddonCharges");
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadLineItemdetailAddonCharges");
             }
         }
 
@@ -302,7 +302,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in AssignAddOnCharges", xmlException);
-                _staticLogger.LogError(xmlException, "Error Occurred in AssignAddOnCharges");
+                _staticLogger?.LogError(xmlException, "Error Occurred in AssignAddOnCharges");
             }
         }
 
@@ -357,7 +357,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadInvoiceSummaryAddonCharges", xmlException);
-                _staticLogger.LogError(xmlException, "Error Occurred in ReadInvoiceSummaryAddonCharges");
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadInvoiceSummaryAddonCharges");
             }
         }
 

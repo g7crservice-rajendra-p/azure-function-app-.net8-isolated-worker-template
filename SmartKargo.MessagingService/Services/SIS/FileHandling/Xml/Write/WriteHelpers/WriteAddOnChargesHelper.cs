@@ -46,7 +46,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in WriteAddonCharges", xmlException);
-                _staticLogger.LogError("Error Occurred in WriteAddonCharges {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in WriteAddonCharges {0}", xmlException);
             }
         }
 
@@ -82,7 +82,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in WriteOtherChargeAddonCharges", xmlException);
-                _staticLogger.LogError("Error Occurred in WriteOtherChargeAddonCharges {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in WriteOtherChargeAddonCharges {0}", xmlException);
             }
         }
     }

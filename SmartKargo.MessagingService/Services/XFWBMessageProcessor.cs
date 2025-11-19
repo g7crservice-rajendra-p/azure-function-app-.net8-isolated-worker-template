@@ -3466,7 +3466,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                         new SqlParameter("@SCI", SqlDbType.VarChar) { Value = fwbdata.SCI },
                         new SqlParameter("@ShipperAccountCode", SqlDbType.VarChar) { Value = fwbdata.shipperaccnum },
                         new SqlParameter("@ConsAccountCode", SqlDbType.VarChar) { Value = fwbdata.consaccnum },
-                        new SqlParameter("@NoofPosition", SqlDbType.Int) { Value = Numberofposition },
+                        new SqlParameter("@NoofPosition", SqlDbType.VarChar) { Value = Numberofposition },
                         new SqlParameter("@ConsignorParty_PrimaryID", SqlDbType.VarChar) { Value = fwbdata.ConsignorParty_PrimaryID },
                         new SqlParameter("@Purposecode", SqlDbType.VarChar) { Value = fwbdata.fwbPurposecode },
                         new SqlParameter("@RefNumber", SqlDbType.Int) { Value = REFNo },

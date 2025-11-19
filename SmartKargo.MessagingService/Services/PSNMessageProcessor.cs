@@ -93,7 +93,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     //clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return string.Empty;
                 }
             }
@@ -165,7 +165,7 @@ namespace QidWorkerRole
                 catch (Exception ex)
                 {
                     //clsLog.WriteLogAzure(ex);
-                    _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                    _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     return null;
                 }
             }

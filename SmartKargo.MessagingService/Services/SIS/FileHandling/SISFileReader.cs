@@ -343,7 +343,7 @@ namespace QidWorkerRole.SIS.FileHandling
             }
             catch (System.Exception ex)
             {
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
             }
         }

@@ -1858,7 +1858,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 Ratestr = null;
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return Ratestr;
         }

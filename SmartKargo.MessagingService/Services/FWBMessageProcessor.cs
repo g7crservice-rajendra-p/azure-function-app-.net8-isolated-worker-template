@@ -5250,7 +5250,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //BAL.SCMException.logexception(ref ex);
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 fwbstr = "ERR";
             }
             return fwbstr;
@@ -5301,7 +5301,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 //BAL.SCMException.logexception(ref ex);
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 Ratestr = null;
             }
             return Ratestr;

@@ -49,7 +49,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -91,7 +91,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (System.Exception ex)
             {
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
                 throw;
             }
         }
@@ -161,7 +161,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
            }
            catch (System.Exception ex)
            {
-            _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+            _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
             throw;
            }
         }
@@ -223,7 +223,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             //Logger.Info("End of WriteReferenceData.");
         }catch (System.Exception ex)
         {
-            _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
+            _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");    
             throw;
         }
         }
@@ -269,7 +269,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -304,7 +304,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -397,7 +397,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -603,7 +603,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -696,7 +696,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -779,7 +779,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -907,7 +907,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -950,7 +950,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1020,7 +1020,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1142,7 +1142,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1185,7 +1185,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1254,7 +1254,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1379,7 +1379,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1421,7 +1421,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1488,7 +1488,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1524,7 +1524,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 //clsLog.WriteLogAzure(xmlException);
-                _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
@@ -1582,7 +1582,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
            }
            catch (System.Exception xmlException)
            {
-            _staticLogger.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            _staticLogger?.LogError(xmlException, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             throw;
            }
         }

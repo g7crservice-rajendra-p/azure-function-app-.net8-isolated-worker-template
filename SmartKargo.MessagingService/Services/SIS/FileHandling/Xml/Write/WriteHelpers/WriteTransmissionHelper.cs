@@ -44,7 +44,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in WriteTransmissionHeader, Error Message: {0}, Error: {1}", xmlException);
-                _staticLogger.LogError("Error Occurred in WriteTransmissionHeader,  Error Message: {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in WriteTransmissionHeader,  Error Message: {0}", xmlException);
             }
             
         }
@@ -215,7 +215,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             }
             catch (System.Exception ex)
             {
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
                 throw;
             }
         }
@@ -244,7 +244,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in WriteTransmissionSummary, Error Message: {0}, Error: {1}",xmlException);
-                _staticLogger.LogError("Error Occurred in WriteTransmissionSummary,  Error Message: {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in WriteTransmissionSummary,  Error Message: {0}", xmlException);
             }
 
         }

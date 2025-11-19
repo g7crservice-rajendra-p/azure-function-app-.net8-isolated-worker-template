@@ -149,7 +149,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadInvoice", xmlException);
-                _staticLogger.LogError(xmlException, "Error Occurred in ReadInvoice");
+                _staticLogger?.LogError(xmlException, "Error Occurred in ReadInvoice");
                 throw;
             }
         }
@@ -295,7 +295,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadSellerAndBuyerOrganization", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadSellerAndBuyerOrganization {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadSellerAndBuyerOrganization {0}", xmlException);
                 throw;
             }
         }
@@ -391,7 +391,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadBillingCodeTotal", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadBillingCodeTotal {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadBillingCodeTotal {0}", xmlException);
                 throw;
             }
         }
@@ -577,7 +577,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadLineItemDetails", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadLineItemDetails {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadLineItemDetails {0}", xmlException);
                 throw;
 
             }
@@ -735,7 +735,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadAirWayBill", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadAirWayBill {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadAirWayBill {0}", xmlException);
                 throw;
             }
         }
@@ -851,7 +851,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadRejectionMemo", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadRejectionMemo {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadRejectionMemo {0}", xmlException);
                 throw;
             }
         }
@@ -1060,7 +1060,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadRMAirWayBill", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadRMAirWayBill {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadRMAirWayBill {0}", xmlException);
                 throw;
             }
         }
@@ -1136,7 +1136,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadRMAWBProrateLadder", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadRMAWBProrateLadder {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadRMAWBProrateLadder {0}", xmlException);
                 throw;
             }
         }
@@ -1234,7 +1234,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadBillingMemo", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadBillingMemo {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadBillingMemo {0}", xmlException);
                 throw;
             }
         }
@@ -1442,7 +1442,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadBMAirWayBill", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadBMAirWayBill {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadBMAirWayBill {0}", xmlException);
                 throw;
             }
         }
@@ -1518,7 +1518,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadBMAWBProrateLadder", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadBMAWBProrateLadder {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadBMAWBProrateLadder {0}", xmlException);
                 throw;
             }
         }
@@ -1616,7 +1616,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadCreditMemo", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadCreditMemo {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadCreditMemo {0}", xmlException);
                 throw;
             }
         }
@@ -1824,7 +1824,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadCMAirWayBill", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadCMAirWayBill {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadCMAirWayBill {0}", xmlException);
                 throw;
             }
         }
@@ -1900,7 +1900,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadCMAWBProrateLadder: ", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadCMAWBProrateLadder: {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadCMAWBProrateLadder: {0}", xmlException);
                 throw;
             }
         }
@@ -1990,7 +1990,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadInvoiceSummary", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadInvoiceSummary {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadInvoiceSummary {0}", xmlException);
                 throw;
             }
         }

@@ -3719,7 +3719,7 @@ namespace QidWorkerRole
             {
                 strarr = null;
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return strarr;
         }

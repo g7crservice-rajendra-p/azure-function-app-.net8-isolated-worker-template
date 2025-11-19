@@ -116,7 +116,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
             catch (XmlException xmlException)
             {
                 // clsLog.WriteLogAzure("Error Occurred in ReadOtherChargeDetails: ", xmlException);
-                _staticLogger.LogError("Error Occurred in ReadOtherChargeDetails: {0}", xmlException);
+                _staticLogger?.LogError("Error Occurred in ReadOtherChargeDetails: {0}", xmlException);
                 throw;
             }
         }
