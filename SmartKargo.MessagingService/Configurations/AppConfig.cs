@@ -61,10 +61,10 @@ namespace SmartKargo.MessagingService.Configurations
     //SFTP config
     public class SftpConfig
     {
-        public string HostName { get; set; } = string.Empty;
-        public string UserName { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string SshHostKeyFingerprint { get; set; } = string.Empty;
+        public string SftpHostName { get; set; } = string.Empty;
+        public string SftpUserName { get; set; } = string.Empty;
+        public string SftpPassword { get; set; } = string.Empty;
+        public string SftpSshHostKeyFingerprint { get; set; } = string.Empty;
     }
 
     public class ServiceBusConfig
