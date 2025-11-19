@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using SmartKargo.MessagingService.Configurations;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
 using System.Data;
@@ -11,16 +12,19 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<RapidException> _logger;
-        private readonly balRapidInterfaceForCebu _balRapidInterfaceForCebu;  
+        private readonly balRapidInterfaceForCebu _balRapidInterfaceForCebu;
+        private readonly AppConfig _appConfig;   
 
         #region Constructor
         public RapidException(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<RapidException> logger,
-            balRapidInterfaceForCebu balRapidInterfaceForCebu)
+            balRapidInterfaceForCebu balRapidInterfaceForCebu,
+            AppConfig appConfig)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _balRapidInterfaceForCebu = balRapidInterfaceForCebu;
+            _appConfig = appConfig;
         }
         #endregion
         public async Task RapidExceptionCEBU()
@@ -30,7 +34,9 @@ namespace QidWorkerRole
                 //clsLog.WriteLogAzure("Calling start RapidExceptionCEBU");
                 _logger.LogInformation("Calling start RapidExceptionCEBU");
     
-                String TimeZone = System.Configuration.ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+                //String TimeZone = System.Configuration.ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
+                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;
                 DateTime ToDate = DateTime.Now;
