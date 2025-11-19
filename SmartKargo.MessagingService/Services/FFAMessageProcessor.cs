@@ -21,18 +21,21 @@ namespace QidWorkerRole
 {
     public class FFAMessageProcessor
     {
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+        //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         const string PAGE_NAME = "FBLMessageProcessor";
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FFAMessageProcessor> _logger;
+        private readonly GenericFunction _genericFunction;
 
         #region Constructor
         public FFAMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FFAMessageProcessor> logger)
+            ILogger<FFAMessageProcessor> logger,
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _genericFunction = genericFunction;
         }
         #endregion
 
@@ -302,7 +305,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                //clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}. Page Name: {PAGE_NAME}, Funa Name:{FUN_NAME}");
             }
             return flag;
         }
@@ -311,7 +315,7 @@ namespace QidWorkerRole
         {
             bool flag = false;
             string lastrec = "NA";
-            const String FUN_NAME = "decodereceivedffa";
+            const string FUN_NAME = "decodereceivedffa";
             try
             {
                 if (ffamsg.StartsWith("FFA", StringComparison.OrdinalIgnoreCase))
@@ -502,7 +506,7 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message); 
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                                 }
                             }
                             #endregion
@@ -520,10 +524,11 @@ namespace QidWorkerRole
                                         ffadata.supplemetryshipperinfo2 = msg[3].Length > 0 ? msg[3] : null;
                                     }
                                 }
-                                catch (Exception ex) {
+                                catch (Exception ex)
+                                {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                                 }
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                }
                             }
                             #endregion
 
@@ -546,8 +551,8 @@ namespace QidWorkerRole
                                 catch (Exception ex)
                                 {
                                     // clsLog.WriteLogAzure(ex.Message);
-                                    _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                                 }
+                                    _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                                }
                             }
                             #endregion
                         }
@@ -557,7 +562,8 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                //clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}. Page Name: {PAGE_NAME}, Funa Name:{FUN_NAME}");
             }
             return flag;
         }
@@ -644,12 +650,12 @@ namespace QidWorkerRole
                 flag = await _readWriteDao.ExecuteNonQueryAsync("spInsertAWBStatusFFA_V2", parameters);
                 if (!flag)
                     // clsLog.WriteLogAzure("Error Status Update:" + dt.Rows[0]["awbno"].ToString());
-                   _logger.LogWarning("Error Status Update: {0}" , dt.Rows[0]["awbno"]);
+                    _logger.LogWarning("Error Status Update: {0}", dt.Rows[0]["awbno"]);
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -686,7 +692,7 @@ namespace QidWorkerRole
                                 flag = true;
                                 if (dsFFAData.Tables.Count > 1)
                                 {
-                                    if (!EncodeFFAForSend(dsFFAData))
+                                    if (!await EncodeFFAForSend(dsFFAData))
                                         // clsLog.WriteLogAzure("FFA not Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
                                         _logger.LogWarning("FFA not Update: {0}" + dsFFAData.Tables[0].Rows[0][0]);
                                 }
@@ -702,27 +708,33 @@ namespace QidWorkerRole
                                         Value = dsFFAData.Tables[0].Rows[0]["AWBPrefix"].ToString()
                                     }
                                 };
+
                                 //string[] PName = new string[] { "AWBNo", "AWBPrefix" };
                                 //object[] PValues = new object[] { dsFFAData.Tables[0].Rows[0]["AWBNumber"].ToString(), dsFFAData.Tables[0].Rows[0]["AWBPrefix"].ToString() };
                                 //SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar };
                                 //if (!await _readWriteDao.ExecuteProcedure("spUpdateFFAStatus", PName, PType, PValues))
+
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("spUpdateFFAStatus", parameters))
+                                {
                                     // clsLog.WriteLogAzure("Error Status Update:" + dsFFAData.Tables[0].Rows[0][0].ToString());
-                                    _logger.LogWarning("Error Status Update: {0}" , dsFFAData.Tables[0].Rows[0][0]);
+                                    _logger.LogWarning("Error Status Update: {0}", dsFFAData.Tables[0].Rows[0][0]);
+                                }
+
                             }
                         }
                     }
                 } while (flag);
                 //sqlServer = null;
-                GC.Collect();
+                //GC.Collect();
             }
             catch (Exception ex)
             {
-                clsLog.WriteLogAzure(ex);
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
-        public bool EncodeFFAForSend(DataSet dsData, string FromEmailID, string ToEmailID, string SitaAddress, string MessageVersion, string Sitaoriginaddress, string MessageID)
+        public async Task<bool> EncodeFFAForSend(DataSet dsData, string FromEmailID, string ToEmailID, string SitaAddress, string MessageVersion, string Sitaoriginaddress, string MessageID)
         {
             bool flag = false;
             try
@@ -803,10 +815,12 @@ namespace QidWorkerRole
                         objFFA.supplemetryshipperinfo2 = "";
 
                         string ffaMessage = EncodeFFAMessageForsend(ref objFFA, ref FltRoute);
-                        GenericFunction gf = new GenericFunction();
+
+                        //GenericFunction gf = new GenericFunction();
+
                         if (ToEmailID != "")
                         {
-                            if (gf.SaveMessageOutBox("FFA", ffaMessage, FromEmailID, ToEmailID))
+                            if (await _genericFunction.SaveMessageOutBox("FFA", ffaMessage, FromEmailID, ToEmailID))
                                 flag = true;
                             else
                                 // clsLog.WriteLogAzure("Error: Not inserted in outbox");
@@ -815,8 +829,8 @@ namespace QidWorkerRole
                         }
                         if (SitaAddress != "")
                         {
-                            string messageheader = gf.MakeMailMessageFormat(SitaAddress, Sitaoriginaddress, MessageID);
-                            if (gf.SaveMessageOutBox("SITA:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP"))
+                            string messageheader = _genericFunction.MakeMailMessageFormat(SitaAddress, Sitaoriginaddress, MessageID);
+                            if (await _genericFunction.SaveMessageOutBox("SITA:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP"))
                                 flag = true;
                             else
                                 // clsLog.WriteLogAzure("Error: Not inserted in outbox");
@@ -836,7 +850,7 @@ namespace QidWorkerRole
             return flag;
         }
 
-        public bool EncodeFFAForSend(DataSet dsData)
+        public async Task<bool> EncodeFFAForSend(DataSet dsData)
         {
             bool flag = false;
             DataTable confInfo = null;
@@ -924,24 +938,26 @@ namespace QidWorkerRole
                     {
                         MessageID = MessageID + 1;
                         confInfo = configs.CopyToDataTable();
-                        GenericFunction gf = new GenericFunction();
+
+                        //GenericFunction gf = new GenericFunction();
+
                         MessageVersion = confInfo.Rows[j]["MessageVersion"].ToString() == "" ? "4" : confInfo.Rows[j]["MessageVersion"].ToString();
                         ffaMessage = "FFA/" + MessageVersion + ffaMessage.Substring(3, (ffaMessage.Length - 3));
                         if (confInfo.Rows[j]["PartnerEmailiD"].ToString() != "")
                         {
-                            gf.SaveMessageOutBox("FFA", ffaMessage, "", confInfo.Rows[j]["PartnerEmailiD"].ToString(), AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
+                            await _genericFunction.SaveMessageOutBox("FFA", ffaMessage, "", confInfo.Rows[j]["PartnerEmailiD"].ToString(), AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
                         }
                         if (confInfo.Rows[j]["PartnerSitaID"].ToString() != "")
                         {
                             sitaOriginAddress = confInfo.Rows[j]["OriginSenderAddress"].ToString();
-                            string messageheader = gf.MakeMailMessageFormat(confInfo.Rows[j]["PartnerSitaID"].ToString(), sitaOriginAddress, MessageID.ToString());
-                            gf.SaveMessageOutBox("SITA:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP", AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
+                            string messageheader = _genericFunction.MakeMailMessageFormat(confInfo.Rows[j]["PartnerSitaID"].ToString(), sitaOriginAddress, MessageID.ToString());
+                            await _genericFunction.SaveMessageOutBox("SITA:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP", AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
                         }
                         if (confInfo.Rows[j]["SFTPHeaderSITAAddress"].ToString() != "")
                         {
                             sitaOriginAddress = confInfo.Rows[j]["OriginSenderAddress"].ToString();
-                            string messageheader = gf.MakeMailMessageFormat(confInfo.Rows[j]["SFTPHeaderSITAAddress"].ToString(), sitaOriginAddress, MessageID.ToString());
-                            gf.SaveMessageOutBox("SFTP:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP", AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
+                            string messageheader = _genericFunction.MakeMailMessageFormat(confInfo.Rows[j]["SFTPHeaderSITAAddress"].ToString(), sitaOriginAddress, MessageID.ToString());
+                            await _genericFunction.SaveMessageOutBox("SFTP:FFA", messageheader + "\r\n" + ffaMessage, "", "SITAFTP", AWBNo: objFFA.airlineprefix + "-" + objFFA.awbnum);
                         }
                     }
                 }
@@ -949,7 +965,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
             return flag;
         }
@@ -1054,7 +1070,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex, PAGE_NAME, FUN_NAME);
-                _logger.LogError(ex, PAGE_NAME, FUN_NAME);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}. Page Name: {PAGE_NAME}, Funa Name:{FUN_NAME}");
                 ffa = "ERR";
             }
             return ffa;
