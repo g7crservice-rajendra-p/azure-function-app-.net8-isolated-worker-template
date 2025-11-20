@@ -1053,7 +1053,7 @@ namespace QidWorkerRole
                     if (dsOmanBIDataDump != null && dsOmanBIDataDump.Tables.Count > 0 && dsOmanBIDataDump.Tables[0].Rows.Count > 0)
                     {
                         _ftp.ZIPandSFPTUpload(dsOmanBIDataDump);
-                        _ftp.UploadDataDumpFileToSFTP(dataDumpFolderPath, dsOmanBIDataDump.Tables[0].Rows[0]["ZIPFileName"].ToString());
+                        await _ftp.UploadDataDumpFileToSFTP(dataDumpFolderPath, dsOmanBIDataDump.Tables[0].Rows[0]["ZIPFileName"].ToString());
                     }
                 }
 
@@ -3292,7 +3292,7 @@ namespace QidWorkerRole
                 if (ConfigCache.Get("SISFileAutomation").Equals("True", StringComparison.OrdinalIgnoreCase))
                 {
                     //FTP _ftp = new FTP();
-                    _ftp.SISFilesReadProcess();
+                    await _ftp.SISFilesReadProcess();
                     await UploadSISReceivableFileonSFTP();
                 }
 
@@ -11342,7 +11342,7 @@ namespace QidWorkerRole
                 if (dsSFTPDetails != null && dsSFTPDetails.Tables.Count > 0 && dsSFTPDetails.Tables[0].Rows.Count > 0)
                 {
                     //FTP _ftp = new FTP();
-                    _ftp.UploadSISReceivableFileonSFTP(dsSFTPDetails.Tables[0]);
+                    await _ftp.UploadSISReceivableFileonSFTP(dsSFTPDetails.Tables[0]);
                 }
             }
             catch (Exception ex)

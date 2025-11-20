@@ -3,12 +3,13 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.DAL;
+using QidWorkerRole.SIS.FileHandling;
 using QidWorkerRole.UploadMasters;
 using QueueManager;
 using SmartKargo.MessagingService.Configurations;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
-using System.Configuration;
 using System.Data;
 using System.IO.Compression;
 using System.Net;
@@ -37,6 +38,11 @@ namespace QidWorkerRole
         private readonly cls_SCMBL _cls_SCMBL;
         private readonly AppConfig _appConfig;
         private readonly SIS.SISBAL _sISBAL;
+        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly CreateDBData _createDBData;
+        private readonly ReadDBData _readDBData;
+        private readonly SISFileReader _sisFileReader;
+        private readonly UpdateDBData _updateDBData;
 
         #region Constructor
         public FTP(
@@ -47,7 +53,12 @@ namespace QidWorkerRole
             AppConfig appConfig,
             ISqlDataHelperFactory sqlDataHelperFactory,
             SIS.SISBAL sISBAL,
-            ILoggerFactory loggerFactory
+            ILoggerFactory loggerFactory,
+            UploadMasterCommon uploadMasterCommon,
+            CreateDBData createDBData,
+            ReadDBData readDBData,
+            SISFileReader sisFileReader,
+            UpdateDBData updateDBData
             )
         {
             _logger = logger;
@@ -58,6 +69,11 @@ namespace QidWorkerRole
             _appConfig = appConfig;
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _sISBAL = sISBAL;
+            _uploadMasterCommon = uploadMasterCommon;
+            _createDBData = createDBData;
+            _readDBData = readDBData;
+            _sisFileReader = sisFileReader;
+            _updateDBData = updateDBData;
         }
         #endregion Constructor
 
@@ -105,7 +121,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure("Error on FTP upload:", ex);
-                _logger.LogError("Error on FTP upload: {0}", ex);
+                _logger.LogError(ex, "Error on FTP upload: {0}", ex.Message);
                 FTPConnectionAlert();
                 return (false);
 
@@ -775,7 +791,7 @@ namespace QidWorkerRole
                                             // clsLog.WriteLogAzure("File Name- " + item1.FileName + "  " + i + "  loop message body length is : " + Msg_Body.Length);
                                             _logger.LogInformation("File Name- {0} {1} loop message body length is {2}", item1.FileName, i, Msg_Body.Length);
 
-                                            if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                            if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                             {
                                                 Msg_Body = "";
                                                 loopcount = j;
@@ -820,7 +836,7 @@ namespace QidWorkerRole
                                         _logger.LogInformation("File Name - {0} - Remaining No. of Records in SSM File : {1}", item1.FileName, Convert.ToString(Total - loopcount));
                                         _logger.LogInformation("File Name - {0} - Last loop message body length is : {1}", item1.FileName, Msg_Body.Length);
 
-                                        if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                        if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, Msg_Body, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                         {
                                             Msg_Body = "";
                                             // clsLog.WriteLogAzure(messageType + " Messages Saved to Inbox: " + item1.FileName + " " + file.LastWriteTime.ToString());
@@ -841,7 +857,7 @@ namespace QidWorkerRole
                                         _logger.LogInformation($"File Name :- {item1.FileName} - Total No Of Records is : {Total}");
                                         _logger.LogInformation($"File Name - {item1.FileName} - Total body Length is : {msgBody.Length}");
 
-                                        if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                        if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                         {
                                             Msg_Body = "";
                                             // clsLog.WriteLogAzure(messageType + " Messages Saved to Inbox: " + item1.FileName + " " + file.LastWriteTime.ToString());
@@ -890,7 +906,7 @@ namespace QidWorkerRole
 
                                     if (SSM_FailedAlertEmailID != "")
                                     {
-                                        _genericFunction.SaveMessageOutBox("SSM Failed alert", "Hi,\r\n\r\n" + "Below SSM file are getting failed during processing. " + "\r\n" + "File Name :- " + fileName + "\r\n\r\nThanks.", "", SSM_FailedAlertEmailID, "", 0);
+                                        await _genericFunction.SaveMessageOutBox("SSM Failed alert", "Hi,\r\n\r\n" + "Below SSM file are getting failed during processing. " + "\r\n" + "File Name :- " + fileName + "\r\n\r\nThanks.", "", SSM_FailedAlertEmailID, "", 0);
                                     }
 
                                     #endregion SSM Failed alert
@@ -901,7 +917,7 @@ namespace QidWorkerRole
                             else
                             {
 
-                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                                if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + item1.FileName, msgBody, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                                 {
                                     if (archivalPath.Trim() != string.Empty && archivalPath.Contains("/"))
                                     {
@@ -966,13 +982,15 @@ namespace QidWorkerRole
                         var streamReader = new StreamReader(trn.Destination, Encoding.UTF8);
                         strMessage = streamReader.ReadToEnd();
                         string extension = Path.GetExtension(trn.FileName);
-                        UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+                        //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
                         if (messageType == MessageData.MessageTypeName.DIMS_Cubiscan || messageType == MessageData.MessageTypeName.JPEG_Cubiscan)
                         {
                             if (messageType == MessageData.MessageTypeName.DIMS_Cubiscan)
                             {
                                 streamReader.Close();
-                                ProcessFile(x, trn.Destination, trn.FileName);
+                                await ProcessFile(x, trn.Destination, trn.FileName);
                                 string FlNamewithoutExt = Path.GetFileNameWithoutExtension(trn.FileName);
                                 Stream messageStream = GenerateStreamFromString(strMessage);
                                 string url = _genericFunction.UploadToBlob(messageStream, (FlNamewithoutExt + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + extension), "DimensionFiles"); //change file name and append utc time to file name
@@ -999,32 +1017,32 @@ namespace QidWorkerRole
                                 byte[] bytes = System.IO.File.ReadAllBytes(trn.Destination);
                                 System.IO.MemoryStream ms = new System.IO.MemoryStream(bytes, 0, bytes.Length);
                                 byte[] byteValue = ms.ToArray();
-                                String FileUrl = _genericFunction.UploadToBlob(ms, awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8) + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + fileExtention, strContainer);
-                                flag = _genericFunction.UploadDocumentsOnEpouch(awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8), DocumentName, "", "1", extension, new byte[0], Documentfilename, FileUrl);
+                                string FileUrl = _genericFunction.UploadToBlob(ms, awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8) + "_" + DateTime.Now.ToString("yyyyMMddhhmmss") + fileExtention, strContainer);
+                                flag = await _genericFunction.UploadDocumentsOnEpouch(awbNumber.Substring(0, 3) + awbNumber.Substring(3, 8), DocumentName, "", "1", extension, new byte[0], Documentfilename, FileUrl);
                                 // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                                 _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                                 session.RemoveFiles(trn.FileName);
                                 continue;
                             }
                         }
-                        else if (messageType.ToUpper() == MessageData.MessageTypeName.SCHEDULEUPLOAD.ToString().ToUpper() && uploadMasterCommon.IsFileValid(UploadMasterType.FlightSchedule, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
+                        else if (messageType.ToUpper() == MessageData.MessageTypeName.SCHEDULEUPLOAD.ToString().ToUpper() && _uploadMasterCommon.IsFileValid(UploadMasterType.FlightSchedule, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
                         {
                             streamReader.Close();
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightSchedule);
-                            UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightSchedule, UserName);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightSchedule);
+                            await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightSchedule, UserName);
                             // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                             _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                             session.RemoveFiles(trn.FileName);
                         }
-                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTCAPACITY.ToString().ToUpper() && uploadMasterCommon.IsFileValid(UploadMasterType.FlightCapacity, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
+                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTCAPACITY.ToString().ToUpper() && _uploadMasterCommon.IsFileValid(UploadMasterType.FlightCapacity, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
                         {
                             streamReader.Close();
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightCapacity);
-                            UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightCapacity, UserName);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightCapacity);
+                            await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightCapacity, UserName);
                             // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                             _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                             session.RemoveFiles(trn.FileName);
@@ -1035,34 +1053,34 @@ namespace QidWorkerRole
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
                             FileName = FileName.Replace("-", "_");
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.ExchangeRateFromTo);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.ExchangeRateFromTo);
 
-                            if (uploadMasterCommon.IsFileValid(UploadMasterType.ExchangeRateFromTo, FileName))
-                                UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExchangeRateFromTo, UserName, lastWriteTime);
+                            if (_uploadMasterCommon.IsFileValid(UploadMasterType.ExchangeRateFromTo, FileName))
+                                await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExchangeRateFromTo, UserName, lastWriteTime);
                             else
-                                UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExchangeRateFromTo, UserName, lastWriteTime, "Invalid File");
+                                await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExchangeRateFromTo, UserName, lastWriteTime, "Invalid File");
 
                             if (File.Exists(trn.Destination))
                                 File.Delete(trn.Destination);
                         }
-                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTPAXINFORMATIONUPLOAD.ToString().ToUpper() && uploadMasterCommon.IsFileValid(UploadMasterType.FlightPaxInformation, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
+                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTPAXINFORMATIONUPLOAD.ToString().ToUpper() && _uploadMasterCommon.IsFileValid(UploadMasterType.FlightPaxInformation, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
                         {
                             streamReader.Close();
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightPaxInformation);
-                            UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightPaxInformation, UserName);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightPaxInformation);
+                            await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightPaxInformation, UserName);
                             // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                             _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                             session.RemoveFiles(trn.FileName);
                         }
-                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTPAXFORECASTUPLOAD.ToString().ToUpper() && uploadMasterCommon.IsFileValid(UploadMasterType.FlightPaxForecast, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
+                        else if (messageType.ToUpper() == MessageData.MessageTypeName.FLIGHTPAXFORECASTUPLOAD.ToString().ToUpper() && _uploadMasterCommon.IsFileValid(UploadMasterType.FlightPaxForecast, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
                         {
                             streamReader.Close();
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightPaxForecast);
-                            UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightPaxForecast, UserName);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightPaxForecast);
+                            await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.FlightPaxForecast, UserName);
                             // {clsLog.WriteLogAzure}("Removing file from SFTP: " + trn.FileName);
                             _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                             session.RemoveFiles(trn.FileName);
@@ -1073,12 +1091,12 @@ namespace QidWorkerRole
                             string FileName = string.Empty;
                             FileName = Path.GetFileNameWithoutExtension(trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)) + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;
                             FileName = FileName.Replace("-", "_");
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.PHCustomRegistry);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.PHCustomRegistry);
 
-                            if (uploadMasterCommon.IsFileValid(UploadMasterType.ExchangeRateFromTo, FileName))
-                                UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.PHCustomRegistry, UserName, lastWriteTime, "", trn.Destination);
+                            if (_uploadMasterCommon.IsFileValid(UploadMasterType.ExchangeRateFromTo, FileName))
+                                await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.PHCustomRegistry, UserName, lastWriteTime, "", trn.Destination);
                             else
-                                UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.PHCustomRegistry, UserName, lastWriteTime, "Invalid File", trn.Destination);
+                                await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.PHCustomRegistry, UserName, lastWriteTime, "Invalid File", trn.Destination);
 
                             // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                             _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
@@ -1118,7 +1136,7 @@ namespace QidWorkerRole
                             }
                             continue;
                         }
-                        else if (messageType.ToUpper() == MessageData.MessageTypeName.EXCELUPLOADBOOKINGFFR.ToString().ToUpper() && uploadMasterCommon.IsFileValid(UploadMasterType.ExcelUploadBookingFFR, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
+                        else if (messageType.ToUpper() == MessageData.MessageTypeName.EXCELUPLOADBOOKINGFFR.ToString().ToUpper() && _uploadMasterCommon.IsFileValid(UploadMasterType.ExcelUploadBookingFFR, trn.FileName.Substring(trn.FileName.LastIndexOf('/') + 1)))
                         {
                             string destinationUploadDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName) + "\\TempUpload";
                             if (!Directory.Exists(destinationUploadDirectory))
@@ -1134,7 +1152,7 @@ namespace QidWorkerRole
                             string destinationPath = Path.Combine(destinationUploadDirectory, FileName);
                             File.Copy(trn.Destination, destinationPath, overwrite: true);
 
-                            DataSet dsContainerName = uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.ExcelUploadBookingFFR);
+                            DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.ExcelUploadBookingFFR);
                             // clsLog.WriteLogAzure("trn.Destination 1= " + trn.Destination);
                             _logger.LogInformation("trn.Destination 1= {0}", trn.Destination);
                             if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
@@ -1159,7 +1177,7 @@ namespace QidWorkerRole
                         }
                         else
                         {
-                            if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
+                            if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.UtcNow, DateTime.UtcNow, messageType, "Active", "SITA"))
                             {
                                 // clsLog.WriteLogAzure("Files Successfully Save in  Inbox for : " + trn.FileName);
                                 _logger.LogInformation("Files Successfully Save in  Inbox for : {0}", trn.FileName);
@@ -1200,7 +1218,7 @@ namespace QidWorkerRole
 
         }
 
-        internal void UploadDataDumpFileToSFTP(string dataDumpFolderPath, string ZipFileName)
+        internal async Task UploadDataDumpFileToSFTP(string dataDumpFolderPath, string ZipFileName)
         {
             // clsLog.WriteLogAzure("dataDumpFolderPath: " + dataDumpFolderPath);
             _logger.LogInformation("dataDumpFolderPath: {0}", dataDumpFolderPath);
@@ -1242,7 +1260,7 @@ namespace QidWorkerRole
 
                             //GenericFunction _genericFunction = new GenericFunction();
 
-                            _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nError: Failed to upload the data dump file to SFTP after 3 attempts.\r\n\r\nThanks."
+                            await _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nError: Failed to upload the data dump file to SFTP after 3 attempts.\r\n\r\nThanks."
                             , "", dataDumpAlertEmailID, "", 0);
                         }
 
@@ -1256,7 +1274,7 @@ namespace QidWorkerRole
             }
         }
 
-        public string UploadFileToBlob(DataSet dsContainerName, string FileName, string strMessage, string uploadMasterType, string UserName = "", DateTime? LastWriteTime = null, string ErrorMessage = "", string filePathToUpload = "")
+        public async Task<string> UploadFileToBlob(DataSet dsContainerName, string FileName, string strMessage, string uploadMasterType, string UserName = "", DateTime? LastWriteTime = null, string ErrorMessage = "", string filePathToUpload = "")
         {
             string url = string.Empty;
             try
@@ -1271,7 +1289,8 @@ namespace QidWorkerRole
                 string ProcessMethod = string.Empty;
                 string Station = string.Empty;
                 string Status = "Process will start shortly";
-                UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+                //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
                 //GenericFunction genericFunction = new GenericFunction();
 
@@ -1285,7 +1304,7 @@ namespace QidWorkerRole
                 {
                     ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                 }
-                DataSet dsSerialNumber = uploadMasterCommon.InsertMasterSummaryLog(0, FileName, uploadMasterType, UserName, RecordCount,
+                DataSet? dsSerialNumber = await _uploadMasterCommon.InsertMasterSummaryLog(0, FileName, uploadMasterType, UserName, RecordCount,
                                                    SuccessCount, FailCount, Station, Status, ProgressStatus,
                                                    BlobName, ContainerName, FolderName, ProcessMethod, ErrorMessage,
                                                    IsProcessed, LastWriteTime);
@@ -1309,7 +1328,8 @@ namespace QidWorkerRole
         public async Task<bool> ProcessFile(int x, string filepath, string filename)
         {
             DataTable dataTableCubiScanExcelData = new DataTable("dataTableCubiScanExcelData");
-            UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+
+            //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
             //SQLServer dtb = new SQLServer();
             try
@@ -1463,21 +1483,25 @@ namespace QidWorkerRole
                 if (fileInfo.Extension.ToUpper().Equals(".ZIP"))
                 {
                     string receivedZipFileName = Path.GetFileNameWithoutExtension(fileInfo.FullName);
-                    DbEntity.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
+
+                    //DbEntity.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
+
                     // If it is validation file (response file from SIS)
                     if (receivedZipFileName.ToUpper().Contains("_VAL") && (receivedZipFileName.Length == 35 || receivedZipFileName.Length == 36))
                     {
                         // check for original Invoice file name in database for which validation report is received.
-                        DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
+
+                        //DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
+
                         int fileStatusId = -9;
                         int receivablesFileID = 0;
 
                         if (receivedZipFileName.ToUpper().Contains("CXMLF-") && receivedZipFileName.Length == 35)
                         {
-                            fileStatusId = readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 31).ToUpper() + ".ZIP", ref receivablesFileID);
+                            fileStatusId = _readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 31).ToUpper() + ".ZIP", ref receivablesFileID);
                             if (fileStatusId == 2)
                             {
-                                IsAddedInSIS = createDBData.CreateReceivedISValidationFileHeaderData(receivedZipFileName + ".ZIP", BlobPath, DBNull.Value.ToString(), receivablesFileID, "SISAutomation");
+                                IsAddedInSIS = _createDBData.CreateReceivedISValidationFileHeaderData(receivedZipFileName + ".ZIP", BlobPath, DBNull.Value.ToString(), receivablesFileID, "SISAutomation");
                             }
                         }
                     }
@@ -1501,7 +1525,7 @@ namespace QidWorkerRole
                                 IsProcessed = 0
                             }
                         };
-                        IsAddedInSIS = createDBData.InsertSISFileHeaderData(fileData, out int newFileHeaderId);
+                        IsAddedInSIS = _createDBData.InsertSISFileHeaderData(fileData, out int newFileHeaderId);
                     }
                 }
                 return IsAddedInSIS;
@@ -1513,7 +1537,7 @@ namespace QidWorkerRole
                 return IsAddedInSIS;
             }
         }
-        public void SISFilesReadProcess()
+        public async Task SISFilesReadProcess()
         {
             try
             {
@@ -1531,13 +1555,15 @@ namespace QidWorkerRole
                 string zipValidationReportFilePath = appDomainCurrentDomainBaseDirectory + @"\SISFilesReceived\ZipFiles\ValidationReport\";
                 string unZipValidationReportFilePath = appDomainCurrentDomainBaseDirectory + @"\SISFilesReceived\UnZipFiles\ValidationReport\";
 
-                DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
+                //DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
                 string FileName = string.Empty;
                 try
                 {
                     // SIS Payables File
-                    List<DbEntity.FileHeader> FileHeaderList = readDBData.GetUnProcessedSISFiles();
-                    DbEntity.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
+                    List<DbEntity.FileHeader> FileHeaderList = _readDBData.GetUnProcessedSISFiles();
+
+                    //DbEntity.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
+
                     foreach (var fileHeader in FileHeaderList)
                     {
                         // clsLog.WriteLogAzure("Read start: " + " (" + fileHeader.FileName + ")");
@@ -1579,11 +1605,11 @@ namespace QidWorkerRole
 
                                             if (zipFileNameWithoutExtention.ToLower().Equals(unZippedFileNameWithoutExtention.ToLower()))
                                             {
-                                                QidWorkerRole.SIS.FileHandling.SISFileReader sISFileReader = new SIS.FileHandling.SISFileReader();
+                                                //QidWorkerRole.SIS.FileHandling.SISFileReader sISFileReader = new SIS.FileHandling.SISFileReader();
 
                                                 string logFilePath = string.Empty;
 
-                                                if (sISFileReader.ReadSISFile(filePathToRead, "Qidadmin", out logFilePath))
+                                                if (await _sisFileReader.ReadSISFile(filePathToRead, "Qidadmin", out logFilePath))
                                                 {
                                                     //DbEntity.UpdateDBData
                                                     //ShowMessage(ref lblStatus, skResourceManager.GetString("msgUploadStatusFUS", skCultureInfo) + " (" + zipFileName + ") " + skResourceManager.GetString("msgUploadStatusFUS2", skCultureInfo), MessageType.SuccessMessage);
@@ -1651,7 +1677,7 @@ namespace QidWorkerRole
                 try
                 {
                     // SIS Validation Report File
-                    List<DbEntity.ISValidationFileHeader> ISValidationFileHeaderList = readDBData.GetUnProcessedSISValidationFiles();
+                    List<DbEntity.ISValidationFileHeader> ISValidationFileHeaderList = _readDBData.GetUnProcessedSISValidationFiles();
                     foreach (var fileHeader in ISValidationFileHeaderList)
                     {
                         FileName = fileHeader.FileName;
@@ -1675,11 +1701,11 @@ namespace QidWorkerRole
 
                                 if (receivedZipFileName.ToUpper().Contains("CXMLF-") && receivedZipFileName.Length == 35)
                                 {
-                                    fileStatusId = readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 31).ToUpper() + ".ZIP", ref receivablesFileID);
+                                    fileStatusId = _readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 31).ToUpper() + ".ZIP", ref receivablesFileID);
                                 }
                                 else if (receivedZipFileName.ToUpper().Contains("CIDECF-") && receivedZipFileName.Length == 36)
                                 {
-                                    fileStatusId = readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 32).ToUpper() + ".ZIP", ref receivablesFileID);
+                                    fileStatusId = _readDBData.IsOriginalFileExists(receivedZipFileName.Substring(0, 32).ToUpper() + ".ZIP", ref receivablesFileID);
                                 }
                                 else
                                 {
@@ -1710,10 +1736,11 @@ namespace QidWorkerRole
                                         int rejectionOnValidationFailure = 0; //ViewState["RejectionOnValidationFailure"] != null ? Convert.ToInt32(ViewState["RejectionOnValidationFailure"].ToString()) : 0; // update it on load of this page
                                         bool onlineCorrectionAllowed = false; //ViewState["OnlineCorrectionAllowed"] != null ? Convert.ToBoolean(ViewState["OnlineCorrectionAllowed"].ToString()) : false; // update it on load of this page
 
-                                        QidWorkerRole.SIS.FileHandling.SISFileReader sISFileReader = new SIS.FileHandling.SISFileReader();
+                                        //QidWorkerRole.SIS.FileHandling.SISFileReader sISFileReader = new SIS.FileHandling.SISFileReader();
+
                                         string logValFilePath = string.Empty;
                                         strAzulInvList = string.Empty;
-                                        int resultValidationFileUpload = sISFileReader.ReadSISValidationReportFile(unZipValidationReportFilePath + "\\" + receivedZipFileName, zipValidationReportFilePath + zipFileName, "AutomationMsgService", rejectionOnValidationFailure, onlineCorrectionAllowed, ref logValFilePath, receivablesFileID, ref strAzulInvList);
+                                        int resultValidationFileUpload = _sisFileReader.ReadSISValidationReportFile(unZipValidationReportFilePath + "\\" + receivedZipFileName, zipValidationReportFilePath + zipFileName, "AutomationMsgService", rejectionOnValidationFailure, onlineCorrectionAllowed, ref logValFilePath, receivablesFileID, ref strAzulInvList);
 
                                         switch (resultValidationFileUpload)
                                         {
@@ -1723,7 +1750,7 @@ namespace QidWorkerRole
                                                 //objSISBAL.SaveInterlineBillingInterfaceDataI243(receivablesFileID, 1, "Qidadmin",DateTime.Now);
 
                                                 string strMsgKey = string.Empty;
-                                                _sISBAL.CreateInterlineAuditLog("UploadISValidationReport", Convert.ToString(receivablesFileID), "Qidadmin", DateTime.Now, strMsgKey);
+                                                await _sISBAL.CreateInterlineAuditLog("UploadISValidationReport", Convert.ToString(receivablesFileID), "Qidadmin", DateTime.Now, strMsgKey);
                                                 break;
                                             case 2:
                                                 //ShowMessage(ref lblStatus, skResourceManager.GetString("msgReportFileR1NotFound", skCultureInfo) + " " + zipFileName + ".", MessageType.ErrorMessage);
@@ -2077,7 +2104,7 @@ namespace QidWorkerRole
             }
         }
 
-        public bool SITASFTPDownloadFile()
+        public async Task<bool> SITASFTPDownloadFile()
         {
             // clsLog.WriteLogAzure("Step-1: In SITASFTPDownloadFile()");
             _logger.LogError("Step-1: In SITASFTPDownloadFile()");
@@ -2228,7 +2255,7 @@ namespace QidWorkerRole
                                 var streamReader = new StreamReader(trn.Destination, Encoding.UTF8);
                                 strMessage = streamReader.ReadToEnd();
 
-                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
+                                if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + trn.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
                                 {
                                     session.RemoveFiles(trn.FileName);
                                     // clsLog.WriteLogAzure("Step-6: Files Successfully Save in  Inbox for : " + trn.FileName);
@@ -2275,7 +2302,7 @@ namespace QidWorkerRole
                                 var streamReader = new StreamReader(trnGHAMCTIN.Destination, Encoding.UTF8);
                                 strMessage = streamReader.ReadToEnd();
 
-                                if (_genericFunction.SaveIncomingMessageInDatabase("MSG:" + trnGHAMCTIN.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
+                                if (await _genericFunction.SaveIncomingMessageInDatabase("MSG:" + trnGHAMCTIN.FileName, strMessage, "SITASFTP", "", DateTime.Now, DateTime.Now, "SITA", "Active", "SITA"))
                                 {
                                     session.RemoveFiles(trnGHAMCTIN.FileName);
                                     // clsLog.WriteLogAzure("Files Successfully Save in tblInbox for : " + trnGHAMCTIN.FileName);
@@ -2384,7 +2411,8 @@ namespace QidWorkerRole
 
 
 
-                GenericFunction gf = new GenericFunction();
+                //GenericFunction gf = new GenericFunction();
+
                 //fileName = DateTime.Now.ToString("yyyyMMdd_hhmmss_fff");
                 string tempFileName = fileName + ".txt";
                 string OriginalfileName = fileName + "." + fileExtension.ToUpper();
@@ -2454,11 +2482,12 @@ namespace QidWorkerRole
         {
             try
             {
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
+
                 string containerName = "";
                 string str = filenameOrUrl;
-                string StorageName = genericFunction.GetStorageName();
-                string StorageKey = genericFunction.GetStorageKey();
+                string StorageName = _genericFunction.GetStorageName();
+                string StorageKey = _genericFunction.GetStorageKey();
                 if (filenameOrUrl.Contains('/'))
                 {
                     //filenameOrUrl = filenameOrUrl.ToLower();
@@ -3676,7 +3705,7 @@ namespace QidWorkerRole
             }
         }
 
-        public void UploadSISReceivableFileonSFTP(DataTable dtSFTPDetails)
+        public async Task UploadSISReceivableFileonSFTP(DataTable dtSFTPDetails)
         {
             try
             {
@@ -3686,7 +3715,8 @@ namespace QidWorkerRole
 
                 string zipFilePath = appDomainCurrentDomainBaseDirectory + @"\SISFilesUpload";
 
-                GenericFunction genericFunction = new GenericFunction();
+                //GenericFunction genericFunction = new GenericFunction();
+
                 string msgCommType = string.Empty, SFTPAddress = string.Empty, SFTPUserName = string.Empty, SFTPPassWord = string.Empty, SFTPFingerPrint = string.Empty, SFTPFolerPath = string.Empty, SISOutFolderPath = string.Empty, ppkFileName = string.Empty, ppkLocalFilePath = string.Empty,
                     FileExtension = string.Empty;
                 int SFTPPortNumber = 22;
@@ -3703,7 +3733,7 @@ namespace QidWorkerRole
                     FileExtension = drSFTPRow["FileExtension"].ToString();
                     if (ppkFileName != string.Empty)
                     {
-                        ppkLocalFilePath = genericFunction.GetPPKFilePath(ppkFileName);
+                        ppkLocalFilePath = _genericFunction.GetPPKFilePath(ppkFileName);
                     }
 
                     WinSCP.SessionOptions sessionOptions;
@@ -3756,9 +3786,10 @@ namespace QidWorkerRole
                         TransferOperationResult transferResult;
                         TransferOperationResult transferResultGHA;
 
-                        DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
+                        //DbEntity.ReadDBData readDBData = new SIS.DAL.ReadDBData();
+
                         // SIS Receivable File
-                        List<DbEntity.FileHeader> FileHeaderList = readDBData.GetUnProcessedSISReceivableFiles();
+                        List<DbEntity.FileHeader> FileHeaderList = _readDBData.GetUnProcessedSISReceivableFiles();
                         string FileName = string.Empty;
                         foreach (var fileHeader in FileHeaderList)
                         {
@@ -3802,8 +3833,8 @@ namespace QidWorkerRole
                                         }
                                         if (isUploaded)
                                         {
-                                            DbEntity.UpdateDBData updateDBData = new SIS.DAL.UpdateDBData();
-                                            updateDBData.UpdateStatusToFileUploaded(fileHeader.FileHeaderID, "SISAutomation");
+                                            //DbEntity.UpdateDBData updateDBData = new SIS.DAL.UpdateDBData();
+                                            await _updateDBData.UpdateStatusToFileUploaded(fileHeader.FileHeaderID, "SISAutomation");
 
                                             // clsLog.WriteLogAzure("FileName:- " + FileName + "RemotePath:- " + SFTPFolerPath);
                                             _logger.LogInformation("FileName:- {0} RemotePath:- {1}", FileName, SFTPFolerPath);
@@ -3830,7 +3861,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure("Error in UploadSISFileonSFTP : " + ex.Message);
-                _logger.LogError("Error in UploadSISFileonSFTP : {0}", ex.Message);
+                _logger.LogError(ex, "Error in UploadSISFileonSFTP : {0}", ex.Message);
             }
 
         }

@@ -16,6 +16,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
+using SmartKargo.MessagingService.Services;
 using System.Data;
 using System.Text.RegularExpressions;
 
@@ -35,9 +36,9 @@ namespace QidWorkerRole
         private readonly ILogger<FWBMessageProcessor> _logger;
         private static ILoggerFactory? _loggerFactory;
         private static ILogger<FWBMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<FWBMessageProcessor>();
-
         private readonly FNAMessageProcessor _fNAMessageProcessor;
         private readonly FFRMessageProcessor _fFRMessageProcessor;
+        private readonly GenericFunction _genericFunction;
 
 
         #region Constructor
@@ -46,7 +47,9 @@ namespace QidWorkerRole
             ILogger<FWBMessageProcessor> logger,
             FNAMessageProcessor fNAMessageProcessor,
             FFRMessageProcessor fFRMessageProcessor,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            GenericFunction genericFunction
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -54,6 +57,7 @@ namespace QidWorkerRole
             _fNAMessageProcessor = fNAMessageProcessor;
             _fFRMessageProcessor = fFRMessageProcessor;
             _readOnlyDao = sqlDataHelperFactory.Create(readOnly: false);
+            _genericFunction = genericFunction;
         }
         #endregion
 
@@ -71,7 +75,29 @@ namespace QidWorkerRole
         /// <param name="objDimension"></param>
         /// <param name="objAwbBup"></param>
         /// <returns></returns>
-        public bool DecodeReceiveFWBMessage(string fwbmsg, ref MessageData.fwbinfo fwbdata, ref MessageData.FltRoute[] fltroute, ref MessageData.othercharges[] fwbOtherCharge, ref MessageData.otherserviceinfo[] othinfoarray, ref MessageData.RateDescription[] fwbrate, ref MessageData.customsextrainfo[] custominfo, ref MessageData.dimensionnfo[] objDimension, ref MessageData.AWBBuildBUP[] objAwbBup, int refNO, out string errorMessage)
+        public async Task<(
+            bool success,
+            MessageData.fwbinfo fwbdata,
+            MessageData.FltRoute[] fltroute,
+            MessageData.othercharges[] fwbOtherCharge,
+            MessageData.otherserviceinfo[] othinfoarray,
+            MessageData.RateDescription[] fwbrate,
+            MessageData.customsextrainfo[] custominfo,
+            MessageData.dimensionnfo[] objDimension,
+            MessageData.AWBBuildBUP[] objAwbBup,
+            string errorMessage
+            )>
+            DecodeReceiveFWBMessage(
+            string fwbmsg,
+            MessageData.fwbinfo fwbdata,
+            MessageData.FltRoute[] fltroute,
+            MessageData.othercharges[] fwbOtherCharge,
+            MessageData.otherserviceinfo[] othinfoarray,
+            MessageData.RateDescription[] fwbrate,
+            MessageData.customsextrainfo[] custominfo,
+            MessageData.dimensionnfo[] objDimension,
+            MessageData.AWBBuildBUP[] objAwbBup, int refNO,
+            string errorMessage)
         {
             errorMessage = string.Empty;
             bool flag = false;
@@ -367,8 +393,10 @@ namespace QidWorkerRole
                                                 if (isRouteValid && flight.fltarrival != fwbdata.dest)
                                                 {
                                                     errorMessage = "Route origin and destination mismatch with AWB";
-                                                    GenericFunction genericFunction = new GenericFunction();
-                                                    genericFunction.UpdateErrorMessageToInbox(refNO, errorMessage, "FWB", false, "", false);
+
+                                                    //GenericFunction genericFunction = new GenericFunction();
+
+                                                    await _genericFunction.UpdateErrorMessageToInbox(refNO, errorMessage, "FWB", false, "", false);
                                                     break;
                                                 }
                                                 Array.Resize(ref fltroute, fltroute.Length + 1);
@@ -543,7 +571,8 @@ namespace QidWorkerRole
                                             else
                                             {
                                                 errorMessage = "Invalid message format issue";
-                                                return false;
+                                                //return false;
+                                                return (false, fwbdata, fltroute, fwbOtherCharge, othinfoarray, fwbrate, custominfo, objDimension, objAwbBup, errorMessage);
                                             }
                                             string msgNCV = msg[5].Replace('.', '0');
                                             if (!string.IsNullOrEmpty(msg[5]) && msgNCV.All(char.IsDigit) || msg[5] == "NCV")
@@ -553,7 +582,7 @@ namespace QidWorkerRole
                                             else
                                             {
                                                 errorMessage = "Invalid message format issue";
-                                                return false;
+                                                return (false, fwbdata, fltroute, fwbOtherCharge, othinfoarray, fwbrate, custominfo, objDimension, objAwbBup, errorMessage);
                                             }
 
                                         }
@@ -771,7 +800,7 @@ namespace QidWorkerRole
                                             if (!isUpper || msg[1].Length != 7)
                                             {
                                                 errorMessage = "AWB:" + awbNumber + " not created(or updatted), incorrect ISU format";
-                                                return false;
+                                                return (false, fwbdata, fltroute, fwbOtherCharge, othinfoarray, fwbrate, custominfo, objDimension, objAwbBup, errorMessage);
                                             }
                                             fwbdata.carrieryear = msg.Length > 1 ? msg[1].Length > 1 ? msg[1].Substring(5) : string.Empty : string.Empty;
                                             fwbdata.carrierplace = msg.Length > 2 ? msg[2] : string.Empty;
@@ -1805,7 +1834,9 @@ namespace QidWorkerRole
             {
                 flag = false;
             }
-            return flag;
+            //return flag;
+            return (flag, fwbdata, fltroute, fwbOtherCharge, othinfoarray, fwbrate, custominfo, objDimension, objAwbBup, errorMessage);
+
         }
 
         /// <summary>
@@ -1822,7 +1853,7 @@ namespace QidWorkerRole
         /// <param name="objAWBBup"></param>
         /// <returns></returns>
         /// public async Task<bool> SaveandValidateFWBMessage(MessageData.fwbinfo fwbdata, MessageData.FltRoute[] fltroute, MessageData.othercharges[] OtherCharges, MessageData.otherserviceinfo[] othinfoarray, MessageData.RateDescription[] fwbrates, MessageData.customsextrainfo[] customextrainfo, MessageData.dimensionnfo[] objDimension, int REFNo, MessageData.AWBBuildBUP[] objAWBBup, string strMessage, string strMessageFrom, string strFromID, string strStatus, string PIMAAddress, out string ErrorMsg)
-        public async Task<(bool, string ErrorMsg)> SaveandValidateFWBMessage(MessageData.fwbinfo fwbdata, MessageData.FltRoute[] fltroute, MessageData.othercharges[] OtherCharges, MessageData.otherserviceinfo[] othinfoarray, MessageData.RateDescription[] fwbrates, MessageData.customsextrainfo[] customextrainfo, MessageData.dimensionnfo[] objDimension, int REFNo, MessageData.AWBBuildBUP[] objAWBBup, string strMessage, string strMessageFrom, string strFromID, string strStatus, string PIMAAddress, string ErrorMsg)
+        public async Task<(bool, string? ErrorMsg)> SaveandValidateFWBMessage(MessageData.fwbinfo fwbdata, MessageData.FltRoute[] fltroute, MessageData.othercharges[] OtherCharges, MessageData.otherserviceinfo[] othinfoarray, MessageData.RateDescription[] fwbrates, MessageData.customsextrainfo[] customextrainfo, MessageData.dimensionnfo[] objDimension, int REFNo, MessageData.AWBBuildBUP[] objAWBBup, string strMessage, string strMessageFrom, string strFromID, string strStatus, string PIMAAddress, string ErrorMsg)
         {
             bool flag = false;
             try
@@ -1853,7 +1884,8 @@ namespace QidWorkerRole
                     , stopCreateBookingThroughFWB = false;
 
                 DataSet dsAWBMaterLogOldValues = new DataSet();
-                GenericFunction genericFunction = new GenericFunction();
+
+                //GenericFunction genericFunction = new GenericFunction();
                 //FNAMessageProcessor fnaMessageProcessor = new FNAMessageProcessor();
                 //FFRMessageProcessor ffRMessageProcessor = new FFRMessageProcessor();
 
@@ -1869,26 +1901,29 @@ namespace QidWorkerRole
 
                 }
 
-                isUpdateRouteThroughFWB = Convert.ToBoolean(genericFunction.ReadValueFromDb("UpdateRouteThroughFWB") == string.Empty ? "false" : genericFunction.ReadValueFromDb("UpdateRouteThroughFWB"));
-                stopCreateBookingThroughFWB = Convert.ToBoolean(genericFunction.ReadValueFromDb("StopCreateBookingThroughFWB") == string.Empty ? "false" : genericFunction.ReadValueFromDb("StopCreateBookingThroughFWB"));
+                string updateRouteThroughFWB = ConfigCache.Get("UpdateRouteThroughFWB");
+                string stopCreateBookingThroughFWB1 = ConfigCache.Get("StopCreateBookingThroughFWB");
+
+                isUpdateRouteThroughFWB = Convert.ToBoolean(updateRouteThroughFWB == string.Empty ? "false" : updateRouteThroughFWB);
+                stopCreateBookingThroughFWB = Convert.ToBoolean(stopCreateBookingThroughFWB1 == string.Empty ? "false" : stopCreateBookingThroughFWB1);
                 #endregion Local Variables
 
                 // clsLog.WriteLogAzure("FindLog 101 Start UpdateInboxFromMessageParameter " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 101 Start UpdateInboxFromMessageParameter {0}-{1}", AWBPrefix, awbnum);
-                genericFunction.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + awbnum, string.Empty, string.Empty, string.Empty, "FWB", strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
+                await _genericFunction.UpdateInboxFromMessageParameter(REFNo, AWBPrefix + "-" + awbnum, string.Empty, string.Empty, string.Empty, "FWB", strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
                 // clsLog.WriteLogAzure("FindLog 101 End UpdateInboxFromMessageParameter " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 101 End UpdateInboxFromMessageParameter {0} - {1}", AWBPrefix, awbnum);
 
                 ///MasterLog
                 // clsLog.WriteLogAzure("FindLog 102 Start GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 102 Start GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
-                dsAWBMaterLogOldValues = genericFunction.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
+                dsAWBMaterLogOldValues = await _genericFunction.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
                 // clsLog.WriteLogAzure("FindLog 102 End GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 102 End GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
 
                 #region Check AWB is present or not
                 bool isAWBPresent = false;
-                DataSet dsCheck = new DataSet();
+                DataSet? dsCheck = new DataSet();
                 //SQLServer dtbsp_getawbdetails = new SQLServer();
                 //string[] paramName1 = new string[] { "AWBNumber", "AWBPrefix" };
                 //object[] paramValues1 = new object[] { awbnum, AWBPrefix };
@@ -2015,12 +2050,19 @@ namespace QidWorkerRole
                 #endregion Set Flight Destination For Incomplete Route(RTG line)                
 
                 #region : OCI :
+                string showIATAOCIInfo1 = ConfigCache.Get("ShowIATAOCIInfo");
+
                 string customShipIDCode = string.Empty, customConsIDCode = string.Empty, customShipperTelephone = string.Empty;
                 string customConsigneeTelephone = string.Empty, customConsigneeContactPerson = string.Empty, customShipAEONum = string.Empty, customConsAEONum = string.Empty, customConsigneeContactCountry = string.Empty;
                 string customShipContactPerson = string.Empty, customConsContactPerson = string.Empty, customShipContactTelephone = string.Empty, customConsContactTelephone = string.Empty, customRegulatedPartyCategory = string.Empty;
                 string customScreeningMethod = string.Empty, customScreenerName = string.Empty, customScreeningDate = string.Empty, knownConsiner = string.Empty, customRegulatedPartyCategoryCountryCode = string.Empty, customRegulatedPartyCategoryISS = string.Empty, customRegulatedPartyCategoryOSS = string.Empty, customScreeningMethodOSS = string.Empty, customScreenerNameOSS = string.Empty, customScreeningDateOSS = string.Empty, customRegulatedPartyCategoryCountryCodeOSS = string.Empty, customRegulatedPartyCategoryOSSInfo = string.Empty;
-                bool showIATAOCIInfo = Convert.ToBoolean(genericFunction.GetConfigurationValues("ShowIATAOCIInfo") == string.Empty ? "false"
-                    : genericFunction.GetConfigurationValues("ShowIATAOCIInfo"));
+
+                //bool showIATAOCIInfo = Convert.ToBoolean(genericFunction.GetConfigurationValues("ShowIATAOCIInfo") == string.Empty ? "false"
+                //    : genericFunction.GetConfigurationValues("ShowIATAOCIInfo"));
+
+                bool showIATAOCIInfo = Convert.ToBoolean(showIATAOCIInfo1 == string.Empty ? "false"
+                   : showIATAOCIInfo1);
+
                 for (int i = 0; i < customextrainfo.Length; i++)
                 {
                     customRegulatedPartyCategoryOSS = customextrainfo[i].InformationIdentifierOci == string.Empty ? customRegulatedPartyCategoryOSS : customextrainfo[i].InformationIdentifierOci;
@@ -2372,7 +2414,7 @@ namespace QidWorkerRole
 
                                 // clsLog.WriteLogAzure("FindLog 107 Start GenerateFNAMessage " + AWBPrefix + "-" + awbnum);
                                 _logger.LogInformation("FindLog 107 Start GenerateFNAMessage {0} - {1}", AWBPrefix, awbnum);
-                                _fNAMessageProcessor.GenerateFNAMessage(strMessage, "AWB IS ALREADY ACCEPTED WE WILL ONLY UPDATE SHIPPER AND CONSIGNEE INFO", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
+                                await _fNAMessageProcessor.GenerateFNAMessage(strMessage, "AWB IS ALREADY ACCEPTED WE WILL ONLY UPDATE SHIPPER AND CONSIGNEE INFO", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
                                 // clsLog.WriteLogAzure("FindLog 107 End GenerateFNAMessage " + AWBPrefix + "-" + awbnum);
                                 _logger.LogInformation("FindLog 107 End GenerateFNAMessage {0} - {1}", AWBPrefix, awbnum);
 
@@ -2423,12 +2465,13 @@ namespace QidWorkerRole
 
                                     //dtbSPAddAWBAuditLog = null;
 
-                                    GenericFunction gf = new GenericFunction();
+                                    //GenericFunction gf = new GenericFunction();
+
                                     DataSet dsAWBMaterLogNewValues = new DataSet();
 
                                     // clsLog.WriteLogAzure("FindLog 109 Start GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                                     _logger.LogInformation("FindLog 109 Start GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
-                                    dsAWBMaterLogNewValues = gf.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
+                                    dsAWBMaterLogNewValues = await _genericFunction.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
                                     // clsLog.WriteLogAzure("FindLog 109 End GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                                     _logger.LogInformation("FindLog 109 End GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
                                     if (dsAWBMaterLogNewValues != null && dsAWBMaterLogNewValues.Tables.Count > 0 && dsAWBMaterLogNewValues.Tables[0].Rows.Count > 0)
@@ -2441,7 +2484,7 @@ namespace QidWorkerRole
                                         else
                                             dtOldValues = null;
                                         dtNewValues = dsAWBMaterLogNewValues.Tables[0];
-                                        gf.MasterAuditLog(dtOldValues, dtNewValues, AWBPrefix, awbnum, "Update", "FWB", System.DateTime.Now);
+                                        await _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, AWBPrefix, awbnum, "Update", "FWB", System.DateTime.Now);
                                     }
                                     //return flag = true;
                                     return (true, ErrorMsg);
@@ -2511,8 +2554,14 @@ namespace QidWorkerRole
                 if (fltroute.Length > 0)
                 {
                     #region : Check flight extsts or not in schedule :
+
                     bool isCheckValidFlight = false;
-                    isCheckValidFlight = Convert.ToBoolean(genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus") == string.Empty ? "false" : genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus"));
+                    string chkFltPresentAndAWBStatus = ConfigCache.Get("ChkFltPresentAndAWBStatus");
+
+                    //isCheckValidFlight = Convert.ToBoolean(genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus") == string.Empty ? "false" : genericFunction.ReadValueFromDb("ChkFltPresentAndAWBStatus"));
+
+                    isCheckValidFlight = Convert.ToBoolean(chkFltPresentAndAWBStatus == string.Empty ? "false" : chkFltPresentAndAWBStatus);
+
                     if (isCheckValidFlight)
                     {
                         DataSet dsawbFlt = new DataSet();
@@ -2812,12 +2861,16 @@ namespace QidWorkerRole
                 if ((volcode == "MC" && VolumeAmount != string.Empty && Convert.ToDecimal(VolumeAmount) > 100)
                     || (volcode == "CF" && VolumeAmount != string.Empty && Convert.ToDecimal(VolumeAmount) > 3546))
                 {
-                    genericFunction.UpdateErrorMessageToInbox(REFNo, "Please check AWB volume details", "FWB", false, "", false);
+                    await _genericFunction.UpdateErrorMessageToInbox(REFNo, "Please check AWB volume details", "FWB", false, "", false);
                 }
 
 
                 decimal ChargeableWeight = 0;
-                bool doNotCalculateChargeableWeightFromVolume = !string.IsNullOrEmpty(genericFunction.ReadValueFromDb("DoNotCalculateChargeableWeightFromVolume").Trim()) && Convert.ToBoolean(genericFunction.ReadValueFromDb("DoNotCalculateChargeableWeightFromVolume").Trim());
+                string doNotCalculateChargeableWeightFromVolume1 = ConfigCache.Get("DoNotCalculateChargeableWeightFromVolume");
+
+                //bool doNotCalculateChargeableWeightFromVolume = !string.IsNullOrEmpty(genericFunction.ReadValueFromDb("DoNotCalculateChargeableWeightFromVolume").Trim()) && Convert.ToBoolean(genericFunction.ReadValueFromDb("DoNotCalculateChargeableWeightFromVolume").Trim());
+                bool doNotCalculateChargeableWeightFromVolume = !string.IsNullOrEmpty(doNotCalculateChargeableWeightFromVolume1.Trim()) && Convert.ToBoolean(doNotCalculateChargeableWeightFromVolume1.Trim());
+
 
                 if (!doNotCalculateChargeableWeightFromVolume)
                 {
@@ -3884,11 +3937,13 @@ namespace QidWorkerRole
                         //dtbUpdateStatustoExecuted = null;
 
                         ///MasterLog
-                        GenericFunction gf = new GenericFunction();
+
+                        //GenericFunction gf = new GenericFunction();
+
                         DataSet dsAWBMaterLogNewValues = new DataSet();
                         // clsLog.WriteLogAzure("FindLog 124 Start GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                         _logger.LogWarning("FindLog 124 Start GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
-                        dsAWBMaterLogNewValues = gf.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
+                        dsAWBMaterLogNewValues = await _genericFunction.GetAWBMasterLogNewRecord(AWBPrefix, awbnum);
                         // clsLog.WriteLogAzure("FindLog 124 End GetAWBMasterLogNewRecord " + AWBPrefix + "-" + awbnum);
                         _logger.LogWarning("FindLog 124 End GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
                         if (dsAWBMaterLogNewValues != null && dsAWBMaterLogNewValues.Tables.Count > 0 && dsAWBMaterLogNewValues.Tables[0].Rows.Count > 0)
@@ -3901,7 +3956,7 @@ namespace QidWorkerRole
                             else
                                 dtOldValues = null;
                             dtNewValues = dsAWBMaterLogNewValues.Tables[0];
-                            gf.MasterAuditLog(dtOldValues, dtNewValues, AWBPrefix, awbnum, "Save", "FWB", System.DateTime.Now);
+                            await _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, AWBPrefix, awbnum, "Save", "FWB", System.DateTime.Now);
                             // clsLog.WriteLogAzure("FindLog 124_2 End GetAWBMasterLogNewRecord  " + AWBPrefix + "-" + awbnum);
                             _logger.LogWarning("FindLog 124_2 End GetAWBMasterLogNewRecord {0} - {1}", AWBPrefix, awbnum);
 
@@ -3993,7 +4048,9 @@ namespace QidWorkerRole
         public async Task GenerateFWB(string PartnerCode, string DepartureAirport, string ArrivalAirport, string FlightNo, DateTime FlightDate, string username, DateTime itdate, string AWBNumbers)
         {
             string FlightDestination = string.Empty;
-            GenericFunction genericFunction = new GenericFunction();
+
+            //GenericFunction genericFunction = new GenericFunction();
+
             string MessageVersion = "8", SitaMessageHeader = string.Empty, error = string.Empty, strEmailid = string.Empty, strSITAHeaderType = string.Empty, WEBAPIAddress = string.Empty, WebAPIURL = string.Empty;
             DataSet dsData = new DataSet();
 
@@ -4006,7 +4063,7 @@ namespace QidWorkerRole
                 awbDestination = awbDestination + "," + ArrivalAirport.Trim();
                 string awbOrigin = dsfwb.Tables[0].Rows[0]["OriginCode"].ToString();
                 string SFTPHeaderSITAddress = string.Empty;
-                DataSet dsconfiguration = genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
+                DataSet dsconfiguration = await _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(PartnerCode, "FWB", "AIR", DepartureAirport, ArrivalAirport, FlightNo, string.Empty, string.Empty, string.Empty);
                 if (dsconfiguration != null && dsconfiguration.Tables[0].Rows.Count > 0)
                 {
                     strEmailid = dsconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -4015,35 +4072,35 @@ namespace QidWorkerRole
                     WebAPIURL = dsconfiguration.Tables[0].Rows[0]["WebAPIURL"].ToString();
                     if (dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
                     {
-                        SitaMessageHeader = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                     if (dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                     {
-                        SFTPHeaderSITAddress = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
+                        SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
                     }
                     if (WebAPIURL.Length > 0)
                     {
-                        WEBAPIAddress = genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
+                        WEBAPIAddress = _genericFunction.MakeMailMessageFormat(dsconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dsconfiguration.Tables[0].Rows[0]["WEBAPIHeaderType"].ToString());
                     }
                 }
                 //string fwbMsg = EncodeFWB(dsfwb,  error, MessageVersion);
-                string ErrorMsg = null;
+                string? ErrorMsg = null;
                 (string fwbMsg, ErrorMsg) = await EncodeFWB(dsfwb, ErrorMsg, MessageVersion);
                 try
                 {
                     if (fwbMsg.Length > 3)
                     {
                         if (SitaMessageHeader.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("SITA:FWB", SitaMessageHeader.ToString() + "\r\n" + fwbMsg, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
+                            await _genericFunction.SaveMessageOutBox("SITA:FWB", SitaMessageHeader.ToString() + "\r\n" + fwbMsg, "", "SITAFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
 
                         if (SFTPHeaderSITAddress.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("SITA:FWB", SFTPHeaderSITAddress.ToString() + "\r\n" + fwbMsg, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
+                            await _genericFunction.SaveMessageOutBox("SITA:FWB", SFTPHeaderSITAddress.ToString() + "\r\n" + fwbMsg, "", "SFTP", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
 
                         if (strEmailid.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("FWB", fwbMsg, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
+                            await _genericFunction.SaveMessageOutBox("FWB", fwbMsg, "", strEmailid, DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
 
                         if (WEBAPIAddress.Trim().Length > 0)
-                            genericFunction.SaveMessageOutBox("FWB", WEBAPIAddress.ToString() + "\r\n" + fwbMsg, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
+                            await _genericFunction.SaveMessageOutBox("FWB", WEBAPIAddress.ToString() + "\r\n" + fwbMsg, "", "WEBAPI", DepartureAirport, FlightDestination, FlightNo, FlightDate.ToString(), awbArrray[i], "Auto", "FWB");
 
                     }
                 }
@@ -4063,15 +4120,17 @@ namespace QidWorkerRole
             try
             {
                 string SitaMessageHeader = string.Empty, FWBMessageversion = string.Empty, Emailaddress = string.Empty, error = string.Empty, SFTPHeaderSITAddress = string.Empty;
-                GenericFunction gf = new GenericFunction();
+                
+                //GenericFunction gf = new GenericFunction();
+
                 MessageData.fblinfo objFBLInfo = new MessageData.fblinfo("");
                 MessageData.unloadingport[] objUnloadingPort = new MessageData.unloadingport[0];
                 MessageData.consignmnetinfo[] objConsInfo = new MessageData.consignmnetinfo[0];
-                DataSet dsData = gf.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
+                DataSet dsData = await _genericFunction.GetRecordforGenerateFBLMessage(DepartureAirport, flightdest, FlightNo, FlightDate);
 
                 if (dsData != null && dsData.Tables.Count > 1 && dsData.Tables[0].Rows.Count > 0)
                 {
-                    DataSet dsmessage = gf.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
+                    DataSet dsmessage = await _genericFunction.GetSitaAddressandMessageVersionForAutoMessage(FlightNo.Substring(0, 2), "FWB", "AIR", DepartureAirport, flightdest, FlightNo, string.Empty, string.Empty, string.Empty, isAutoSendOnTriggerTime: isAutoSendOnTriggerTime);
                     if (dsmessage != null && dsmessage.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dsmessage.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -4079,10 +4138,10 @@ namespace QidWorkerRole
                         FWBMessageversion = dsmessage.Tables[0].Rows[0]["MessageVersion"].ToString();
 
                         if (dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 1)
-                            SitaMessageHeader = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                            SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
 
                         if (dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 1)
-                            SFTPHeaderSITAddress = gf.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
+                            SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dsmessage.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dsmessage.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsmessage.Tables[0].Rows[0]["MessageID"].ToString());
                     }
                     DataTable dt = new DataTable();
 
@@ -4107,20 +4166,20 @@ namespace QidWorkerRole
 
                                 if (SitaMessageHeader != "")
                                 {
-                                    gf.SaveMessageOutBox("FWB", SitaMessageHeader + "\r\n" + fwbMsg, "SITAFTP", "SITAFTP", "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
+                                    await _genericFunction.SaveMessageOutBox("FWB", SitaMessageHeader + "\r\n" + fwbMsg, "SITAFTP", "SITAFTP", "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
                                     // clsLog.WriteLogAzure(" in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
                                     _logger.LogInformation(" in SaveMessageOutBox SitaMessageHeader {0}", DateTime.Now);
                                 }
                                 if (SFTPHeaderSITAddress != "")
                                 {
-                                    gf.SaveMessageOutBox("FWB", SFTPHeaderSITAddress + "\r\n" + fwbMsg, "SFTP", "SFTP", "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
+                                    await _genericFunction.SaveMessageOutBox("FWB", SFTPHeaderSITAddress + "\r\n" + fwbMsg, "SFTP", "SFTP", "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
                                     // clsLog.WriteLogAzure(" in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
                                     _logger.LogInformation(" in SaveMessageOutBox SFTPHeaderSITAddress {0}", DateTime.Now);
                                 }
 
                                 if (Emailaddress != "")
                                 {
-                                    gf.SaveMessageOutBox("FWB", fwbMsg, string.Empty, Emailaddress, "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
+                                    await _genericFunction.SaveMessageOutBox("FWB", fwbMsg, string.Empty, Emailaddress, "", "", "", "", dt.Rows[i]["AWBNumbers"].ToString(), "Auto", "FWB");
                                     // clsLog.WriteLogAzure(" in SaveMessageOutBox  Emailaddress" + DateTime.Now);
                                     _logger.LogInformation(" in SaveMessageOutBox  Emailaddress {0}", DateTime.Now);
                                 }
@@ -4421,8 +4480,9 @@ namespace QidWorkerRole
                     }
 
                     //Makeing Reference Tag
-                    GenericFunction GF = new GenericFunction();
-                    DataSet dsReference = GF.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
+
+                    //GenericFunction GF = new GenericFunction();
+                    DataSet dsReference = await _genericFunction.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
                     if (dsReference != null && dsReference.Tables[0].Rows.Count > 0 && dsReference.Tables[0].Rows[0]["AppValue"].ToString() == "TRUE")
                     {
                         // FWBData.senderofficedesignator = dsReference.Tables[0].Rows[0]["OriginSitaAddress"].ToString().Trim();

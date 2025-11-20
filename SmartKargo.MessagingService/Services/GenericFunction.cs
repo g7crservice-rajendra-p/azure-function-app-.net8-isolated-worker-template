@@ -52,7 +52,7 @@ namespace QidWorkerRole
         #endregion
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<GenericFunction> _logger;
-         private static ILoggerFactory? _loggerFactory;
+        private static ILoggerFactory? _loggerFactory;
         private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
 
 
@@ -62,7 +62,7 @@ namespace QidWorkerRole
             ILogger<GenericFunction> logger,
             GenericFunction genericFunction,
             ILoggerFactory loggerFactory)
-            
+
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -915,55 +915,67 @@ namespace QidWorkerRole
             return null;
         }
 
-        /*Not in user*/
-        #region UploadDocumentsOnEpouch
-        //public bool UploadDocumentsOnEpouch(string AWBNo, string DocumentName, string UploadedBy, string DocumentNo, string Extension, byte[] Document, string DocumentFileName, string FileUrl)
-        //{
-        //    try
-        //    {
-        //        SQLServer da = new SQLServer();
-        //        bool flag = false;
-        //        string[] QueryNames = new string[8];
-        //        object[] QueryValues = new object[8];
-        //        SqlDbType[] QueryTypes = new SqlDbType[8];
+        # region UploadDocumentsOnEpouch
+        public async Task<bool> UploadDocumentsOnEpouch(string AWBNo, string DocumentName, string UploadedBy, string DocumentNo, string Extension, byte[] Document, string DocumentFileName, string FileUrl)
+        {
+            try
+            {
+                //SQLServer da = new SQLServer();
+                //string[] QueryNames = new string[8];
+                //object[] QueryValues = new object[8];
+                //SqlDbType[] QueryTypes = new SqlDbType[8];
 
-        //        QueryNames[0] = "AWBNo";
-        //        QueryNames[1] = "DocumentName";
-        //        QueryNames[2] = "UploadedBy";
-        //        QueryNames[3] = "DocumentNo";
-        //        QueryNames[4] = "Extension";
-        //        QueryNames[5] = "Document";
-        //        QueryNames[6] = "FileName";
-        //        QueryNames[7] = "FileUrl";
+                //QueryNames[0] = "AWBNo";
+                //QueryNames[1] = "DocumentName";
+                //QueryNames[2] = "UploadedBy";
+                //QueryNames[3] = "DocumentNo";
+                //QueryNames[4] = "Extension";
+                //QueryNames[5] = "Document";
+                //QueryNames[6] = "FileName";
+                //QueryNames[7] = "FileUrl";
 
-        //        QueryTypes[0] = SqlDbType.VarChar;
-        //        QueryTypes[1] = SqlDbType.VarChar;
-        //        QueryTypes[2] = SqlDbType.VarChar;
-        //        QueryTypes[3] = SqlDbType.VarChar;
-        //        QueryTypes[4] = SqlDbType.VarChar;
-        //        QueryTypes[5] = SqlDbType.VarBinary;
-        //        QueryTypes[6] = SqlDbType.VarChar;
-        //        QueryTypes[7] = SqlDbType.VarChar;
+                //QueryTypes[0] = SqlDbType.VarChar;
+                //QueryTypes[1] = SqlDbType.VarChar;
+                //QueryTypes[2] = SqlDbType.VarChar;
+                //QueryTypes[3] = SqlDbType.VarChar;
+                //QueryTypes[4] = SqlDbType.VarChar;
+                //QueryTypes[5] = SqlDbType.VarBinary;
+                //QueryTypes[6] = SqlDbType.VarChar;
+                //QueryTypes[7] = SqlDbType.VarChar;
 
-        //        QueryValues[0] = AWBNo;
-        //        QueryValues[1] = DocumentName;
-        //        QueryValues[2] = UploadedBy;
-        //        QueryValues[3] = DocumentNo;
-        //        QueryValues[4] = Extension;
-        //        QueryValues[5] = Document;
-        //        QueryValues[6] = DocumentFileName;
-        //        QueryValues[7] = FileUrl;
+                //QueryValues[0] = AWBNo;
+                //QueryValues[1] = DocumentName;
+                //QueryValues[2] = UploadedBy;
+                //QueryValues[3] = DocumentNo;
+                //QueryValues[4] = Extension;
+                //QueryValues[5] = Document;
+                //QueryValues[6] = DocumentFileName;
+                //QueryValues[7] = FileUrl;
 
-        //        flag = da.InsertData("SP_InsertUploadedDocuments", QueryNames, QueryTypes, QueryValues);
-        //        return flag;
+                bool flag = false;
+                SqlParameter[] sqlParameters = new SqlParameter[] {
+                    new SqlParameter("AWBNo", SqlDbType.VarChar) { Value = AWBNo },
+                    new SqlParameter("DocumentName", SqlDbType.VarChar) { Value = DocumentName },
+                    new SqlParameter("UploadedBy", SqlDbType.VarChar) { Value = UploadedBy },
+                    new SqlParameter("DocumentNo", SqlDbType.VarChar) { Value = DocumentNo },
+                    new SqlParameter("Extension", SqlDbType.VarChar) { Value = Extension },
+                    new SqlParameter("Document", SqlDbType.VarBinary) { Value = Document },
+                    new SqlParameter("FileName", SqlDbType.VarChar) { Value = DocumentFileName },
+                    new SqlParameter("FileUrl", SqlDbType.VarChar) { Value = FileUrl }
+                };
 
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        //clsLog.WriteLogAzure(ex);
-        //    }
-        //    return false;
-        //}
+                //flag = da.InsertData("SP_InsertUploadedDocuments", QueryNames, QueryTypes, QueryValues);
+                flag = await _readWriteDao.ExecuteNonQueryAsync("SP_InsertUploadedDocuments", sqlParameters);
+                return flag;
+
+            }
+            catch (Exception ex)
+            {
+                //clsLog.WriteLogAzure(ex);
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+            }
+            return false;
+        }
         #endregion
 
 

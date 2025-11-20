@@ -922,8 +922,11 @@ namespace QidWorkerRole
 
                             //CIMPMessageValidation cimpMessageValidation = new CIMPMessageValidation();
 
-                            flag = _fWBMessageProcessor.DecodeReceiveFWBMessage(strMsg, ref fwbdata, ref fltroute, ref OtherCharges, ref othinfoarray, ref fwbrates,
-                                ref customextrainfo, ref objDimension, ref objAwbBup, refNO, out ErrorMsg);
+                            //flag = _fWBMessageProcessor.DecodeReceiveFWBMessage(strMsg, ref fwbdata, ref fltroute, ref OtherCharges, ref othinfoarray, ref fwbrates,
+                            //    ref customextrainfo, ref objDimension, ref objAwbBup, refNO, out ErrorMsg);
+
+                            (flag, fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates, customextrainfo, objDimension, objAwbBup, ErrorMsg) = await _fWBMessageProcessor.DecodeReceiveFWBMessage(strMsg, fwbdata, fltroute, OtherCharges, othinfoarray, fwbrates,
+                               customextrainfo, objDimension, objAwbBup, refNO, ErrorMsg);
 
                             //if (flag == true && _cIMPMessageValidation.ValidateFWB(strMsg, refNO, out ErrorMsg))
                             bool success = false;
