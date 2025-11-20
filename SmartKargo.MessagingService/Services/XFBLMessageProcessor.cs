@@ -15,7 +15,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
 using System.Data;
 using static QidWorkerRole.MessageData;
 
@@ -27,9 +26,11 @@ namespace QidWorkerRole
         string unloadingportsequence = string.Empty;
         string uldsequencenum = string.Empty;
         string awbref = string.Empty;
-        static string strConnection = Convert.ToString(ConfigurationManager.ConnectionStrings["ConStr"]);
-        const string PAGE_NAME = "XFBLMessageProcessor";
-        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+
+        //static string strConnection = Convert.ToString(ConfigurationManager.ConnectionStrings["ConStr"]);
+        //const string PAGE_NAME = "XFBLMessageProcessor";
+        //SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+
         #endregion
 
         private readonly ISqlDataHelperDao _readWriteDao;
@@ -382,6 +383,7 @@ namespace QidWorkerRole
                 //string[] PName = new string[] { "AWBNumber", "Pieces", "PieceInfo", "UserName", "TimeStamp", "IsCreate", "AWBWeight", "AWBPrefix" };
                 //object[] PValue = new object[] { AWBNumber, AWBPieces, strDimensions.ToString(), UserName, TimeStamp, IsCreate, AWBWt, AWBPrefix };
                 //SqlDbType[] PType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.Int, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.DateTime, SqlDbType.Bit, SqlDbType.Decimal, SqlDbType.VarChar };
+
                 SqlParameter[] sqlParameters = new SqlParameter[]
                 {
                     new SqlParameter("@AWBNumber", AWBNumber),
@@ -489,7 +491,7 @@ namespace QidWorkerRole
                     source = fbldata.fltairportcode;//ffmdata.fltairportcode;
 
 
-                _genericFunction.UpdateInboxFromMessageParameter(RefNo, string.Empty, flightnum, source, dest, "XFBL", strmessageFrom == "" ? strFromID : strmessageFrom, flightdate);
+                await _genericFunction.UpdateInboxFromMessageParameter(RefNo, string.Empty, flightnum, source, dest, "XFBL", strmessageFrom == "" ? strFromID : strmessageFrom, flightdate);
 
                 #region Reprocess the Consigment Info--commented for GHA logic
                 for (int k = 0; k < unloadingport.Length; k++)

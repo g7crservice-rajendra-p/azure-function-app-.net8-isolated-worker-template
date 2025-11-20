@@ -21,11 +21,14 @@ namespace QidWorkerRole
         private readonly GenericFunction _genericFunction;
 
         #region Constructor
-        public RateExpiryAlert(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<RateExpiryAlert> logger)
+        public RateExpiryAlert(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<RateExpiryAlert> logger,
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
+            _genericFunction = genericFunction;
         }
         #endregion
         #region Variables
@@ -42,7 +45,7 @@ namespace QidWorkerRole
             try
             {
                 //db = new SQLServer();
-                DataSet ds = null;
+                DataSet? ds = null;
 
                 //ds = db.SelectRecords("USPGETAGENTRATEEXPIRYDETAILS");
                 ds = await _readWriteDao.SelectRecords("USPGETAGENTRATEEXPIRYDETAILS");
@@ -76,7 +79,7 @@ namespace QidWorkerRole
                         string emailtext = "Hi, " + "</BR></BR>" + htmlContent;
                         //bool flg = insertData("Rate Line Expire Notification", emailtext, "", ds.Tables[1].Rows[0]["Emailids"].ToString(), DateTime.Now.ToString(), DateTime.Now.ToString(), "RATEEXP", "");
 
-                        SendRateExpiryAlertWithAttachment("Rate Line Expire Notification", emailBody, DateTime.Now, "RATEEXP", "", true, "", ds.Tables[1].Rows[0]["Emailids"].ToString(), memoryStream, ".pdf", FileUrl, "0", "Outbox", Docfilename);
+                        await SendRateExpiryAlertWithAttachment("Rate Line Expire Notification", emailBody, DateTime.Now, "RATEEXP", "", true, "", ds.Tables[1].Rows[0]["Emailids"].ToString(), memoryStream, ".pdf", FileUrl, "0", "Outbox", Docfilename);
 
                     }
                 }
@@ -112,7 +115,7 @@ namespace QidWorkerRole
             {
                 string procedure = "uspAddMessageAttachmentDetails";
                 // SQLServer dtb = new SQLServer();
-                DataSet objDS = null;
+                DataSet? objDS = null;
                 byte[] objBytes = null;
 
                 if (Attachments != null)

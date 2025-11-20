@@ -5,7 +5,7 @@ using System.Data;
 
 namespace QidWorkerRole
 {
-    class balRapidInterface
+    public class balRapidInterface
     {
         //static public Dictionary<string, string> objDictionary = null;
         //static public Dictionary<string, string> objUploadDictionary = null;

@@ -37,7 +37,7 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<XFFRMessageProcessor> _logger;
-        private GenericFunction _genericFunction;
+        private readonly GenericFunction _genericFunction;
         public XFFRMessageProcessor(
              ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<XFFRMessageProcessor> logger,
@@ -449,7 +449,9 @@ namespace QidWorkerRole
             string awbnum = string.Empty, AWBPrefix = string.Empty, strErrorMessage = string.Empty, strAWBOrigin = string.Empty, strAWBDestination = string.Empty, strFlightNo = string.Empty, strFlightOrigin = string.Empty, strFlightDestination = string.Empty;
             int awbPcs = 0;
             decimal awbWeight = 0;
-            XFNMMessageProcessor xfnmMessageProcessor = new XFNMMessageProcessor();
+            
+            //XFNMMessageProcessor xfnmMessageProcessor = new XFNMMessageProcessor();
+
             ErrorMsg = string.Empty;
             try
             {

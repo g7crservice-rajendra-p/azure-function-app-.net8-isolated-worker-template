@@ -116,7 +116,7 @@ namespace QidWorkerRole
                 try
                 {
                     string filenameCTM = string.Empty;
-                    DataSet dsRpdIntrfcAWBFileName = new DataSet();
+                    DataSet? dsRpdIntrfcAWBFileName = new DataSet();
                     DataSet dsAWBData = new DataSet();
 
                     StringBuilder sbAWB = new StringBuilder();
@@ -299,8 +299,8 @@ namespace QidWorkerRole
                 #region "Flown Rapid File"
                 try
                 {
-                    DataSet dsFlownFileName = new DataSet();
-                    DataSet dsFlownData = new DataSet();
+                    DataSet? dsFlownFileName = new DataSet();
+                    DataSet? dsFlownData = new DataSet();
                     StringBuilder sbFlown = new StringBuilder();
                     string filenameFlown = "";
 
@@ -419,8 +419,8 @@ namespace QidWorkerRole
 
                 #region"Export Sales Rapid file"
 
-                DataSet dsExportData = new DataSet();
-                DataSet dsExportFileName = new DataSet();
+                DataSet? dsExportData = new DataSet();
+                DataSet? dsExportFileName = new DataSet();
                 StringBuilder sbExportFile = new StringBuilder();
                 string filenameExport = "";
                 try
@@ -1331,7 +1331,7 @@ namespace QidWorkerRole
 
                 // clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
                 _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}" , System.DateTime.Now);
-                SaveRapidStatus("SaveRapidLog");
+                await SaveRapidStatus("SaveRapidLog");
 
                 //#region Send Email Notification
                 //try
@@ -1458,10 +1458,11 @@ namespace QidWorkerRole
                     //UserName = ConfigurationManager.AppSettings["UserName"].ToString(),
                     //Password = ConfigurationManager.AppSettings["Password"].ToString(),
                     //SshHostKeyFingerprint = ConfigurationManager.AppSettings["SshHostKeyFingerprint"].ToString()
-                    HostName = _appConfig.Sftp.HostName,
-                    UserName = _appConfig.Sftp.UserName,
-                    Password = _appConfig.Sftp.Password,
-                    SshHostKeyFingerprint = _appConfig.Sftp.SshHostKeyFingerprint
+
+                    HostName = _appConfig.Sftp.SftpHostName,
+                    UserName = _appConfig.Sftp.SftpUserName,
+                    Password = _appConfig.Sftp.SftpPassword,
+                    SshHostKeyFingerprint = _appConfig.Sftp.SftpSshHostKeyFingerprint
                 };
                 using (Session session = new Session())
                 {

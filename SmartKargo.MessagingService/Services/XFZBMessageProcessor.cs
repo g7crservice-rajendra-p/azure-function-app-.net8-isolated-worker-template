@@ -15,12 +15,10 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
 using System.Data;
 using System.Text;
 using System.Xml;
 using System.Xml.Schema;
-using static QidWorkerRole.MessageData;
 using static QidWorkerRole.SCMExceptionHandlingWorkRole;
 
 

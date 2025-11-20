@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
 using System.Data;
+using System.Threading;
 
 namespace QidWorkerRole.UploadMasters.FlightSchedule
 {
@@ -61,8 +62,13 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                             _logger.LogInformation("Schedule File Path: {filePath}", FilePath);
                             DataSet dsSSIMUpdateResult = new DataSet();
 
-                            if (!await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, Convert.ToString(dr["FileName"]), out carrier))
+                            bool success = false;
+                            (success, carrier) = await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, Convert.ToString(dr["FileName"]), carrier);
+                            //if (!await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, Convert.ToString(dr["FileName"]), out carrier))
+                            if (!success)
+                            {
                                 return false;
+                            }
 
                             await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule start", 0, 0, 0, 1, "", 1);
                             dsSSIMUpdateResult = await SSIMUpdate(carrier);
@@ -153,7 +159,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
             return dt;
         }
 
-        public async Task<bool> ProcessFile(int MasterLogId, string FilePath, string FileName, out string carrier)
+        public async Task<(bool success, string carrier)> ProcessFile(int MasterLogId, string FilePath, string FileName, string carrier)
         {
             carrier = string.Empty;
             string creationDateTime = string.Empty;
@@ -224,7 +230,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Columns.Contains("IsOldSSIM") && ds.Tables[0].Rows.Count > 0)
                 {
                     if (ds.Tables[0].Rows[0]["IsOldSSIM"].ToString().ToUpper() == "TRUE")
-                        return false;
+                        //return false;
+                        return (false, carrier);
                 }
 
                 //string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\SSIMUploadLog\\"+FileName;
@@ -235,7 +242,8 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
 
 
                 if (ds == null || ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
-                    return false;
+                    //return false;
+                    return (false, carrier);
 
                 _uploadMasterCommon.ExportDataSet(ds, filepath);
             }
@@ -244,9 +252,11 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                 carrier = string.Empty;
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                return false;
+                //return false;
+                return (false, carrier);
             }
-            return true;
+            //return true;
+            return (true, carrier);
         }
 
         /*Not in use*/

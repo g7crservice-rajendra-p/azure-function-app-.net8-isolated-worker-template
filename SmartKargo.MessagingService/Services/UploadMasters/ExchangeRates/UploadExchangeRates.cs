@@ -92,7 +92,8 @@ namespace QidWorkerRole.UploadMasters.ExchangeRates
                 }
                 else
                 {
-                    clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    //clsLog.WriteLogAzure("Invalid file: " + filepath);
+                    _logger.LogWarning("Invalid file: {filePath}", filepath);
                     return false;
                 }
                 foreach (DataColumn dataColumn in dataTableExchangeRatesExcelData.Columns)

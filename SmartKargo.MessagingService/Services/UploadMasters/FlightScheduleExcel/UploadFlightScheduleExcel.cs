@@ -533,7 +533,6 @@ _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()
         //        {
 
         //            //clsLog.WriteLogAzure(ex);
-_logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
         //            CloudBlob blob = blobClient.GetBlobReference(str);
         //            downloadStream = blob.DownloadByteArray();
         //        }
@@ -544,7 +543,6 @@ _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()
         //    catch (Exception ex)
         //    {
         //        //clsLog.WriteLogAzure(ex);
-_logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
         //        return null;
         //    }
 
@@ -570,7 +568,6 @@ _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()
         //    catch (Exception ex)
         //    {
         //        //clsLog.WriteLogAzure(ex);
-_logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
         //        return false;
         //    }
 

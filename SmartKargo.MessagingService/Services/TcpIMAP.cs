@@ -1,10 +1,7 @@
-﻿using System;
-using System.Text;
+﻿using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
-using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
-using QidWorkerRole;
-using Microsoft.Extensions.Logging;
 
 namespace QidWorkerRole
 {
@@ -16,17 +13,19 @@ namespace QidWorkerRole
         private StreamWriter _imapSw;
         private StreamReader _imapSr;
 
+        //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+
         private readonly ILogger<TcpIMAP> _logger;
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         public TcpIMAP(ILogger<TcpIMAP> logger)
         {
             _logger = logger;
         }
 
-        public TcpIMAP(string hostname, int port)
-        {
-            InitializeConnection(hostname, port);
-        }
+        /*Not in use*/
+        //public TcpIMAP(string hostname, int port)
+        //{
+        //    InitializeConnection(hostname, port);
+        //}
 
         public void Connect(string hostname, int port)
         {

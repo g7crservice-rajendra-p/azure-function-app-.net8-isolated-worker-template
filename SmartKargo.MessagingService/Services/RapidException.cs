@@ -59,7 +59,7 @@ namespace QidWorkerRole
     
                 #region MissingAWBFlown Data
     
-                DataSet dsRapidException = new DataSet();
+                DataSet? dsRapidException = new DataSet();
                 dsRapidException = await _balRapidInterfaceForCebu.GetMissingAWBFlownDetails(Convert.ToDateTime(ExecutedOn), FromDate, ToDate);
                 if (dsRapidException != null & dsRapidException.Tables.Count > 0)
                 {

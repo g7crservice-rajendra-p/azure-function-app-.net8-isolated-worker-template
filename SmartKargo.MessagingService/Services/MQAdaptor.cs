@@ -1,5 +1,4 @@
 ﻿using IBM.WMQ;
-using QidWorkerRole;
 using System.Text;
 
 

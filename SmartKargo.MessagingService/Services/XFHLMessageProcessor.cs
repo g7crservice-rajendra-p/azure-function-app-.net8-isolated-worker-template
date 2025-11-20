@@ -16,7 +16,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-using static QidWorkerRole.MessageData;
 using static QidWorkerRole.SCMExceptionHandlingWorkRole;
 
 

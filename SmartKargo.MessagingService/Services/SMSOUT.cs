@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Net;
 using System.Text;
 
@@ -15,8 +14,9 @@ namespace QidWorkerRole
         #endregion
 
         #region Constructor
-        public SMSOUT(GenericFunction genericFunction,
-                ILogger<SMSOUT> logger)
+        public SMSOUT(
+            GenericFunction genericFunction,
+            ILogger<SMSOUT> logger)
         {
             _genericFunction = genericFunction;
             _logger = logger;

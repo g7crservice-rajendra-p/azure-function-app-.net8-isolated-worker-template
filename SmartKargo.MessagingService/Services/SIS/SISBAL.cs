@@ -89,7 +89,7 @@ namespace QidWorkerRole.SIS
         /// <returns></returns>
         public async Task<DataSet?> CreateInterlineAuditLog(string action, string strInvoiceHeaderID, string userName, DateTime updatedOn, string strMsgKey)
         {
-            DataSet resultDataSet = new DataSet();
+            DataSet? resultDataSet = new DataSet();
             NameValueCollection returnValue;
             try
             {

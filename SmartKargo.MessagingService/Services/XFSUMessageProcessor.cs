@@ -50,7 +50,6 @@ namespace QidWorkerRole
 
         #region :: Public Methods ::
 
-
         public async Task GenerateAndSendXFSUMessages()
         {
             try
@@ -4529,9 +4528,17 @@ namespace QidWorkerRole
         /// <param name="uld">ULD information</param>
         /// <param name="othinfoarray">Other service information</param>
         /// <returns>Return true when message decoded successfuly</returns>
-        public bool DecodeReceivedXFSUMessage(int refNO, string fsamsg, ref MessageData.FSAInfo fsadata,
-            ref MessageData.CommonStruct[] fsanodes, ref MessageData.customsextrainfo[] custominfo, ref MessageData.ULDinfo[] uld,
-            ref MessageData.otherserviceinfo[] othinfoarray, out string ErrorMsg)
+        public async Task<(
+            bool success,
+            MessageData.FSAInfo fsadata,
+            MessageData.CommonStruct[] fsanodes,
+            MessageData.customsextrainfo[] custominfo,
+            MessageData.ULDinfo[] uld,
+            MessageData.otherserviceinfo[] othinfoarray,
+            string ErrorMsg)>
+            DecodeReceivedXFSUMessage(int refNO, string fsamsg, MessageData.FSAInfo fsadata,
+             MessageData.CommonStruct[] fsanodes, MessageData.customsextrainfo[] custominfo, MessageData.ULDinfo[] uld,
+             MessageData.otherserviceinfo[] othinfoarray, string ErrorMsg)
         {
             string awbref = string.Empty;
             bool flag = false;
@@ -4700,7 +4707,8 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from IssueDateTime tag";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
 
                                     }
                                 }
@@ -4812,7 +4820,7 @@ namespace QidWorkerRole
                                         flag = false;
                                         //GenericFunction genericFunction = new GenericFunction();
 
-                                        _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                        await _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
                                     }
                                 }
                                 if (fsaXmlDataSet.Tables["AssociatedStatusConsignment"].Columns.Contains("PieceQuantity"))
@@ -5042,7 +5050,8 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from SpecifiedEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
                                     }
                                 }
                             }
@@ -5065,7 +5074,10 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from ArrivalEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -5085,7 +5097,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seperate date and time with T from IssueDateTime tag";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -5616,7 +5630,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from SpecifiedEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
                                     }
                                 }
                             }
@@ -5638,7 +5654,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from DepartureEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -5658,7 +5676,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seperate date and time with T from IssueDateTime tag";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -5781,7 +5801,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from DepartureEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -5901,7 +5923,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from DepartureEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
                                     }
                                 }
                             }
@@ -5924,7 +5948,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from DepartureEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -6006,7 +6032,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from ArrivalEvent";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -6038,7 +6066,9 @@ namespace QidWorkerRole
                                     {
                                         ErrorMsg = "Seprate date and time with T from OccurrenceDateTime tag";
                                         flag = false;
-                                        return false;
+                                        //return false;
+                                        return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
                                     }
                                 }
@@ -6128,7 +6158,9 @@ namespace QidWorkerRole
             }
             if (ErrorMsg == "")
                 ErrorMsg = "Error Occured when XML Decoding";
-            return flag;
+            //return flag;
+            return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray, ErrorMsg);
+
 
         }
 
@@ -6839,7 +6871,7 @@ namespace QidWorkerRole
                 //genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, 
                 //    string.Empty, string.Empty, string.Empty, MessagePrefix, "xFSU", DateTime.Parse("1900-01-01"));
 
-                _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum,
+                await _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum,
                     fsanodes[0].flightnum, string.Empty, string.Empty, MessagePrefix, strMessageFrom == "" ? strFromID : strMessageFrom, DateTime.Parse("1900-01-01"));
 
 
@@ -7187,7 +7219,7 @@ namespace QidWorkerRole
                         {
                             #region : Check AWB is accepted or not :
                             //FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
-                            DataSet dsAWBStatus = new DataSet();
+                            DataSet? dsAWBStatus = new DataSet();
                             dsAWBStatus = await _ffrMessageProcessor.CheckValidateXFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
                             for (int k = 0; k < dsAWBStatus.Tables.Count; k++)
                             {
@@ -7196,7 +7228,7 @@ namespace QidWorkerRole
                                     if (dsAWBStatus.Tables[k].Rows[0]["AWBSttus"].ToString().ToUpper() == "ACCEPTED")
                                     {
                                         //GenericFunction genericFunction = new GenericFunction();
-                                        _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                        await _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
                                         ErrorMsg = "AWB is already accepted";
                                         //return true;
                                         return (true, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
@@ -7323,7 +7355,8 @@ namespace QidWorkerRole
                                 };
                                 //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", parameters))
-                                    clsLog.WriteLogAzure("Error  on Update capacity Plan : {0}" , awbnum);
+                                    //clsLog.WriteLogAzure("Error  on Update capacity Plan : {0}" , awbnum);
+                                    _logger.LogWarning("Error on Update capacity Plan for AWB: {0}", fsadata.awbnum);
 
                                 #endregion
                             }
@@ -7411,7 +7444,7 @@ namespace QidWorkerRole
                                                                             string strSITAHeaderType = dsMsgCongig.Tables[0].Rows[0]["SITAHeaderType"].ToString();
                                                                             string MessageHeader = _genericFunction.MakeMailMessageFormat(dsMsgCongig.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dsMsgCongig.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dsMsgCongig.Tables[0].Rows[0]["MessageID"].ToString(), strSITAHeaderType);
 
-                                                                            _genericFunction.SaveMessageOutBox(sbPRI.StandardMessageIdentifier.StandardMessageIdentifier, MessageHeader + "\r\n" + sbPRI.ToString().ToUpper(), "SITAFTP", "SITAFTP", "", "", "", "", "");
+                                                                            await _genericFunction.SaveMessageOutBox(sbPRI.StandardMessageIdentifier.StandardMessageIdentifier, MessageHeader + "\r\n" + sbPRI.ToString().ToUpper(), "SITAFTP", "SITAFTP", "", "", "", "", "");
                                                                         }
                                                                     }
                                                                     catch (Exception ex)
@@ -8335,7 +8368,7 @@ namespace QidWorkerRole
                             if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", parametersAudit))
                             {
                                 //clsLog.WriteLog("AWB Audit log  for:" + awbnum + Environment.NewLine + "Error: " + dtb.LastErrorDescription);
-                                clsLog.WriteLog("AWB Audit log  for:{0}" , awbnum + Environment.NewLine);
+                                _logger.LogWarning("AWB Audit log  for:{0}", awbnum + Environment.NewLine);
                             }
                         }
                     }

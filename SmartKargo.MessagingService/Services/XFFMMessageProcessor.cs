@@ -419,7 +419,7 @@ namespace QidWorkerRole
                     new("@flightnum", SqlDbType.NVarChar) { Value = flightnum },
                     new("@date", SqlDbType.DateTime)      { Value = flightdate }
                 };
-                DataSet ds = await _readWriteDao.SelectRecords("spGetDestCodeForFFM", parameters);
+                DataSet? ds = await _readWriteDao.SelectRecords("spGetDestCodeForFFM", parameters);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     source = ds.Tables[0].Rows[0]["source"].ToString();
@@ -471,7 +471,7 @@ namespace QidWorkerRole
                             dest = unloadingport[k].unloadingairport;
                             //GenericFunction genericFunction = new GenericFunction();
                             //genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
-                            _genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
+                            await _genericFunction.UpdateInboxFromMessageParameter(REFNo, string.Empty, flightnum, source, dest, "XFFM", strMessageFrom == "" ? strFromID : strMessageFrom, flightdate);
 
                             ManifestID = await ExportManifestSummary(ffmdata.carriercode + ffmdata.fltnum, ffmdata.fltairportcode, unloadingport[k].unloadingairport, flightdate, ffmdata.aircraftregistration, REFNo);
                             if (ManifestID > 0)
@@ -1737,7 +1737,7 @@ namespace QidWorkerRole
         private async Task<DataSet> GenertateAWBDimensions(string AWBNumber, int AWBPieces, DataSet Dimensions, decimal AWBWt, string UserName, DateTime TimeStamp, bool IsCreate, string AWBPrefix)
         {
             //SQLServer da = new SQLServer();
-            DataSet ds = null;
+            DataSet? ds = null;
             try
             {
                 System.Text.StringBuilder strDimensions = new System.Text.StringBuilder();
@@ -2964,13 +2964,13 @@ namespace QidWorkerRole
                 _logger.LogError("Error on Generate XFFMB Message Method: {0}" , ex);
             }
             //return sbXFFMMessage.ToString();
-            return (sbXFFMMessage.ToString(), customsName);
+            return (sbXFFMMessage?.ToString(), customsName);
 
         }
 
         private async Task<DataSet> GetRecordForAWBToGenerateXFFMMessage(string flightNo, DateTime flightDate, string flightOrigin)
         {
-            DataSet dsFfm = new DataSet();
+            DataSet? dsFfm = new DataSet();
             try
             {
                 //SQLServer da = new SQLServer();

@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Xml;
-
-using QidWorkerRole.SIS.Model;
-using System.IO;
-using System.Text;
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers;
-using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.Model;
+using System.Text;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write
 {

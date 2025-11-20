@@ -1,4 +1,5 @@
-﻿using QidWorkerRole.SIS.Model.ISValidationReport;
+﻿using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.Model.ISValidationReport;
 using System.Data;
 using System.Globalization;
 
@@ -6,7 +7,12 @@ namespace QidWorkerRole.SIS.FileHandling.ISValidationReport
 {
     public class ISValidationReportReader
     {
-        
+        private readonly ILogger<ISValidationReportReader> _logger;
+        public ISValidationReportReader(ILogger<ISValidationReportReader> logger)
+        {
+            _logger = logger;
+        }
+
         public List<ISValidationSummaryReport> ReadISValidationSummaryReportR1(string iSValidationSummaryReportR1FilePath)
         {
             List<ISValidationSummaryReport> listISValidationSummaryReport = new List<ISValidationSummaryReport>();
@@ -85,7 +91,8 @@ namespace QidWorkerRole.SIS.FileHandling.ISValidationReport
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadISValidationSummaryReportR1. ", exception);
+                //clsLog.WriteLogAzure("Error Occurred in ReadISValidationSummaryReportR1. ", exception);
+                _logger.LogError(exception, "Error Occurred in ReadISValidationSummaryReportR1.");
                 return listISValidationSummaryReport;
             }
         }
@@ -178,7 +185,8 @@ namespace QidWorkerRole.SIS.FileHandling.ISValidationReport
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadISValidationDetailErrorReportR2.", exception);
+                //clsLog.WriteLogAzure("Error Occurred in ReadISValidationDetailErrorReportR2.", exception);
+                _logger.LogError(exception, "Error Occurred in ReadISValidationDetailErrorReportR2.");
                 return listISValidationDetailErrorReport;
             }
         }
@@ -223,7 +231,8 @@ namespace QidWorkerRole.SIS.FileHandling.ISValidationReport
             }
             catch (Exception exception)
             {
-                clsLog.WriteLogAzure("Error Occurred in ReadCsvFileToDataTable", exception);
+                //clsLog.WriteLogAzure("Error Occurred in ReadCsvFileToDataTable", exception);
+                _logger.LogError(exception, "Error Occurred in ReadCsvFileToDataTable");
                 return dtCsv;
             }
         }

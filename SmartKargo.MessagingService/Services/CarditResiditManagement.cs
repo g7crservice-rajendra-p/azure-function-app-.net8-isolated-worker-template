@@ -25,7 +25,7 @@ namespace QidWorkerRole
 
         static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
         const string PAGE_NAME = "CarditResiditManagementProcessor";
-        SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
+        //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         string AgentCode = string.Empty, AgentName = string.Empty;
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<CarditResiditManagement> _logger;

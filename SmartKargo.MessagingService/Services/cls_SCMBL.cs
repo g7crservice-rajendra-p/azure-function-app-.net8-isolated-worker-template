@@ -1469,7 +1469,9 @@ namespace QidWorkerRole
 
                                     //XFSUMessageProcessor xfsumessage = new XFSUMessageProcessor();
 
-                                    flag = _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, out ErrorMsg);
+                                    //flag = _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, out ErrorMsg);
+                                    (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
+
 
                                     if (flag == true)
                                         //flag = xfsumessage.SaveandUpdateXFSUMessage(xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
@@ -1525,7 +1527,7 @@ namespace QidWorkerRole
                                     strMsg = strMsg.Replace("\n", "$");
                                     strMsg = strMsg.Replace("$$", "$");
                                     strMsg = strMsg.Trim('$');
-                                    _sSM.ToSSM(strMsg, refNO, strOriginalMessage, strMessageFrom, out flag);
+                                    flag = await _sSM.ToSSM(strMsg, refNO, strOriginalMessage, strMessageFrom, flag);
                                 }
                             }
                         }

@@ -1608,8 +1608,11 @@ namespace QidWorkerRole
                                                 //QidWorkerRole.SIS.FileHandling.SISFileReader sISFileReader = new SIS.FileHandling.SISFileReader();
 
                                                 string logFilePath = string.Empty;
+                                                bool success = false;
+                                                (success, logFilePath) = await _sisFileReader.ReadSISFile(filePathToRead, "Qidadmin", logFilePath);
 
-                                                if (await _sisFileReader.ReadSISFile(filePathToRead, "Qidadmin", out logFilePath))
+                                                //if (await _sisFileReader.ReadSISFile(filePathToRead, "Qidadmin", out logFilePath))
+                                                if (success)
                                                 {
                                                     //DbEntity.UpdateDBData
                                                     //ShowMessage(ref lblStatus, skResourceManager.GetString("msgUploadStatusFUS", skCultureInfo) + " (" + zipFileName + ") " + skResourceManager.GetString("msgUploadStatusFUS2", skCultureInfo), MessageType.SuccessMessage);

@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Xml;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using QidWorkerRole.SIS.Model;
+using System.Collections;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Write.WriteHelpers
 {

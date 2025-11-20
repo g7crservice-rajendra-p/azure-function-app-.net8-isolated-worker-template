@@ -15,7 +15,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
 using System.Data;
 
 namespace QidWorkerRole
@@ -23,25 +22,27 @@ namespace QidWorkerRole
     public class FWRMessageProcessor
     {
 
-        string unloadingportsequence = string.Empty;
-        string uldsequencenum = string.Empty;
-        string awbref = string.Empty;
-        static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        const string PAGE_NAME = "FWRMessageProcessor";
-        SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
+        //string unloadingportsequence = string.Empty;
+        //string uldsequencenum = string.Empty;
+        //string awbref = string.Empty;
+        //static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //const string PAGE_NAME = "FWRMessageProcessor";
+        //SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<FWRMessageProcessor> _logger;
         private static ILoggerFactory? _loggerFactory;
         private static ILogger<FWRMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<FWRMessageProcessor>();
+        private readonly GenericFunction _genericFunction;
 
         #region Constructor
         public FWRMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FWRMessageProcessor> logger, ILoggerFactory loggerFactory)
+            ILogger<FWRMessageProcessor> logger, ILoggerFactory loggerFactory, GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _loggerFactory = loggerFactory;
+            _genericFunction = genericFunction;
         }
         #endregion
         #region FWR Message Decoding for Update Dateabse
@@ -207,8 +208,8 @@ namespace QidWorkerRole
             bool MessageStatus = false;
             try
             {
-                GenericFunction gf = new GenericFunction();
-                gf.UpdateInboxFromMessageParameter(messgeId, fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo, string.Empty, string.Empty, string.Empty, "FWR", strMessageFrom, DateTime.Parse("1900-01-01"));
+                //GenericFunction gf = new GenericFunction();
+                await _genericFunction.UpdateInboxFromMessageParameter(messgeId, fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo, string.Empty, string.Empty, string.Empty, "FWR", strMessageFrom, DateTime.Parse("1900-01-01"));
                 string commtype = string.Empty;
                 if (strFromID.Contains("SITA"))
                 {
@@ -231,7 +232,7 @@ namespace QidWorkerRole
 
 
 
-                DataSet dscheckconfiguration = gf.GetSitaAddressandMessageVersion("", "FWB", "AIR", "", "", "", string.Empty, fwrInformation.AirlinePrefix);
+                DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion("", "FWB", "AIR", "", "", "", string.Empty, fwrInformation.AirlinePrefix);
                 if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                 {
                     Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -249,7 +250,8 @@ namespace QidWorkerRole
 
                 if (dsFWB != null && dsFWB.Tables.Count > 0 && dsFWB.Tables[0].Rows.Count > 0)
                 {
-                    strFWBMessage = EncodeFWB(dsFWB, ref Error, FWBMessageversion);
+                    //strFWBMessage = await EncodeFWB(dsFWB, ref Error, FWBMessageversion);
+                    (strFWBMessage, Error) = await EncodeFWB(dsFWB, Error, FWBMessageversion);
                     if (strFWBMessage != "")
                     {
 
@@ -257,20 +259,20 @@ namespace QidWorkerRole
                         {
                             if (dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString().Length > 0)
                             {
-                                SitaMessageHeader = gf.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                gf.SaveMessageOutBox("FWB", SitaMessageHeader + "\r\n" + strFWBMessage, "SITAFTP", "SITAFTP", "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
+                                SitaMessageHeader = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["PatnerSitaID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                                await _genericFunction.SaveMessageOutBox("FWB", SitaMessageHeader + "\r\n" + strFWBMessage, "SITAFTP", "SITAFTP", "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
                             }
                             if (dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString().Length > 0)
                             {
                                 string SFTPHeaderSITAddress = string.Empty;
-                                SFTPHeaderSITAddress = gf.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                gf.SaveMessageOutBox("FWB", SFTPHeaderSITAddress + "\r\n" + strFWBMessage, "SFTP", "SFTP", "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
+                                SFTPHeaderSITAddress = _genericFunction.MakeMailMessageFormat(dscheckconfiguration.Tables[0].Rows[0]["SFTPHeaderSITAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
+                                await _genericFunction.SaveMessageOutBox("FWB", SFTPHeaderSITAddress + "\r\n" + strFWBMessage, "SFTP", "SFTP", "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
                             }
                         }
                         string ToEmailAddress = (strMessageFrom == string.Empty ? Emailaddress : strMessageFrom + "," + Emailaddress);
                         if (ToEmailAddress.Trim().Length > 0)
                         {
-                            gf.SaveMessageOutBox("FWB", strFWBMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
+                            await _genericFunction.SaveMessageOutBox("FWB", strFWBMessage.ToString(), string.Empty, ToEmailAddress, "", "", "", "", fwrInformation.AirlinePrefix + "-" + fwrInformation.AWBNo);
                         }
                     }
                 }
@@ -327,7 +329,7 @@ namespace QidWorkerRole
         #region EncodeFWB
 
         #region EncodeFWB
-        public string EncodeFWB(DataSet dsAWB, ref string Error, string fwbMessageVersion)
+        public async Task<(string FWBMsg, string Error)> EncodeFWB(DataSet dsAWB, string Error, string fwbMessageVersion)
         {
             string FWBMsg = string.Empty;
             try
@@ -338,7 +340,8 @@ namespace QidWorkerRole
                 MessageData.otherserviceinfo[] othSrvData = new MessageData.otherserviceinfo[0];
                 MessageData.RateDescription[] fwbrates = new MessageData.RateDescription[0];
                 MessageData.customsextrainfo[] custominfo = new MessageData.customsextrainfo[0];
-                GenericFunction GF = new GenericFunction();
+
+                //GenericFunction GF = new GenericFunction();
                 #region Prepare Structure
 
                 if (dsAWB != null && dsAWB.Tables.Count > 0 && dsAWB.Tables[0].Rows.Count > 0)
@@ -526,7 +529,7 @@ namespace QidWorkerRole
                     #endregion
 
 
-                    DataTable dtcheckWalkingcustomer = GF.RemoveAgentTagforWalkingCustomer("Quick Booking", DT1.Rows[0]["ShippingAgentCode"].ToString()).Tables[0];
+                    DataTable dtcheckWalkingcustomer = (await _genericFunction.RemoveAgentTagforWalkingCustomer("Quick Booking", DT1.Rows[0]["ShippingAgentCode"].ToString())).Tables[0];
                     if (dtcheckWalkingcustomer != null && dtcheckWalkingcustomer.Rows.Count > 0 && dtcheckWalkingcustomer.Rows[0]["AppParameter"].ToString().ToUpper() == "DEFAULTAGENT")
                     {
                         FWBData.agentaccnum = string.Empty;
@@ -566,7 +569,7 @@ namespace QidWorkerRole
 
                     //Makeing Reference Tag
 
-                    DataSet dsReference = GF.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
+                    DataSet dsReference = await _genericFunction.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
                     if (dsReference != null && dsReference.Tables[0].Rows.Count > 0 && dsReference.Tables[0].Rows[0]["AppValue"].ToString() == "TRUE")
                     {
                         // FWBData.senderofficedesignator = dsReference.Tables[0].Rows[0]["OriginSitaAddress"].ToString().Trim();
@@ -677,7 +680,8 @@ namespace QidWorkerRole
                     else
                     {
                         Error = "No Shipper/Consignee Info Availabe for FWB";
-                        return FWBMsg;
+                        //return FWBMsg;
+                        return (FWBMsg, Error);
                     }
                     // }
 
@@ -695,14 +699,17 @@ namespace QidWorkerRole
                 Error = ex.Message;
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
-            return FWBMsg;
+            //return FWBMsg;
+            return (FWBMsg, Error);
         }
 
         #endregion
 
-        public string GenerateFWBMessage(DataSet dsAWB)
+        public async Task<string> GenerateFWBMessage(DataSet dsAWB)
         {
-            GenericFunction GF = new GenericFunction();
+
+            //GenericFunction GF = new GenericFunction();
+
             string FWBMsg = string.Empty;
             try
             {
@@ -746,7 +753,7 @@ namespace QidWorkerRole
 
                         String strCarrierCode = DT4.Rows[0]["Carrier"].ToString();
 
-                        DataTable dtmessageversion = GF.GetEdiMessageFormat("FWB", strCarrierCode, "GetEdiMessageVersion").Tables[0];
+                        DataTable dtmessageversion = (await _genericFunction.GetEdiMessageFormat("FWB", strCarrierCode, "GetEdiMessageVersion")).Tables[0];
                         if (dtmessageversion != null && dtmessageversion.Rows.Count > 0)
                             FWBData.fwbversionnum = dtmessageversion.Rows[0]["MessageVersion"].ToString();
                         else
@@ -919,7 +926,7 @@ namespace QidWorkerRole
 
 
 
-                    DataTable dtcheckWalkingcustomer = GF.RemoveAgentTagforWalkingCustomer("Quick Booking", DT1.Rows[0]["ShippingAgentCode"].ToString()).Tables[0];
+                    DataTable dtcheckWalkingcustomer = (await _genericFunction.RemoveAgentTagforWalkingCustomer("Quick Booking", DT1.Rows[0]["ShippingAgentCode"].ToString())).Tables[0];
                     if (dtcheckWalkingcustomer != null && dtcheckWalkingcustomer.Rows.Count > 0 && dtcheckWalkingcustomer.Rows[0]["AppParameter"].ToString().ToUpper() == "DEFAULTAGENT")
                     {
                         FWBData.agentaccnum = string.Empty;
@@ -949,7 +956,7 @@ namespace QidWorkerRole
 
                     //Makeing Reference Tag
 
-                    DataSet dsReference = GF.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
+                    DataSet dsReference = await _genericFunction.GetConfigurationofReferenceTag("REF", "REFERENCETAG", "FWB");
                     if (DT1.Rows.Count > 0 && dsReference != null && dsReference.Tables[0].Rows.Count > 0 && dsReference.Tables[0].Rows[0]["AppValue"].ToString() == "TRUE") //Remove this conditional structure or edit its code blocks so that they're not all the same.
                     {
                         // FWBData.senderofficedesignator = dsReference.Tables[0].Rows[0]["OriginSitaAddress"].ToString().Trim();

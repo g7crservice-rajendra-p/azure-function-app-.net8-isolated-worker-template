@@ -394,7 +394,7 @@ namespace QidWorkerRole
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
             }
-
+            return xmlMsg;
         }
 
         #endregion Public Methods

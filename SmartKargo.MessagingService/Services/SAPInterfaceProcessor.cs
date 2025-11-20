@@ -8,7 +8,6 @@ using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
 using System.Data;
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace QidWorkerRole
@@ -145,8 +144,8 @@ namespace QidWorkerRole
                                 DataSet objDs = new DataSet("objDsSAPInterfaceJson");
                                 DataTable objDT = new DataTable("objDTSAPInterfaceJson");
                                 string jsonString = string.Empty;
-                                String BlobFileURL = string.Empty;
-                                String FileNameFormat = "SAP_" + DateTime.Now.ToString("ddMMyyyy_hh.mm");
+                                string? BlobFileURL = string.Empty;
+                                string FileNameFormat = "SAP_" + DateTime.Now.ToString("ddMMyyyy_hh.mm");
 
                                 objDT = dsGetSapInfo.Tables[index].Copy();
                                 objDs.Tables.Add(objDT);
@@ -208,7 +207,7 @@ namespace QidWorkerRole
                                     await _readWriteDao.ExecuteNonQueryAsync("usp_LastUpdateBITableLog");
 
                                     // save log details
-                                    SetSAPFileLog(FileNameFormat, BlobFileURL, DateTime.Now);
+                                    await SetSAPFileLog(FileNameFormat, BlobFileURL, DateTime.Now);
                                 }
 
                             }

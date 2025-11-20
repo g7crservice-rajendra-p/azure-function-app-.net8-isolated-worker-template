@@ -56,7 +56,7 @@ namespace QidWorkerRole
             _asm = asm;
         }
         #endregion
-        public void ToSSM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom, out bool isProcessFlag)
+        public async Task<bool> ToSSM(string strMessage, int srno, string strOriginalMessage, string strMessageFrom, bool isProcessFlag)
         {
             isProcessFlag = false;
             try
@@ -67,36 +67,36 @@ namespace QidWorkerRole
                 messageType = arrLine[0];
 
                 if (arrLine.Length < 3 || messageType != "SSM")
-                    return;
+                    return isProcessFlag;
 
                 string[] arrActionIndentifier = new string[arrLine.Length];
                 for (int i = 0; i < arrLine.Length; i++)
                     arrActionIndentifier[i] = arrLine[i].Split(' ')[0].Trim();
 
                 if (arrActionIndentifier.Intersect(arrNEW).Any())
-                    parseNEW(arrLine, srno);//parseNEWRevised(arrLine, srno, originalMessage);
+                    await parseNEW(arrLine, srno);//parseNEWRevised(arrLine, srno, originalMessage);
                 else if (arrActionIndentifier.Intersect(arrCNL).Any())
-                    parseCNL(arrLine, srno);
+                    await parseCNL(arrLine, srno);
                 else if (arrActionIndentifier.Intersect(arrRPL).Any())
-                    parseRPL(arrLine, srno);
+                    await parseRPL(arrLine, srno);
                 else if (arrActionIndentifier.Intersect(arrTIM).Any())
-                    parseTIM(arrLine, srno);
+                    await parseTIM(arrLine, srno);
                 else if (arrActionIndentifier.Intersect(arrFLT).Any())
-                    parseFLT(arrLine, srno);
+                    await parseFLT(arrLine, srno);
                 else if (arrActionIndentifier.Intersect(arrADM).Any())
-                    parseADM(arrLine, srno);
+                    await parseADM(arrLine, srno);
                 else if (arrActionIndentifier.Intersect(arrEQT).Any())
                 {
                     string messageID = "EQT";
                     messageID = arrActionIndentifier.Intersect(arrEQT).Count() > 0 && arrActionIndentifier.Intersect(arrEQT).Single().Trim().Length > 2 && arrActionIndentifier.Intersect(arrEQT).Single().Trim() == "CON" ? "CON" : "EQT";
-                    parseEQT(arrLine, srno, messageID);
+                    await parseEQT(arrLine, srno, messageID);
                 }
                 else
                 {
                     //GenericFunction genericFunction = new GenericFunction();
 
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported SSM Message", "SSM", true, originalMessage);
-                    return;
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Un-Supported SSM Message", "SSM", true, originalMessage);
+                    return isProcessFlag;
                 }
                 isProcessFlag = true;
             }
@@ -105,6 +105,7 @@ namespace QidWorkerRole
                 //clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
+            return isProcessFlag;
         }
 
         private async Task parseNEW(string[] arrLine, int srno)
@@ -623,7 +624,7 @@ namespace QidWorkerRole
             return rotatedFreq;
         }
 
-        private void parseCNL(string[] arrLine, int srno)
+        private async Task parseCNL(string[] arrLine, int srno)
         {
             try
             {
@@ -666,7 +667,7 @@ namespace QidWorkerRole
                         schedDateOfArrival = freqInfo[1];
                         if (freqInfo.Length > 2)
                             frequency = freqInfo[2].Split('/')[0];
-                        SaveSSMDetails(srno);
+                        await SaveSSMDetails(srno);
                     }
                 }
             }
@@ -677,7 +678,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseEQT(string[] arrLine, int srno, string msgID)
+        private async Task parseEQT(string[] arrLine, int srno, string msgID)
         {
             try
             {
@@ -773,7 +774,7 @@ namespace QidWorkerRole
                     schedDateOfArrival = dtFlightInfo.Rows[i]["SchDateOfArrival"].ToString();
                     frequency = dtFlightInfo.Rows[i]["Frequency"].ToString();
                     serviceType = dtFlightInfo.Rows[i]["ServiceType"].ToString();
-                    SaveSSMDetails(srno);
+                    await SaveSSMDetails(srno);
                 }
             }
             catch (Exception ex)
@@ -783,7 +784,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseRPL(string[] arrLine, int srno)
+        private async Task parseRPL(string[] arrLine, int srno)
         {
             try
             {
@@ -915,7 +916,7 @@ namespace QidWorkerRole
                     frequency = dtFlightInfo.Rows[i]["Frequency"].ToString();
                     serviceType = dtFlightInfo.Rows[i]["ServiceType"].ToString();
                     aircraftType = dtFlightInfo.Rows[i]["AircraftType"].ToString();
-                    SaveSSMDetails(srno);
+                    await SaveSSMDetails(srno);
                 }
             }
             catch (Exception ex)
@@ -925,7 +926,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseTIM(string[] arrLine, int srno)
+        private async Task parseTIM(string[] arrLine, int srno)
         {
             try
             {
@@ -948,7 +949,7 @@ namespace QidWorkerRole
                 else
                 {
                     //GenericFunction genericFunction = new GenericFunction();
-                    _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "SSM/TIM");
+                    await _genericFunction.UpdateErrorMessageToInbox(srno, "Invalid format", "SSM/TIM");
                     return;
                 }
 
@@ -1006,7 +1007,7 @@ namespace QidWorkerRole
                                 dateVariationArr = Convert.ToInt32(dest[1].Substring(dest[1].Length - 1));
                                 dateVariationArr = dest[1].Substring(0, 1) == "M" ? -dateVariationArr : dateVariationArr;
                             }
-                            SaveSSMDetails(srno);
+                            await SaveSSMDetails(srno);
                             break;
                         }
                     }
@@ -1019,7 +1020,7 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseFLT(string[] arrLine, int srno)
+        private async Task parseFLT(string[] arrLine, int srno)
         {
             SetVariablesToDefaultValues();
             try
@@ -1058,7 +1059,7 @@ namespace QidWorkerRole
                         string[] Flight = arrLine[indxFlightInfo + 2].Split(' ');
                         newFlightNumber = Flight[0];
                     }
-                    SaveSSMDetails(srno);
+                    await SaveSSMDetails(srno);
                 }
             }
             catch (Exception ex)
@@ -1068,13 +1069,13 @@ namespace QidWorkerRole
             }
         }
 
-        private void parseADM(string[] arrLine, int srno)
+        private async Task parseADM(string[] arrLine, int srno)
         {
             SetVariablesToDefaultValues();
             try
             {
                 messageIdentifier = "ADM";
-                String thirdLine = string.Empty;
+                string thirdLine = string.Empty;
                 int indxFlightInfo = 0;
                 for (int i = 0; i < arrLine.Length; i++)
                 {
@@ -1102,7 +1103,7 @@ namespace QidWorkerRole
                         schedDateOfArrival = freqInfo[1];
                         frequency = freqInfo[2].Split('/')[0];
                     }
-                    SaveSSMDetails(srno);
+                    await SaveSSMDetails(srno);
                 }
             }
             catch (Exception ex)
@@ -1169,7 +1170,7 @@ namespace QidWorkerRole
                         if (dsScheduleDetails.Tables[i].Rows[0]["ScheduleIDs"].ToString().Trim() != string.Empty
                             && Convert.ToBoolean(dsScheduleDetails.Tables[i].Rows[0]["IsRefreshSchedule"].ToString()))
                         {
-                            RefreshScheduleByScheduleID(dsScheduleDetails.Tables[i].Rows[0]["ScheduleIDs"].ToString().Trim(), messageType + "/" + messageIdentifier);
+                            await RefreshScheduleByScheduleID(dsScheduleDetails.Tables[i].Rows[0]["ScheduleIDs"].ToString().Trim(), messageType + "/" + messageIdentifier);
                         }
                     }
                 }
@@ -1495,7 +1496,7 @@ namespace QidWorkerRole
                     for (int i = 0; i < arrScheduleID.Length; i++)
                     {
                         object[] paramValues = new object[] { arrScheduleID[i], updatedBy };
-                        DataSet dsRefreshSchedule = new DataSet();
+                        DataSet? dsRefreshSchedule = new DataSet();
                         //dsRefreshSchedule = db.SelectRecords("dbo.uspRefreshAirlineScheduleRouteForecast", paramNames, paramValues, paramTypes);
                         dsRefreshSchedule = await _readWriteDao.SelectRecords("dbo.uspRefreshAirlineScheduleRouteForecast", sqlParams);
 

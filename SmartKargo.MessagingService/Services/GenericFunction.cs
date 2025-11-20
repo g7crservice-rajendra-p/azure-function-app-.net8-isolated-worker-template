@@ -22,9 +22,11 @@ using Microsoft.Extensions.Logging;
 using QidWorkerRole.UploadMasters;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
+using System;
 using System.Data;
 using System.Net;
 using System.Text;
+using static QidWorkerRole.SCMExceptionHandlingWorkRole;
 
 
 //using Azure.Identity;
@@ -38,8 +40,8 @@ namespace QidWorkerRole
         //SCMExceptionHandlingWorkRole scm = new SCMExceptionHandlingWorkRole();
         // string BlobKey = string.Empty;
         //string BlobName = string.Empty;
-        static string BlobKey = String.Empty;
-        static string BlobName = String.Empty;
+        static string BlobKey = string.Empty;
+        static string BlobName = string.Empty;
 
         /// <summary>
         /// Enum created for blob container name(Container name should be in lower case).
@@ -54,6 +56,7 @@ namespace QidWorkerRole
         private readonly ILogger<GenericFunction> _logger;
         private static ILoggerFactory? _loggerFactory;
         private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
+        private readonly UploadMasterCommon _uploadMasterCommon;
 
 
         #region Constructor
@@ -61,12 +64,14 @@ namespace QidWorkerRole
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<GenericFunction> logger,
             GenericFunction genericFunction,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            UploadMasterCommon uploadMasterCommon)
 
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _loggerFactory = loggerFactory;
+            _uploadMasterCommon = uploadMasterCommon;
         }
         #endregion
 
@@ -376,7 +381,7 @@ namespace QidWorkerRole
                             body = dsAIMSLoadPlan.Tables[0].Rows[i]["Body"].ToString();
                             fileName = dsAIMSLoadPlan.Tables[0].Rows[i]["FileName"].ToString();
                             fileURL = UploadToBlob(loadPlanDetails, fileName, "aimsloadplan");
-                            DumpInterfaceInformation(subject, body, System.DateTime.UtcNow, "AIMSLOADPLAN", "", false
+                            await DumpInterfaceInformation(subject, body, System.DateTime.UtcNow, "AIMSLOADPLAN", "", false
                                 , "", emailAddress, loadPlanDetails, ".txt", fileURL, "0", "Outbox", fileName.Replace(".TXT", ""));
                         }
                     }
@@ -615,7 +620,7 @@ namespace QidWorkerRole
         {
             //      string strConnectionString = Global.GetConnectionString();
             //SQLServer da = new SQLServer();
-            DataSet ds = new DataSet();
+            DataSet? ds = new DataSet();
             //string[] Pname = new string[2];
             //object[] Pvalue = new object[2];
             //SqlDbType[] Ptype = new SqlDbType[2];
@@ -1363,6 +1368,7 @@ namespace QidWorkerRole
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 return null;
             }
 
@@ -1623,7 +1629,7 @@ namespace QidWorkerRole
         public async Task<DataSet> GetRecordforGenerateFBLMessage(string strFlightOrigin, string strFlightDestination, string FlightNo, string FlightDate)
         {
 
-            DataSet dsData = new DataSet();
+            DataSet? dsData = new DataSet();
             try
             {
                 //SQLServer dtb = new SQLServer(true);
@@ -1753,8 +1759,8 @@ namespace QidWorkerRole
             {
                 if (!File.Exists(System.IO.Path.GetFullPath(ConfigCache.Get("DownLoadFilePath") + "/" + ConfigCache.Get("PPKFileFolderName") + "/" + ppkFileName)))
                 {
-                    UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-                    if (!uploadMasterCommon.DoDownloadBLOB(ppkFileName, "ppkfiles", "PPKFiles", out ppkLocalFilePath))
+                    //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
+                    if (!_uploadMasterCommon.DoDownloadBLOB(ppkFileName, "ppkfiles", "PPKFiles", out ppkLocalFilePath))
                     {
                         ppkLocalFilePath = string.Empty;
                     }
@@ -2463,7 +2469,7 @@ namespace QidWorkerRole
             try
             {
                 //DataSet ds = da.GetDataset(query);
-                DataSet? ds = await _readWriteDao.SelectRecords(query);
+                DataSet? ds = await _readWriteDao.GetDatasetAsync(query);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     Dest = Convert.ToString(ds.Tables[0].Rows[0][0]);
@@ -2611,7 +2617,7 @@ namespace QidWorkerRole
             try
             {
                 //DataSet ds = da.GetDataset(query);
-                DataSet? ds = await _readWriteDao.SelectRecords(query);
+                DataSet? ds = await _readWriteDao.GetDatasetAsync(query);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     org = Convert.ToString(ds.Tables[0].Rows[0][0]);
@@ -2637,7 +2643,7 @@ namespace QidWorkerRole
             try
             {
                 //DataSet ds = da.GetDataset(query);
-                DataSet? ds = await _readWriteDao.SelectRecords(query);
+                DataSet? ds = await _readWriteDao.GetDatasetAsync(query);
                 if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
                 {
                     awbStatus = Convert.ToString(ds.Tables[0].Rows[0][0]);
@@ -2658,9 +2664,9 @@ namespace QidWorkerRole
             {
                 //SQLServer da = new SQLServer();
 
-                string[] paramname1 = { "AWBPrefix", "AWBNumber", "IsAsAgreed", "CurRole" };
-                object[] paramvalue1 = { awbPrefix, awbNumber, isAsAgreed, curRole };
-                SqlDbType[] paramtype1 = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
+                //string[] paramname1 = { "AWBPrefix", "AWBNumber", "IsAsAgreed", "CurRole" };
+                //object[] paramvalue1 = { awbPrefix, awbNumber, isAsAgreed, curRole };
+                //SqlDbType[] paramtype1 = { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.Bit, SqlDbType.VarChar };
 
                 SqlParameter[] sqlParameters = new SqlParameter[] {
                     new SqlParameter("AWBPrefix", SqlDbType.VarChar) { Value = awbPrefix },
@@ -2943,6 +2949,7 @@ namespace QidWorkerRole
                     //string[] pName = new string[] { "Origin", "Destination", "Parameter", "Value", "Date", "Agent", "Shipper", "Consignee", "ProductType", "Currency", "CommCode" };
                     //object[] pValue = new object[] { origin, destination, param, value, date, agent, shipper, consignee, ProductType, strCurrency, Commcode };
                     //SqlDbType[] pType = new SqlDbType[] { SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar, SqlDbType.VarChar };
+
                     SqlParameter[] pParameter = new SqlParameter[] {
                         new SqlParameter("Origin", SqlDbType.VarChar) { Value = origin },
                         new SqlParameter("Destination", SqlDbType.VarChar) { Value = destination },
@@ -3153,8 +3160,6 @@ namespace QidWorkerRole
         //    }
         //    return KeyValutValue;
         //}
-
-
     }
 }
 

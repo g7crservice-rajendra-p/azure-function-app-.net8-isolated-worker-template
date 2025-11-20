@@ -3083,7 +3083,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                     new SqlParameter("@ShippFaxNo", SqlDbType.VarChar) { Value = fwbdata.shipperfaxno }
                                };
 
-                                _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "AWB is Already Accepted, We will only update SHP/CNE info", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
+                                await _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "AWB is Already Accepted, We will only update SHP/CNE info", AWBPrefix, awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
 
                                 string strProcedure = "Messaging.uspUpdateShipperConsigneeforXFWB";
 
@@ -3203,7 +3203,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                                     }
                                 }
                                 ErrorMsg = strErrorMessage;
-                                _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, strErrorMessage, fwbdata.airlineprefix,
+                                await _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, strErrorMessage, fwbdata.airlineprefix,
                                     fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
                                 strErrorMessage = string.Empty;
                                 //return flag = false;
@@ -3219,7 +3219,7 @@ string strMessage, string strMessageFrom, string strFromID, string strStatus, st
                         AWBDestAirportCode = dsawb.Tables[0].Rows[0]["AWBDestAirportCode"].ToString();
                     }
 
-                    _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "We will book/execute AWB  " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " Shortly.", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
+                    await _xFNMMessageProcessor.GenerateXFNMMessage(strMessage, "We will book/execute AWB  " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " Shortly.", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype);
 
                     string strAWbIssueDate = string.Empty;
                     if (fwbdata.carrierdate != "" && fwbdata.carriermonth != "" && fwbdata.carrieryear != "")

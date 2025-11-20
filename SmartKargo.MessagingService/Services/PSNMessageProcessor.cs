@@ -1250,19 +1250,19 @@ namespace QidWorkerRole
 
                             if (SitaMessageHeader != "")
                             {
-                                _genericFunction.SaveMessageOutBox("PSN", SitaMessageHeader + "\r\n" + sbPSN.ToString().ToUpper(), "SITAFTP", "SITAFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                await _genericFunction.SaveMessageOutBox("PSN", SitaMessageHeader + "\r\n" + sbPSN.ToString().ToUpper(), "SITAFTP", "SITAFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SitaMessageHeader" + DateTime.Now);
                                 _logger.LogInformation("PSN message in SaveMessageOutBox SitaMessageHeader {0}", DateTime.Now);
                             }
                             if (SFTPHeaderSITAddress.Trim().Length > 0)
                             {
-                                _genericFunction.SaveMessageOutBox("PSN", SFTPHeaderSITAddress + "\r\n" + sbPSN.ToString().ToUpper(), "SFTP", "SFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                await _genericFunction.SaveMessageOutBox("PSN", SFTPHeaderSITAddress + "\r\n" + sbPSN.ToString().ToUpper(), "SFTP", "SFTP", string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox SFTPHeaderSITAddress" + DateTime.Now);
                                 _logger.LogInformation("PSN message in SaveMessageOutBox SFTPHeaderSITAddress {0}", DateTime.Now);
                             }
                             if (Emailaddress.Trim().Length > 0)
                             {
-                                _genericFunction.SaveMessageOutBox("PSN", sbPSN.ToString().ToUpper(), string.Empty, Emailaddress, string.Empty, "", string.Empty, string.Empty, AWBNumber);
+                                await _genericFunction.SaveMessageOutBox("PSN", sbPSN.ToString().ToUpper(), string.Empty, Emailaddress, string.Empty, "", string.Empty, string.Empty, AWBNumber);
                                 // clsLog.WriteLogAzure("PSN message in SaveMessageOutBox Email" + DateTime.Now);
                                 _logger.LogInformation("PSN message in SaveMessageOutBox Email {0}", DateTime.Now);
                             }

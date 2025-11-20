@@ -13,12 +13,14 @@ namespace QidWorkerRole.SIS.DAL
         //public SIS.DAL.SISDBEntities _sisDB;
         private readonly SISDBEntities _sisDB;
         private readonly ILogger<ReadDBData> _logger;
+        private readonly CreateDBData _createDBData;
 
-        public ReadDBData(SISDBEntities sisDB, ILogger<ReadDBData> logger)
+        public ReadDBData(SISDBEntities sisDB, ILogger<ReadDBData> logger, CreateDBData createDBData)
         {
             //_sisDB = new SIS.DAL.SISDBEntities();
             _sisDB = sisDB;
             _logger = logger;
+            _createDBData = createDBData;
         }
 
         /// <summary>
@@ -50,8 +52,9 @@ namespace QidWorkerRole.SIS.DAL
 
                 #region Add entry to FileHeader, FileTotal & update FileHeaderID for each invoice
 
-                QidWorkerRole.SIS.DAL.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
-                fileData.InvoiceList = createDBData.InsertFileData(fileData.InvoiceList, airlineCode);
+                //QidWorkerRole.SIS.DAL.CreateDBData createDBData = new QidWorkerRole.SIS.DAL.CreateDBData();
+
+                fileData.InvoiceList = _createDBData.InsertFileData(fileData.InvoiceList, airlineCode);
 
                 #endregion
 

@@ -108,7 +108,7 @@ namespace QidWorkerRole
             {
                 //string procedure = "uspAddMessageAttachmentDetails";
                 //SQLServer dtb = new SQLServer();
-                DataSet objDS = null;
+                DataSet? objDS = null;
                 byte[] objBytes = null;
 
                 if (Attachments != null)
