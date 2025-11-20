@@ -944,7 +944,7 @@ namespace QidWorkerRole
                                         commtype = "SITAFTP";
                                     else
                                         commtype = "EMAIL";
-                                    _fNAMessageProcessor.GenerateFNAMessage(strOriginalMessage, Errmsg, fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
+                                    await _fNAMessageProcessor.GenerateFNAMessage(strOriginalMessage, Errmsg, fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
                                 }
                             }
 
@@ -1011,7 +1011,7 @@ namespace QidWorkerRole
                             MessageData.otherserviceinfo[] othinfoarray = new MessageData.otherserviceinfo[0];
 
                             //FSUMessageProcessor fsumeessage = new FSUMessageProcessor();
-                            flag = _fSUMessageProcessor.DecodeReceivedFSUMessage(refNO, strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray);
+                            (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray) = await _fSUMessageProcessor.DecodeReceivedFSUMessage(refNO, strMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
 
                             if (flag == true)
                                 //flag = fsumeessage.SaveandUpdateFSUMessage(strMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
@@ -1190,7 +1190,7 @@ namespace QidWorkerRole
                             //FSRMessageProcessor fsrMessageProcessor = new FSRMessageProcessor();
 
                             strMessageFrom = strFromID.Contains("@") ? strFromID : strMessageFrom;
-                            _fSRMessageProcessor.DecodeFSR(strMsg.Trim(), strMessageFrom, PIMAAddress);
+                            await _fSRMessageProcessor.DecodeFSR(strMsg.Trim(), strMessageFrom, PIMAAddress);
                         }
                         else if (strMsg.Trim().StartsWith("UCM", StringComparison.OrdinalIgnoreCase))
                         {

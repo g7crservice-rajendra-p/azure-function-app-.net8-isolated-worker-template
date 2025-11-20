@@ -1,13 +1,8 @@
-﻿//using QID.DataAccess; //Not in used
-//using System;//Not in used
-//using System.Collections.Generic;//Not in used
+﻿
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
-//using System.Linq;//Not in used
-//using System.Text;//Not in used
-//using System.Threading.Tasks;//Not in used
 
 namespace QidWorkerRole
 {
@@ -25,7 +20,7 @@ namespace QidWorkerRole
         }
         #endregion
 
-        public bool DecodeFSR(string message, string messageFromAddress, string pimaAddress)
+        public async Task<bool> DecodeFSR(string message, string messageFromAddress, string pimaAddress)
         {
             bool flag = false;
             string awbPrefix = string.Empty, awbNumber = string.Empty;
@@ -40,7 +35,7 @@ namespace QidWorkerRole
                         awbNumber = arrMsg[1].Split('-')[1];
                         if (messageFromAddress.Trim().Length > 0)
                         {
-                            RelayFSA(awbPrefix, awbNumber, messageFromAddress, pimaAddress);
+                            await RelayFSA(awbPrefix, awbNumber, messageFromAddress, pimaAddress);
                         }
                     }
                 }
@@ -73,7 +68,7 @@ namespace QidWorkerRole
                   new SqlParameter("@PIMAAddress", SqlDbType.VarChar) { Value = pimaAddress }
                 };
 
-                DataSet ds = await _readWriteDao.SelectRecords("Messaging.uspRelayFSAOnFSR", sqlParameters);
+                DataSet? ds = await _readWriteDao.SelectRecords("Messaging.uspRelayFSAOnFSR", sqlParameters);
             }
             catch (Exception ex)
             {

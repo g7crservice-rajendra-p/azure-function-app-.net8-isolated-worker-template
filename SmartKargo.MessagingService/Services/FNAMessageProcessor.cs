@@ -1,9 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-//using QID.DataAccess;//Not in used
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
-using System;
 using System.Data;
 using System.Text;
 namespace QidWorkerRole
@@ -114,7 +112,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
 
@@ -157,7 +155,7 @@ namespace QidWorkerRole
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;
@@ -166,14 +164,14 @@ namespace QidWorkerRole
         /// <summary>
         /// Relay FNA message to the PIMA address or to the Primary addredd
         /// </summary>
-        public void GenerateFNAMessage(string strMessage, string strErrorMessage, string AWBPrefix = "", string awbnum = "", string strMessageFrom = "", string commType = "", string PIMAAddress = "")
+        public async Task GenerateFNAMessage(string strMessage, string strErrorMessage, string AWBPrefix = "", string awbnum = "", string strMessageFrom = "", string commType = "", string PIMAAddress = "")
         {
             try
             {
                 //GenericFunction genericFunction = new GenericFunction();
                 //bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPIMAAddress"));
                 bool relayFMAFNAWithPIMAAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPIMAAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPIMAAddress"));
-                
+
                 //bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : genericFunction.ReadValueFromDb("RelayFMAFNAWithPrimaryAddress"));
                 bool relayFMAFNAWithPrimaryAddress = Convert.ToBoolean(ConfigCache.Get("RelayFMAFNAWithPrimaryAddress") == string.Empty ? "false" : ConfigCache.Get("RelayFMAFNAWithPrimaryAddress"));
 
@@ -185,7 +183,7 @@ namespace QidWorkerRole
                     strMessage = strMessage.Replace("$$", "\r\n");
 
                     //DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
-                    DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion("", "FNA", "AIR", "", "", "", string.Empty, AWBPrefix);
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -225,24 +223,24 @@ namespace QidWorkerRole
                         SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["SITAHeaderType"].ToString(), PIMAAddress);
                     }
 
-                    
-                        //genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
-                        _genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
-                  
+
+                    //genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
+                    await _genericFunction.SaveMessageToOutbox("", strFNAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FNA", awbNumber: AWBPrefix + "-" + awbnum);
+
 
                 }
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
 
         /// <summary>
         /// Relay FMA message to the PIMA address or to the Primary addredd
         /// </summary>
-        public void GenerateFMAMessage(string strMessage, string strSuccessMessage, string AWBPrefix = "", string awbnum = "", string strMessageFrom = "", string commType = "", string PIMAAddress = "")
+        public async Task GenerateFMAMessage(string strMessage, string strSuccessMessage, string AWBPrefix = "", string awbnum = "", string strMessageFrom = "", string commType = "", string PIMAAddress = "")
         {
             try
             {
@@ -268,7 +266,7 @@ namespace QidWorkerRole
                     strFMAMessage.Append(strMessage);
 
                     //DataSet dscheckconfiguration = genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
-                    DataSet dscheckconfiguration = _genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
+                    DataSet dscheckconfiguration = await _genericFunction.GetSitaAddressandMessageVersion("", "FMA", "AIR", "", "", "", string.Empty, AWBPrefix);
                     if (dscheckconfiguration != null && dscheckconfiguration.Tables.Count > 0 && dscheckconfiguration.Tables[0].Rows.Count > 0)
                     {
                         Emailaddress = dscheckconfiguration.Tables[0].Rows[0]["PartnerEmailiD"].ToString();
@@ -290,13 +288,13 @@ namespace QidWorkerRole
                         ToEmailAddress = (strMessageFrom == string.Empty ? Emailaddress : strMessageFrom + "," + Emailaddress);
 
                     //genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
-                    _genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
+                    await _genericFunction.SaveMessageToOutbox("", strFMAMessage.ToString(), ToEmailAddress, SitaMessageHeader, SFTPHeaderSITAddress, type: "FMA", awbNumber: AWBPrefix + "-" + awbnum);
                 }
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
         }
     }

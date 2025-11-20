@@ -1,14 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-//using QID.DataAccess; not in used
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QidWorkerRole
 {
@@ -25,6 +18,7 @@ namespace QidWorkerRole
             _logger = logger;
         }
         #endregion
+
         /// <summary>
         /// Method to decode incomming FRP message
         /// </summary>
@@ -97,7 +91,7 @@ namespace QidWorkerRole
         public async Task<bool> ValidateAndSaveFRPMessage(MessageData.fwbinfo[] fwbinfo, MessageData.frpinfo[] frpinfo)
         {
             bool isSavedSuccess = false;
-            DataSet dsResult = new DataSet();
+            DataSet? dsResult = new DataSet();
             try
             {
                 //SQLServer sqlServer = new SQLServer();

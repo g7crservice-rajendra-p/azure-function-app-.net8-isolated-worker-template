@@ -2754,7 +2754,7 @@ namespace QidWorkerRole
 
                 // clsLog.WriteLogAzure("FindLog 113 Start GenerateFMAMessage " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 113 Start GenerateFMAMessage {0} - {1}", AWBPrefix, awbnum);
-                _fNAMessageProcessor.GenerateFMAMessage(strMessage, "WE WILL BOOK EXECUTE AWB " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " SHORTLY", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
+                await _fNAMessageProcessor.GenerateFMAMessage(strMessage, "WE WILL BOOK EXECUTE AWB " + fwbdata.airlineprefix + "-" + fwbdata.awbnum + " SHORTLY", fwbdata.airlineprefix, fwbdata.awbnum, strMessageFrom == "" ? strFromID : strMessageFrom, commtype, PIMAAddress);
                 // clsLog.WriteLogAzure("FindLog 113 End GenerateFMAMessage " + AWBPrefix + "-" + awbnum);
                 _logger.LogInformation("FindLog 113 End GenerateFMAMessage {0} - {1}", AWBPrefix, awbnum);
                 #region : Chargeable Weight Calculation(using volume and gross weight):

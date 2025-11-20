@@ -14,30 +14,12 @@
      */
 #endregion
 
-//using System; //Not in used
-//using System.Collections.Generic;//Not in used
-//using System.Linq;//Not in used
-//using System.Web;//Not in used
-//using System.Text.RegularExpressions;//Not in used
-using Grpc.Core;
-using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using SmartKargo.MessagingService.Services;
-
-//using System.Text;//Not in used
-//using System.IO;//Not in used
-//using System.Reflection;//Not in used
 using System.Data;
 using System.Globalization;
-using System.Reactive.Subjects;
-using System.Runtime.CompilerServices;
-using System.Xml.Linq;
-//using QID.DataAccess;//Not in used
-//using System.Configuration;//Not in used
-//using QidWorkerRole;//Not in used
-//using System.Data.SqlClient;//Not in used
 
 namespace QidWorkerRole
 {
@@ -85,7 +67,9 @@ namespace QidWorkerRole
         /// <param name="uld">ULD information</param>
         /// <param name="othinfoarray">Other service information</param>
         /// <returns>Return true when message decoded successfuly</returns>
-        public bool DecodeReceivedFSUMessage(int refNO, string fsamsg, ref MessageData.FSAInfo fsadata, ref MessageData.CommonStruct[] fsanodes, ref MessageData.customsextrainfo[] custominfo, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo[] othinfoarray)
+        //public bool DecodeReceivedFSUMessage(int refNO, string fsamsg, ref MessageData.FSAInfo fsadata, ref MessageData.CommonStruct[] fsanodes, ref MessageData.customsextrainfo[] custominfo, ref MessageData.ULDinfo[] uld, ref MessageData.otherserviceinfo[] othinfoarray)
+        public async Task<(bool success, MessageData.FSAInfo fsadata, MessageData.CommonStruct[] fsanodes, MessageData.customsextrainfo[] custominfo, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray)> DecodeReceivedFSUMessage(int refNO, string fsamsg, MessageData.FSAInfo fsadata, MessageData.CommonStruct[] fsanodes, MessageData.customsextrainfo[] custominfo, MessageData.ULDinfo[] uld, MessageData.otherserviceinfo[] othinfoarray)
+
         {
             string awbref = string.Empty;
             bool flag = false;
@@ -289,8 +273,8 @@ namespace QidWorkerRole
                                                     if (currentLineRCSText[1].Length < 5)
                                                     {
                                                         flag = false;
-                                                        GenericFunction genericFunction = new GenericFunction();
-                                                        genericFunction.UpdateErrorMessageToInbox(refNO, "Invalid message format");
+                                                        //GenericFunction genericFunction = new GenericFunction();
+                                                        await _genericFunction.UpdateErrorMessageToInbox(refNO, "Invalid message format");
                                                     }
                                                     else if (currentLineRCSText[1].Length == 9)
                                                     {
@@ -337,7 +321,7 @@ namespace QidWorkerRole
                                                             flag = false;
                                                             //GenericFunction genericFunction = new GenericFunction();
                                                             //genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
-                                                            _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            await _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
 
                                                         }
 
@@ -498,7 +482,7 @@ namespace QidWorkerRole
                                                             flag = false;
                                                             //GenericFunction genericFunction = new GenericFunction();
                                                             //genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
-                                                            _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
+                                                            await _genericFunction.UpdateErrorMessageToInbox(refNO, "Partial acceptance not allowed");
                                                         }
                                                     }
                                                     if (currentLineRCTText.Length > 5)
@@ -1984,7 +1968,8 @@ namespace QidWorkerRole
                 // clsLog.WriteLogAzure(ex);
                 _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
             }
-            return flag;
+            //return flag;
+            return (flag, fsadata, fsanodes, custominfo, uld, othinfoarray);
         }
 
         /// <summary>
@@ -2032,7 +2017,7 @@ namespace QidWorkerRole
                     string MessagePrefix = fsanodes.Length > 0 && fsanodes[0].messageprefix.Length > 0 ? "FSU/" + fsanodes[0].messageprefix.ToUpper() : "FSU";
                     //GenericFunction genericfunction = new GenericFunction();
                     //genericfunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
-                    _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
+                    await _genericFunction.UpdateInboxFromMessageParameter(refNo, fsadata.airlineprefix + "-" + fsadata.awbnum, string.Empty, string.Empty, string.Empty, MessagePrefix, "FSU", DateTime.Parse("1900-01-01"));
 
                     #region Check AWB is present or not
 
@@ -2050,7 +2035,7 @@ namespace QidWorkerRole
                   new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo },
 
                     };
-                    DataSet dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters); //name mismatch
+                    DataSet? dsCheck = await _readWriteDao.SelectRecords("sp_getawbdetails", sqlParameters); //name mismatch
                     if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0)
                     {
                         if (dsCheck.Tables[0].Rows[0]["AWBNumber"].ToString().Equals(fsadata.awbnum, StringComparison.OrdinalIgnoreCase))
@@ -2320,7 +2305,7 @@ namespace QidWorkerRole
                               new SqlParameter("@RefNo", SqlDbType.Int) { Value = refNo }
                             };
 
-                                DataSet dsDLVResult = new DataSet();
+                                DataSet? dsDLVResult = new DataSet();
                                 //dsDLVResult = dtb.SelectRecords("MakeAWBDeliveryorderofFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
                                 dsDLVResult = await _readWriteDao.SelectRecords("MakeAWBDeliveryorderofFSUMessage", dlvParams);
 
@@ -2374,7 +2359,7 @@ namespace QidWorkerRole
                                 {
                                     #region : Check AWB is accepted or not :
                                     //FFRMessageProcessor ffrMessageProcessor = new FFRMessageProcessor();
-                                    DataSet dsAWBStatus = new DataSet();
+                                    DataSet? dsAWBStatus = new DataSet();
                                     //dsAWBStatus = ffrMessageProcessor.CheckValidateFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
                                     dsAWBStatus = await _fFRMessageProcessor.CheckValidateFFRMessage(fsadata.airlineprefix, fsadata.awbnum, fsadata.origin, fsadata.dest, "FSU/RCS", "", "");
                                     for (int k = 0; k < dsAWBStatus.Tables.Count; k++)
@@ -2385,7 +2370,7 @@ namespace QidWorkerRole
                                             {
                                                 //GenericFunction genericFunction = new GenericFunction();
                                                 //genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
-                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                await _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
                                                 //return true;
                                                 return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                             }
@@ -2397,7 +2382,7 @@ namespace QidWorkerRole
                                             {
                                                 //GenericFunction genericFunction = new GenericFunction();
                                                 //genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
-                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
+                                                await _genericFunction.UpdateErrorMessageToInbox(refNo, "AWB is already accepted");
                                                 //return true;
                                                 return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                             }
@@ -2407,7 +2392,7 @@ namespace QidWorkerRole
                                             {
                                                 //GenericFunction genericFunction = new GenericFunction();
                                                 //genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
-                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
+                                                await _genericFunction.UpdateErrorMessageToInbox(refNo, "Agent is Inactive OR Expired");
                                                 //return true;
                                                 return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                             }
@@ -2416,7 +2401,7 @@ namespace QidWorkerRole
                                             {
                                                 //GenericFunction genericFunction = new GenericFunction();
                                                 //genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
-                                                _genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
+                                                await _genericFunction.UpdateErrorMessageToInbox(refNo, "DGR is not yet approved");
                                                 //return true;
                                                 return (true, ErrorMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray);
                                             }
@@ -2437,7 +2422,7 @@ namespace QidWorkerRole
                                     DataSet dsAWBMaterLogOldValues = new DataSet();
                                     ///MasterLog
                                     //dsAWBMaterLogOldValues = genericfunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
-                                    dsAWBMaterLogOldValues = _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+                                    dsAWBMaterLogOldValues = await _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
 
                                     //string[] sqlParameterName = new string[]
                                     //                {
@@ -2542,7 +2527,7 @@ namespace QidWorkerRole
                                 new SqlParameter("@refNo", SqlDbType.Int) { Value = refNo }
                             };
 
-                                    DataSet dsFSURCS = new DataSet();
+                                    DataSet? dsFSURCS = new DataSet();
                                     //dsFSURCS = dtb.SelectRecords("MakeAWBAcceptenceThroughFSUMessage", sqlParameterName, sqlParameterValue, sqlParameter);
                                     dsFSURCS = await _readWriteDao.SelectRecords("MakeAWBAcceptenceThroughFSUMessage", fsuRcsParams);
 
@@ -2611,19 +2596,26 @@ namespace QidWorkerRole
                                                     catch
                                                     {
                                                         // clsLog.WriteLogAzure("Error while save FSU/RCS OCI information Message:" + awbnum);
-                                                        _logger.LogError("Error while save FSU/RCS OCI information Message: {0}" , awbnum);
+                                                        _logger.LogError("Error while save FSU/RCS OCI information Message: {0}", awbnum);
                                                     }
                                                 }
                                                 #region : Auto generate FWB and FHL  :
-                                                GenericFunction genericFunction = new GenericFunction();
+
+                                                //GenericFunction genericFunction = new GenericFunction();
+
                                                 bool isAutoSendFWB = false, isAutoSendFHL = false, isAutoFWBFHL = false;
                                                 string PartnerCode = "";
                                                 DateTime flightdate = DateTime.UtcNow;
 
-                                                if (bool.TryParse(genericFunction.GetConfigurationValues("FWB"), out isAutoSendFWB))
+                                                string fWB = ConfigCache.Get("FWB");
+                                                string autoSendFHL = ConfigCache.Get("AutoSendFHL");
+
+                                                //if (bool.TryParse(genericFunction.GetConfigurationValues("FWB"), out isAutoSendFWB))
+                                                if (bool.TryParse(fWB, out isAutoSendFWB))
                                                     isAutoFWBFHL = true;
 
-                                                if (bool.TryParse(genericFunction.GetConfigurationValues("AutoSendFHL"), out isAutoSendFHL))
+                                                //if (bool.TryParse(genericFunction.GetConfigurationValues("AutoSendFHL"), out isAutoSendFHL))
+                                                if (bool.TryParse(autoSendFHL, out isAutoSendFHL))
                                                     isAutoFWBFHL = true;
                                                 if (dsFSURCS.Tables[0].Rows[0]["partnercode"].ToString() != "")
                                                 {
@@ -2632,7 +2624,7 @@ namespace QidWorkerRole
 
                                                 if (isAutoFWBFHL && (isAutoSendFWB || isAutoSendFHL))
                                                 {
-                                                    DataSet msgSeq = genericFunction.GenerateMessageSequence("", "AC", "");
+                                                    DataSet msgSeq = await _genericFunction.GenerateMessageSequence("", "AC", "");
                                                     if (msgSeq != null && msgSeq.Tables.Count > 0 && msgSeq.Tables[0].Rows.Count > 0)
                                                     {
                                                         for (int noofMsg = 0; noofMsg < msgSeq.Tables[0].Rows.Count; noofMsg++)
@@ -2644,7 +2636,7 @@ namespace QidWorkerRole
                                                                     {
                                                                         //FWBMessageProcessor fwbMessageProcessor = new FWBMessageProcessor();
                                                                         //fwbMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
-                                                                        _fWBMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
+                                                                        await _fWBMessageProcessor.GenerateFWB(PartnerCode, fsadata.origin, fsadata.dest, "", flightdate, "FSU/RCS", DateTime.UtcNow, fsadata.airlineprefix + "-" + fsadata.awbnum);
                                                                     }
                                                                     break;
                                                                 case "FHL":
@@ -2666,7 +2658,7 @@ namespace QidWorkerRole
                                                 //GenericFunction gf = new GenericFunction();
                                                 DataSet dsAWBMaterLogNewValues = new DataSet();
                                                 //dsAWBMaterLogNewValues = gf.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
-                                                dsAWBMaterLogNewValues = _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
+                                                dsAWBMaterLogNewValues = await _genericFunction.GetAWBMasterLogNewRecord(fsadata.airlineprefix, fsadata.awbnum);
                                                 if (dsAWBMaterLogNewValues != null && dsAWBMaterLogNewValues.Tables.Count > 0 && dsAWBMaterLogNewValues.Tables[0].Rows.Count > 0)
                                                 {
                                                     DataTable dtMasterAuditLog = new DataTable();
@@ -2680,10 +2672,10 @@ namespace QidWorkerRole
 
                                                     if (isAcceptedbyFSURCT == true)
                                                         //gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
-                                                        _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
+                                                        await _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCT", System.DateTime.UtcNow);
                                                     else
                                                         //gf.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
-                                                        _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
+                                                        await _genericFunction.MasterAuditLog(dtOldValues, dtNewValues, fsadata.airlineprefix, fsadata.awbnum, "Accepted", "FSU/RCS", System.DateTime.UtcNow);
 
                                                 }
                                             }
@@ -2709,7 +2701,7 @@ namespace QidWorkerRole
                                         //if (!dtb.InsertData("UpdateCapacitythroughMessage", cparam, cparamtypes, cparamvalues))
                                         if (!await _readWriteDao.ExecuteNonQueryAsync("UpdateCapacitythroughMessage", cparam))
                                             // clsLog.WriteLogAzure("Error  on Update capacity Plan :" + awbnum);
-                                            _logger.LogWarning("Error  on Update capacity Plan : {0}" , awbnum);
+                                            _logger.LogWarning("Error  on Update capacity Plan : {0}", awbnum);
 
                                         #endregion
                                     }
@@ -3364,7 +3356,7 @@ namespace QidWorkerRole
                                                 catch
                                                 {
                                                     // clsLog.WriteLogAzure("Error while save FSU OCI information Message:" + awbnum);
-                                                    _logger.LogError("Error while save FSU OCI information Message: {0}" , awbnum);
+                                                    _logger.LogError("Error while save FSU OCI information Message: {0}", awbnum);
                                                 }
                                             }
                                         }

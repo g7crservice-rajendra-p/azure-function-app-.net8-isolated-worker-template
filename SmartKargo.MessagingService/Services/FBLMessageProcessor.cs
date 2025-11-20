@@ -829,7 +829,7 @@ namespace QidWorkerRole
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
                             bookawb = false;
                             invalidAWBS++;
-                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            await _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
 
                         }
                         if (consinfo[i].weight == "" || consinfo[i].weight == "0")
@@ -839,7 +839,7 @@ namespace QidWorkerRole
                             bookawb = false;
                             invalidAWBS++;
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
-                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            await _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
                         }
                         if (consinfo[i].volumecode != "" && (consinfo[i].volumeamt == "" || decimal.Parse(consinfo[i].volumeamt) == 0))
                         {
@@ -849,7 +849,7 @@ namespace QidWorkerRole
                             bookawb = false;
                             AllAWBS = AllAWBS + consinfo[i].airlineprefix + "-" + consinfo[i].awbnum + ",";
                             invalidAWBS++;
-                            _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
+                            await _fNAMessageProcessor.GenerateFNAMessage(strMessage, strErrorMessage, consinfo[i].airlineprefix, consinfo[i].awbnum, strFromID);
 
                         }
 
@@ -1300,7 +1300,7 @@ namespace QidWorkerRole
                     }
                     else
                     {
-                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, "We will book AWBS shortly.", "", "", strFromID);
+                        await _fNAMessageProcessor.GenerateFNAMessage(strMessage, "We will book AWBS shortly.", "", "", strFromID);
 
                     }
                 }

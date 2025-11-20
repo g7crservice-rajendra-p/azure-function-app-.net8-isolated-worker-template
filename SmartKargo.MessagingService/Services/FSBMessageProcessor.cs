@@ -17,6 +17,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
+using static QidWorkerRole.SCMExceptionHandlingWorkRole;
 
 
 namespace QidWorkerRole
@@ -275,7 +276,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message Shipper(SHP) TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message Shipper(SHP) TAG {0}" , ex);
+                                                _logger.LogError("Error in Decoding FSB Message Shipper(SHP) TAG {0}", ex);
                                             }
                                             break;
                                         case "CNE":
@@ -388,7 +389,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message SSR TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message SSR TAG {0}" , ex);
+                                                _logger.LogError("Error in Decoding FSB Message SSR TAG {0}", ex);
                                             }
                                             break;
                                         case "WBL":
@@ -473,16 +474,18 @@ namespace QidWorkerRole
 
                                                         }
                                                     }
-                                                    catch (Exception ex) {
+                                                    catch (Exception ex)
+                                                    {
                                                         // clsLog.WriteLogAzure("Error in Decoding FSB Message WBL Dimesnion TAG " + ex.ToString());
-                                                        _logger.LogError("Error in Decoding FSB Message WBL Dimesnion TAG {0}" , ex);
-                                                     }
+                                                        _logger.LogError("Error in Decoding FSB Message WBL Dimesnion TAG {0}", ex);
+                                                    }
                                                 }
                                             }
-                                            catch (Exception ex) {
+                                            catch (Exception ex)
+                                            {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message WBL TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message WBL TAG {0}" , ex);
-                                             }
+                                                _logger.LogError("Error in Decoding FSB Message WBL TAG {0}", ex);
+                                            }
                                             break;
                                         case "OSI":
                                             try
@@ -494,7 +497,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message OSI TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message OSI TAG {0}" , ex);
+                                                _logger.LogError("Error in Decoding FSB Message OSI TAG {0}", ex);
                                             }
                                             break;
                                         case "COR":
@@ -507,7 +510,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message COR TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message COR TAG {0}",ex);
+                                                _logger.LogError("Error in Decoding FSB Message COR TAG {0}", ex);
                                             }
                                             break;
                                         case "REF":
@@ -522,7 +525,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message REF TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message REF TAG {0}" ,ex);
+                                                _logger.LogError("Error in Decoding FSB Message REF TAG {0}", ex);
                                             }
                                             break;
                                         case "SRI":
@@ -539,7 +542,7 @@ namespace QidWorkerRole
                                             catch (Exception ex)
                                             {
                                                 // clsLog.WriteLogAzure("Error in Decoding FSB Message SRI TAG " + ex.ToString());
-                                                _logger.LogError("Error in Decoding FSB Message SRI TAG {0}" , ex);
+                                                _logger.LogError("Error in Decoding FSB Message SRI TAG {0}", ex);
                                             }
                                             break;
                                         default:
@@ -559,7 +562,7 @@ namespace QidWorkerRole
                 flag = false;
                 //SCMExceptionHandling.logexception(ref ex);
                 // clsLog.WriteLogAzure("Error in Decoding FSB Message " + ex.ToString());
-                _logger.LogError("Error in Decoding FSB Message {0}" , ex.ToString);
+                _logger.LogError(ex, "Error in Decoding FSB Message {0}", ex.Message);
             }
             return flag;
         }
@@ -594,7 +597,7 @@ namespace QidWorkerRole
             }
             catch (System.Exception ex)
             {
-                _logger.LogError(ex,$"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 throw;
             }
         }
@@ -655,7 +658,7 @@ namespace QidWorkerRole
                 //log.SaveLog(LogType.InMessage, string.Empty, string.Empty, inBox);
 
 
-                _genericFunction.UpdateInboxFromMessageParameter(messageId, AWBPrefix + "-" + AWbNo, string.Empty, string.Empty, string.Empty, "FSB", strMessageFrom, DateTime.Parse("1900-01-01"));
+                await _genericFunction.UpdateInboxFromMessageParameter(messageId, AWBPrefix + "-" + AWbNo, string.Empty, string.Empty, string.Empty, "FSB", strMessageFrom, DateTime.Parse("1900-01-01"));
                 bool saveStatus = false;
 
                 if (fsbMessage.VolumeCode != null)
@@ -913,7 +916,7 @@ namespace QidWorkerRole
                                 //if (!dtb.ExecuteProcedure("SPAddAWBAuditLog", CANname, CAType, CAValues))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SPAddAWBAuditLog", sqlParamsAuditLog))
                                     // clsLog.WriteLog("AWB Audit log  for:" + AWbNo + Environment.NewLine);
-                                    _logger.LogWarning("AWB Audit log  for: {0}" , AWbNo + Environment.NewLine);
+                                    _logger.LogWarning("AWB Audit log  for: {0}", AWbNo + Environment.NewLine);
                             }
 
                             #region Deleting AWB Data if No Route Present
@@ -963,7 +966,7 @@ namespace QidWorkerRole
                         //if (!dtb.InsertData("SpDeleteDimensionThroughMessage", dparam, dbparamtypes, dbparamvalues))
                         if (!await _readWriteDao.ExecuteNonQueryAsync("SpDeleteDimensionThroughMessage", sqlParamsDeleteDimension))
                             // clsLog.WriteLogAzure("Error  Delete Dimension Through Message :" + AWbNo);
-                            _logger.LogError("Error  Delete Dimension Through Message :{0}" , AWbNo);
+                            _logger.LogError("Error  Delete Dimension Through Message :{0}", AWbNo);
                         else
                         {
 
@@ -1002,7 +1005,7 @@ namespace QidWorkerRole
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SP_SaveAWBDimensions_FFR", sqlParamsInsertDimension))
                                 {
                                     // clsLog.WriteLogAzure("Error Saving  Dimension Through Message :" + AWbNo);
-                                    _logger.LogWarning("Error Saving  Dimension Through Message : {0}" , AWbNo);
+                                    _logger.LogWarning("Error Saving  Dimension Through Message : {0}", AWbNo);
                                 }
                             }
                         }
@@ -1045,14 +1048,15 @@ namespace QidWorkerRole
                                 //if (!dtb.InsertData("SaveandUpdateShippperBUPThroughFWB", param, dbtypes, value))
                                 if (!await _readWriteDao.ExecuteNonQueryAsync("SaveandUpdateShippperBUPThroughFWB", sqlParamsInsertBUP))
                                     // clsLog.WriteLogAzure("BUP ULD is not Updated  for:" + AWbNo + Environment.NewLine);
-                                    _logger.LogWarning("BUP ULD is not Updated  for: {0}" , AWbNo + Environment.NewLine);
+                                    _logger.LogWarning("BUP ULD is not Updated  for: {0}", AWbNo + Environment.NewLine);
                             }
                         }
                     }
 
                     #endregion
                 }
-                clsLog.WriteLogAzure("FSB Message Processing for " + AWbNo);
+                //clsLog.WriteLogAzure("FSB Message Processing for " + AWbNo);
+                _logger.LogInformation("FSB Message Processing for {0}", AWbNo);
                 MessageStatus = true;
 
             }
@@ -1060,7 +1064,7 @@ namespace QidWorkerRole
             {
                 //SCMExceptionHandling.logexception(ref ex);
                 // clsLog.WriteLogAzure("Error on FSB Message Processing " + ex.ToString());
-                _logger.LogError("Error on FSB Message Processing {0}" , ex);
+                _logger.LogError("Error on FSB Message Processing {0}", ex);
                 MessageStatus = false;
             }
             return MessageStatus;
