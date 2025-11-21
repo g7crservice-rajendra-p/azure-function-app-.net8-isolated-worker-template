@@ -6,8 +6,7 @@ namespace SmartKargo.MessagingService.Configurations
     {
         public string ReadWriteConnectionString { get; set; } = string.Empty;
         public string ReadOnlyConnectionString { get; set; } = string.Empty;
-        public string ArchivalConnectionString { get; set; } = string.Empty;
-
+        public string EfConnectionString { get; set; } = string.Empty;
     }
 
     public class AppLoggingConfig

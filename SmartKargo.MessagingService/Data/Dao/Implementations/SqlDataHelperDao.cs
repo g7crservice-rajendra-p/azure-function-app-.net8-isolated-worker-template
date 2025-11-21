@@ -20,7 +20,9 @@ namespace SmartKargo.MessagingService.Data.Dao.Implementations
         #region Private Fields
 
         private readonly string _connectionString;
-        private readonly string _archivalConnectionString;
+
+        //private readonly string _archivalConnectionString;
+
         // Logger for structured diagnostics
         private readonly ILogger<SqlDataHelperDao> _logger;
         private bool _disposed;
@@ -57,7 +59,7 @@ namespace SmartKargo.MessagingService.Data.Dao.Implementations
                 ? ValidateConnectionString(appConfig.Database.ReadOnlyConnectionString)
                 : ValidateConnectionString(appConfig.Database.ReadWriteConnectionString);
 
-            _archivalConnectionString = ValidateConnectionString(appConfig.Database.ArchivalConnectionString);
+            //_archivalConnectionString = ValidateConnectionString(appConfig.Database.ArchivalConnectionString);
         }
 
         #endregion
@@ -218,6 +220,9 @@ namespace SmartKargo.MessagingService.Data.Dao.Implementations
                 // -----------------------------------
                 // Fallback to Archival if Empty
                 // -----------------------------------
+
+                /*
+                 *
                 bool hasRows = dataSet.Tables.Count > 0 && dataSet.Tables[0].Rows.Count > 0;
                 if (!hasRows)
                 {
@@ -237,6 +242,7 @@ namespace SmartKargo.MessagingService.Data.Dao.Implementations
                         storedProcedureName,
                         dataSet.Tables.Count > 0 ? dataSet.Tables[^1].Rows.Count : 0);
                 }
+                */
 
                 return dataSet;
             }

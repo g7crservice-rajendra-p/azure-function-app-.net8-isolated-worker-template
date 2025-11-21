@@ -14,11 +14,17 @@ namespace QidWorkerRole.SIS.DAL
 
     public partial class SISDBEntities : DbContext
     {
-        public SISDBEntities()
-            : base("name=SISDBEntities")
+        //public SISDBEntities()
+        //    : base("name=SISDBEntities")
+        //{
+        //}
+
+        // NEW constructor accepting full connection string
+        public SISDBEntities(string efConnectionString)
+            : base(efConnectionString)
         {
         }
-    
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             throw new UnintentionalCodeFirstException();
