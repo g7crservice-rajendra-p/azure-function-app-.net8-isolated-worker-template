@@ -51,7 +51,11 @@ namespace QidWorkerRole.UploadMasters
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadMasterCommon> _logger;
-        private readonly GenericFunction _genericFunction;
+
+        //private readonly GenericFunction _genericFunction();
+        private readonly Func<GenericFunction> _genericFunctionFactory;
+
+
         private readonly UploadVendorMaster _uploadVendorMaster;
         private readonly UploadRateLineMaster _uploadRateLineMaster;
         private readonly UploadAgentMasterGeneralInfo _uploadAgentMasterGeneralInfo;
@@ -85,7 +89,10 @@ namespace QidWorkerRole.UploadMasters
         #region Constructor
         public UploadMasterCommon(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadMasterCommon> logger,
-            GenericFunction genericFunction,
+
+            //GenericFunction genericFunction,
+            Func<GenericFunction> genericFunctionFactory,
+
             UploadVendorMaster uploadVendorMaster,
             UploadRateLineMaster uploadRateLineMaster,
             UploadAgentMasterGeneralInfo uploadAgentMasterGeneralInfo,
@@ -118,7 +125,9 @@ namespace QidWorkerRole.UploadMasters
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _genericFunction = genericFunction;
+
+            //_genericFunction = genericFunction;
+            _genericFunctionFactory = genericFunctionFactory;
             _uploadVendorMaster = uploadVendorMaster;
             _uploadRateLineMaster = uploadRateLineMaster;
             _uploadAgentMasterGeneralInfo = uploadAgentMasterGeneralInfo;
@@ -293,7 +302,7 @@ namespace QidWorkerRole.UploadMasters
         //        //Cls_BL cls_BL = new Cls_BL();
 
         //        //GenericFunction genericFunction = new GenericFunction();
-        //        BlobKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
+        //        BlobKey = _genericFunctionFactory().ReadValueFromDb("BlobStorageKey");
         //        //BlobKey = sqlServer.GetMasterConfiguration("BlobStorageKey");
 
         //    }
@@ -313,7 +322,7 @@ namespace QidWorkerRole.UploadMasters
         //    {
         //        //Cls_BL cls_BL = new Cls_BL();
         //        //GenericFunction genericFunction = new GenericFunction();
-        //        BlobName = _genericFunction.ReadValueFromDb("BlobStorageName");
+        //        BlobName = _genericFunctionFactory().ReadValueFromDb("BlobStorageName");
         //    }
         //    catch (Exception ex)
         //    {
@@ -452,8 +461,8 @@ namespace QidWorkerRole.UploadMasters
                 //Cls_BL cls_BL = new Cls_BL();
                 //GenericFunction genericFunction = new GenericFunction();
 
-                //string BlobStorageName = _genericFunction.ReadValueFromDb("BlobStorageName");
-                //string BlobStorageKey = _genericFunction.ReadValueFromDb("BlobStorageKey");
+                //string BlobStorageName = _genericFunctionFactory().ReadValueFromDb("BlobStorageName");
+                //string BlobStorageKey = _genericFunctionFactory().ReadValueFromDb("BlobStorageKey");
 
                 ////  This is standard code to interact with Blob storage.
                 //StorageCredentialsAccountAndKey creds = new StorageCredentialsAccountAndKey(BlobStorageName, BlobStorageKey);
@@ -475,7 +484,7 @@ namespace QidWorkerRole.UploadMasters
                 //// Fetch container properties and write out their values.
                 //blob.FetchAttributes();
                 ////  create a local file
-                //string filepath = @Convert.ToString(_genericFunction.ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
+                //string filepath = @Convert.ToString(_genericFunctionFactory().ReadValueFromDb("DownLoadFilePath")) + "\\" + FolderName + "\\" + blob.Name.Trim();
                 ////string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\" + FolderName + "\\" + blob.Name.Trim();
 
                 //FileInfo fiFilePath = new FileInfo(filepath);
@@ -913,11 +922,11 @@ namespace QidWorkerRole.UploadMasters
                         if (!await _uploadFlightSchedule.GetUploadFlightSchedule(dsUploadRecord) && retryCount == 2)
                         {
                             //GenericFunction genericFunction = new GenericFunction();
-                            //string uploadAlertEmailID = _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                            //string uploadAlertEmailID = _genericFunctionFactory().GetConfigurationValues("SSIMUploadAlertEmailID");
 
                             string uploadAlertEmailID = ConfigCache.Get("SSIMUploadAlertEmailID");
 
-                            await _genericFunction.SaveMessageOutBox("Flight Schedule"
+                            await _genericFunctionFactory().SaveMessageOutBox("Flight Schedule"
                                 , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
                                 , "", uploadAlertEmailID, "", 0);
                         }
@@ -1111,10 +1120,10 @@ namespace QidWorkerRole.UploadMasters
                             {
                                 //GenericFunction genericFunction = new GenericFunction();
 
-                                //string uploadAlertEmailID = _genericFunction.GetConfigurationValues("SSIMUploadAlertEmailID");
+                                //string uploadAlertEmailID = _genericFunctionFactory().GetConfigurationValues("SSIMUploadAlertEmailID");
                                 string uploadAlertEmailID = ConfigCache.Get("SSIMUploadAlertEmailID");
 
-                                await _genericFunction.SaveMessageOutBox("Flight Schedule"
+                                await _genericFunctionFactory().SaveMessageOutBox("Flight Schedule"
                                      , "Hi,\r\n\r\nSSIM Upload is failed, please contact to the team for more details.\r\n\r\nThanks,\r\n\r\nSmartKargo Team"
                                      , "", uploadAlertEmailID, "", 0);
                             }

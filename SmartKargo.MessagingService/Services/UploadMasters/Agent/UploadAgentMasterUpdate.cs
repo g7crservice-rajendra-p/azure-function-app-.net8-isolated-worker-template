@@ -12,16 +12,20 @@ namespace QidWorkerRole.UploadMasters.Agent
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadAgentMasterGeneralInfo> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
+
         private readonly GenericFunction _genericFunction;
 
         #region Constructor
-        public UploadAgentMasterUpdate(ISqlDataHelperFactory sqlDataHelperFactory,
-        ILogger<UploadAgentMasterGeneralInfo> logger, UploadMasterCommon uploadmasterCommon, GenericFunction genericFunction)
+        public UploadAgentMasterUpdate(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadAgentMasterGeneralInfo> logger, 
+            Func<UploadMasterCommon> uploadMasterCommonFactory, 
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadmasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
             _genericFunction = genericFunction;
         }
         #endregion
@@ -39,26 +43,26 @@ namespace QidWorkerRole.UploadMasters.Agent
                     {
                         // to upadate retry count only.
                         //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         //if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowDataSetFileData["FileName"]), Convert.ToString(dataRowDataSetFileData["ContainerName"]), "AgentUpdate", out FilePath))
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowDataSetFileData["FileName"]), Convert.ToString(dataRowDataSetFileData["ContainerName"]), "AgentUpdate", out FilePath))
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dataRowDataSetFileData["FileName"]), Convert.ToString(dataRowDataSetFileData["ContainerName"]), "AgentUpdate", out FilePath))
                         {
-                            ProcessFile(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), FilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), FilePath);
                         }
                         else
                         {
                             //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
                             //uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
-                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                             continue;
                         }
 
                         //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                         //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowDataSetFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;

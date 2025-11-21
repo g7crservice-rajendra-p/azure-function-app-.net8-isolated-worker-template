@@ -8,8 +8,8 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
 {
     public class IdecFileReader
     {
-        private readonly ILogger<Cls_BL> _logger;
-        public IdecFileReader(ILogger<Cls_BL> logger)
+        private readonly ILogger<IdecFileReader> _logger;
+        public IdecFileReader(ILogger<IdecFileReader> logger)
         {
             _logger = logger;
             // Initialize all the record types in the IDEC file.

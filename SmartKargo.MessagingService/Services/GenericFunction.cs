@@ -63,7 +63,6 @@ namespace QidWorkerRole
         public GenericFunction(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<GenericFunction> logger,
-            GenericFunction genericFunction,
             ILoggerFactory loggerFactory,
             UploadMasterCommon uploadMasterCommon)
 
