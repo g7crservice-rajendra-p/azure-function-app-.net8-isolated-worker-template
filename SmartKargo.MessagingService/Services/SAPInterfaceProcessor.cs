@@ -44,7 +44,7 @@ namespace QidWorkerRole
 
 
         private readonly ISqlDataHelperDao _readWriteDao;
-        private readonly ILogger<Cls_BL> _logger;
+        private readonly ILogger<SAPInterfaceProcessor> _logger;
          private static ILoggerFactory? _loggerFactory;
         private static ILogger<SAPInterfaceProcessor> _staticLogger => _loggerFactory?.CreateLogger<SAPInterfaceProcessor>();
 
@@ -53,7 +53,7 @@ namespace QidWorkerRole
 
         public SAPInterfaceProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<Cls_BL> logger,
+            ILogger<SAPInterfaceProcessor> logger,
             ILoggerFactory loggerFactory,
             FTP fTP,
             GenericFunction genericFunction

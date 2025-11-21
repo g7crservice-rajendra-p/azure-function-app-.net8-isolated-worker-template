@@ -1,13 +1,9 @@
-﻿using System;
-using System.Linq;
-
-using System.Reflection;
-using System.Xml;
+﻿using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
+using QidWorkerRole.SIS.Model;
 using System.Collections;
 using System.Globalization;
-using QidWorkerRole.SIS.Model;
-using QidWorkerRole.SIS.FileHandling.Xml.Read.SupportingModels;
-using Microsoft.Extensions.Logging;
+using System.Xml;
 
 namespace QidWorkerRole.SIS.FileHandling.Xml.Read.ReadHelpers
 {

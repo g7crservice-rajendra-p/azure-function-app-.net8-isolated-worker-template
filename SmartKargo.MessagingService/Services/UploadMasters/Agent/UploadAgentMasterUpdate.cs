@@ -27,7 +27,7 @@ namespace QidWorkerRole.UploadMasters.Agent
         #endregion
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
 
-        public async Task<Boolean> UpdateAgent(DataSet dataSetFileData)
+        public async Task<bool> UpdateAgent(DataSet dataSetFileData)
         {
             try
             {

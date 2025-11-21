@@ -15,7 +15,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
-using System.Configuration;
 using System.Data;
 
 namespace QidWorkerRole
@@ -23,8 +22,8 @@ namespace QidWorkerRole
     public class CarditResiditManagement
     {
 
-        static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-        const string PAGE_NAME = "CarditResiditManagementProcessor";
+        //static string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+        //const string PAGE_NAME = "CarditResiditManagementProcessor";
         //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
         string AgentCode = string.Empty, AgentName = string.Empty;
         private readonly ISqlDataHelperDao _readWriteDao;

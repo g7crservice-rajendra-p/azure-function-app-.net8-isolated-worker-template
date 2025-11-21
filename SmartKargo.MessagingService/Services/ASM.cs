@@ -17,7 +17,6 @@ namespace QidWorkerRole
             ILogger<ASM>? staticLogger,
             ILogger<ASM> logger,
             GenericFunction genericFunction,
-            SSM sSM,
             ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
