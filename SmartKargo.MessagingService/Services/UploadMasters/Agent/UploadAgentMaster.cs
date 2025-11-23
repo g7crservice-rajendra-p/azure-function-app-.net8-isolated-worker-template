@@ -18,16 +18,17 @@ namespace QidWorkerRole.UploadMasters.Agent
         /// Method to Uplaod Agent Master.
         /// </summary>
         /// <returns> True when Success and False when Fails </returns>
-        /// 
+        ///
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadAgentMaster> _logger;
         private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
-
         #region Constructor
-        public UploadAgentMaster(ISqlDataHelperFactory sqlDataHelperFactory,
+        public UploadAgentMaster(
+            ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadAgentMaster> logger,
-            Func<UploadMasterCommon> uploadMasterCommonFactory)
+            Func<UploadMasterCommon> uploadMasterCommonFactory
+        )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -53,7 +54,7 @@ namespace QidWorkerRole.UploadMasters.Agent
                                                               "AgentMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {

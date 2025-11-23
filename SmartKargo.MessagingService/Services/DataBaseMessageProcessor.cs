@@ -16,7 +16,7 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<Cls_BL> _logger;
         private readonly GenericFunction _genericFunction;
-        private readonly cls_SCMBL _clsSCMBL;
+        private readonly Func<cls_SCMBL> _cls_SCMBLFactory;
         private readonly FBLMessageProcessor _fBLMessageProcessor;
         private readonly FFAMessageProcessor _fFAMessageProcessor;
 
@@ -24,7 +24,7 @@ namespace QidWorkerRole
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<Cls_BL> logger,
             GenericFunction genericFunction,
-            cls_SCMBL clsSCMBL,
+            Func<cls_SCMBL> cls_SCMBLFactory,
             FBLMessageProcessor fBLMessageProcessor,
             FFAMessageProcessor fFAMessageProcessor
             )
@@ -32,7 +32,7 @@ namespace QidWorkerRole
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _genericFunction = genericFunction;
-            _clsSCMBL = clsSCMBL;
+            _cls_SCMBLFactory = cls_SCMBLFactory;
             _fBLMessageProcessor = fBLMessageProcessor;
             _fFAMessageProcessor = fFAMessageProcessor;
         }
@@ -110,7 +110,7 @@ namespace QidWorkerRole
 
                         bool flag = false;
                         var transformedMsg = _genericFunction.RemoveSITAHeader(message);
-                        (flag, msgType, Errmsg) = await _clsSCMBL.addBookingFromMsg(transformedMsg, srno, MessageFrom, strFromID, strStatus, "");
+                        (flag, msgType, Errmsg) = await _cls_SCMBLFactory().addBookingFromMsg(transformedMsg, srno, MessageFrom, strFromID, strStatus, "");
 
                         if (flag)
                         {

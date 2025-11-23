@@ -13,8 +13,6 @@ namespace QidWorkerRole
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<cls_SCMBL> _logger;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<cls_SCMBL> _staticLogger => _loggerFactory?.CreateLogger<cls_SCMBL>();
-
         private readonly GenericFunction _genericFunction;
         private readonly CIMPMessageValidation _cIMPMessageValidation;
         private readonly cls_Encode_Decode _cls_Encode_Decode;
@@ -40,7 +38,7 @@ namespace QidWorkerRole
         private readonly XFFMMessageProcessor _xffmMessageProcessor;
         private readonly XFWBMessageProcessor _xfwbMessageProcessor;
         private readonly XFZBMessageProcessor _xfzbMessageProcessor;
-        private readonly XFSUMessageProcessor _xFSUMessageProcessor;
+        private readonly Func<XFSUMessageProcessor> _xFSUMessageProcessorFactory;
         private readonly XFNMMessageProcessor _xfNMMessageProcessor;
         private readonly XFBLMessageProcessor _xfBLMessageProcessor;
         private readonly XFHLMessageProcessor _xfHLMessageProcessor;
@@ -76,7 +74,7 @@ namespace QidWorkerRole
             XFFMMessageProcessor xffmMessageProcessor,
             XFWBMessageProcessor xfwbMessageProcessor,
             XFZBMessageProcessor xfzbMessageProcessor,
-            XFSUMessageProcessor xFSUMessageProcessor,
+            Func<XFSUMessageProcessor> xFSUMessageProcessorFactory,
             XFNMMessageProcessor xfNMMessageProcessor,
             XFBLMessageProcessor xfBLMessageProcessor,
             XFHLMessageProcessor xfHLMessageProcessor,
@@ -112,7 +110,7 @@ namespace QidWorkerRole
             _xffmMessageProcessor = xffmMessageProcessor;
             _xfwbMessageProcessor = xfwbMessageProcessor;
             _xfzbMessageProcessor = xfzbMessageProcessor;
-            _xFSUMessageProcessor = xFSUMessageProcessor;
+            _xFSUMessageProcessorFactory = xFSUMessageProcessorFactory;
             _xfNMMessageProcessor = xfNMMessageProcessor;
             _xfBLMessageProcessor = xfBLMessageProcessor;
             _xfHLMessageProcessor = xfHLMessageProcessor;
@@ -1470,12 +1468,12 @@ namespace QidWorkerRole
                                     //XFSUMessageProcessor xfsumessage = new XFSUMessageProcessor();
 
                                     //flag = _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, out ErrorMsg);
-                                    (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessor.DecodeReceivedXFSUMessage(refNO, xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
+                                    (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessorFactory().DecodeReceivedXFSUMessage(refNO, xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg);
 
 
                                     if (flag == true)
                                         //flag = xfsumessage.SaveandUpdateXFSUMessage(xmlMsg, ref fsadata, ref fsanodes, ref customextrainfo, ref ulddata, ref othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, out ErrorMsg);
-                                        (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessor.SaveandUpdateXFSUMessage(xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg);
+                                        (flag, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, ErrorMsg) = await _xFSUMessageProcessorFactory().SaveandUpdateXFSUMessage(xmlMsg, fsadata, fsanodes, customextrainfo, ulddata, othinfoarray, refNO, strOriginalMessage, strMessageFrom, strFromID, strStatus, ErrorMsg);
                                 }
                                 #endregion
                             }

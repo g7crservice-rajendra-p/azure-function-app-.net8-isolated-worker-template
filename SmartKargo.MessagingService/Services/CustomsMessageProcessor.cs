@@ -11,18 +11,18 @@ namespace QidWorkerRole
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<CustomsMessageProcessor> _logger;
-        private readonly cls_SCMBL _cls_SCMBL;
+        private readonly Func<cls_SCMBL> _cls_SCMBLFactory;
         private readonly GenericFunction _genericFunction;
         public CustomsMessageProcessor(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<CustomsMessageProcessor> logger,
-            cls_SCMBL cls_SCMBL,
+            Func<cls_SCMBL> cls_SCMBLFactory,
             GenericFunction genericFunction
         )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _cls_SCMBL = cls_SCMBL;
+            _cls_SCMBLFactory = cls_SCMBLFactory;
             _genericFunction = genericFunction;
         }
         /// <summary>
@@ -156,7 +156,7 @@ namespace QidWorkerRole
 
                             StringBuilder sbAWB = await GenerateXMLForOM(dsAWBDetails);
 
-                            if (await _cls_SCMBL.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", DateTime.UtcNow, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
+                            if (await _cls_SCMBLFactory().addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", DateTime.UtcNow, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
                             {
                                 DataSet? dsUpdateXMLResult = new DataSet();
                                 dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbAWB.ToString(), IsHouse);
@@ -180,7 +180,7 @@ namespace QidWorkerRole
                                 DataSet? dsHAWBDetails = new DataSet();
                                 dsHAWBDetails = await GetDataSetForXML(FlightNumber, FlightDate, FlightOrigin, FlightDestination, ImpExp, IsHouse);
                                 StringBuilder sbHABW = await GenerateXMLForOMForHouse(dsHAWBDetails);
-                                if (await _cls_SCMBL.addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", FlightDate, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
+                                if (await _cls_SCMBLFactory().addMsgToOutBox("OMAN Custom", sbAWB.ToString(), "", "SFTP", "FFM", FlightDate, MessageData.MessageTypeName.OMCUSTOM_M, string.Empty, FlightNumber, FlightDate.ToString(), FlightOrigin, FlightDestination))
                                 {
                                     DataSet? dsUpdateXMLResult = new DataSet();
                                     dsUpdateXMLResult = await SaveCustomMessageXML(FlightNumber, FlightDate, ImpExp, sbHABW.ToString(), IsHouse);

@@ -6,7 +6,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
 //latest
-namespace BAL
+namespace QidWorkerRole.BAL
 {
     public class CustomsImportBAL
     {
@@ -27,7 +27,8 @@ namespace BAL
         private static ILogger<CustomsImportBAL> _staticLogger => _loggerFactory?.CreateLogger<CustomsImportBAL>();
 
         #region Constructor
-        public CustomsImportBAL(ISqlDataHelperFactory sqlDataHelperFactory,
+        public CustomsImportBAL(
+            ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<CustomsImportBAL> logger,
             ILoggerFactory loggerFactory)
         {

@@ -11,16 +11,17 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadPartnerSchedule> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
-        public UploadPartnerSchedule(ISqlDataHelperFactory sqlDataHelperFactory,
+        public UploadPartnerSchedule(
+            ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadPartnerSchedule> logger,
-            UploadMasterCommon uploadMasterCommon)
+            Func<UploadMasterCommon> uploadMasterCommonFactory) // Change the parameter to Func<UploadMasterCommon>
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
 
         }
         #endregion
@@ -36,23 +37,23 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
                 foreach (DataRow dr in dsFiles.Tables[0].Rows)
                 {
                     // to upadate retry count only.
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                     //UploadMasterCommon umc = new UploadMasterCommon();
 
-                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PartnerSchedule", out FilePath))
+                    if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PartnerSchedule", out FilePath))
                     {
                         await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
                     else
                     {
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
 
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                 }
             }
             catch (Exception exception)
@@ -89,7 +90,7 @@ namespace QidWorkerRole.UploadMasters.PartnerSchedule
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                _uploadMasterCommon.RemoveEmptyRows(dataTablePartnerScheduleExcelData);
+                _uploadMasterCommonFactory().RemoveEmptyRows(dataTablePartnerScheduleExcelData);
 
                 foreach (DataColumn dataColumn in dataTablePartnerScheduleExcelData.Columns)
                 {

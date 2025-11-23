@@ -7,16 +7,17 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
     public class FlightCapacity
     {
         private readonly ILogger<FlightCapacity> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
+
 
         #region Constructor
         public FlightCapacity(
             ILogger<FlightCapacity> logger,
-            UploadMasterCommon uploadMasterCommon
+            Func<UploadMasterCommon> uploadMasterCommonFactory
          )
         {
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
         }
         #endregion
         public async Task UploadFlightCapacity(DataSet dsFiles)
@@ -33,10 +34,10 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
                     foreach (DataRow dr in dsFiles.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         //UploadMasterCommon umc = new UploadMasterCommon();
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "CapacityAllocation", out FilePath))
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "CapacityAllocation", out FilePath))
                         {
                             await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                         }
@@ -94,7 +95,7 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
                 }
                 result.Tables.Add(dt);
 
-                _uploadMasterCommon.RemoveEmptyRows(result.Tables[0]);
+                _uploadMasterCommonFactory().RemoveEmptyRows(result.Tables[0]);
 
                 DataTable dtUploadMasterDetailLog = new DataTable("UploadMasterDetailLog");
                 dtUploadMasterDetailLog = CreateUploadMasterDetailLogDataTable();
@@ -179,7 +180,7 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
                 FinalRes.Tables[0].AcceptChanges();
                 FinalRes.Tables[0].Columns[11].ColumnName = "ULDCartforBGE";
 
-                dsres = await _uploadMasterCommon.InsertCapacityFile(FinalRes.Tables[0], UploadStartTime, UserName);
+                dsres = await _uploadMasterCommonFactory().InsertCapacityFile(FinalRes.Tables[0], UploadStartTime, UserName);
 
                 #region : Download excel file for reference :
                 //string filepath = @ConfigurationManager.AppSettings["DownLoadFilePath"].ToString() + "\\CapacityUploadLog\\" + FileName;
@@ -188,12 +189,12 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
                 string downLoadFilePath = ConfigCache.Get("DownLoadFilePath");
                 string filepath = @Convert.ToString(downLoadFilePath) + "\\CapacityUploadLog\\" + FileName;
 
-                _uploadMasterCommon.ExportDataSet(FinalRes.Tables[0], filepath);
+                _uploadMasterCommonFactory().ExportDataSet(FinalRes.Tables[0], filepath);
                 #endregion
 
-                if (await _uploadMasterCommon.InsertMasterDetailsLog(dtUploadMasterDetailLog, FinalRes.Tables[0], UploadStartTime, UserName))
+                if (await _uploadMasterCommonFactory().InsertMasterDetailsLog(dtUploadMasterDetailLog, FinalRes.Tables[0], UploadStartTime, UserName))
                 {
-                    DataSet dsContainerName = await _uploadMasterCommon.GetUploadMasterConfiguration(UploadMasterType.FlightCapacity);
+                    DataSet dsContainerName = await _uploadMasterCommonFactory().GetUploadMasterConfiguration(UploadMasterType.FlightCapacity);
                     string ContainerName = string.Empty;
                     if (dsContainerName != null && dsContainerName.Tables.Count > 0 && dsContainerName.Tables[0].Rows.Count > 0)
                         ContainerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
@@ -201,13 +202,13 @@ namespace QidWorkerRole.UploadMasters.FlightCapacity
                     //string BlobName = genericFunction.ReadValueFromDb("BlobStorageName");
                     string BlobName = ConfigCache.Get("BlobStorageName");
 
-                    await _uploadMasterCommon.UpdateUploadMasterSummaryLog(SerialNumber, RecordCount, SuccessCount, FailedCount, "Process Completed", 1, string.Empty, string.Empty, true);
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(SerialNumber, "Process Start", RecordCount, SuccessCount
+                    await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(SerialNumber, RecordCount, SuccessCount, FailedCount, "Process Completed", 1, string.Empty, string.Empty, true);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(SerialNumber, "Process Start", RecordCount, SuccessCount
                         , FailedCount, 1, string.Empty, 1);
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(SerialNumber, "Process End", 0, 0, 0, 1, string.Empty, 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(SerialNumber, "Process End", 0, 0, 0, 1, string.Empty, 1);
                 }
                 else
-                    await _uploadMasterCommon.UpdateUploadMasterSummaryLog(SerialNumber, 0, 0, 0, "Process Failed", 1, string.Empty, string.Empty, true);
+                    await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(SerialNumber, 0, 0, 0, "Process Failed", 1, string.Empty, string.Empty, true);
 
             }
             catch (Exception ex)

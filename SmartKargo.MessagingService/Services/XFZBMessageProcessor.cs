@@ -34,8 +34,10 @@ namespace QidWorkerRole
         //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
 
         #region Constructor
-        public XFZBMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<XFZBMessageProcessor> logger, GenericFunction genericFunction, SCMExceptionHandlingWorkRole scmExceptionHandlingWorkerRole)
+        public XFZBMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFZBMessageProcessor> logger,
+            GenericFunction genericFunction)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
@@ -2079,7 +2081,7 @@ namespace QidWorkerRole
 
         private async Task<DataSet?> GetRecordforHAWBToGenerateXFZBMessage(string awbPrefix, string awbNumber, string hawbNumber)
         {
-            DataSet ?dsFwb = new DataSet();
+            DataSet? dsFwb = new DataSet();
             try
             {
                 //SQLServer da = new SQLServer();
@@ -2093,7 +2095,7 @@ namespace QidWorkerRole
                     ];
 
                 //dsFwb = da.SelectRecords("Messaging.GetRecordMakeXFZBMessage", paramname, paramvalue, paramtype);
-               dsFwb = await _readWriteDao.SelectRecords("Messaging.GetRecordMakeXFZBMessage", sqlParams);
+                dsFwb = await _readWriteDao.SelectRecords("Messaging.GetRecordMakeXFZBMessage", sqlParams);
             }
             catch (Exception ex)
             {

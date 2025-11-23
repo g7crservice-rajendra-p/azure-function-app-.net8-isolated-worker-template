@@ -15,11 +15,10 @@ namespace QidWorkerRole.SIS.FileHandling
     {
         private readonly ILogger<SISFileReader> _logger;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<SISFileReader> _staticLogger => _loggerFactory?.CreateLogger<SISFileReader>();
+        private static ILogger<SISFileReader>? _staticLogger => _loggerFactory?.CreateLogger<SISFileReader>();
         private readonly GenericFunction _genericFunction;
         private readonly SISBAL _sISBAL;
         private readonly IdecFileReader _idecFileReader;
-        private readonly XmlFileReader _xmlFileReader;
         private readonly ReadDBData _readDBData;
         private readonly UpdateDBData _updateDBData;
         private readonly CreateDBData _createDBData;
@@ -30,7 +29,6 @@ namespace QidWorkerRole.SIS.FileHandling
             SISBAL sISBAL,
             ILoggerFactory loggerFactory,
             IdecFileReader idecFileReader,
-            XmlFileReader xmlFileReader,
             ReadDBData readDBData,
             UpdateDBData updateDBData,
             CreateDBData createDBData,
@@ -42,7 +40,6 @@ namespace QidWorkerRole.SIS.FileHandling
             _genericFunction = genericFunction;
             _sISBAL = sISBAL;
             _idecFileReader = idecFileReader;
-            _xmlFileReader = xmlFileReader;
             _readDBData = readDBData;
             _updateDBData = updateDBData;
             _createDBData = createDBData;
@@ -154,9 +151,10 @@ namespace QidWorkerRole.SIS.FileHandling
 
                     if (fileExtention != null && fileExtention.ToUpper().Equals(".XML"))
                     {
-                        //XmlFileReader xmlFileReader = new XmlFileReader(filePath);
+                        var xmlLogger = _loggerFactory?.CreateLogger<XmlFileReader>();
+                        XmlFileReader xmlFileReader = new XmlFileReader(filePath, xmlLogger);
 
-                        TransmissionHeader transmissionHeader = _xmlFileReader.ReadTransmissionHeader();
+                        TransmissionHeader transmissionHeader = xmlFileReader.ReadTransmissionHeader();
 
                         fileData = new ModelClass.SupportingModels.FileData();
 
@@ -181,7 +179,7 @@ namespace QidWorkerRole.SIS.FileHandling
                         fileData.FileTotal = new ModelClass.FileTotal();
                         fileData.InvoiceList = new List<ModelClass.Invoice>();
 
-                        foreach (var invoice in _xmlFileReader.ReadInvoice())
+                        foreach (var invoice in xmlFileReader.ReadInvoice())
                         {
                             if (invoice != null)
                             {
@@ -205,7 +203,7 @@ namespace QidWorkerRole.SIS.FileHandling
                             }
                         }
 
-                        TransmissionSummary transmissionSummary = _xmlFileReader.ReadTransmissionSummary();
+                        TransmissionSummary transmissionSummary = xmlFileReader.ReadTransmissionSummary();
                     }
 
                     if (fileData != null)

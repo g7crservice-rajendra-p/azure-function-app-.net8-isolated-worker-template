@@ -10,16 +10,16 @@ namespace QidWorkerRole.UploadMasters.Taxline
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadTaxLine> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
         public UploadTaxLine(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadTaxLine> logger,
-            UploadMasterCommon uploadMasterCommon)
+            Func<UploadMasterCommon> uploadMasterCommonFactory) // Changed parameter to Func<UploadMasterCommon>    
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
         }
         #endregion
         public async Task<bool> TaxLineMasterUpload(DataSet dataSetFileData)
@@ -34,21 +34,21 @@ namespace QidWorkerRole.UploadMasters.Taxline
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "TaxLineMasterUploadFile", out uploadFilePath))
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "TaxLineMasterUploadFile", out uploadFilePath))
                         {
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -87,7 +87,7 @@ namespace QidWorkerRole.UploadMasters.Taxline
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                _uploadMasterCommon.RemoveEmptyRows(dataTableTaxLineExcelData);
+                _uploadMasterCommonFactory().RemoveEmptyRows(dataTableTaxLineExcelData);
 
                 foreach (DataColumn dataColumn in dataTableTaxLineExcelData.Columns)
                 {

@@ -12,19 +12,18 @@ namespace QidWorkerRole.UploadMasters.Vendor
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadVendorMaster> _logger;
-
-        //private readonly UploadMasterCommon _uploadMasterCommonFactory();
         private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
         public UploadVendorMaster(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadVendorMaster> logger,
-            Func<UploadMasterCommon> uploadMasterCommonFactory)
+            Func<UploadMasterCommon> uploadMasterCommonFactory
+            )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommonFactory = uploadMasterCommonFactory;   // lazy – breaks cycle
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
         }
         #endregion
 
@@ -153,12 +152,12 @@ namespace QidWorkerRole.UploadMasters.Vendor
                 VendorType.Columns.Add("Email_address", System.Type.GetType("System.String"));
                 VendorType.Columns.Add("Eoricode", System.Type.GetType("System.String"));
                 VendorType.Columns.Add("ValidationDetails", System.Type.GetType("System.String"));
-                
+
 
                 #endregion
 
                 string validationDetails = string.Empty;
-                
+
                 string uLDType = string.Empty;
 
                 for (int i = 0; i < dataTableVendorMasterExcelData.Rows.Count; i++)
@@ -382,7 +381,7 @@ namespace QidWorkerRole.UploadMasters.Vendor
                             {
                                 dataRowCostType["Is_active"] = "0";
                             }
-                            
+
                         }
                     }
                     #endregion is_active

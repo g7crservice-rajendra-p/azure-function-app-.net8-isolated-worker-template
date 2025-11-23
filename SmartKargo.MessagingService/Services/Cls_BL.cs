@@ -104,7 +104,7 @@ namespace QidWorkerRole
         private readonly XFSUMessageProcessor _xFSUMessageProcessor;
         private readonly cls_Encode_Decode _cls_Encode_Decode;
         private readonly FFAMessageProcessor _fFAMessageProcessor;
-        private readonly MailKitManager _mailKitManager;
+        private readonly Func<MailKitManager> _mailKitManagerFactory;
         private readonly RapidInterfaceMethods _rapidInterfaceMethods;
         private readonly SMSOUT _sMSOUT;
         private readonly WebService _webService;
@@ -134,7 +134,7 @@ namespace QidWorkerRole
             XFSUMessageProcessor xFSUMessageProcessor,
             cls_Encode_Decode cls_Encode_Decode,
             FFAMessageProcessor fFAMessageProcessor,
-            MailKitManager mailKitManager,
+            Func<MailKitManager> mailKitManagerFactory,
             RapidInterfaceMethods rapidInterfaceMethods,
             SMSOUT sMSOUT,
             WebService webService,
@@ -160,7 +160,7 @@ namespace QidWorkerRole
             _cls_Encode_Decode = cls_Encode_Decode;
             _fFAMessageProcessor = fFAMessageProcessor;
             _azureDrive = azureDrive;
-            _mailKitManager = mailKitManager;
+            _mailKitManagerFactory = mailKitManagerFactory;
             _rapidInterfaceMethods = rapidInterfaceMethods;
             _sMSOUT = sMSOUT;
             _webService = webService;
@@ -4646,7 +4646,7 @@ namespace QidWorkerRole
                                             {
                                                 if (sentadd.Length > 0 && sentadd.Contains("@") && accountEmail != "" && password != "" && sentadd != "" && body != "")
                                                 {
-                                                    success = _mailKitManager.SendEmailMailKitManager(ds, accountEmail, sentadd, password, subject, body, ishtml, ccadd, subject, SMTPUserName, MailIouterver);
+                                                    success = _mailKitManagerFactory().SendEmailMailKitManager(ds, accountEmail, sentadd, password, subject, body, ishtml, ccadd, subject, SMTPUserName, MailIouterver);
                                                 }
                                             }
                                             catch (Exception ex)

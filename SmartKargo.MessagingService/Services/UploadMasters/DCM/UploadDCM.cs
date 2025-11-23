@@ -9,23 +9,22 @@ namespace QidWorkerRole.UploadMasters.DCM
 {
     public class UploadDCM
     {
-        //UploadMasterCommon _uploadMasterCommon = new UploadMasterCommon();
-
+        //UploadMasterCommon _uploadMasterCommonFactory() = new UploadMasterCommon();
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadDCM> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
         public UploadDCM(
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadDCM> logger,
-            UploadMasterCommon uploadMasterCommon
+            Func<UploadMasterCommon> uploadMasterCommonFactory
          )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
         }
         #endregion
         public async Task<bool> DCMUpload(DataSet dataSetFileData)
@@ -40,22 +39,22 @@ namespace QidWorkerRole.UploadMasters.DCM
                     foreach (DataRow dataRowFileData in dataSetFileData.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "dcm", out uploadFilePath))
                         {
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -92,7 +91,7 @@ namespace QidWorkerRole.UploadMasters.DCM
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                _uploadMasterCommon.RemoveEmptyRows(dataTableDCMExcelData);
+                _uploadMasterCommonFactory().RemoveEmptyRows(dataTableDCMExcelData);
 
                 foreach (DataColumn dataColumn in dataTableDCMExcelData.Columns)
                 {

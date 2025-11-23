@@ -12,9 +12,9 @@
       * Description          :   
      */
 #endregion
-using BAL;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using QidWorkerRole.BAL;
 using SmartKargo.MessagingService.Data.Dao.Interfaces;
 using System.Data;
 using System.Text;
@@ -33,9 +33,13 @@ namespace QidWorkerRole
         private readonly CustomsImportBAL _objCustoms;
 
         #region Constructor
-        public XFSUMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<XFSUMessageProcessor> logger, GenericFunction genericFunction,
-            cls_SCMBL cl_SCMBL, FFRMessageProcessor fFRMessageProcessor, CustomsImportBAL objCustoms)
+        public XFSUMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<XFSUMessageProcessor> logger, 
+            GenericFunction genericFunction,
+            cls_SCMBL cl_SCMBL,
+            FFRMessageProcessor fFRMessageProcessor, 
+            CustomsImportBAL objCustoms)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;

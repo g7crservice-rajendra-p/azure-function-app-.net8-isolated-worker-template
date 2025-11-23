@@ -1,7 +1,10 @@
 ﻿using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using SmartKargo.MessagingService.Extensions;
+using static SmartKargo.MessagingService.Extensions.DependencyInjectionAndValidator;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -50,6 +53,7 @@ try
     var host = builder.Build();
 
     Log.Information("SmartKargo Messaging Service Function App starting up...");
+    DiConstructorDependencyValidator.Validate(host, logger: host.Services.GetService<ILoggerFactory>()?.CreateLogger("DIValidator"), throwOnMissing: false);
     host.Run();
 }
 catch (Exception ex)

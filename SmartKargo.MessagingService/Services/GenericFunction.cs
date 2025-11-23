@@ -52,11 +52,13 @@ namespace QidWorkerRole
         #region Connectionstring
         //string strConnection = ConfigurationManager.ConnectionStrings["ConStr"].ToString();
         #endregion
+
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<GenericFunction> _logger;
         private static ILoggerFactory? _loggerFactory;
-        private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private static ILogger<GenericFunction>? _staticLogger => _loggerFactory?.CreateLogger<GenericFunction>();
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
+
 
 
         #region Constructor
@@ -64,13 +66,13 @@ namespace QidWorkerRole
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<GenericFunction> logger,
             ILoggerFactory loggerFactory,
-            UploadMasterCommon uploadMasterCommon)
+            Func<UploadMasterCommon> uploadMasterCommonFactory)
 
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
             _loggerFactory = loggerFactory;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
         }
         #endregion
 
@@ -1759,14 +1761,14 @@ namespace QidWorkerRole
                 if (!File.Exists(System.IO.Path.GetFullPath(ConfigCache.Get("DownLoadFilePath") + "/" + ConfigCache.Get("PPKFileFolderName") + "/" + ppkFileName)))
                 {
                     //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
-                    if (!_uploadMasterCommon.DoDownloadBLOB(ppkFileName, "ppkfiles", "PPKFiles", out ppkLocalFilePath))
+                    if (!_uploadMasterCommonFactory().DoDownloadBLOB(ppkFileName, "ppkfiles", "PPKFiles", out ppkLocalFilePath))
                     {
                         ppkLocalFilePath = string.Empty;
                     }
                 }
                 else
                 {
-                    ppkLocalFilePath = System.IO.Path.GetFullPath(ConfigCache.Get("DownLoadFilePath") + "/" + ConfigCache.Get("PPKFileFolderName") + "/" + ppkFileName);
+                    ppkLocalFilePath = Path.GetFullPath(ConfigCache.Get("DownLoadFilePath") + "/" + ConfigCache.Get("PPKFileFolderName") + "/" + ppkFileName);
                 }
             }
             catch (Exception ex)

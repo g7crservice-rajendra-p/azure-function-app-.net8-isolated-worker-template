@@ -9,20 +9,20 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
 {
     public class UploadFlightSchedule
     {
-        //UploadMasterCommon _uploadMasterCommon = new UploadMasterCommon();
+        //UploadMasterCommon _uploadMasterCommonFactory() = new UploadMasterCommon();
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadFlightSchedule> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
         public UploadFlightSchedule(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<UploadFlightSchedule> logger,
-            UploadMasterCommon uploadMasterCommon)
+            Func<UploadMasterCommon> uploadMasterCommonFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
 
         }
         #endregion
@@ -53,10 +53,10 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                     foreach (DataRow dr in dsFiles.Tables[0].Rows)
                     {
                         // to upadate retry count only.
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string FilePath = "";
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Schedule", out FilePath))
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "Schedule", out FilePath))
                         {
                             // clsLog.WriteLogAzure("Schedule File Path:" + FilePath);
                             _logger.LogInformation("Schedule File Path: {filePath}", FilePath);
@@ -70,7 +70,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                                 return false;
                             }
 
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule start", 0, 0, 0, 1, "", 1);
                             dsSSIMUpdateResult = await SSIMUpdate(carrier);
                             if (dsSSIMUpdateResult != null && dsSSIMUpdateResult.Tables.Count > 0)
                             {
@@ -82,14 +82,14 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                             }
 
                             await GetRefereshSchedule();
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule End", 0, 0, 0, 1, "", 1);
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Daily Flight Schedule End", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                             await RefreshCapacity();
                         }
                         else
                         {
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
                     }
                 }
@@ -245,7 +245,7 @@ namespace QidWorkerRole.UploadMasters.FlightSchedule
                     //return false;
                     return (false, carrier);
 
-                _uploadMasterCommon.ExportDataSet(ds, filepath);
+                _uploadMasterCommonFactory().ExportDataSet(ds, filepath);
             }
             catch (Exception ex)
             {

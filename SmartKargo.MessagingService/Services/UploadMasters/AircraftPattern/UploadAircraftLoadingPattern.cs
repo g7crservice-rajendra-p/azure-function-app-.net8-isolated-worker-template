@@ -10,17 +10,18 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
     {
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<UploadAircraftLoadingPattern> _logger;
-        private readonly UploadMasterCommon _uploadMasterCommon;
-        private readonly GenericFunction _genericFunction;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
-        public UploadAircraftLoadingPattern(ISqlDataHelperFactory sqlDataHelperFactory,
-        ILogger<UploadAircraftLoadingPattern> logger, UploadMasterCommon uploadmasterCommon, GenericFunction genericFunction)
+        public UploadAircraftLoadingPattern(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<UploadAircraftLoadingPattern> logger, 
+            Func<UploadMasterCommon> uploadmasterCommonFactory
+        )
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadmasterCommon;
-            _genericFunction = genericFunction;
+            _uploadMasterCommonFactory = uploadmasterCommonFactory;
         }
         #endregion
         //UploadMasterCommon uploadMasterCommon = new UploadMasterCommon();
@@ -31,7 +32,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
             {
                 DataSet dataSetFileData = new DataSet();
                 //dataSetFileData = uploadMasterCommon.GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
-                dataSetFileData = await _uploadMasterCommon.GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
+                dataSetFileData = await _uploadMasterCommonFactory().GetUploadedFileData(UploadMasterType.AircraftLoadingPattern);
 
                 if (dataSetFileData != null && dataSetFileData.Tables[0].Rows.Count > 0)
                 {
@@ -39,27 +40,27 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
                     {
                         // to upadate retry count only.
                         //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
-                       await  _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                       await  _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                         string uploadFilePath = "";
                         //if (uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
-                        if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
+                        if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]),
                                                               "AircraftLoadPattern", out uploadFilePath))
                         {
                             //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
                             //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                            await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                            await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
                            // uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
-                            await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                            await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dataRowFileData["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         }
 
                         //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                     }
                 }
                 return true;
@@ -107,7 +108,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
                 iExcelDataReader.Close();
 
                 //uploadMasterCommon.RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
-                _uploadMasterCommon.RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
+                _uploadMasterCommonFactory().RemoveEmptyRows(dataTableAircraftLoadingPatternExcelData);
 
                 #region Creating AircraftConfig
                 DataTable AircraftConfig = new DataTable("AircraftLoadingPattern");

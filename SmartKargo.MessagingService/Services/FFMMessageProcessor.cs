@@ -34,7 +34,7 @@ namespace QidWorkerRole
         private readonly ILogger<FFMMessageProcessor> _logger;
         private readonly FNAMessageProcessor _fNAMessageProcessor;
         private readonly FHLMessageProcessor _fHLMessageProcessor;
-        private readonly cls_SCMBL _cls_SCMBL;
+        private readonly Func<cls_SCMBL> _cls_SCMBLFactory;
         private readonly CustomsMessageProcessor _customsMessageProcessor;
         private readonly FWBMessageProcessor _fWBMessageProcessor;
         private readonly GenericFunction _genericFunction;
@@ -48,7 +48,7 @@ namespace QidWorkerRole
             ILogger<FFMMessageProcessor> logger,
             FNAMessageProcessor fNAMessageProcessor,
             FHLMessageProcessor fHLMessageProcessor,
-            cls_SCMBL cls_SCMBL,
+            Func<cls_SCMBL> cls_SCMBLFactory,
             CustomsMessageProcessor customsMessageProcessor,
             FWBMessageProcessor fWBMessageProcessor,
             GenericFunction genericFunction,
@@ -61,7 +61,7 @@ namespace QidWorkerRole
             _logger = logger;
             _fNAMessageProcessor = fNAMessageProcessor;
             _fHLMessageProcessor = fHLMessageProcessor;
-            _cls_SCMBL = cls_SCMBL;
+            _cls_SCMBLFactory = cls_SCMBLFactory;
             _customsMessageProcessor = customsMessageProcessor;
             _fWBMessageProcessor = fWBMessageProcessor;
             _genericFunction = genericFunction;
@@ -3992,7 +3992,7 @@ namespace QidWorkerRole
                 DataSet ds = new DataSet();
                 DataSet? dsdata1 = new DataSet();
                 // DataSet dsData = new DataSet();
-                dsdata1 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+                dsdata1 = await _cls_SCMBLFactory().GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
                 if (dsdata1 != null && dsdata1.Tables.Count > 1 && dsdata1.Tables[1].Rows.Count > 0)
                 {
                     customsName = dsdata1.Tables[1].Rows[0]["CustomsName"].ToString();
@@ -4031,7 +4031,7 @@ namespace QidWorkerRole
                         foreach (DataRow drdestination in dsdata1.Tables[0].Rows)
                         {
                             MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                            dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                            dsData = await _cls_SCMBLFactory().GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
                             if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
                                 dt.Merge(dsData.Tables[3]);
                         }
@@ -4115,7 +4115,7 @@ namespace QidWorkerRole
                 DataTable dt = new DataTable();
                 DataSet? dthwb = new DataSet();
                 DataSet? ds = new DataSet();
-                dsdata2 = await _cls_SCMBL.GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
+                dsdata2 = await _cls_SCMBLFactory().GetFlightInformationforFFM(DepartureAirport, FlightNo, FlightDate);
                 if (DepartureAirport == "DAC" || ArrivalAirport == "DAC")
                 {
                     if (dsdata2 != null && dsdata2.Tables[0].Rows.Count > 0)
@@ -4123,7 +4123,7 @@ namespace QidWorkerRole
                         foreach (DataRow drdestination in dsdata2.Tables[0].Rows)
                         {
                             MessageData.unloadingport objTempUnloadingPort = new MessageData.unloadingport("");
-                            dsData = await _cls_SCMBL.GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
+                            dsData = await _cls_SCMBLFactory().GetRecordforGenerateFFM(DepartureAirport, FlightNo, FlightDate, drdestination["DepartureStation"].ToString());
                             if (dsData.Tables[3] != null && dsData.Tables[3].Rows.Count > 0)
                                 dt.Merge(dsData.Tables[3]);
                         }
@@ -4137,7 +4137,7 @@ namespace QidWorkerRole
                         {
                             if (Convert.ToString(dt.Rows[i]["AWBNumber"]).Length >= 12)
                             {
-                                dthwb = await _cls_SCMBL.GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
+                                dthwb = await _cls_SCMBLFactory().GetChildHAWB(dt.Rows[i]["AWBNumber"].ToString().Substring(0, 3), dt.Rows[i]["AWBNumber"].ToString().Substring(4, 8), FlightNo,
                                FlightDate, true, "", IsXFZB);
 
                                 if (dthwb != null && dthwb.Tables[0].Rows.Count > 0)

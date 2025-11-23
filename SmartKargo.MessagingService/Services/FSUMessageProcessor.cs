@@ -29,18 +29,19 @@ namespace QidWorkerRole
         private readonly ILogger<FSUMessageProcessor> _logger;
         private static ILoggerFactory? _loggerFactory;
         private static ILogger<FSUMessageProcessor> _staticLogger => _loggerFactory?.CreateLogger<FSUMessageProcessor>();
-
         private readonly GenericFunction _genericFunction;
-        private readonly Cls_BL _clsBL;
         private readonly FFRMessageProcessor _fFRMessageProcessor;
         private readonly FWBMessageProcessor _fWBMessageProcessor;
         private readonly FHLMessageProcessor _fHLMessageProcessor;
 
 
         #region :: Constructor ::
-        public FSUMessageProcessor(ISqlDataHelperFactory sqlDataHelperFactory,
-            ILogger<FSUMessageProcessor> logger, GenericFunction genericFunction,
-            Cls_BL clsBL, FFRMessageProcessor fFRMessageProcessor, FWBMessageProcessor fWBMessageProcessor,
+        public FSUMessageProcessor(
+            ISqlDataHelperFactory sqlDataHelperFactory,
+            ILogger<FSUMessageProcessor> logger, 
+            GenericFunction genericFunction,
+            FFRMessageProcessor fFRMessageProcessor, 
+            FWBMessageProcessor fWBMessageProcessor,
             FHLMessageProcessor fHLMessageProcessor,
             ILoggerFactory loggerFactory)
         {
@@ -48,7 +49,6 @@ namespace QidWorkerRole
             _logger = logger;
             _loggerFactory = loggerFactory;
             _genericFunction = genericFunction;
-            _clsBL = clsBL;
             _fFRMessageProcessor = fFRMessageProcessor;
             _fWBMessageProcessor = fWBMessageProcessor;
             _fHLMessageProcessor = fHLMessageProcessor;

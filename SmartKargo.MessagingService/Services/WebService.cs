@@ -2,7 +2,7 @@
 using System.Net;
 using System.Xml.Linq;
 
-namespace SmartKargo.MessagingService.Services
+namespace QidWorkerRole
 {
     #region WebServiceCalss
     /// <summary>

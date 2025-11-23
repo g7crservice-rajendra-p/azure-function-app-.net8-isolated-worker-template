@@ -8,10 +8,9 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
 {
     public class XmlFileReader
     {
-        private readonly ILogger<XmlFileReader> _logger;
+        private readonly ILogger<XmlFileReader>? _logger;
         private XmlTextReader xmlTextReader;
-        private string IssuingOrganizationId { get; set; }
-
+        private string? IssuingOrganizationId { get; set; } = null;
         protected string HeaderModelName { get; set; }
         protected string DetailModelName { get; set; }
         protected string SmmaryModelName { get; set; }
@@ -20,7 +19,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
         /// Parameterized Constructor to Initialize Reader.
         /// </summary>
         /// <param name="filePath">The file path.</param>
-        public XmlFileReader(string filePath, ILogger<XmlFileReader> logger)
+        public XmlFileReader(string filePath, ILogger<XmlFileReader>? logger)
         {
             _logger = logger;
             HeaderModelName = XmlConstants.TransmissionHeader;
@@ -30,7 +29,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
             if (!File.Exists(filePath))
             {
                 //clsLog.WriteLogAzure(string.Format("File [{0}] does not exist." + filePath));
-                _logger.LogWarning("File [{filePath}] does not exist.", filePath);
+                _logger?.LogWarning("File [{filePath}] does not exist.", filePath);
                 throw new FileNotFoundException(string.Format("File [{0}] not found.", filePath));
             }
 
@@ -59,6 +58,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
             try
             {
                 //Logger.Info("Start of ReadTransmissionHeader.");
+                _logger?.LogInformation("Start of ReadTransmissionHeader.");
 
                 CheckXmlReaderIntialization();
 
@@ -82,12 +82,13 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
                 }
 
                 //Logger.Info("End of ReadTransmissionHeader.");
+                _logger?.LogInformation("End of ReadTransmissionHeader.");
                 return transmissionHeader;
             }
             catch (Exception exception)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadTransmissionHeader", exception);
-                _logger.LogError(exception, "Error Occurred in ReadTransmissionHeader");
+                _logger?.LogError(exception, "Error Occurred in ReadTransmissionHeader");
                 return transmissionHeader;
             }
         }
@@ -119,6 +120,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
                 }
             }
             //Logger.Info("End of ReadInvoice.");
+            _logger?.LogInformation("End of ReadInvoice.");
         }
 
         private static bool IsSummaryStarted(XmlTextReader xmlTextReader, string readerCondition)
@@ -148,6 +150,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
             try
             {
                 //Logger.Info("Start of ReadTransmissionSummary.");
+                _logger?.LogInformation("Start of ReadTransmissionSummary.");
 
                 CheckXmlReaderIntialization();
 
@@ -164,7 +167,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
             catch (Exception exception)
             {
                 //clsLog.WriteLogAzure("Error Occurred in ReadTransmissionSummary", exception);
-                _logger.LogError(exception, "Error Occurred in ReadTransmissionSummary");
+                _logger?.LogError(exception, "Error Occurred in ReadTransmissionSummary");
                 return transmissionSummary;
             }
             finally
@@ -174,6 +177,7 @@ namespace QidWorkerRole.SIS.FileHandling.Xml.Read
                     xmlTextReader.Close();
                 }
                 //Logger.Info("End of ReadTransmissionSummary.");
+                _logger?.LogInformation("End of ReadTransmissionSummary.");
             }
         }
 

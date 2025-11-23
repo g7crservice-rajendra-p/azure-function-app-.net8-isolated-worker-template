@@ -15,17 +15,17 @@ namespace QidWorkerRole.UploadMasters.Booking
         private readonly ILogger<BookingExcelUpload> _logger;
         private static ILoggerFactory? _loggerFactory;
         private static ILogger<Cls_BL> _staticLogger => _loggerFactory?.CreateLogger<Cls_BL>();
-        private readonly UploadMasterCommon _uploadMasterCommon;
+        private readonly Func<UploadMasterCommon> _uploadMasterCommonFactory;
 
         #region Constructor
         public BookingExcelUpload(ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<BookingExcelUpload> logger,
-            UploadMasterCommon uploadMasterCommon,
+            Func<UploadMasterCommon> uploadMasterCommonFactory,
             ILoggerFactory loggerFactory)
         {
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _uploadMasterCommon = uploadMasterCommon;
+            _uploadMasterCommonFactory = uploadMasterCommonFactory;
             _loggerFactory = loggerFactory;
         }
         #endregion
@@ -40,27 +40,27 @@ namespace QidWorkerRole.UploadMasters.Booking
                 {
                     userName = dr["UploadedBy"].ToString();
                     // to upadate retry count only.
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1, 1);
 
                     //UploadMasterCommon umc = new UploadMasterCommon();
 
                     //if (umc.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
-                    if (_uploadMasterCommon.DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
+                    if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "BookingExcelUpload", out FilePath))
                     {
                         ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath, userName);
                     }
                     else
                     {
-                        await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
-                        await _uploadMasterCommon.UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
+                        await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 0, "File Not Found!", 1);
+                        await _uploadMasterCommonFactory().UpdateUploadMasterSummaryLog(Convert.ToInt32(dr["SrNo"]), 0, 0, 0, "Process Failed", 0, "W", "File Not Found!", true);
                         continue;
                     }
 
                     //umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                     //umc.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
 
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                    await _uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
+                    await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dr["SrNo"]), "Process End", 0, 0, 0, 1, "", 1);
                 }
             }
             catch (Exception exception)
@@ -98,7 +98,7 @@ namespace QidWorkerRole.UploadMasters.Booking
                 // Free resources (IExcelDataReader is IDisposable)
                 iExcelDataReader.Close();
 
-                _uploadMasterCommon.RemoveEmptyRows(dataTableBookingExcelData);
+                _uploadMasterCommonFactory().RemoveEmptyRows(dataTableBookingExcelData);
 
                 foreach (DataColumn dataColumn in dataTableBookingExcelData.Columns)
                 {
