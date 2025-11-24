@@ -7,36 +7,36 @@ using SmartKargo.MessagingService.Services;
 
 namespace SmartKargo.MessagingService.Functions.Triggers
 {
-    public class SendMailTimeTriggerStarter
+    public class DBCallsTimeTriggerStarter
     {
-        private readonly ILogger<SendMailTimeTriggerStarter> _logger;
+        private readonly ILogger<DBCallsTimeTriggerStarter> _logger;
         private readonly StartupReadiness _readiness;
 
-        public SendMailTimeTriggerStarter(ILogger<SendMailTimeTriggerStarter> logger, StartupReadiness readiness)
+        public DBCallsTimeTriggerStarter(ILogger<DBCallsTimeTriggerStarter> logger, StartupReadiness readiness)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _readiness = readiness ?? throw new ArgumentNullException(nameof(readiness));
         }
 
-        // Cron: "0 0 */6 * * *" -> at second=0 minute=0 every 6 hours (e.g., 00:00, 06:00, 12:00...)
-        [Function(nameof(SendMailTimeTriggerStarter))]
+        // Cron: "0 0 */1 * * *" -> at second=0 minute=0 every 1 hours (e.g., 00:00, 01:00, 02:00...)
+        [Function(nameof(DBCallsTimeTriggerStarter))]
         public async Task Run(
-            [TimerTrigger("0 0 */6 * * *", RunOnStartup = false)] TimerInfo timer,
+            [TimerTrigger("0 0 */1 * * *", RunOnStartup = false)] TimerInfo timer,
             [DurableClient] DurableTaskClient client,
             CancellationToken cancellationToken)
         {
             // make instance id traceable: functionName + utc ticks
-            string instanceId = $"SendMailOrchestrator-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}".Substring(0, 64);
+            string instanceId = $"DBCallsOrchestrator-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}".Substring(0, 64);
 
             try
             {
-                _logger.LogInformation("SendMailTimeTriggerStarter fired at {UtcNow}. Preparing to start orchestration '{InstanceId}'.",
+                _logger.LogInformation("DBCallsTimeTriggerStarter fired at {UtcNow}. Preparing to start orchestration '{InstanceId}'.",
                     DateTime.UtcNow, instanceId);
 
                 if (timer.IsPastDue)
                 {
                     _logger.LogWarning("Timer trigger '{TriggerName}' is past due — possible scale/restart/throttling.",
-                        nameof(SendMailTimeTriggerStarter));
+                        nameof(DBCallsTimeTriggerStarter));
                 }
 
                 // Wait for startup readiness with cancellation and a concrete timeout policy
@@ -68,17 +68,17 @@ namespace SmartKargo.MessagingService.Functions.Triggers
                 var orchestrationInput = new
                 {
                     TriggeredAtUtc = DateTime.UtcNow,
-                    ScheduledBy = nameof(SendMailTimeTriggerStarter)
+                    ScheduledBy = nameof(DBCallsTimeTriggerStarter)
                 };
 
-                _logger.LogInformation("Starting orchestration '{OrchName}' with InstanceId '{InstanceId}'.", nameof(SendMailOrchestrator), instanceId);
+                _logger.LogInformation("Starting orchestration '{OrchName}' with InstanceId '{InstanceId}'.", nameof(DBCallsOrchestrator), instanceId);
 
                 // Build StartOrchestrationOptions (InstanceId and optional StartAt)
                 var startOptions = new StartOrchestrationOptions(InstanceId: instanceId);
 
                 // Call the overload that accepts (orchestratorName, input, options, cancellationToken)
                 await client.ScheduleNewOrchestrationInstanceAsync(
-                    nameof(SendMailOrchestrator),
+                    nameof(DBCallsOrchestrator),
                     orchestrationInput,
                     startOptions,
                     cancellationToken
@@ -93,7 +93,7 @@ namespace SmartKargo.MessagingService.Functions.Triggers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to start SendMailOrchestrator at {UtcNow}. InstanceId: '{InstanceId}'.",
+                _logger.LogError(ex, "Failed to start DBCallsOrchestrator at {UtcNow}. InstanceId: '{InstanceId}'.",
                     DateTime.UtcNow, instanceId);
                 throw;
             }

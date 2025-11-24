@@ -49,7 +49,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
                         {
                             //uploadMasterCommon.UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -79,7 +79,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Other Charges Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableAircraftLoadingPatternExcelData = new DataTable("dataTableAircraftLoadingPatternData");
             //DataSet dsTemp = new DataSet("ds_tempPax");
@@ -643,7 +643,7 @@ namespace QidWorkerRole.UploadMasters.AircraftPattern
 
                 // Database Call to Validate & Insert Aircraft Loading Pattern
                 string errorInSp = string.Empty;
-                ValidateAndInsertAircraftLoadingPattern(srNotblMasterUploadSummaryLog, AircraftConfig, AircraftCompartment, errorInSp);
+                await ValidateAndInsertAircraftLoadingPattern(srNotblMasterUploadSummaryLog, AircraftConfig, AircraftCompartment, errorInSp);
 
                 return true;
             }

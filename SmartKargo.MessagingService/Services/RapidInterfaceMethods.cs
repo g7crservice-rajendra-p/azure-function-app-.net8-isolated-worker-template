@@ -66,7 +66,8 @@ namespace QidWorkerRole
             {
                 //String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
 
-                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                //string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                string TimeZone = ConfigCache.Get("UTCORLOCALTIME");
 
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;
@@ -109,7 +110,7 @@ namespace QidWorkerRole
                 // clsLog.WriteLogAzure("----------------------------------------------------------------------------------------------------------------------");
                 // clsLog.WriteLogAzure("Schedular run on ::" + System.DateTime.Now);
                 _logger.LogInformation("----------------------------------------------------------------------------------------------------------------------");
-                _logger.LogInformation("Schedular run on :: {0}" , System.DateTime.Now);
+                _logger.LogInformation("Schedular run on :: {0}", System.DateTime.Now);
                 objDictionary.Add("File Names ", "Status");
                 #region "AWB RAPID File"
 
@@ -544,7 +545,7 @@ namespace QidWorkerRole
                 #endregion
 
                 // clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
-                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}" , System.DateTime.Now);
+                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}", System.DateTime.Now);
 
 
                 #region Send Email Notification
@@ -630,7 +631,8 @@ namespace QidWorkerRole
                 _logger.LogInformation("After UpdateULDStock 1111");
                 //String TimeZone = ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
 
-                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                //string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                string TimeZone = ConfigCache.Get("UTCORLOCALTIME");
 
                 // clsLog.WriteLogAzure("After UpdateULDStock 2222 :  " + TimeZone);
                 _logger.LogInformation("After UpdateULDStock 2222 :  {0}", TimeZone);
@@ -700,7 +702,7 @@ namespace QidWorkerRole
                                                                  , ToDate
                                                                 , "", filenameAWBData);
                     // clsLog.WriteLogAzure("--Data Inserted -" + DateTime.Now.ToString() + ":" + FromDate + ":" + ToDate + ":");
-                    _logger.LogInformation("--Data Inserted - {0} : {1} : {2}" , DateTime.Now.ToString(),  FromDate , ToDate);
+                    _logger.LogInformation("--Data Inserted - {0} : {1} : {2}", DateTime.Now.ToString(), FromDate, ToDate);
                     if (dsRpdIntrfcAWBFileName != null) //dsFileName != null
                     {
                         // clsLog.WriteLogAzure("-AWB File write Processing Started -");
@@ -714,7 +716,7 @@ namespace QidWorkerRole
                                     if (Convert.ToString(dsRpdIntrfcAWBFileName.Tables[0].Rows[0]["StatusMsg"]).ToUpper() == "FILESALREADYGENERATED")
                                     {
                                         // clsLog.WriteLogAzure("- FILESALREADYGENERATED ON :- " + ExecutedOn.ToString("ddMMMyymmss"));
-                                        _logger.LogInformation("- FILESALREADYGENERATED ON :- {0}" , ExecutedOn.ToString("ddMMMyymmss"));
+                                        _logger.LogInformation("- FILESALREADYGENERATED ON :- {0}", ExecutedOn.ToString("ddMMMyymmss"));
                                         return;
                                     }
                                 }
@@ -1330,7 +1332,7 @@ namespace QidWorkerRole
                 #endregion
 
                 // clsLog.WriteLogAzure("------------------------------------------End DoProcess() -----------------------------------------------------------------------" + System.DateTime.Now);
-                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}" , System.DateTime.Now);
+                _logger.LogInformation("------------------------------------------End DoProcess() ----------------------------------------------------------------------- {0}", System.DateTime.Now);
                 await SaveRapidStatus("SaveRapidLog");
 
                 //#region Send Email Notification
@@ -1486,7 +1488,7 @@ namespace QidWorkerRole
                                     objUploadDictionary[Path.GetFileName(transfer.FileName)] = "Success";
 
                                 // clsLog.WriteLogAzure("Rapid File trasferd::" + transfer.FileName + "\r\n");
-                                _logger.LogInformation("Rapid File trasferd:: {0} \r\n" , transfer.FileName );
+                                _logger.LogInformation("Rapid File trasferd:: {0} \r\n", transfer.FileName);
                             }
                             catch (Exception ex)
                             { //clsLog.WriteLogAzure(ex);
@@ -1517,7 +1519,7 @@ namespace QidWorkerRole
                     catch (Exception ex1)
                     {
                         // clsLog.WriteLogAzure("Exception::" + ex1.Message);
-                        _logger.LogError(ex1, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}"); 
+                        _logger.LogError(ex1, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                     }
                 }
             }
@@ -1717,23 +1719,23 @@ namespace QidWorkerRole
                     if (dsReturn != null)
                     {
                         // clsLog.WriteLogAzure("Sucess-SaveRapidLog_Ds ::" + System.DateTime.Now);
-                        _logger.LogInformation("Sucess-SaveRapidLog_Ds :: {0}" , System.DateTime.Now);
+                        _logger.LogInformation("Sucess-SaveRapidLog_Ds :: {0}", System.DateTime.Now);
 
                         if (dsReturn.Tables.Count > 0 && dsReturn.Tables[0].Rows.Count > 0)
                         {
                             // clsLog.WriteLogAzure("Sucess-SaveRapidLog_Dt ::" + System.DateTime.Now);
-                            _logger.LogInformation("Sucess-SaveRapidLog_Dt :: {0}" , System.DateTime.Now);
+                            _logger.LogInformation("Sucess-SaveRapidLog_Dt :: {0}", System.DateTime.Now);
                         }
                         else
                         {
                             // clsLog.WriteLogAzure("Failed-SaveRapidLog_Dt ::" + System.DateTime.Now);
-                            _logger.LogWarning("Failed-SaveRapidLog_Dt :: {0}" , System.DateTime.Now);
+                            _logger.LogWarning("Failed-SaveRapidLog_Dt :: {0}", System.DateTime.Now);
                         }
                     }
                     else
                     {
                         // clsLog.WriteLogAzure("Failed-SaveRapidLog_Ds ::" + System.DateTime.Now);
-                        _logger.LogWarning("Failed-SaveRapidLog_Ds :: {0}" , System.DateTime.Now);
+                        _logger.LogWarning("Failed-SaveRapidLog_Ds :: {0}", System.DateTime.Now);
                     }
                 }
 
@@ -1746,13 +1748,13 @@ namespace QidWorkerRole
                     if (dsReturn != null)
                     {
                         // clsLog.WriteLogAzure("Sucess-SendRapidAleart_Ds ::" + System.DateTime.Now);
-                        _logger.LogInformation("Sucess-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
+                        _logger.LogInformation("Sucess-SendRapidAleart_Ds :: {0}", System.DateTime.Now);
                         if (dsReturn.Tables.Count > 0 && dsReturn.Tables[0].Rows.Count > 0)
                         {
                             if (Convert.ToString(dsReturn.Tables[0].Rows[0][0]).ToUpper() != "FILESALREADYGENERATED")
                             {
                                 // clsLog.WriteLogAzure("Sucess-FILESGENERATED ::" + System.DateTime.Now);
-                                _logger.LogInformation("Sucess-FILESGENERATED :: {0}" , System.DateTime.Now);
+                                _logger.LogInformation("Sucess-FILESGENERATED :: {0}", System.DateTime.Now);
 
                                 string agentEmail = string.Empty; string AgentCode = string.Empty; String body = string.Empty; String ToEmailID = string.Empty;
                                 DataTable dt = new DataTable();
@@ -1789,13 +1791,13 @@ namespace QidWorkerRole
                         else
                         {
                             // clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
-                            _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
+                            _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}", System.DateTime.Now);
                         }
                     }
                     else
                     {
                         // clsLog.WriteLogAzure("Failed-SendRapidAleart_Ds ::" + System.DateTime.Now);
-                        _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}" , System.DateTime.Now);
+                        _logger.LogWarning("Failed-SendRapidAleart_Ds :: {0}", System.DateTime.Now);
                     }
                 }
 

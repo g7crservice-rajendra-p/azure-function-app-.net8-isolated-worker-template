@@ -5,17 +5,17 @@ using SmartKargo.MessagingService.Functions.Activities;
 
 namespace SmartKargo.MessagingService.Functions.Orchestrators
 {
-    public static class ReceiveMessageOrchestrator
+    public static class UploadMasterProcessOrchestrator
     {
-        [Function(nameof(ReceiveMessageOrchestrator))]
+        [Function(nameof(UploadMasterProcessOrchestrator))]
         public static async Task<object?> RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            ILogger logger = context.CreateReplaySafeLogger(nameof(ReceiveMessageOrchestrator));
+            ILogger logger = context.CreateReplaySafeLogger(nameof(UploadMasterProcessOrchestrator));
             string instanceId = context.InstanceId;
 
             logger.LogInformation(
-                "ReceiveMessageOrchestrator started. InstanceId: {InstanceId}",
+                "UploadMasterProcessOrchestrator started. InstanceId: {InstanceId}",
                 instanceId);
 
             var input = context.GetInput<object?>();
@@ -23,16 +23,16 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             try
             {
                 logger.LogInformation(
-                    "Calling ReceiveMessageActivity for InstanceId: {InstanceId}",
+                    "Calling UploadMasterProcessActivity for InstanceId: {InstanceId}",
                     instanceId);
 
-                // Simple, no-retry activity execution
+                // Activity execution (no retry)
                 var result = await context.CallActivityAsync<object?>(
-                    nameof(ReceiveMessageActivity),
+                    nameof(UploadMasterProcessActivity),
                     input);
 
                 logger.LogInformation(
-                    "ReceiveMessageActivity completed successfully. InstanceId: {InstanceId}",
+                    "UploadMasterProcessActivity completed successfully. InstanceId: {InstanceId}",
                     instanceId);
 
                 return result;
@@ -41,7 +41,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "ReceiveMessageActivity failed. InstanceId: {InstanceId}",
+                    "UploadMasterProcessActivity failed. InstanceId: {InstanceId}",
                     instanceId);
 
                 throw;
@@ -50,7 +50,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "Unhandled exception in ReceiveMessageOrchestrator. InstanceId: {InstanceId}",
+                    "Unhandled exception in UploadMasterProcessOrchestrator. InstanceId: {InstanceId}",
                     instanceId);
 
                 throw;
@@ -58,7 +58,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             finally
             {
                 logger.LogInformation(
-                    "ReceiveMessageOrchestrator finished (may replay). InstanceId: {InstanceId}",
+                    "UploadMasterProcessOrchestrator finished (may replay). InstanceId: {InstanceId}",
                     instanceId);
             }
         }

@@ -5,48 +5,98 @@ using Microsoft.Extensions.Logging;
 using SmartKargo.MessagingService.Functions.Orchestrators;
 using SmartKargo.MessagingService.Services;
 
-namespace SmartKargo.MessagingService.Functions.Triggers;
-
-public class ReceiveMessageTimeTriggerStarterStarter
+namespace SmartKargo.MessagingService.Functions.Triggers
 {
-    private readonly ILogger _logger;
-    private readonly StartupReadiness _readiness;
-
-    public ReceiveMessageTimeTriggerStarterStarter(ILoggerFactory loggerFactory, StartupReadiness readiness)
+    public class ReceiveMessageTimeTriggerStarter
     {
-        _logger = loggerFactory.CreateLogger<ReceiveMessageTimeTriggerStarterStarter>();
-        _readiness = readiness;
-    }
+        private readonly ILogger<ReceiveMessageTimeTriggerStarter> _logger;
+        private readonly StartupReadiness _readiness;
 
-    [Function(nameof(ReceiveMessageTimeTriggerStarterStarter))]
-    public async Task Run([TimerTrigger("*/60 * * * * *", RunOnStartup = true)] TimerInfo receiveMessageTimer, [DurableClient] DurableTaskClient client)
-    {
-        var instanceId = Guid.NewGuid().ToString();
-
-        try
+        public ReceiveMessageTimeTriggerStarter(ILogger<ReceiveMessageTimeTriggerStarter> logger, StartupReadiness readiness)
         {
-            _logger.LogInformation("ReceiveMessageTimeTriggerStarter fired at {Now}. Started ReceiveMessageOrchestrator with instance ID '{InstanceId}'.",
-                DateTime.UtcNow, instanceId);
-
-            if (receiveMessageTimer.IsPastDue)
-            {
-                _logger.LogWarning("'{TriggerName}' is past due — possible scale, restart, or throttling delay.", 
-                    "ReceiveMessageTimeTriggerStarterStarter");
-            }
-
-            // Wait for the service to become ready (ConfigCache).
-            if (!_readiness.IsReady)
-            {
-                await _readiness.WaitForReadyAsync(TimeSpan.FromSeconds(30));
-            }
-
-            await client.ScheduleNewOrchestrationInstanceAsync(nameof(ReceiveMessageOrchestrator), new StartOrchestrationOptions(InstanceId: instanceId));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _readiness = readiness ?? throw new ArgumentNullException(nameof(readiness));
         }
-        catch (Exception ex)
+
+        // Cron: "0 0 */3 * * *" -> at second=0 minute=0 every 3 hours (e.g., 00:00, 03:00, 06:00...)
+        [Function(nameof(ReceiveMessageTimeTriggerStarter))]
+        public async Task Run(
+            [TimerTrigger("0 0 */3 * * *", RunOnStartup = false)] TimerInfo timer,
+            [DurableClient] DurableTaskClient client,
+            CancellationToken cancellationToken)
         {
-            _logger.LogError(ex, "Failed to start ReceiveMessageOrchestrator at {Now}. InstanceId (if generated): '{InstanceId}'.",
-                DateTime.UtcNow, instanceId ?? "<none>");
-            throw;
+            // make instance id traceable: functionName + utc ticks
+            string instanceId = $"ReceiveMessageOrchestrator-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}".Substring(0, 64);
+
+            try
+            {
+                _logger.LogInformation("ReceiveMessageTimeTriggerStarter fired at {UtcNow}. Preparing to start orchestration '{InstanceId}'.",
+                    DateTime.UtcNow, instanceId);
+
+                if (timer.IsPastDue)
+                {
+                    _logger.LogWarning("Timer trigger '{TriggerName}' is past due — possible scale/restart/throttling.",
+                        nameof(ReceiveMessageTimeTriggerStarter));
+                }
+
+                // Wait for startup readiness with cancellation and a concrete timeout policy
+                TimeSpan waitTimeout = TimeSpan.FromSeconds(30);
+                if (!_readiness.IsReady)
+                {
+                    _logger.LogInformation("Service not ready yet. Waiting up to {TimeoutSeconds}s for readiness.", waitTimeout.TotalSeconds);
+                    try
+                    {
+                        await _readiness.WaitForReadyAsync(waitTimeout, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Timeout or host is shutting down
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            _logger.LogWarning("Function host is shutting down while waiting for readiness. Aborting orchestration start.");
+                            return;
+                        }
+
+                        _logger.LogWarning("Timeout waiting for readiness after {TimeoutSeconds}s. Skipping orchestration start.", waitTimeout.TotalSeconds);
+
+                        // Decide: return (skip start) or continue anyway. Here we skip to avoid starting when not ready.
+                        return;
+                    }
+                }
+
+                // Prepare input for orchestration (if any)
+                var orchestrationInput = new
+                {
+                    TriggeredAtUtc = DateTime.UtcNow,
+                    ScheduledBy = nameof(ReceiveMessageTimeTriggerStarter)
+                };
+
+                _logger.LogInformation("Starting orchestration '{OrchName}' with InstanceId '{InstanceId}'.", nameof(ReceiveMessageOrchestrator), instanceId);
+
+                // Build StartOrchestrationOptions (InstanceId and optional StartAt)
+                var startOptions = new StartOrchestrationOptions(InstanceId: instanceId);
+
+                // Call the overload that accepts (orchestratorName, input, options, cancellationToken)
+                await client.ScheduleNewOrchestrationInstanceAsync(
+                    nameof(ReceiveMessageOrchestrator),
+                    orchestrationInput,
+                    startOptions,
+                    cancellationToken
+                );
+
+                _logger.LogInformation("Orchestration '{InstanceId}' scheduled successfully.", instanceId);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning("Operation cancelled while attempting to schedule orchestration '{InstanceId}'.", instanceId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start ReceiveMessageOrchestrator at {UtcNow}. InstanceId: '{InstanceId}'.",
+                    DateTime.UtcNow, instanceId);
+                throw;
+            }
         }
     }
 }

@@ -39,11 +39,11 @@ namespace QidWorkerRole
 
 
         #region Below Method Used call on AzzureJob
-        public void MessageDataBaseProcessed()
-        {
-            IncomingMessageProcesseandUpdatetheDatabase();
-            AutogenearateMessageandsend();
-        }
+        //public void MessageDataBaseProcessed()
+        //{
+        //    IncomingMessageProcesseandUpdatetheDatabase();
+        //    AutogenearateMessageandsend();
+        //}
         #endregion
 
         #region Below Method used to update transaction table from tblinbox

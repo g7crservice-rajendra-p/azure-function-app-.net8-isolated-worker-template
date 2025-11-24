@@ -45,7 +45,7 @@ namespace QidWorkerRole.UploadMasters.Collection
                                                               "CollectionUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -65,7 +65,7 @@ namespace QidWorkerRole.UploadMasters.Collection
                 return false;
             }
         }
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableCollectionExcelData = new DataTable("dataTableCollectionExcelData");
 
@@ -558,7 +558,7 @@ namespace QidWorkerRole.UploadMasters.Collection
 
                 // Database Call to Validate & Insert Route Controls Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertCollectionMaster(srNotblMasterUploadSummaryLog, dataTableCollectionType, errorInSp);
+                await ValidateAndInsertCollectionMaster(srNotblMasterUploadSummaryLog, dataTableCollectionType, errorInSp);
                
                 return true;
 

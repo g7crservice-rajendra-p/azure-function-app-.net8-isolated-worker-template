@@ -2,6 +2,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Logging;
+using QidWorkerRole.SIS.DAL;
 using SmartKargo.MessagingService.Functions.Entities;
 using SmartKargo.MessagingService.Services;
 
@@ -15,12 +16,13 @@ namespace SmartKargo.MessagingService.Functions.Triggers
     {
         private readonly ILogger _logger;
         private readonly StartupReadiness _readiness;
-        private const string EntityKey = "Config";
+        private const string EntityKey = "config";
 
-        public ConfigCacheWarmupTimeTriggerStarter(ILoggerFactory loggerFactory, StartupReadiness readiness)
+        public ConfigCacheWarmupTimeTriggerStarter(ILoggerFactory loggerFactory, StartupReadiness readiness,ReadDBData readDBData)
         {
             _logger = loggerFactory.CreateLogger<ConfigCacheWarmupTimeTriggerStarter>();
             _readiness = readiness;
+            readDBData.ReadDBData1 ();
         }
 
         [Function(nameof(ConfigCacheWarmupTimeTriggerStarter))]

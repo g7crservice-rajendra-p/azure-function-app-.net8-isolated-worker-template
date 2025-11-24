@@ -5,17 +5,17 @@ using SmartKargo.MessagingService.Functions.Activities;
 
 namespace SmartKargo.MessagingService.Functions.Orchestrators
 {
-    public static class ReceiveMessageOrchestrator
+    public static class FTPListenerOrchestrator
     {
-        [Function(nameof(ReceiveMessageOrchestrator))]
+        [Function(nameof(FTPListenerOrchestrator))]
         public static async Task<object?> RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            ILogger logger = context.CreateReplaySafeLogger(nameof(ReceiveMessageOrchestrator));
+            ILogger logger = context.CreateReplaySafeLogger(nameof(FTPListenerOrchestrator));
             string instanceId = context.InstanceId;
 
             logger.LogInformation(
-                "ReceiveMessageOrchestrator started. InstanceId: {InstanceId}",
+                "FTPListenerOrchestrator started. InstanceId: {InstanceId}",
                 instanceId);
 
             var input = context.GetInput<object?>();
@@ -23,16 +23,16 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             try
             {
                 logger.LogInformation(
-                    "Calling ReceiveMessageActivity for InstanceId: {InstanceId}",
+                    "Calling FTPListenerActivity for InstanceId: {InstanceId}",
                     instanceId);
 
-                // Simple, no-retry activity execution
+                // Simple activity execution without retries
                 var result = await context.CallActivityAsync<object?>(
-                    nameof(ReceiveMessageActivity),
+                    nameof(FTPListenerActivity),
                     input);
 
                 logger.LogInformation(
-                    "ReceiveMessageActivity completed successfully. InstanceId: {InstanceId}",
+                    "FTPListenerActivity completed successfully. InstanceId: {InstanceId}",
                     instanceId);
 
                 return result;
@@ -41,24 +41,22 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "ReceiveMessageActivity failed. InstanceId: {InstanceId}",
+                    "FTPListenerActivity failed. InstanceId: {InstanceId}",
                     instanceId);
-
                 throw;
             }
             catch (Exception ex)
             {
                 logger.LogError(
                     ex,
-                    "Unhandled exception in ReceiveMessageOrchestrator. InstanceId: {InstanceId}",
+                    "Unhandled exception in FTPListenerOrchestrator. InstanceId: {InstanceId}",
                     instanceId);
-
                 throw;
             }
             finally
             {
                 logger.LogInformation(
-                    "ReceiveMessageOrchestrator finished (may replay). InstanceId: {InstanceId}",
+                    "FTPListenerOrchestrator finished (may replay). InstanceId: {InstanceId}",
                     instanceId);
             }
         }

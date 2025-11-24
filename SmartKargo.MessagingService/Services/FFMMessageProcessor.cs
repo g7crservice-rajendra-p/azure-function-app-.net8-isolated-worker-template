@@ -1196,7 +1196,7 @@ namespace QidWorkerRole
                                                         await _genericFunction.UpdateErrorMessageToInbox(REFNo, awbPrefix + "-" + AWBNum + " has origin mismatch");
                                                         lstDeliveredAWB.Add(AWBNum);
                                                         lstOrgDstMissmatchAWB.Add(AWBNum);
-                                                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has origin mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
+                                                        await _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has origin mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
 
                                                     }
                                                     else if (destinationCode != auditconsinfo[i].dest)
@@ -1205,7 +1205,7 @@ namespace QidWorkerRole
                                                         isDestinationMismatch = true;
                                                         lstDeliveredAWB.Add(AWBNum);
                                                         lstOrgDstMissmatchAWB.Add(AWBNum);
-                                                        _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has destination mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
+                                                        await _fNAMessageProcessor.GenerateFNAMessage(strMessage, awbPrefix + "-" + AWBNum + " has destination mismatch", awbPrefix, AWBNum, strMessageFrom == "" ? strFromID : strMessageFrom, strFromID, PIMAAddress);
 
 
                                                     }

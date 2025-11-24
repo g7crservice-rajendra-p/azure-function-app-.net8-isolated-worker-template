@@ -1161,7 +1161,7 @@ namespace QidWorkerRole
                                 _logger.LogInformation("trn.Destination 2= {0}", trn.Destination);
                                 containerName = dsContainerName.Tables[0].Rows[0]["ContainerName"].ToString();
                                 Stream messageStream = GenerateStreamFromString(strMessage);
-                                UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExcelUploadBookingFFR, UserName, null, "", destinationPath);
+                                await UploadFileToBlob(dsContainerName, FileName, strMessage, UploadMasterType.ExcelUploadBookingFFR, UserName, null, "", destinationPath);
                                 // clsLog.WriteLogAzure("Removing file from SFTP: " + trn.FileName);
                                 _logger.LogInformation("Removing file from SFTP: {0}", trn.FileName);
                                 session.RemoveFiles(trn.FileName);
@@ -1242,7 +1242,7 @@ namespace QidWorkerRole
                 if (File.Exists(dirZIPFile))
                 {
                 Retry:
-                    if (!SFTPUploadFile(dirZIPFile, dataDumpFolderPath, ZipFileName))
+                    if (!await SFTPUploadFile(dirZIPFile, dataDumpFolderPath, ZipFileName))
                     {
                         if (count <= 2)
                         {
@@ -1256,7 +1256,9 @@ namespace QidWorkerRole
                         {
                             //string dataDumpAlertEmailID = "";
                             //dataDumpAlertEmailID = Convert.ToString(ConfigurationManager.AppSettings["DataDumpAlertEmailID"]);
-                            string dataDumpAlertEmailID = _appConfig.Alert.DataDumpAlertEmailID;
+                            //string dataDumpAlertEmailID = _appConfig.Alert.DataDumpAlertEmailID;
+
+                            string dataDumpAlertEmailID = ConfigCache.Get("DataDumpAlertEmailID");
 
                             //GenericFunction _genericFunction = new GenericFunction();
 
@@ -3327,7 +3329,7 @@ namespace QidWorkerRole
             }
         }
 
-        public bool SFTPUploadFile(string filePath, string SFTPFolderPath, string ZipFileName)
+        public async Task<bool> SFTPUploadFile(string filePath, string SFTPFolderPath, string ZipFileName)
         {
             bool isSuccess = true;
             try
@@ -3414,13 +3416,14 @@ namespace QidWorkerRole
                     #region : Data dump success alert :
 
                     //string dataDumpAlertEmailID = Convert.ToString(ConfigurationManager.AppSettings["DataDumpAlertEmailID"]);
-                    string dataDumpAlertEmailID = _appConfig.Alert.DataDumpAlertEmailID;
+                    //string dataDumpAlertEmailID = _appConfig.Alert.DataDumpAlertEmailID;
+                    string dataDumpAlertEmailID = ConfigCache.Get("DataDumpAlertEmailID");
 
                     string fileName = string.Empty;
                     fileName = ZipFileName;
 
                     if (dataDumpAlertEmailID != "")
-                        _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nData dump file uploaded successfully.\r\n\r\nThanks."
+                        await _genericFunction.SaveMessageOutBox("Data dump alert", "Hi,\r\n\r\n" + fileName + "\r\nData dump file uploaded successfully.\r\n\r\nThanks."
                             , "", dataDumpAlertEmailID, "", 0);
                     #endregion Data dump success alert
                 }

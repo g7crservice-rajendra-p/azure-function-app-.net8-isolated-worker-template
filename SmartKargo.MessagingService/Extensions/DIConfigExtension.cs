@@ -315,16 +315,10 @@ namespace SmartKargo.MessagingService.Extensions
                     throw new InvalidOperationException("Missing entity framework connection string in AppConfig: ConnectionStrings:EntityFramework");
                 }
 
-                // Register EF6 context directly using connection string constructor
-                builder.Services.AddScoped<SISDBEntities>(sp =>
-                {
-                    // Uses the EF6 generated ctor SISDBEntities(string)
-                    return new SISDBEntities(efConnectionString);
-                });
-
-                // Optional lazy factory if any class needs lazy context creation
-                builder.Services.AddScoped<Func<SISDBEntities>>(sp =>
-                    () => sp.GetRequiredService<SISDBEntities>());
+                // Register a transient factory that creates a new SISDBEntities each time the Func is invoked
+                builder.Services.AddSingleton<Func<SISDBEntities>>(
+                    sp => () => new SISDBEntities(efConnectionString)
+                );
 
                 RegisterExplicitServices(builder.Services, logger);
             }

@@ -53,7 +53,7 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
                                                               "ShipperConsigneeMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -80,7 +80,7 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> ShipperConsignee Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableShipperConsigneeExcelData = new DataTable("dataTableShipperConsigneeExcelData");
 
@@ -1902,7 +1902,7 @@ namespace QidWorkerRole.UploadMasters.ShipperConsignee
 
                 // Database Call to Validate & Insert/Update ShipperConsignee Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertUpdateShipperConsigneeMaster(srNotblMasterUploadSummaryLog, ShipperConsigneeType, errorInSp);
+                await ValidateAndInsertUpdateShipperConsigneeMaster(srNotblMasterUploadSummaryLog, ShipperConsigneeType, errorInSp);
 
                 return true;
             }

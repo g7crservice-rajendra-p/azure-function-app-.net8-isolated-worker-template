@@ -5,17 +5,17 @@ using SmartKargo.MessagingService.Functions.Activities;
 
 namespace SmartKargo.MessagingService.Functions.Orchestrators
 {
-    public static class ReceiveMessageOrchestrator
+    public static class SAPProcessOrchestrator
     {
-        [Function(nameof(ReceiveMessageOrchestrator))]
+        [Function(nameof(SAPProcessOrchestrator))]
         public static async Task<object?> RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            ILogger logger = context.CreateReplaySafeLogger(nameof(ReceiveMessageOrchestrator));
+            ILogger logger = context.CreateReplaySafeLogger(nameof(SAPProcessOrchestrator));
             string instanceId = context.InstanceId;
 
             logger.LogInformation(
-                "ReceiveMessageOrchestrator started. InstanceId: {InstanceId}",
+                "SAPProcessOrchestrator started. InstanceId: {InstanceId}",
                 instanceId);
 
             var input = context.GetInput<object?>();
@@ -23,16 +23,16 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             try
             {
                 logger.LogInformation(
-                    "Calling ReceiveMessageActivity for InstanceId: {InstanceId}",
+                    "Calling SAPProcessActivity for InstanceId: {InstanceId}",
                     instanceId);
 
-                // Simple, no-retry activity execution
+                // Simple activity call (no retry)
                 var result = await context.CallActivityAsync<object?>(
-                    nameof(ReceiveMessageActivity),
+                    nameof(SAPProcessActivity),
                     input);
 
                 logger.LogInformation(
-                    "ReceiveMessageActivity completed successfully. InstanceId: {InstanceId}",
+                    "SAPProcessActivity completed successfully. InstanceId: {InstanceId}",
                     instanceId);
 
                 return result;
@@ -41,7 +41,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "ReceiveMessageActivity failed. InstanceId: {InstanceId}",
+                    "SAPProcessActivity failed. InstanceId: {InstanceId}",
                     instanceId);
 
                 throw;
@@ -50,7 +50,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "Unhandled exception in ReceiveMessageOrchestrator. InstanceId: {InstanceId}",
+                    "Unhandled exception in SAPProcessOrchestrator. InstanceId: {InstanceId}",
                     instanceId);
 
                 throw;
@@ -58,7 +58,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             finally
             {
                 logger.LogInformation(
-                    "ReceiveMessageOrchestrator finished (may replay). InstanceId: {InstanceId}",
+                    "SAPProcessOrchestrator finished (may replay). InstanceId: {InstanceId}",
                     instanceId);
             }
         }

@@ -105,7 +105,7 @@ namespace SmartKargo.MessagingService.Services
         /// </summary>
         public static async Task<IDictionary<string, string>> EnsureInitializedFromOrchestratorAsync(
             TaskOrchestrationContext ctx,
-            string entityKey = "Config")
+            string entityKey = "config")
         {
             if (ctx == null)
             {

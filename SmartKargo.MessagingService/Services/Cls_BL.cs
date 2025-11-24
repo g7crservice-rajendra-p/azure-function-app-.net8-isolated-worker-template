@@ -3136,9 +3136,19 @@ namespace QidWorkerRole
             //string queueName = ConfigurationManager.AppSettings["QueueName"].ToString();
             //string Receive_Mode = ConfigurationManager.AppSettings["IsPeekLock"].ToString();
 
-            string connectionString = _appConfig.ServiceBus.ServiceBusConnectionString;
-            string queueName = _appConfig.ServiceBus.QueueName;
-            bool Receive_Mode = _appConfig.ServiceBus.IsPeekLock;
+            //string connectionString = _appConfig.ServiceBus.ServiceBusConnectionString;
+            //string queueName = _appConfig.ServiceBus.QueueName;
+            //bool Receive_Mode = _appConfig.ServiceBus.IsPeekLock;
+
+            string connectionString = ConfigCache.Get("ServiceBusConnectionString");
+            string queueName = ConfigCache.Get("QueueName");
+            bool Receive_Mode = false;
+            var val = ConfigCache.Get("IsPeekLock");
+            if (val != null && bool.TryParse(val.ToString(), out bool parsed))
+            {
+                Receive_Mode = parsed;
+            }
+
 
             try
             {
@@ -7825,7 +7835,14 @@ namespace QidWorkerRole
             string errorDesc = string.Empty;
             string SMSResponse = string.Empty;
             object[] consigneeInfo = null;
-            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+
+            //bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+            bool isSMSNewApi = false;
+            var val = ConfigCache.Get("SMSNewAPI");
+            if (val != null && bool.TryParse(val.ToString(), out bool parsed))
+            {
+                isSMSNewApi = parsed;
+            }
 
             try
             {
@@ -8435,9 +8452,20 @@ namespace QidWorkerRole
         {
             DataSet? dsResult = new DataSet();
             string tokenKey = string.Empty;
-            string accessTokenUrl = _appConfig.Authentication.AccessTokenUrl;
-            string basicAuthenticationHeader = _appConfig.Authentication.BasicAuthenticationHeader;
-            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+
+            //string accessTokenUrl = _appConfig.Authentication.AccessTokenUrl;
+            //string basicAuthenticationHeader = _appConfig.Authentication.BasicAuthenticationHeader;
+
+            string accessTokenUrl = ConfigCache.Get("AccessTokenUrl");
+            string basicAuthenticationHeader = ConfigCache.Get("BasicAuthenticationHeader");
+
+            //bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+            bool isSMSNewApi = false;
+            var val = ConfigCache.Get("SMSNewAPI");
+            if (val != null && bool.TryParse(val.ToString(), out bool parsed))
+            {
+                isSMSNewApi = parsed;
+            }
             try
             {
                 //Check Token is expired or not.
@@ -8469,8 +8497,11 @@ namespace QidWorkerRole
                         //string ClientId = ConfigurationManager.AppSettings["ClientId"].ToString();
                         //string ClientSeceret = ConfigurationManager.AppSettings["ClientSeceret"].ToString();
 
-                        string ClientId = _appConfig.Authentication.ClientId;
-                        string ClientSeceret = _appConfig.Authentication.ClientSecret;
+                        //string ClientId = _appConfig.Authentication.ClientId;
+                        //string ClientSeceret = _appConfig.Authentication.ClientSecret;
+
+                        string ClientId = ConfigCache.Get("ClientId");
+                        string ClientSeceret = ConfigCache.Get("ClientSecret");
 
                         request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
 
@@ -8529,8 +8560,19 @@ namespace QidWorkerRole
         public string SendSMS(string token, object[] consigneeInfo, ref string strResponce)
         {
             string errorDesc = string.Empty;
-            string sendSMSUrl = _appConfig.Sms.SendSMSUrl;
-            bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+
+            //string sendSMSUrl = _appConfig.Sms.SendSMSUrl;
+            //bool isSMSNewApi = _appConfig.Sms.IsSMSNewApi;
+
+            string sendSMSUrl = ConfigCache.Get("SendSMSUrl");
+
+            bool isSMSNewApi = false;
+            var val = ConfigCache.Get("SMSNewAPI");
+            if (val != null && bool.TryParse(val.ToString(), out bool parsed))
+            {
+                isSMSNewApi = parsed;
+            }
+
             try
             {
                 ServicePointManager.Expect100Continue = true;
@@ -8553,7 +8595,8 @@ namespace QidWorkerRole
                 }
 
                 //string eventDefinitionKey = ConfigurationManager.AppSettings["EventDefinitionKey"].ToString();
-                string eventDefinitionKey = _appConfig.Sms.EventDefinitionKey;
+                //string eventDefinitionKey = _appConfig.Sms.EventDefinitionKey;
+                string eventDefinitionKey = ConfigCache.Get("EventDefinitionKey");
 
                 //if (SMSNewAPI.ToUpper() == "TRUE")
                 if (isSMSNewApi)

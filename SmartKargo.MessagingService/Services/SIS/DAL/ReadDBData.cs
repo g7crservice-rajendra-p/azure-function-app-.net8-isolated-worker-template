@@ -10,15 +10,15 @@ namespace QidWorkerRole.SIS.DAL
     public class ReadDBData
     {
 
-        //public SIS.DAL.SISDBEntities _sisDB;
-        private readonly SISDBEntities _sisDB;
+        //public SIS.DAL.SISDBEntities _sisDbFactory();
+        private readonly Func<SISDBEntities> _sisDbFactory;
         private readonly ILogger<ReadDBData> _logger;
         private readonly CreateDBData _createDBData;
 
-        public ReadDBData(SISDBEntities sisDB, ILogger<ReadDBData> logger, CreateDBData createDBData)
+        public ReadDBData(Func<SISDBEntities> sisDbFactory, ILogger<ReadDBData> logger, CreateDBData createDBData)
         {
-            //_sisDB = new SIS.DAL.SISDBEntities();
-            _sisDB = sisDB;
+            //_sisDbFactory() = new SIS.DAL.SISDBEntities();
+            _sisDbFactory = sisDbFactory;
             _logger = logger;
             _createDBData = createDBData;
         }
@@ -93,7 +93,7 @@ namespace QidWorkerRole.SIS.DAL
 
                 foreach (var invoiceHeaderID in listInvoiceHeaderID)
                 {
-                    if (_sisDB.InvoiceHeaders.Where(invh => invh.InvoiceHeaderID == invoiceHeaderID && invh.InvoiceStatusId == 1).FirstOrDefault() != null)
+                    if (_sisDbFactory().InvoiceHeaders.Where(invh => invh.InvoiceHeaderID == invoiceHeaderID && invh.InvoiceStatusId == 1).FirstOrDefault() != null)
                     {
                         invoiceList.Add(GetInvoice(invoiceHeaderID));
                     }
@@ -122,7 +122,7 @@ namespace QidWorkerRole.SIS.DAL
 
                 #region InvoiceHeader
 
-                var invoiceHeaderd = _sisDB.InvoiceHeaders.Where(invh => invh.InvoiceHeaderID == invoiceHeaderID).FirstOrDefault();
+                var invoiceHeaderd = _sisDbFactory().InvoiceHeaders.Where(invh => invh.InvoiceHeaderID == invoiceHeaderID).FirstOrDefault();
 
                 if (invoiceHeaderd != null)
                 {
@@ -183,13 +183,13 @@ namespace QidWorkerRole.SIS.DAL
                 invoice.ReferenceDataList = new List<ModelClass.ReferenceDataModel>();
 
                 // For Billing Airline
-                if (invoice.BillingAirline != null && _sisDB.ReferenceDatas.Where(rd => rd.AirlineCode.Equals(invoice.BillingAirline)).FirstOrDefault() != null)
+                if (invoice.BillingAirline != null && _sisDbFactory().ReferenceDatas.Where(rd => rd.AirlineCode.Equals(invoice.BillingAirline)).FirstOrDefault() != null)
                 {
                     invoice.ReferenceDataList.Add(GetReferenceDataForAirline(invoice.BillingAirline, true));
                 }
 
                 // For Billed Airline
-                if (invoice.BilledAirline != null && _sisDB.ReferenceDatas.Where(rd => rd.AirlineCode.Equals(invoice.BilledAirline)).FirstOrDefault() != null)
+                if (invoice.BilledAirline != null && _sisDbFactory().ReferenceDatas.Where(rd => rd.AirlineCode.Equals(invoice.BilledAirline)).FirstOrDefault() != null)
                 {
                     invoice.ReferenceDataList.Add(GetReferenceDataForAirline(invoice.BilledAirline, false));
                 }
@@ -229,7 +229,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var awbd in _sisDB.AirWayBills.Where(awb => awb.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var awbd in _sisDbFactory().AirWayBills.Where(awb => awb.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.AirWayBill airWayBill = new ModelClass.AirWayBill();
 
@@ -306,7 +306,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var awbVatd in _sisDB.AWBVATs.Where(awbVat => awbVat.AirWayBillID == airWayBillID))
+                foreach (var awbVatd in _sisDbFactory().AWBVATs.Where(awbVat => awbVat.AirWayBillID == airWayBillID))
                 {
                     ModelClass.AWBVAT awbVat = new ModelClass.AWBVAT();
 
@@ -347,7 +347,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var awbOtherChargesd in _sisDB.AWBOtherCharges.Where(awbOc => awbOc.AirWayBillID == airWayBillID))
+                foreach (var awbOtherChargesd in _sisDbFactory().AWBOtherCharges.Where(awbOc => awbOc.AirWayBillID == airWayBillID))
                 {
                     ModelClass.AWBOtherCharges awbOtherCharges = new ModelClass.AWBOtherCharges();
 
@@ -393,7 +393,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rmd in _sisDB.RejectionMemoes.Where(rm => rm.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var rmd in _sisDbFactory().RejectionMemoes.Where(rm => rm.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.RejectionMemo rejectionMemo = new ModelClass.RejectionMemo();
 
@@ -470,7 +470,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rmawbd in _sisDB.RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == rejectionMemoID))
+                foreach (var rmawbd in _sisDbFactory().RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == rejectionMemoID))
                 {
                     ModelClass.RMAirWayBill rMAirWayBill = new ModelClass.RMAirWayBill();
 
@@ -560,7 +560,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rMAWBOtherChargesd in _sisDB.RMAWBOtherCharges.Where(rmawboc => rmawboc.RMAirWayBillID == rMAirWayBillID))
+                foreach (var rMAWBOtherChargesd in _sisDbFactory().RMAWBOtherCharges.Where(rmawboc => rmawboc.RMAirWayBillID == rMAirWayBillID))
                 {
                     ModelClass.RMAWBOtherCharges rMAWBOtherCharges = new ModelClass.RMAWBOtherCharges();
 
@@ -603,7 +603,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rMAWBProrateLadderd in _sisDB.RMAWBProrateLadders.Where(rmawbpl => rmawbpl.RMAirWayBillID == rMAirWayBillID))
+                foreach (var rMAWBProrateLadderd in _sisDbFactory().RMAWBProrateLadders.Where(rmawbpl => rmawbpl.RMAirWayBillID == rMAirWayBillID))
                 {
                     ModelClass.RMAWBProrateLadder rMAWBProrateLadder = new ModelClass.RMAWBProrateLadder();
 
@@ -646,7 +646,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rMAWBVATd in _sisDB.RMAWBVATs.Where(rmawbvat => rmawbvat.RMAirWayBillID == rMAirWayBillID))
+                foreach (var rMAWBVATd in _sisDbFactory().RMAWBVATs.Where(rmawbvat => rmawbvat.RMAirWayBillID == rMAirWayBillID))
                 {
                     ModelClass.RMAWBVAT rMAWBVAT = new ModelClass.RMAWBVAT();
 
@@ -690,7 +690,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var rmVatd in _sisDB.RMVATs.Where(rmVat => rmVat.RejectionMemoID == rejectionMemoID))
+                foreach (var rmVatd in _sisDbFactory().RMVATs.Where(rmVat => rmVat.RejectionMemoID == rejectionMemoID))
                 {
                     ModelClass.RMVAT rMVAT = new ModelClass.RMVAT();
 
@@ -736,7 +736,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bmd in _sisDB.BillingMemoes.Where(rm => rm.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var bmd in _sisDbFactory().BillingMemoes.Where(rm => rm.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.BillingMemo billingMemo = new ModelClass.BillingMemo();
 
@@ -800,7 +800,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bmawbd in _sisDB.BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == billingMemoID))
+                foreach (var bmawbd in _sisDbFactory().BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == billingMemoID))
                 {
                     ModelClass.BMAirWayBill bMAirWayBill = new ModelClass.BMAirWayBill();
 
@@ -877,7 +877,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bMAWBOtherChargesd in _sisDB.BMAWBOtherCharges.Where(bmawboc => bmawboc.BMAirWayBillID == bMAirWayBillID))
+                foreach (var bMAWBOtherChargesd in _sisDbFactory().BMAWBOtherCharges.Where(bmawboc => bmawboc.BMAirWayBillID == bMAirWayBillID))
                 {
                     ModelClass.BMAWBOtherCharges bMAWBOtherCharges = new ModelClass.BMAWBOtherCharges();
 
@@ -920,7 +920,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bMAWBProrateLadderd in _sisDB.BMAWBProrateLadders.Where(bmawbpl => bmawbpl.BMAirWayBillID == bMAirWayBillID))
+                foreach (var bMAWBProrateLadderd in _sisDbFactory().BMAWBProrateLadders.Where(bmawbpl => bmawbpl.BMAirWayBillID == bMAirWayBillID))
                 {
                     ModelClass.BMAWBProrateLadder bMAWBProrateLadder = new ModelClass.BMAWBProrateLadder();
 
@@ -963,7 +963,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bMAWBVATd in _sisDB.BMAWBVATs.Where(bmawbvat => bmawbvat.BMAirWayBillID == bMAirWayBillID))
+                foreach (var bMAWBVATd in _sisDbFactory().BMAWBVATs.Where(bmawbvat => bmawbvat.BMAirWayBillID == bMAirWayBillID))
                 {
                     ModelClass.BMAWBVAT bMAWBVAT = new ModelClass.BMAWBVAT();
 
@@ -1007,7 +1007,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var bmVatd in _sisDB.BMVATs.Where(bmVat => bmVat.BillingMemoID == billingMemoID))
+                foreach (var bmVatd in _sisDbFactory().BMVATs.Where(bmVat => bmVat.BillingMemoID == billingMemoID))
                 {
                     ModelClass.BMVAT bMVAT = new ModelClass.BMVAT();
 
@@ -1053,7 +1053,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cmd in _sisDB.CreditMemoes.Where(cm => cm.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var cmd in _sisDbFactory().CreditMemoes.Where(cm => cm.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.CreditMemo creditMemo = new ModelClass.CreditMemo();
 
@@ -1117,7 +1117,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cmawbd in _sisDB.CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == creditMemoID))
+                foreach (var cmawbd in _sisDbFactory().CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == creditMemoID))
                 {
                     ModelClass.CMAirWayBill cMAirWayBill = new ModelClass.CMAirWayBill();
 
@@ -1194,7 +1194,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cMAWBOtherChargesd in _sisDB.CMAWBOtherCharges.Where(cmawboc => cmawboc.CMAirWayBillID == cMAirWayBillID))
+                foreach (var cMAWBOtherChargesd in _sisDbFactory().CMAWBOtherCharges.Where(cmawboc => cmawboc.CMAirWayBillID == cMAirWayBillID))
                 {
                     ModelClass.CMAWBOtherCharges cMAWBOtherCharges = new ModelClass.CMAWBOtherCharges();
 
@@ -1237,7 +1237,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cMAWBProrateLadderd in _sisDB.CMAWBProrateLadders.Where(cmawbpl => cmawbpl.CMAirWayBillID == cMAirWayBillID))
+                foreach (var cMAWBProrateLadderd in _sisDbFactory().CMAWBProrateLadders.Where(cmawbpl => cmawbpl.CMAirWayBillID == cMAirWayBillID))
                 {
                     ModelClass.CMAWBProrateLadder cMAWBProrateLadder = new ModelClass.CMAWBProrateLadder();
 
@@ -1280,7 +1280,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cMAWBVATd in _sisDB.CMAWBVATs.Where(cmawbvat => cmawbvat.CMAirWayBillID == cMAirWayBillID))
+                foreach (var cMAWBVATd in _sisDbFactory().CMAWBVATs.Where(cmawbvat => cmawbvat.CMAirWayBillID == cMAirWayBillID))
                 {
                     ModelClass.CMAWBVAT cMAWBVAT = new ModelClass.CMAWBVAT();
 
@@ -1324,7 +1324,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var cmVatd in _sisDB.CMVATs.Where(cmVat => cmVat.CreditMemoID == creditMemoID))
+                foreach (var cmVatd in _sisDbFactory().CMVATs.Where(cmVat => cmVat.CreditMemoID == creditMemoID))
                 {
                     ModelClass.CMVAT cMVAT = new ModelClass.CMVAT();
 
@@ -1370,7 +1370,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var invoiceTotalVATd in _sisDB.InvoiceTotalVATs.Where(invtv => invtv.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var invoiceTotalVATd in _sisDbFactory().InvoiceTotalVATs.Where(invtv => invtv.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.InvoiceTotalVAT invoiceTotalVAT = new ModelClass.InvoiceTotalVAT();
 
@@ -1412,7 +1412,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var billingCodeSubTotald in _sisDB.BillingCodeSubTotals.Where(bcst => bcst.InvoiceHeaderID == invoiceHeaderID))
+                foreach (var billingCodeSubTotald in _sisDbFactory().BillingCodeSubTotals.Where(bcst => bcst.InvoiceHeaderID == invoiceHeaderID))
                 {
                     ModelClass.BillingCodeSubTotal billingCodeSubTotal = new ModelClass.BillingCodeSubTotal();
 
@@ -1460,7 +1460,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                foreach (var billingCodeSubTotalVATd in _sisDB.BillingCodeSubTotalVATs.Where(bcstv => bcstv.BillingCodeSubTotalID == billingCodeSubTotalID))
+                foreach (var billingCodeSubTotalVATd in _sisDbFactory().BillingCodeSubTotalVATs.Where(bcstv => bcstv.BillingCodeSubTotalID == billingCodeSubTotalID))
                 {
                     ModelClass.BillingCodeSubTotalVAT billingCodeSubTotalVAT = new ModelClass.BillingCodeSubTotalVAT();
 
@@ -1504,7 +1504,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                var referenceDataForAirlineDB = _sisDB.ReferenceDatas.Where(rd => rd.AirlineCode.Equals(ArilineCode)).FirstOrDefault();
+                var referenceDataForAirlineDB = _sisDbFactory().ReferenceDatas.Where(rd => rd.AirlineCode.Equals(ArilineCode)).FirstOrDefault();
 
                 if (referenceDataForAirlineDB != null)
                 {
@@ -1577,7 +1577,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                var invoiceTotald = _sisDB.InvoiceTotals.Where(invt => invt.InvoiceHeaderID == invoiceHeaderID).FirstOrDefault();
+                var invoiceTotald = _sisDbFactory().InvoiceTotals.Where(invt => invt.InvoiceHeaderID == invoiceHeaderID).FirstOrDefault();
 
                 if (invoiceTotald != null)
                 {
@@ -1623,7 +1623,7 @@ namespace QidWorkerRole.SIS.DAL
             try
             {
 
-                var fileTotald = _sisDB.FileTotals.Where(ft => ft.FileHeaderID == fileHeaderID).FirstOrDefault();
+                var fileTotald = _sisDbFactory().FileTotals.Where(ft => ft.FileHeaderID == fileHeaderID).FirstOrDefault();
 
                 if (fileTotald != null)
                 {
@@ -1664,7 +1664,7 @@ namespace QidWorkerRole.SIS.DAL
         {
             try
             {
-                var currentOpenBillingPeriod = _sisDB.CalendarMasters.Where(cm => cm.ClearingHouse.Equals(clearingHouse) &&
+                var currentOpenBillingPeriod = _sisDbFactory().CalendarMasters.Where(cm => cm.ClearingHouse.Equals(clearingHouse) &&
                                                                       dateTime >= cm.PeriodStartDate &&
                                                                       dateTime <= cm.PeriodEndDate).FirstOrDefault().BillingPeriod;
 
@@ -1685,7 +1685,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns>file Status Id </returns>
         public int IsOriginalFileExists(string fileName, ref int receivablesFileID)
         {
-            var fileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileName.ToUpper().Equals(fileName) && fh.FileInOutDirection == 1);
+            var fileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileName.ToUpper().Equals(fileName) && fh.FileInOutDirection == 1);
 
             if (fileHeader != null)
             {
@@ -1702,7 +1702,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns></returns>
         public bool IsFileAlreadyExistsWithSameName(string fileName)
         {
-            var fileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileName.ToUpper().Equals(fileName) && fh.FileInOutDirection == 0 && fh.IsProcessed == true);
+            var fileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileName.ToUpper().Equals(fileName) && fh.FileInOutDirection == 0 && fh.IsProcessed == true);
 
             if (fileHeader != null)
             {
@@ -1719,7 +1719,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns></returns>
         public bool IsInvoiceAlreadyExists(ModelClass.InvoiceHeader invoiceHeader)
         {
-            var dbInvoiceHeader = _sisDB.InvoiceHeaders.FirstOrDefault(ih => ih.InvoiceNumber.ToUpper().Equals(invoiceHeader.InvoiceNumber) &&
+            var dbInvoiceHeader = _sisDbFactory().InvoiceHeaders.FirstOrDefault(ih => ih.InvoiceNumber.ToUpper().Equals(invoiceHeader.InvoiceNumber) &&
                                                                ih.BillingAirline.Equals(invoiceHeader.BillingAirline) &&
                                                                ih.BilledAirline.Equals(invoiceHeader.BilledAirline) &&
                                                                ih.BillingYear == invoiceHeader.BillingYear);
@@ -1740,7 +1740,7 @@ namespace QidWorkerRole.SIS.DAL
         public List<int> GetInvoiceHeaderIDFromFileHeaderId(int fileHeaderId)
         {
             List<int> invoiceHeaderIds = new List<int>();
-            var invoiceHeaderIdsDB = _sisDB.InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderId).Select(ihid => ihid.InvoiceHeaderID);
+            var invoiceHeaderIdsDB = _sisDbFactory().InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderId).Select(ihid => ihid.InvoiceHeaderID);
             foreach (var invoiceHeaderId in invoiceHeaderIdsDB)
             {
                 invoiceHeaderIds.Add(Convert.ToInt32(invoiceHeaderId));
@@ -1753,7 +1753,7 @@ namespace QidWorkerRole.SIS.DAL
             List<FileHeader> FileHeaderList = new List<FileHeader>();
             try
             {
-                foreach (var fileHeader in _sisDB.FileHeaders.Where(fileheader => fileheader.IsProcessed == false && fileheader.ReadWriteOnSFTP != null))
+                foreach (var fileHeader in _sisDbFactory().FileHeaders.Where(fileheader => fileheader.IsProcessed == false && fileheader.ReadWriteOnSFTP != null))
                 {
                     FileHeader objFileHeader = new FileHeader
                     {
@@ -1779,7 +1779,7 @@ namespace QidWorkerRole.SIS.DAL
             List<ISValidationFileHeader> ValidationFileHeaderList = new List<ISValidationFileHeader>();
             try
             {
-                foreach (var validationFileHeader in _sisDB.ISValidationFileHeaders.Where(fileheader => fileheader.IsProcessed == false && fileheader.ReadWriteOnSFTP != null))
+                foreach (var validationFileHeader in _sisDbFactory().ISValidationFileHeaders.Where(fileheader => fileheader.IsProcessed == false && fileheader.ReadWriteOnSFTP != null))
                 {
                     ISValidationFileHeader valFileHeader = new ISValidationFileHeader
                     {
@@ -1806,7 +1806,7 @@ namespace QidWorkerRole.SIS.DAL
             List<FileHeader> FileHeaderList = new List<FileHeader>();
             try
             {
-                foreach (var fileHeader in _sisDB.FileHeaders.Where(fileheader => (fileheader.IsProcessed == false || fileheader.IsProcessed == null) && fileheader.ReadWriteOnSFTP == null && fileheader.FileInOutDirection == 1 && fileheader.FileStatusID == 1))
+                foreach (var fileHeader in _sisDbFactory().FileHeaders.Where(fileheader => (fileheader.IsProcessed == false || fileheader.IsProcessed == null) && fileheader.ReadWriteOnSFTP == null && fileheader.FileInOutDirection == 1 && fileheader.FileStatusID == 1))
                 {
                     FileHeader objFileHeader = new FileHeader
                     {

@@ -33,9 +33,11 @@ namespace QidWorkerRole
             
                 //clsLog.WriteLogAzure("Calling start RapidExceptionCEBU");
                 _logger.LogInformation("Calling start RapidExceptionCEBU");
-    
+
                 //String TimeZone = System.Configuration.ConfigurationManager.AppSettings["UTCORLOCALTIME"].ToString();
-                string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                //string TimeZone = _appConfig.Miscellaneous.UTCORLOCALTIME;
+                string TimeZone = ConfigCache.Get("UTCORLOCALTIME");
+
 
                 DateTime ExecutedOn = DateTime.Now;
                 DateTime FromDate = DateTime.Now;

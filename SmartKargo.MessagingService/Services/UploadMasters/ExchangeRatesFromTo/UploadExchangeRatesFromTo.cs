@@ -42,7 +42,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
 
                     if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "ExchangeRatesFromTo", out FilePath))
                     {
-                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
+                        await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
                     else
                     {
@@ -60,7 +60,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             return false;
         }
 
-        public bool ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableExchangeRatesFromTo = new DataTable("dataTableExchangeRatesFromTo");
             bool isBinaryReader = false;
@@ -230,7 +230,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
                 }
 
                 string errorInSp = string.Empty;
-                ValidateAndInsertExchangeRatesFromTo(srnoTBLMasterUploadSummaryLog, dataTableExchangeRates, errorInSp);
+                await ValidateAndInsertExchangeRatesFromTo(srnoTBLMasterUploadSummaryLog, dataTableExchangeRates, errorInSp);
 
                 return true;
             }

@@ -9,15 +9,15 @@ namespace QidWorkerRole.SIS.DAL
     /// </summary>
     public class UpdateDBData
     {
-        //public SIS.DAL.SISDBEntities _sisDB;
-        private readonly SISDBEntities _sisDB;
+        //public SIS.DAL.SISDBEntities _sisDbFactory();
+        private readonly Func<SISDBEntities> _sisDbFactory;
         private readonly ILogger<UpdateDBData> _logger;
         private readonly SISBAL _sISBAL;
 
-        public UpdateDBData(SISDBEntities sisDB, ILogger<UpdateDBData> logger, SISBAL sISBAL)
+        public UpdateDBData(Func<SISDBEntities> sisDbFactory, ILogger<UpdateDBData> logger, SISBAL sISBAL)
         {
-            //_sisDB = new SIS.DAL.SISDBEntities();
-            _sisDB = sisDB;
+            //_sisDbFactory() = new SIS.DAL.SISDBEntities();
+            _sisDbFactory = sisDbFactory;
             _logger = logger;
             _sISBAL = sISBAL;
         }
@@ -31,7 +31,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns>True/False</returns>
         public bool UpdateDataAfterFileGenerated(int? fileHeaderID, string fileName, string filePath, string logFileBlobUrl, string updatedBy)
         {
-            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDB.FileHeaders.First(fh => fh.FileHeaderID == fileHeaderID);
+            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.First(fh => fh.FileHeaderID == fileHeaderID);
             updatingFileHeader.FileName = fileName;
             updatingFileHeader.FilePath = filePath;
             updatingFileHeader.LogFilePath = logFileBlobUrl;
@@ -40,7 +40,7 @@ namespace QidWorkerRole.SIS.DAL
             updatingFileHeader.CreatedOn = DateTime.UtcNow;
             updatingFileHeader.LastUpdatedBy = "File Writer";
 
-            foreach (var updatingInvoiceHeader in _sisDB.InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderID))
+            foreach (var updatingInvoiceHeader in _sisDbFactory().InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderID))
             {
                 // Update FileGenerated as InvoiceStatusId.
                 updatingInvoiceHeader.InvoiceStatusId = 2; // Invoice Status 2 is File Generated.
@@ -49,17 +49,17 @@ namespace QidWorkerRole.SIS.DAL
 
 
                 // update AWBStatusID as 5 (File Generated) in AirWayBill
-                foreach (var updatingAirWayBill in _sisDB.AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingAirWayBill in _sisDbFactory().AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     updatingAirWayBill.AWBStatusID = 5; // AWB Status 5 is File Generated.
                     updatingFileHeader.LastUpdatedBy = updatedBy;
                     updatingFileHeader.LastUpdatedOn = DateTime.UtcNow;
                 }
 
-                foreach (var updatingRM in _sisDB.RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingRM in _sisDbFactory().RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (File Generated) in RMAirWayBill
-                    foreach (var updatingRMAwb in _sisDB.RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == updatingRM.RejectionMemoID))
+                    foreach (var updatingRMAwb in _sisDbFactory().RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == updatingRM.RejectionMemoID))
                     {
                         updatingRMAwb.AWBStatusID = 5; // AWB Status 5 is File Generated.
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -67,10 +67,10 @@ namespace QidWorkerRole.SIS.DAL
                     }
                 }
 
-                foreach (var updatingBM in _sisDB.BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingBM in _sisDbFactory().BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (File Generated) in BMAirWayBill
-                    foreach (var updatingBMAwb in _sisDB.BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == updatingBM.BillingMemoID))
+                    foreach (var updatingBMAwb in _sisDbFactory().BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == updatingBM.BillingMemoID))
                     {
                         updatingBMAwb.AWBStatusID = 5; // AWB Status 5 is File Generated.
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -78,10 +78,10 @@ namespace QidWorkerRole.SIS.DAL
                     }
                 }
 
-                foreach (var updatingCM in _sisDB.CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingCM in _sisDbFactory().CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (File Generated) in CMAirWayBill
-                    foreach (var updatingCMAwb in _sisDB.CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == updatingCM.CreditMemoID))
+                    foreach (var updatingCMAwb in _sisDbFactory().CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == updatingCM.CreditMemoID))
                     {
                         updatingCMAwb.AWBStatusID = 5; // AWB Status 5 is File Generated.
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -90,7 +90,7 @@ namespace QidWorkerRole.SIS.DAL
                 }
             }
 
-            _sisDB.SaveChanges();
+            _sisDbFactory().SaveChanges();
 
             return true;
         }
@@ -98,7 +98,7 @@ namespace QidWorkerRole.SIS.DAL
 
         public bool UpdateDataAfterNonSISFileUpload(int? fileHeaderID, string fileName, string filePath, string logFileBlobUrl, string updatedBy)
         {
-            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDB.FileHeaders.First(fh => fh.FileHeaderID == fileHeaderID);
+            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.First(fh => fh.FileHeaderID == fileHeaderID);
             updatingFileHeader.FileName = fileName;
             updatingFileHeader.FilePath = filePath;
             updatingFileHeader.LogFilePath = logFileBlobUrl;
@@ -107,7 +107,7 @@ namespace QidWorkerRole.SIS.DAL
             updatingFileHeader.CreatedOn = DateTime.UtcNow;
             updatingFileHeader.LastUpdatedBy = updatedBy;
 
-            foreach (var updatingInvoiceHeader in _sisDB.InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderID))
+            foreach (var updatingInvoiceHeader in _sisDbFactory().InvoiceHeaders.Where(ih => ih.FileHeaderID == fileHeaderID))
             {
                 // Update Is Validated as InvoiceStatusId.
                 updatingInvoiceHeader.InvoiceStatusId = 5; // Is Validated IsPayable=1
@@ -116,17 +116,17 @@ namespace QidWorkerRole.SIS.DAL
 
 
                 // update AWBStatusID as 5 (Is Validated) in AirWayBill
-                foreach (var updatingAirWayBill in _sisDB.AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingAirWayBill in _sisDbFactory().AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     updatingAirWayBill.AWBStatusID = 8; // Is Validated IsPayable=1
                     updatingFileHeader.LastUpdatedBy = updatedBy;
                     updatingFileHeader.LastUpdatedOn = DateTime.UtcNow;
                 }
 
-                foreach (var updatingRM in _sisDB.RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingRM in _sisDbFactory().RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (Is Validated) in RMAirWayBill
-                    foreach (var updatingRMAwb in _sisDB.RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == updatingRM.RejectionMemoID))
+                    foreach (var updatingRMAwb in _sisDbFactory().RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == updatingRM.RejectionMemoID))
                     {
                         updatingRMAwb.AWBStatusID = 8; // Is Validated IsPayable=1
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -134,10 +134,10 @@ namespace QidWorkerRole.SIS.DAL
                     }
                 }
 
-                foreach (var updatingBM in _sisDB.BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingBM in _sisDbFactory().BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (Is Validated) in BMAirWayBill
-                    foreach (var updatingBMAwb in _sisDB.BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == updatingBM.BillingMemoID))
+                    foreach (var updatingBMAwb in _sisDbFactory().BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == updatingBM.BillingMemoID))
                     {
                         updatingBMAwb.AWBStatusID = 8; // Is Validated IsPayable=1
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -145,10 +145,10 @@ namespace QidWorkerRole.SIS.DAL
                     }
                 }
 
-                foreach (var updatingCM in _sisDB.CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                foreach (var updatingCM in _sisDbFactory().CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                 {
                     // update AWBStatusID as 5 (Is Validated) in CMAirWayBill
-                    foreach (var updatingCMAwb in _sisDB.CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == updatingCM.CreditMemoID))
+                    foreach (var updatingCMAwb in _sisDbFactory().CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == updatingCM.CreditMemoID))
                     {
                         updatingCMAwb.AWBStatusID = 8; // Is Validated IsPayable=1
                         updatingFileHeader.LastUpdatedBy = updatedBy;
@@ -157,7 +157,7 @@ namespace QidWorkerRole.SIS.DAL
                 }
             }
 
-            _sisDB.SaveChanges();
+            _sisDbFactory().SaveChanges();
 
             return true;
         }
@@ -170,13 +170,13 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns>True/False</returns>
         public bool UpdateReceivedFileHeaderData(int newFileHeaderId, string fileBlobUrl, string logFileBlobUrl)
         {
-            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == newFileHeaderId);
+            QidWorkerRole.SIS.DAL.FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == newFileHeaderId);
 
             if (updatingFileHeader != null)
             {
                 updatingFileHeader.LogFilePath = logFileBlobUrl;
                 updatingFileHeader.IsProcessed = true;
-                _sisDB.SaveChanges();
+                _sisDbFactory().SaveChanges();
 
                 return true;
             }
@@ -193,7 +193,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns></returns>
         public async Task<bool> UpdateStatusToFileUploaded(int fileHeaderID, string userName)
         {
-            using (var context = _sisDB)
+            using (var context = _sisDbFactory())
             {
                 using (var dbContextTransaction = context.Database.BeginTransaction())
                 {
@@ -203,38 +203,38 @@ namespace QidWorkerRole.SIS.DAL
                         {
                             #region File
 
-                            DbEntity.FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID && fh.FileStatusID == 1);
+                            DbEntity.FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID && fh.FileStatusID == 1);
 
                             if (updatingFileHeader != null)
                             {
                                 #region Invoice
 
-                                foreach (var updatingInvoiceHeader in _sisDB.InvoiceHeaders.Where(ih => ih.FileHeaderID == updatingFileHeader.FileHeaderID && ih.InvoiceStatusId == 2))
+                                foreach (var updatingInvoiceHeader in _sisDbFactory().InvoiceHeaders.Where(ih => ih.FileHeaderID == updatingFileHeader.FileHeaderID && ih.InvoiceStatusId == 2))
                                 {
                                     #region AirWayBill
 
-                                    foreach (var updatingAirWayBill in _sisDB.AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID && awb.AWBStatusID == 5))
+                                    foreach (var updatingAirWayBill in _sisDbFactory().AirWayBills.Where(awb => awb.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID && awb.AWBStatusID == 5))
                                     {
                                         updatingAirWayBill.AWBStatusID = 6; // File Uploaded.
                                         updatingAirWayBill.LastUpdatedBy = userName;
                                         updatingAirWayBill.LastUpdatedOn = DateTime.UtcNow;
-                                        _sisDB.Entry(updatingAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                        _sisDbFactory().Entry(updatingAirWayBill).State = System.Data.Entity.EntityState.Modified;
                                     }
 
                                     #endregion
 
                                     #region Rejection Memo
 
-                                    foreach (var rejectionMemo in _sisDB.RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                                    foreach (var rejectionMemo in _sisDbFactory().RejectionMemoes.Where(rm => rm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                                     {
                                         #region RM AirWayBill
 
-                                        foreach (var updatingRMAirWayBill in _sisDB.RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == rejectionMemo.RejectionMemoID && rmawb.AWBStatusID == 5))
+                                        foreach (var updatingRMAirWayBill in _sisDbFactory().RMAirWayBills.Where(rmawb => rmawb.RejectionMemoID == rejectionMemo.RejectionMemoID && rmawb.AWBStatusID == 5))
                                         {
                                             updatingRMAirWayBill.AWBStatusID = 6; // File Uploaded.
                                             updatingRMAirWayBill.LastUpdatedBy = userName;
                                             updatingRMAirWayBill.LastUpdatedOn = DateTime.UtcNow;
-                                            _sisDB.Entry(updatingRMAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                            _sisDbFactory().Entry(updatingRMAirWayBill).State = System.Data.Entity.EntityState.Modified;
                                         }
 
                                         #endregion
@@ -244,16 +244,16 @@ namespace QidWorkerRole.SIS.DAL
 
                                     #region Billing Memo
 
-                                    foreach (var billingMemo in _sisDB.BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                                    foreach (var billingMemo in _sisDbFactory().BillingMemoes.Where(bm => bm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                                     {
                                         #region BM AirWayBill
 
-                                        foreach (var updatingBMAirWayBill in _sisDB.BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == billingMemo.BillingMemoID && bmawb.AWBStatusID == 5))
+                                        foreach (var updatingBMAirWayBill in _sisDbFactory().BMAirWayBills.Where(bmawb => bmawb.BillingMemoID == billingMemo.BillingMemoID && bmawb.AWBStatusID == 5))
                                         {
                                             updatingBMAirWayBill.AWBStatusID = 6; // File Uploaded.
                                             updatingBMAirWayBill.LastUpdatedBy = userName;
                                             updatingBMAirWayBill.LastUpdatedOn = DateTime.UtcNow;
-                                            _sisDB.Entry(updatingBMAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                            _sisDbFactory().Entry(updatingBMAirWayBill).State = System.Data.Entity.EntityState.Modified;
                                         }
 
                                         #endregion
@@ -263,16 +263,16 @@ namespace QidWorkerRole.SIS.DAL
 
                                     #region Credit Memo
 
-                                    foreach (var creditMemo in _sisDB.CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
+                                    foreach (var creditMemo in _sisDbFactory().CreditMemoes.Where(cm => cm.InvoiceHeaderID == updatingInvoiceHeader.InvoiceHeaderID))
                                     {
                                         #region CM AirWayBill
 
-                                        foreach (var updatingCMAirWayBill in _sisDB.CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == creditMemo.CreditMemoID && cmawb.AWBStatusID == 5))
+                                        foreach (var updatingCMAirWayBill in _sisDbFactory().CMAirWayBills.Where(cmawb => cmawb.CreditMemoID == creditMemo.CreditMemoID && cmawb.AWBStatusID == 5))
                                         {
                                             updatingCMAirWayBill.AWBStatusID = 6; // File Uploaded.
                                             updatingCMAirWayBill.LastUpdatedBy = userName;
                                             updatingCMAirWayBill.LastUpdatedOn = DateTime.UtcNow;
-                                            _sisDB.Entry(updatingCMAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                            _sisDbFactory().Entry(updatingCMAirWayBill).State = System.Data.Entity.EntityState.Modified;
                                         }
 
                                         #endregion
@@ -283,7 +283,7 @@ namespace QidWorkerRole.SIS.DAL
                                     updatingInvoiceHeader.InvoiceStatusId = 3; // File Uploaded.
                                     updatingInvoiceHeader.LastUpdatedBy = userName;
                                     updatingInvoiceHeader.LastUpdatedOn = DateTime.UtcNow;
-                                    _sisDB.Entry(updatingInvoiceHeader).State = System.Data.Entity.EntityState.Modified;
+                                    _sisDbFactory().Entry(updatingInvoiceHeader).State = System.Data.Entity.EntityState.Modified;
                                 }
 
                                 #endregion
@@ -293,11 +293,11 @@ namespace QidWorkerRole.SIS.DAL
                                 updatingFileHeader.LastUpdatedOn = DateTime.UtcNow;
                                 updatingFileHeader.ReadWriteOnSFTP = DateTime.UtcNow;
                                 updatingFileHeader.IsProcessed = true;
-                                _sisDB.Entry(updatingFileHeader).State = System.Data.Entity.EntityState.Modified;
+                                _sisDbFactory().Entry(updatingFileHeader).State = System.Data.Entity.EntityState.Modified;
 
                             }
 
-                            _sisDB.SaveChanges();
+                            _sisDbFactory().SaveChanges();
                             dbContextTransaction.Commit();
 
                             //SIS.SISBAL objSISBAL = new SIS.SISBAL();
@@ -332,7 +332,7 @@ namespace QidWorkerRole.SIS.DAL
         /// <returns></returns>
         public bool UpdateIBillingAirWayBill(ModelClass.IBilling.AirWayBill billingInterlineAirWayBill)
         {
-            using (var context = _sisDB)
+            using (var context = _sisDbFactory())
             {
                 using (var dbContextTransaction = context.Database.BeginTransaction())
                 {
@@ -340,7 +340,7 @@ namespace QidWorkerRole.SIS.DAL
                     {
                         if (billingInterlineAirWayBill.ID > 0)
                         {
-                            DbEntity.BillingInterlineAirWayBill updatingIBillingAirWayBill = _sisDB.BillingInterlineAirWayBills.FirstOrDefault(iawb => iawb.ID == billingInterlineAirWayBill.ID);
+                            DbEntity.BillingInterlineAirWayBill updatingIBillingAirWayBill = _sisDbFactory().BillingInterlineAirWayBills.FirstOrDefault(iawb => iawb.ID == billingInterlineAirWayBill.ID);
 
                             if (updatingIBillingAirWayBill != null)
                             {
@@ -348,7 +348,7 @@ namespace QidWorkerRole.SIS.DAL
 
                                 foreach (var billingInterlineAWBOC in billingInterlineAirWayBill.AirWayBillOCList)
                                 {
-                                    DbEntity.BillingInterlineAWBOC updatingIBillingAirWayBillOC = _sisDB.BillingInterlineAWBOCs.FirstOrDefault(iawboc => iawboc.ID == billingInterlineAWBOC.ID);
+                                    DbEntity.BillingInterlineAWBOC updatingIBillingAirWayBillOC = _sisDbFactory().BillingInterlineAWBOCs.FirstOrDefault(iawboc => iawboc.ID == billingInterlineAWBOC.ID);
 
                                     if (updatingIBillingAirWayBillOC != null)
                                     {
@@ -362,8 +362,8 @@ namespace QidWorkerRole.SIS.DAL
                                         updatingIBillingAirWayBillOC.LastUpdatedOn = billingInterlineAWBOC.LastUpdatedOn;
                                         updatingIBillingAirWayBillOC.LastUpdatedBy = billingInterlineAWBOC.LastUpdatedBy;
 
-                                        _sisDB.Entry(updatingIBillingAirWayBillOC).State = System.Data.Entity.EntityState.Modified;
-                                        _sisDB.SaveChanges();
+                                        _sisDbFactory().Entry(updatingIBillingAirWayBillOC).State = System.Data.Entity.EntityState.Modified;
+                                        _sisDbFactory().SaveChanges();
                                     }
                                 }
 
@@ -373,7 +373,7 @@ namespace QidWorkerRole.SIS.DAL
 
                                 foreach (var billingInterlineAWBVAT in billingInterlineAirWayBill.AirWayBillVATList)
                                 {
-                                    DbEntity.BillingInterlineAWBVAT updatingIBillingAWBVAT = _sisDB.BillingInterlineAWBVATs.FirstOrDefault(iawbvat => iawbvat.ID == billingInterlineAWBVAT.ID);
+                                    DbEntity.BillingInterlineAWBVAT updatingIBillingAWBVAT = _sisDbFactory().BillingInterlineAWBVATs.FirstOrDefault(iawbvat => iawbvat.ID == billingInterlineAWBVAT.ID);
 
                                     if (updatingIBillingAWBVAT != null)
                                     {
@@ -386,8 +386,8 @@ namespace QidWorkerRole.SIS.DAL
                                         updatingIBillingAWBVAT.LastUpdatedOn = billingInterlineAWBVAT.LastUpdatedOn;
                                         updatingIBillingAWBVAT.LastUpdatedBy = billingInterlineAWBVAT.LastUpdatedBy;
 
-                                        _sisDB.Entry(updatingIBillingAWBVAT).State = System.Data.Entity.EntityState.Modified;
-                                        _sisDB.SaveChanges();
+                                        _sisDbFactory().Entry(updatingIBillingAWBVAT).State = System.Data.Entity.EntityState.Modified;
+                                        _sisDbFactory().SaveChanges();
                                     }
                                 }
 
@@ -397,8 +397,8 @@ namespace QidWorkerRole.SIS.DAL
 
                                 updatingIBillingAirWayBill.WeightCharges = billingInterlineAirWayBill.WeightCharges == null ? 0 : Convert.ToDecimal(billingInterlineAirWayBill.WeightCharges);
                                 updatingIBillingAirWayBill.ValuationCharges = billingInterlineAirWayBill.ValuationCharges;
-                                updatingIBillingAirWayBill.OtherCharges = _sisDB.BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Count() > 0
-                                                                            ? _sisDB.BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Sum(oc => oc.OtherChargeCodeValue)
+                                updatingIBillingAirWayBill.OtherCharges = _sisDbFactory().BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Count() > 0
+                                                                            ? _sisDbFactory().BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Sum(oc => oc.OtherChargeCodeValue)
                                                                             : 0;
                                 //Changed By Kalyani on 31 Jan 2017.AmountSubjectToInterlineServiceCharge=(weight+val) charge as per validation file from SIS else nornal from textbox 
                                 updatingIBillingAirWayBill.AmountSubjectToInterlineServiceCharge = billingInterlineAirWayBill.BillingCode.Equals("P") ? billingInterlineAirWayBill.WeightCharges + billingInterlineAirWayBill.ValuationCharges : billingInterlineAirWayBill.AmountSubjectToInterlineServiceCharge;
@@ -408,18 +408,18 @@ namespace QidWorkerRole.SIS.DAL
                                                                                             (billingInterlineAirWayBill.InterlineServiceChargePercentage != null ? billingInterlineAirWayBill.InterlineServiceChargePercentage : 0)
                                                                                            ) / 100);
                                 //AWB VAT
-                                decimal decVat = (_sisDB.BillingInterlineAWBVATs.Where(awbvat => awbvat.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Count() > 0)
-                                                                        ? Convert.ToDecimal(_sisDB.BillingInterlineAWBVATs.Where(awbvat => awbvat.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Sum(vat => vat.VATCalculatedAmount))
+                                decimal decVat = (_sisDbFactory().BillingInterlineAWBVATs.Where(awbvat => awbvat.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Count() > 0)
+                                                                        ? Convert.ToDecimal(_sisDbFactory().BillingInterlineAWBVATs.Where(awbvat => awbvat.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID).Sum(vat => vat.VATCalculatedAmount))
                                                                         : 0;
                                 //VAT on OCs
-                                decimal decVatONOc = _sisDB.BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID && awboc.VATLabel == "VAT").Count() > 0
-                                                                        ? Convert.ToDecimal(_sisDB.BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID && awboc.VATLabel == "VAT").Sum(ocvat => ocvat.VATCalculatedAmount))
+                                decimal decVatONOc = _sisDbFactory().BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID && awboc.VATLabel == "VAT").Count() > 0
+                                                                        ? Convert.ToDecimal(_sisDbFactory().BillingInterlineAWBOCs.Where(awboc => awboc.BillingInterlineAirWayBillID == updatingIBillingAirWayBill.ID && awboc.VATLabel == "VAT").Sum(ocvat => ocvat.VATCalculatedAmount))
                                                                         : 0;
 
                                 updatingIBillingAirWayBill.VATAmount = decVat + decVatONOc;
 
-                                _sisDB.Entry(updatingIBillingAirWayBill).State = System.Data.Entity.EntityState.Modified;
-                                _sisDB.SaveChanges();
+                                _sisDbFactory().Entry(updatingIBillingAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                _sisDbFactory().SaveChanges();
 
                                 // Update AWB Total
                                 updatingIBillingAirWayBill.AWBTotalAmount = updatingIBillingAirWayBill.WeightCharges
@@ -428,8 +428,8 @@ namespace QidWorkerRole.SIS.DAL
                                                                             + updatingIBillingAirWayBill.InterlineServiceChargeAmount
                                                                             + updatingIBillingAirWayBill.VATAmount;
 
-                                _sisDB.Entry(updatingIBillingAirWayBill).State = System.Data.Entity.EntityState.Modified;
-                                _sisDB.SaveChanges();
+                                _sisDbFactory().Entry(updatingIBillingAirWayBill).State = System.Data.Entity.EntityState.Modified;
+                                _sisDbFactory().SaveChanges();
 
                                 #endregion
                             }
@@ -453,12 +453,12 @@ namespace QidWorkerRole.SIS.DAL
 
         public bool UpdateSISFileProcessed(int fileHeaderID)
         {
-            FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
+            FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
 
             if (updatingFileHeader != null)
             {
                 updatingFileHeader.IsProcessed = true;
-                _sisDB.SaveChanges();
+                _sisDbFactory().SaveChanges();
 
                 return true;
             }
@@ -466,13 +466,13 @@ namespace QidWorkerRole.SIS.DAL
         }
         public bool UpdateSISReceivableFileProcessed(int fileHeaderID)
         {
-            FileHeader updatingFileHeader = _sisDB.FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
+            FileHeader updatingFileHeader = _sisDbFactory().FileHeaders.FirstOrDefault(fh => fh.FileHeaderID == fileHeaderID);
 
             if (updatingFileHeader != null)
             {
                 updatingFileHeader.IsProcessed = true;
                 updatingFileHeader.ReadWriteOnSFTP = DateTime.UtcNow;
-                _sisDB.SaveChanges();
+                _sisDbFactory().SaveChanges();
 
                 return true;
             }

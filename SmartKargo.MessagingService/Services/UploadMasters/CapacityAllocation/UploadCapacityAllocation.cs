@@ -54,7 +54,7 @@ namespace QidWorkerRole.UploadMasters.CapacityAllocation
                         if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dataRowFileData["FileName"]), Convert.ToString(dataRowFileData["ContainerName"]), "CapacityAllocation", out filePath))
                         {
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), filePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), filePath);
                         }
                         else
                         {
@@ -81,7 +81,7 @@ namespace QidWorkerRole.UploadMasters.CapacityAllocation
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Capacity Allocation Upload File Path  </param>
         /// <returns> True when Success and False when Failed </returns>
-        public Boolean ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableCapacityAllocationExcelData = new DataTable("dataTableCapacityAllocationExcelData");
             bool isBinaryReader = false;
@@ -827,7 +827,7 @@ namespace QidWorkerRole.UploadMasters.CapacityAllocation
                 }
 
                 // Database Call to Validate & Insert Capacity Allocation
-                ValidateAndInsertCapacityAllocation(srNotblMasterUploadSummaryLog, CapacityType);
+                await ValidateAndInsertCapacityAllocation(srNotblMasterUploadSummaryLog, CapacityType);
 
                 return true;
             }

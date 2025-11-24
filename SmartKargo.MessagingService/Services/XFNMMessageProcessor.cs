@@ -181,14 +181,14 @@ namespace QidWorkerRole
                             if (commType.Contains("SITA"))
                             {
                                 SitaMessageHeader = _genericFunction.MakeMailMessageFormat(strMessageFrom, dscheckconfiguration.Tables[0].Rows[0]["OriginSenderAddress"].ToString(), dscheckconfiguration.Tables[0].Rows[0]["MessageID"].ToString());
-                                _genericFunction.SaveMessageOutBox("XFNM", SitaMessageHeader + "\r\n" + Convert.ToString(sbgenerateXFNMMessage), "SITAFTP", "SITAFTP", "", "", "", "", awbPrefix + "-" + awbNumber);
+                                await _genericFunction.SaveMessageOutBox("XFNM", SitaMessageHeader + "\r\n" + Convert.ToString(sbgenerateXFNMMessage), "SITAFTP", "SITAFTP", "", "", "", "", awbPrefix + "-" + awbNumber);
                             }
                         }
                         else
                         {
                             string ToEmailAddress = (strMessageFrom == string.Empty ? Emailaddress : strMessageFrom + "," + Emailaddress);
                             ToEmailAddress = (ToEmailAddress == string.Empty ? "priyanka@smartkargo.com" : ToEmailAddress);
-                            _genericFunction.SaveMessageOutBox("XFNM", Convert.ToString(sbgenerateXFNMMessage).ToString(), string.Empty, ToEmailAddress, "", "", "", "", awbPrefix + "-" + awbNumber);
+                            await _genericFunction.SaveMessageOutBox("XFNM", Convert.ToString(sbgenerateXFNMMessage).ToString(), string.Empty, ToEmailAddress, "", "", "", "", awbPrefix + "-" + awbNumber);
                         }
                     }
                     else

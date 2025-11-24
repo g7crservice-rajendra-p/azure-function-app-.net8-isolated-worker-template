@@ -41,7 +41,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
 
                     if (_uploadMasterCommonFactory().DoDownloadBLOB(Convert.ToString(dr["FileName"]), Convert.ToString(dr["ContainerName"]), "PHCustomRegistry", out FilePath))
                     {
-                        ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
+                        await ProcessFile(Convert.ToInt32(dr["SrNo"]), FilePath);
                     }
 
                     else
@@ -60,7 +60,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
             return false;
         }
 
-        public bool ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srnoTBLMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTablePHRegistery = new DataTable("dataTablePHRegistery");
             bool isBinaryReader = false;
@@ -212,7 +212,7 @@ namespace QidWorkerRole.UploadMasters.ExchangeRatesFromTo
 
                 string errorInSp = string.Empty;
 
-                ValidateAndInsertPHCustomRegistry(srnoTBLMasterUploadSummaryLog, dataTablePHCustomRegistery, errorInSp);
+                await ValidateAndInsertPHCustomRegistry(srnoTBLMasterUploadSummaryLog, dataTablePHCustomRegistery, errorInSp);
 
                 return true;
             }

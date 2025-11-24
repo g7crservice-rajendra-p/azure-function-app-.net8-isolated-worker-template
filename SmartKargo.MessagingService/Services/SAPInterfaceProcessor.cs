@@ -12,7 +12,7 @@ using System.Text;
 
 namespace QidWorkerRole
 {
-    class SAPInterfaceProcessor
+    public class SAPInterfaceProcessor
     {
         //private string SFTPFingerPrint = string.Empty;
 
@@ -45,7 +45,7 @@ namespace QidWorkerRole
 
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<SAPInterfaceProcessor> _logger;
-         private static ILoggerFactory? _loggerFactory;
+        private static ILoggerFactory? _loggerFactory;
         private static ILogger<SAPInterfaceProcessor> _staticLogger => _loggerFactory?.CreateLogger<SAPInterfaceProcessor>();
 
         private readonly FTP _fTP;

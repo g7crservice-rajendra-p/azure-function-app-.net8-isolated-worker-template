@@ -5,34 +5,35 @@ using SmartKargo.MessagingService.Functions.Activities;
 
 namespace SmartKargo.MessagingService.Functions.Orchestrators
 {
-    public static class ReceiveMessageOrchestrator
+    public static class DBCallsOrchestrator
     {
-        [Function(nameof(ReceiveMessageOrchestrator))]
+        [Function(nameof(DBCallsOrchestrator))]
         public static async Task<object?> RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            ILogger logger = context.CreateReplaySafeLogger(nameof(ReceiveMessageOrchestrator));
+            ILogger logger = context.CreateReplaySafeLogger(nameof(DBCallsOrchestrator));
             string instanceId = context.InstanceId;
 
             logger.LogInformation(
-                "ReceiveMessageOrchestrator started. InstanceId: {InstanceId}",
+                "DBCallsOrchestrator started. InstanceId: {InstanceId}",
                 instanceId);
 
+            // Read orchestrator input (if provided)
             var input = context.GetInput<object?>();
 
             try
             {
                 logger.LogInformation(
-                    "Calling ReceiveMessageActivity for InstanceId: {InstanceId}",
+                    "Calling DBCallsActivity for InstanceId: {InstanceId}",
                     instanceId);
 
-                // Simple, no-retry activity execution
+                // Single activity call (no retries)
                 var result = await context.CallActivityAsync<object?>(
-                    nameof(ReceiveMessageActivity),
+                    nameof(DBCallsActivity),
                     input);
 
                 logger.LogInformation(
-                    "ReceiveMessageActivity completed successfully. InstanceId: {InstanceId}",
+                    "DBCallsActivity completed successfully. InstanceId: {InstanceId}",
                     instanceId);
 
                 return result;
@@ -41,24 +42,24 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
             {
                 logger.LogError(
                     ex,
-                    "ReceiveMessageActivity failed. InstanceId: {InstanceId}",
+                    "DBCallsActivity failed. InstanceId: {InstanceId}",
                     instanceId);
 
-                throw;
+                throw; // Fail orchestrator normally
             }
             catch (Exception ex)
             {
                 logger.LogError(
                     ex,
-                    "Unhandled exception in ReceiveMessageOrchestrator. InstanceId: {InstanceId}",
+                    "Unhandled exception in orchestrator. InstanceId: {InstanceId}",
                     instanceId);
 
-                throw;
+                throw; // Fail orchestrator normally
             }
             finally
             {
                 logger.LogInformation(
-                    "ReceiveMessageOrchestrator finished (may replay). InstanceId: {InstanceId}",
+                    "DBCallsOrchestrator finished (may replay). InstanceId: {InstanceId}",
                     instanceId);
             }
         }

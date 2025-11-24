@@ -51,7 +51,7 @@ namespace QidWorkerRole.UploadMasters.CostLine
                                                               "CostMasterUploadFile", out uploadFilePath))
                         {
                             await _uploadMasterCommonFactory().UpdateUploadMastersStatus(Convert.ToInt32(dataRowFileData["SrNo"]), "Process Start", 0, 0, 0, 1, "", 1);
-                            ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
+                            await ProcessFile(Convert.ToInt32(dataRowFileData["SrNo"]), uploadFilePath);
                         }
                         else
                         {
@@ -78,7 +78,7 @@ namespace QidWorkerRole.UploadMasters.CostLine
         /// <param name="srNotblMasterUploadSummaryLog"> Master Summary Table Primary Key </param>
         /// <param name="filepath"> Cost Master Upload File Path </param>
         /// <returns> True when Success and False when Failed </returns>
-        public bool ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
+        public async Task<bool> ProcessFile(int srNotblMasterUploadSummaryLog, string filepath)
         {
             DataTable dataTableCostMasterExcelData = new DataTable("dataTableCostMasterExcelData");
 
@@ -1636,7 +1636,7 @@ namespace QidWorkerRole.UploadMasters.CostLine
 
                 // Database Call to Validate & Insert Cost Line Master
                 string errorInSp = string.Empty;
-                ValidateAndInsertCostMaster(srNotblMasterUploadSummaryLog, CostType, CostSlabsType, CostULDSlabsType, CostParamsType, CostRemarksType, errorInSp);
+                await ValidateAndInsertCostMaster(srNotblMasterUploadSummaryLog, CostType, CostSlabsType, CostULDSlabsType, CostParamsType, CostRemarksType, errorInSp);
 
                 return true;
             }

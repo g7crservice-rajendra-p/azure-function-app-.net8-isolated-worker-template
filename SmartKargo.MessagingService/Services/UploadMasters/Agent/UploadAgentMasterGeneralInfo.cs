@@ -3525,7 +3525,7 @@ namespace QidWorkerRole.UploadMasters.Agent
                         {
                             // Database Call to Insert TblOutbox [Messages]
                             errorInSp = string.Empty;
-                            BulkInsertToTblOutbox(TblOutboxType, errorInSp);
+                            await BulkInsertToTblOutbox(TblOutboxType, errorInSp);
                         }
                     }
                 }

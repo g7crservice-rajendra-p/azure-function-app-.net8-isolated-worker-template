@@ -21,38 +21,37 @@ namespace SmartKargo.MessagingService.Configurations
                : LogEventLevel.Information;
     }
 
-    public class AuthenticationConfig
-    {
-        public string AccessTokenUrl { get; set; } = string.Empty;
-        public string BasicAuthenticationHeader { get; set; } = string.Empty;
-        public string ClientId { get; set; } = string.Empty;
-        public string ClientSecret { get; set; } = string.Empty;
+    //public class AuthenticationConfig
+    //{
+    //    public string AccessTokenUrl { get; set; } = string.Empty;
+    //    public string BasicAuthenticationHeader { get; set; } = string.Empty;
+    //    public string ClientId { get; set; } = string.Empty;
+    //    public string ClientSecret { get; set; } = string.Empty;
+    //}
 
-    }
-
-    public class SmsConfig
-    {
-        public string SMSUn { get; set; } = string.Empty;
-        public string SMSPass { get; set; } = string.Empty;
-        public string SendSMSUrl { get; set; } = string.Empty;
-        public bool IsSMSNewApi { get; set; } = false;
-        public string EventDefinitionKey { get; set; } = string.Empty;
-    }
+    //public class SmsConfig
+    //{
+    //    public string SMSUn { get; set; } = string.Empty;
+    //    public string SMSPass { get; set; } = string.Empty;
+    //    public string SendSMSUrl { get; set; } = string.Empty;
+    //    public bool IsSMSNewApi { get; set; } = false;
+    //    public string EventDefinitionKey { get; set; } = string.Empty;
+    //}
 
     public class PollingConfig
     {
         public int SleepSeconds { get; set; } = 0;
     }
 
-    public class AlertConfig
-    {
-        public string DataDumpAlertEmailID { get; set; } = string.Empty;
-    }
+    //public class AlertConfig
+    //{
+    //    public string DataDumpAlertEmailID { get; set; } = string.Empty;
+    //}
 
     public class MiscellaneousConfig
     {
-        public string UTCORLOCALTIME { get; set; } = string.Empty;
-        public string DownLoadFilePath { get; set; } = string.Empty;
+        //public string UTCORLOCALTIME { get; set; } = string.Empty;
+        //public string DownLoadFilePath { get; set; } = string.Empty;
         public string XMLFilePath { get; set; } = string.Empty;
 
     }
@@ -66,23 +65,23 @@ namespace SmartKargo.MessagingService.Configurations
         public string SftpSshHostKeyFingerprint { get; set; } = string.Empty;
     }
 
-    public class ServiceBusConfig
-    {
-        public string ServiceBusConnectionString { get; set; } = string.Empty;
-        public string QueueName { get; set; } = string.Empty;
-        public bool IsPeekLock { get; set; } = false;
-    }
+    //public class ServiceBusConfig
+    //{
+    //    public string ServiceBusConnectionString { get; set; } = string.Empty;
+    //    public string QueueName { get; set; } = string.Empty;
+    //    public bool IsPeekLock { get; set; } = false;
+    //}
 
     public class AppConfig
     {
         public DatabaseConfig Database { get; set; } = new();
         public AppLoggingConfig AppLogging { get; set; } = new();
-        public AuthenticationConfig Authentication { get; set; } = new();
-        public SmsConfig Sms { get; set; } = new();
+        //public AuthenticationConfig Authentication { get; set; } = new();
+        //public SmsConfig Sms { get; set; } = new();
         public PollingConfig Polling { get; set; } = new();
-        public AlertConfig Alert { get; set; } = new();
+        //public AlertConfig Alert { get; set; } = new();
         public MiscellaneousConfig Miscellaneous { get; set; } = new();
         public SftpConfig Sftp { get; set; } = new();
-        public ServiceBusConfig ServiceBus { get; set; } = new();
+        //public ServiceBusConfig ServiceBus { get; set; } = new();
     }
 }
