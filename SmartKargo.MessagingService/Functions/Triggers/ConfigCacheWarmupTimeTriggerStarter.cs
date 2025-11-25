@@ -18,11 +18,10 @@ namespace SmartKargo.MessagingService.Functions.Triggers
         private readonly StartupReadiness _readiness;
         private const string EntityKey = "config";
 
-        public ConfigCacheWarmupTimeTriggerStarter(ILoggerFactory loggerFactory, StartupReadiness readiness,ReadDBData readDBData)
+        public ConfigCacheWarmupTimeTriggerStarter(ILoggerFactory loggerFactory, StartupReadiness readiness)
         {
             _logger = loggerFactory.CreateLogger<ConfigCacheWarmupTimeTriggerStarter>();
             _readiness = readiness;
-            readDBData.ReadDBData1 ();
         }
 
         [Function(nameof(ConfigCacheWarmupTimeTriggerStarter))]
