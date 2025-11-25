@@ -21,7 +21,7 @@ namespace QidWorkerRole
         private readonly HttpClient _httpClient;
         private readonly ISqlDataHelperDao _readWriteDao;
         private readonly ILogger<EMAILOUT> _logger;
-        private readonly Cls_BL _cls_BL;
+        private readonly Func<Cls_BL> _cls_BLFactory;
         //private static readonly HttpClient _httpClient = new HttpClient();
         //GenericFunction genericFunction = new GenericFunction();
         //SCMExceptionHandlingWorkRole scmException = new SCMExceptionHandlingWorkRole();
@@ -33,13 +33,13 @@ namespace QidWorkerRole
         public EMAILOUT(HttpClient httpClient,
             ISqlDataHelperFactory sqlDataHelperFactory,
             ILogger<EMAILOUT> logger,
-            Cls_BL cls_BL
+            Func<Cls_BL> cls_BLFactory
          )
         {
             _httpClient = httpClient;
             _readWriteDao = sqlDataHelperFactory.Create(readOnly: false);
             _logger = logger;
-            _cls_BL = cls_BL;
+            _cls_BLFactory = cls_BLFactory;
         }
         #endregion
 
@@ -106,7 +106,7 @@ namespace QidWorkerRole
                                     try
                                     {
                                         Array.Resize(ref Attachments, Attachments.Length + 1);
-                                        Attachments[Attachments.Length - 1] = new MemoryStream(_cls_BL.DownloadBlob(drow["FileUrl"].ToString()));
+                                        Attachments[Attachments.Length - 1] = new MemoryStream(_cls_BLFactory().DownloadBlob(drow["FileUrl"].ToString()));
 
                                         Array.Resize(ref Extensions, Extensions.Length + 1);
                                         Extensions[Extensions.Length - 1] = drow["MIMEType"].ToString();
@@ -626,7 +626,7 @@ namespace QidWorkerRole
                                 {
                                     string type = "";
 
-                                    byte[] byteData12 = _cls_BL.DownloadBlob(drow["FileUrl"].ToString());
+                                    byte[] byteData12 = _cls_BLFactory().DownloadBlob(drow["FileUrl"].ToString());
 
                                     switch (drow["MIMEType"].ToString().ToUpper())
                                     {
