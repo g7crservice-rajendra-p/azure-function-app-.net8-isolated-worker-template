@@ -24,7 +24,7 @@ namespace SmartKargo.MessagingService.Functions.Activities
         /// Durable Activity Function entry point.
         /// </summary>
         [Function(nameof(DBCallsActivity))]
-        public async Task<object?> RunAsync(
+        public async Task RunAsync(
             [ActivityTrigger] object? input,
             CancellationToken cancellationToken)
         {
@@ -36,11 +36,10 @@ namespace SmartKargo.MessagingService.Functions.Activities
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var result = await _cls_BL.DBCalls().ConfigureAwait(false);
+                await _cls_BL.DBCalls().ConfigureAwait(false);
 
                 _logger.LogInformation("DBCallsActivity completed successfully.");
 
-                return result; // return to orchestrator (can be null or DTO)
             }
             catch (OperationCanceledException)
             {

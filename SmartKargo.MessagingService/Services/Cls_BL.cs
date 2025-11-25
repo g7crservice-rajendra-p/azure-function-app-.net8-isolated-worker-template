@@ -2008,7 +2008,7 @@ namespace QidWorkerRole
                                         string EmailID = Convert.ToString(dsEmail.Tables[1].DefaultView.ToTable().Rows[k]["PartnerEmailiD"]);
                                         //clsLog.WriteLogAzure("AutoManageCapacityFLP: ToID: " + EmailID);
 
-                                        addMsgToOutBox(sMailSubject, sMailBody, "", EmailID, false, true, "AutoManageCapacityFLP");
+                                        await addMsgToOutBox(sMailSubject, sMailBody, "", EmailID, false, true, "AutoManageCapacityFLP");
                                     }
                                 }
                             }
@@ -2555,7 +2555,9 @@ namespace QidWorkerRole
                                 //    + ":: sFileUrl: " + sFileUrl.Length.ToString()
                                 //    + ":: FileExcelURL: " + FileExcelURL.Length.ToString()
                                 //    + ":: msExcel: " + msExcel.Length.ToString());
-                                addMsgToOutBox(sMailSubject, sMailBody, "", EmailID, false, true, "AutoManageCapacityFLP");
+
+                                await addMsgToOutBox(sMailSubject, sMailBody, "", EmailID, false, true, "AutoManageCapacityFLP");
+
                                 //DumpInterfaceInformation(sMailSubject, sMailBody, TimeStamp, "AutoManageCapacityFLP", "", true, ConfigCache.Get("msgService_EmailId"), EmailID, ms, ".pdf", sFileUrl, "0", "Outbox", FileExcelURL, msExcel, DocfileName);
 
                                 //clsLog.WriteLogAzure("DumpInterfaceInformation: Message sent for: " + DocfileName);
@@ -8120,7 +8122,7 @@ namespace QidWorkerRole
                                                     htmlContent = htmlContent.Replace("@FlightControlData@", Excel.ToString());
 
 
-                                                    addMsgToOutBox(subject, htmlContent, "", PartnerEmailIds, false, true, "FLTCNTDATA");
+                                                    await addMsgToOutBox(subject, htmlContent, "", PartnerEmailIds, false, true, "FLTCNTDATA");
 
                                                     #endregion
                                                 }
@@ -8368,7 +8370,7 @@ namespace QidWorkerRole
                                 try
                                 {
                                     string FileName = "CARGO_PLAN_WEIGHT_" + UTCDatetime.ToString("yyyyMMddHHmmss") + ".csv";
-                                    addMsgToOutBox(FileName, sbLoadPlan.ToString(), "", "SFTP", false, false, "LoadPlan");
+                                    await addMsgToOutBox(FileName, sbLoadPlan.ToString(), "", "SFTP", false, false, "LoadPlan");
                                 }
                                 catch (Exception exc)
                                 {
@@ -9160,19 +9162,32 @@ namespace QidWorkerRole
             }
         }
 
-        public static bool addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
+        public async Task<bool> addMsgToOutBox(string subject, string Msg, string FromEmailID, string ToEmailID, bool isInternal, bool isHTML, string type)
         {
             bool flag = false;
             try
             {
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-                SqlConnection con = new SqlConnection(connectionString);
-                con.Open();
-                SqlCommand cmd = new SqlCommand();
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                //SqlConnection con = new SqlConnection(connectionString);
+                //con.Open();
+                //SqlCommand cmd = new SqlCommand();
 
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandText = "spInsertMsgToOutbox";
-                cmd.Connection = con;
+                //cmd.CommandType = CommandType.StoredProcedure;
+                //cmd.CommandText = "spInsertMsgToOutbox";
+                //cmd.Connection = con;
+
+                //SqlParameter[] prm = new SqlParameter[] {
+                //    new SqlParameter("@Subject",subject)
+                //    ,new SqlParameter("@Body",Msg)
+                //    ,new SqlParameter("@FromEmailID",FromEmailID)
+                //    ,new SqlParameter("@ToEmailID",ToEmailID)
+                //    ,new SqlParameter("@Type",type)
+                //    ,new SqlParameter("@IsHTML",isHTML)
+                //};
+
+                //cmd.Parameters.AddRange(prm);
+                //cmd.ExecuteNonQuery();
+
                 SqlParameter[] prm = new SqlParameter[] {
                     new SqlParameter("@Subject",subject)
                     ,new SqlParameter("@Body",Msg)
@@ -9182,13 +9197,13 @@ namespace QidWorkerRole
                     ,new SqlParameter("@IsHTML",isHTML)
                 };
 
-                cmd.Parameters.AddRange(prm);
-                cmd.ExecuteNonQuery();
+                flag = await _readWriteDao.ExecuteNonQueryAsync("spInsertMsgToOutbox", prm);
+
             }
             catch (Exception ex)
             {
                 // clsLog.WriteLogAzure(ex);
-                _staticLogger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+                _logger?.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
                 flag = false;
             }
             return flag;

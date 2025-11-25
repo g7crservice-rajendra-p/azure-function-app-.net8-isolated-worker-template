@@ -216,10 +216,17 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
         protected void SetupMultiRecordEngine()
         {
             //Logger.Info("Start of MultiRecordEngine Initialization.");
-
-            multiRecordEngine = new MultiRecordEngine(DoSelectRecordType, RecordTypeList.ToArray()) { ErrorManager = { ErrorMode = ErrorMode.SaveAndContinue } };
-
-            //Logger.Info("End of MultiRecordEngine Initialization.");
+            _logger.LogInformation("Start of MultiRecordEngine Initialization.");
+            try
+            {
+                multiRecordEngine = new MultiRecordEngine(DoSelectRecordType, RecordTypeList.ToArray()) { ErrorManager = { ErrorMode = ErrorMode.SaveAndContinue } };
+                //Logger.Info("End of MultiRecordEngine Initialization.");
+                _logger.LogInformation("End of MultiRecordEngine Initialization.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");  
+            }
         }
 
         /// <summary>
@@ -269,7 +276,7 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
                 {
                     throw new InvalidOperationException("MultiRecordEngine is not initialized.");
                 }
-    
+
                 if (isFilePath)
                 {
                     // Begin reading the file.
@@ -279,7 +286,7 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
                 {
                     multiRecordEngine.BeginReadString(data);
                 }
-    
+
                 // Read each record - till the end of the file.
                 if (multiRecordEngine.ReadNext() != null)
                 {
@@ -287,11 +294,11 @@ namespace QidWorkerRole.SIS.FileHandling.Idec.Read
                     //{
                     //    Logger.DebugFormat(string.Format("Record of type [{0}] found.", multiRecordEngine.LastRecord.GetType().Name));
                     //}
-    
+
                     // Read the record hierarchy and convert it into a class.
                     return ReadRecordHierarchy(multiRecordEngine);
                 }
-    
+
                 return null;
             }
             catch (System.Exception ex)

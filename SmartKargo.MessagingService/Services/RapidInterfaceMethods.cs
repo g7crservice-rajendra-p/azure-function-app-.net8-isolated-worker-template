@@ -675,7 +675,8 @@ namespace QidWorkerRole
                 string CTMFilePath = _appConfig.Miscellaneous.XMLFilePath;
                 string CCAPXFilePath = _appConfig.Miscellaneous.XMLFilePath;
 
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+
                 string XML = string.Empty;
 
                 //balRapidInterface objBAL = new balRapidInterface();

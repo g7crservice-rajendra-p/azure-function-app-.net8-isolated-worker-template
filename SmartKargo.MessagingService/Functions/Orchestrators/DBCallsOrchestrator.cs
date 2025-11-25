@@ -8,7 +8,7 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
     public static class DBCallsOrchestrator
     {
         [Function(nameof(DBCallsOrchestrator))]
-        public static async Task<object?> RunOrchestrator(
+        public static async Task RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             ILogger logger = context.CreateReplaySafeLogger(nameof(DBCallsOrchestrator));
@@ -28,15 +28,13 @@ namespace SmartKargo.MessagingService.Functions.Orchestrators
                     instanceId);
 
                 // Single activity call (no retries)
-                var result = await context.CallActivityAsync<object?>(
+                await context.CallActivityAsync(
                     nameof(DBCallsActivity),
                     input);
 
                 logger.LogInformation(
                     "DBCallsActivity completed successfully. InstanceId: {InstanceId}",
                     instanceId);
-
-                return result;
             }
             catch (TaskFailedException ex)
             {

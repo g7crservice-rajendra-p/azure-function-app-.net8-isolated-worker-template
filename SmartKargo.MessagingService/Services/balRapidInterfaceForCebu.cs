@@ -27,7 +27,7 @@ namespace QidWorkerRole
             DataSet? ds = new DataSet();
             try
             {
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                //string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
                 //SqlDataAdapter objDA = null;
                 //DataSet objDs = null;
                 //string XML = string.Empty;
