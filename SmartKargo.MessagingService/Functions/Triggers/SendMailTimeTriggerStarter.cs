@@ -10,12 +10,10 @@ namespace SmartKargo.MessagingService.Functions.Triggers
     public class SendMailTimeTriggerStarter
     {
         private readonly ILogger<SendMailTimeTriggerStarter> _logger;
-        private readonly StartupReadiness _readiness;
 
-        public SendMailTimeTriggerStarter(ILogger<SendMailTimeTriggerStarter> logger, StartupReadiness readiness)
+        public SendMailTimeTriggerStarter(ILogger<SendMailTimeTriggerStarter> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _readiness = readiness ?? throw new ArgumentNullException(nameof(readiness));
         }
 
         // Cron: "0 0 */6 * * *" -> at second=0 minute=0 every 6 hours (e.g., 00:00, 06:00, 12:00...)
@@ -39,29 +37,13 @@ namespace SmartKargo.MessagingService.Functions.Triggers
                         nameof(SendMailTimeTriggerStarter));
                 }
 
-                // Wait for startup readiness with cancellation and a concrete timeout policy
-                TimeSpan waitTimeout = TimeSpan.FromSeconds(30);
-                if (!_readiness.IsReady)
+                //- During cold start / scale-out, this process may not have any config loaded.
+                //- Activities and orchestrators depend on these settings for DB paths, URLs, etc.
+                bool warmupSuccess = await ConfigEntityWarmup.WarmupFromEntityAsync(client, _logger, cancellationToken);
+                if (!warmupSuccess)
                 {
-                    _logger.LogInformation("Service not ready yet. Waiting up to {TimeoutSeconds}s for readiness.", waitTimeout.TotalSeconds);
-                    try
-                    {
-                        await _readiness.WaitForReadyAsync(waitTimeout, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Timeout or host is shutting down
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            _logger.LogWarning("Function host is shutting down while waiting for readiness. Aborting orchestration start.");
-                            return;
-                        }
-
-                        _logger.LogWarning("Timeout waiting for readiness after {TimeoutSeconds}s. Skipping orchestration start.", waitTimeout.TotalSeconds);
-
-                        // Decide: return (skip start) or continue anyway. Here we skip to avoid starting when not ready.
-                        return;
-                    }
+                    _logger.LogWarning("Skipping orchestration because config warmup failed.");
+                    return;
                 }
 
                 // Prepare input for orchestration (if any)

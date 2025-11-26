@@ -1,10 +1,5 @@
 {
   "dependencies": {
-    "storage1": {
-      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Storage/storageAccounts/smartkargoms",
-      "type": "storage.azure",
-      "connectionId": "AzureWebJobsStorage"
-    },
     "appInsights1": {
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/microsoft.insights/components/smartkargo-messaging-service",
       "type": "appInsights.azure",

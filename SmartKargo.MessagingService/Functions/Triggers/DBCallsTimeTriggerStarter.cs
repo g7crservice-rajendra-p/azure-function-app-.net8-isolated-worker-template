@@ -2,20 +2,20 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Ocsp;
 using SmartKargo.MessagingService.Functions.Orchestrators;
 using SmartKargo.MessagingService.Services;
+using System.Net;
 
 namespace SmartKargo.MessagingService.Functions.Triggers
 {
     public class DBCallsTimeTriggerStarter
     {
         private readonly ILogger<DBCallsTimeTriggerStarter> _logger;
-        private readonly StartupReadiness _readiness;
 
-        public DBCallsTimeTriggerStarter(ILogger<DBCallsTimeTriggerStarter> logger, StartupReadiness readiness)
+        public DBCallsTimeTriggerStarter(ILogger<DBCallsTimeTriggerStarter> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _readiness = readiness ?? throw new ArgumentNullException(nameof(readiness));
         }
 
         // Cron: "0 0 */1 * * *" -> at second=0 minute=0 every 1 hours (e.g., 00:00, 01:00, 02:00...)
@@ -39,29 +39,13 @@ namespace SmartKargo.MessagingService.Functions.Triggers
                         nameof(DBCallsTimeTriggerStarter));
                 }
 
-                // Wait for startup readiness with cancellation and a concrete timeout policy
-                TimeSpan waitTimeout = TimeSpan.FromSeconds(30);
-                if (!_readiness.IsReady)
+                //- During cold start / scale-out, this process may not have any config loaded.
+                //- Activities and orchestrators depend on these settings for DB paths, URLs, etc.
+                bool warmupSuccess = await ConfigEntityWarmup.WarmupFromEntityAsync(client, _logger, cancellationToken);
+                if (!warmupSuccess)
                 {
-                    _logger.LogInformation("Service not ready yet. Waiting up to {TimeoutSeconds}s for readiness.", waitTimeout.TotalSeconds);
-                    try
-                    {
-                        await _readiness.WaitForReadyAsync(waitTimeout, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Timeout or host is shutting down
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            _logger.LogWarning("Function host is shutting down while waiting for readiness. Aborting orchestration start.");
-                            return;
-                        }
-
-                        _logger.LogWarning("Timeout waiting for readiness after {TimeoutSeconds}s. Skipping orchestration start.", waitTimeout.TotalSeconds);
-
-                        // Decide: return (skip start) or continue anyway. Here we skip to avoid starting when not ready.
-                        return;
-                    }
+                    _logger.LogWarning("Skipping orchestration because config warmup failed.");
+                    return;
                 }
 
                 // Prepare input for orchestration (if any)
