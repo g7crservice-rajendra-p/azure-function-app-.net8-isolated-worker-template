@@ -1344,7 +1344,14 @@ namespace QidWorkerRole
                 BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
                 // Set ContentType = "" (explicitly empty)
-                blobClient.SetHttpHeaders(new BlobHttpHeaders { ContentType = "" });
+                BlobUploadOptions options = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = ""   // or null, or "application/octet-stream" – whatever you need
+                    },
+                    Conditions = null      // THIS LINE IS REQUIRED to disable If-None-Match: *
+                };
 
                 // Log file path
                 // clsLog.WriteLogAzure(filePathToUpload);
@@ -1356,12 +1363,12 @@ namespace QidWorkerRole
                 {
                     // clsLog.WriteLogAzure(filePathToUpload);
                     _logger.LogInformation(filePathToUpload);
-                    blobClient.Upload(filePathToUpload, overwrite: true); // UploadFile → Upload with overwrite
+                    blobClient.Upload(filePathToUpload, options); // UploadFile → Upload with overwrite
                 }
                 else
                 {
                     stream.Position = 0; // Ensure stream is at start
-                    blobClient.Upload(stream, overwrite: true);   // UploadFromStream → Upload
+                    blobClient.Upload(stream, options);   // UploadFromStream → Upload
                 }
 
                 // Return public blob URL
@@ -2749,7 +2756,7 @@ namespace QidWorkerRole
                 string sasToken = GetSASUrl(containerName, blobServiceClient); // Returns "?sv=..."
 
                 // Construct full blob URL with SAS
-                string blobUrlWithSas = $"{accountUrl}/{containerName}/{filenameOrUrl}{sasToken}";
+                string blobUrlWithSas = $"{accountUrl}/{containerName}/{filenameOrUrl}?{sasToken}";
 
                 return blobUrlWithSas;
 
@@ -3024,10 +3031,10 @@ namespace QidWorkerRole
                 );
 
                 // Generate SAS token (your existing updated GetSASUrl)
-                string sasToken = GetSASUrl(containerName, blobServiceClient); // Returns "?sv=..."
+                string sasToken = GetSASUrl(containerName, blobServiceClient); // Returns "sv=..." without '?'
 
                 // Construct full SAS URI for the blob
-                Uri blobSasUri = new Uri($"{accountUrl}/{containerName}/{filenameOrUrl}{sasToken}");
+                Uri blobSasUri = new Uri($"{accountUrl}/{containerName}/{filenameOrUrl}?{sasToken}");
 
                 // Create BlobClient using SAS URI
                 BlobClient blob = new BlobClient(blobSasUri);
