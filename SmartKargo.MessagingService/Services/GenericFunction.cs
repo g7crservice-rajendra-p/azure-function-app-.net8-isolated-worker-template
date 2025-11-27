@@ -1213,48 +1213,48 @@ namespace QidWorkerRole
             return BlobName;
         }
 
-        public async Task<bool> IsFileExistOnBlob(string filename, string containerName)
-        {
-            try
-            {
-                containerName = containerName.ToLower();
-                //byte[] downloadStream = null;
+        //public async Task<bool> IsFileExistOnBlob(string filename, string containerName)
+        //{
+        //    try
+        //    {
+        //        containerName = containerName.ToLower();
+        //        //byte[] downloadStream = null;
 
-                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
-                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                //CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filename));
-                //downloadStream = blob.DownloadByteArray();
+        //        //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+        //        //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        //CloudBlob blob = blobClient.GetBlobReference(string.Format("{0}/{1}", containerName, filename));
+        //        //downloadStream = blob.DownloadByteArray();
 
-                // Set TLS 1.2 (still recommended for compatibility)
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        // Set TLS 1.2 (still recommended for compatibility)
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-                // Use connection string or account name + key
-                string storageAccountName = getStorageName();
-                string storageKey = getStorageKey();
+        //        // Use connection string or account name + key
+        //        string storageAccountName = getStorageName();
+        //        string storageKey = getStorageKey();
 
-                // Preferred: Use shared key credential
-                string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
-                var blobServiceClient = new BlobServiceClient(
-                    new Uri(accountUrl),
-                    new StorageSharedKeyCredential(storageAccountName, storageKey)
-                );
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        //        // Preferred: Use shared key credential
+        //        string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
+        //        var blobServiceClient = new BlobServiceClient(
+        //            new Uri(accountUrl),
+        //            new StorageSharedKeyCredential(storageAccountName, storageKey)
+        //        );
+        //        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
-                // Try with extracted container + blob name
-                BlobClient blobClient = containerClient.GetBlobClient(filename);
+        //        // Try with extracted container + blob name
+        //        BlobClient blobClient = containerClient.GetBlobClient(filename);
 
-                return await blobClient.ExistsAsync();
-            }
-            catch (Exception ex)
-            {
-                // //clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-                return false;
-            }
+        //        return await blobClient.ExistsAsync();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // //clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+        //        return false;
+        //    }
 
-        }
+        //}
 
         public async Task<bool> UpdateInboxFromMessageParameter(int messageID, string strAWBNumber, string FlightNumber, string FlightOrigin, string FlightDestination, string MessageType, string UpdatedBy, DateTime strFlightDate, bool IsNilFFM, string FFMFinalStatus, string strMsg = "", int ffmSequenceNo = 1)
         {
@@ -1433,72 +1433,72 @@ namespace QidWorkerRole
             return dataSetResult;
         }
 
-        public bool MoveAllFilesToBlob(string sourcePath, string containerName)
-        {
-            bool IsMoveSuccess = false;
-            try
-            {
-                //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
-                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
-                //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
-                //CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
-                //blobContainer.CreateIfNotExist();
+        //public bool MoveAllFilesToBlob(string sourcePath, string containerName)
+        //{
+        //    bool IsMoveSuccess = false;
+        //    try
+        //    {
+        //        //StorageCredentialsAccountAndKey cred = new StorageCredentialsAccountAndKey(GetStorageName(), GetStorageKey());
+        //        //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        //CloudStorageAccount storageAccount = new CloudStorageAccount(cred, true);
+        //        //CloudBlobClient blobClient = new CloudBlobClient(storageAccount.BlobEndpoint.AbsoluteUri, cred);
+        //        //CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
+        //        //blobContainer.CreateIfNotExist();
 
-                //foreach (var srcPath in Directory.GetFiles(sourcePath))
-                //{
-                //    using (var fileStream = System.IO.File.OpenRead(srcPath))
-                //    {
-                //        int LastIndex = srcPath.LastIndexOf("\\");
-                //        CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(srcPath.Substring(LastIndex + 1));
-                //        blockBlob.UploadFromStream(fileStream);
-                //    }
-                //}
-                //IsMoveSuccess = true;
+        //        //foreach (var srcPath in Directory.GetFiles(sourcePath))
+        //        //{
+        //        //    using (var fileStream = System.IO.File.OpenRead(srcPath))
+        //        //    {
+        //        //        int LastIndex = srcPath.LastIndexOf("\\");
+        //        //        CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(srcPath.Substring(LastIndex + 1));
+        //        //        blockBlob.UploadFromStream(fileStream);
+        //        //    }
+        //        //}
+        //        //IsMoveSuccess = true;
 
-                // Set TLS 1.2 for compatibility
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        //        // Set TLS 1.2 for compatibility
+        //        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-                string storageAccountName = GetStorageName();
-                string storageKey = GetStorageKey();
+        //        string storageAccountName = GetStorageName();
+        //        string storageKey = GetStorageKey();
 
-                // Create BlobServiceClient with account key
-                string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
-                var blobServiceClient = new BlobServiceClient(
-                    new Uri(accountUrl),
-                    new StorageSharedKeyCredential(storageAccountName, storageKey)
-                );
+        //        // Create BlobServiceClient with account key
+        //        string accountUrl = $"https://{storageAccountName}.blob.core.windows.net";
+        //        var blobServiceClient = new BlobServiceClient(
+        //            new Uri(accountUrl),
+        //            new StorageSharedKeyCredential(storageAccountName, storageKey)
+        //        );
 
-                // Get container and ensure it exists
-                BlobContainerClient blobContainer = blobServiceClient.GetBlobContainerClient(containerName);
-                blobContainer.CreateIfNotExists();
+        //        // Get container and ensure it exists
+        //        BlobContainerClient blobContainer = blobServiceClient.GetBlobContainerClient(containerName);
+        //        blobContainer.CreateIfNotExists();
 
-                foreach (var srcPath in Directory.GetFiles(sourcePath))
-                {
-                    using (var fileStream = File.OpenRead(srcPath))
-                    {
-                        int LastIndex = srcPath.LastIndexOf("\\");
-                        string fileName = srcPath.Substring(LastIndex + 1);
+        //        foreach (var srcPath in Directory.GetFiles(sourcePath))
+        //        {
+        //            using (var fileStream = File.OpenRead(srcPath))
+        //            {
+        //                int LastIndex = srcPath.LastIndexOf("\\");
+        //                string fileName = srcPath.Substring(LastIndex + 1);
 
-                        BlobClient blobClient = blobContainer.GetBlobClient(fileName);
+        //                BlobClient blobClient = blobContainer.GetBlobClient(fileName);
 
-                        // Upload from stream
-                        fileStream.Position = 0;
-                        blobClient.Upload(fileStream, overwrite: true);
-                    }
-                }
+        //                // Upload from stream
+        //                fileStream.Position = 0;
+        //                blobClient.Upload(fileStream, overwrite: true);
+        //            }
+        //        }
 
-                IsMoveSuccess = true;
+        //        IsMoveSuccess = true;
 
-            }
-            catch (Exception ex)
-            {
-                IsMoveSuccess = false;
-                // //clsLog.WriteLogAzure(ex);
-                _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
-            }
-            return IsMoveSuccess;
-        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        IsMoveSuccess = false;
+        //        // //clsLog.WriteLogAzure(ex);
+        //        _logger.LogError(ex, $"Error on {System.Reflection.MethodBase.GetCurrentMethod()?.Name}");
+        //    }
+        //    return IsMoveSuccess;
+        //}
 
         public string UploadMastersToBlob(Stream stream, string fileName, string containerName)
         {
