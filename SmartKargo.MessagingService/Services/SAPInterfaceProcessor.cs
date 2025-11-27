@@ -309,11 +309,22 @@ namespace QidWorkerRole
                 BlobContainerClient container = blobServiceClient.GetBlobContainerClient(containerName);
 
                 BlobClient blob = container.GetBlobClient(fileName);
-                blob.SetHttpHeaders(new BlobHttpHeaders { ContentType = "" });
-                blob.SetMetadata(new Dictionary<string, string> { { "FileName", fileName } });
+
+                var uploadOptions = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = ""   // forces binary/octet-stream, removes any auto-detected MIME
+                    },
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["FileName"] = fileName
+                    },
+                    Conditions = null          // THIS allows overwrite when blob already exists
+                };
 
                 stream.Position = 0;
-                blob.Upload(stream, overwrite: true);
+                blob.Upload(stream, uploadOptions);
 
                 return blob.Uri.ToString();
             }

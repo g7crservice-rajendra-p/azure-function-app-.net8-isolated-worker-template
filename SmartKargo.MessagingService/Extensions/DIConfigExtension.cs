@@ -110,8 +110,7 @@ namespace SmartKargo.MessagingService.Extensions
                 services.AddScoped<ISqlDataHelperDao, SqlDataHelperDao>();
                 services.AddScoped<ISqlDataHelperFactory, SqlDataHelperFactory>();
 
-                // Startup readiness and HttpClient
-                services.AddSingleton<StartupReadiness>();
+                //HttpClient
                 services.AddHttpClient<EMAILOUT>();
 
                 services.AddScoped<ASM>();
