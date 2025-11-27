@@ -1554,11 +1554,18 @@ namespace QidWorkerRole
                 BlobClient blob = blobContainer.GetBlobClient(fileName);
 
                 // Set ContentType = "" (explicitly empty)
-                blob.SetHttpHeaders(new BlobHttpHeaders { ContentType = "" });
+                BlobUploadOptions options = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = ""   // or null, or "application/octet-stream" – whatever you need
+                    },
+                    Conditions = null,      // THIS LINE IS REQUIRED to disable If-None-Match: *
+                };
 
                 // Upload from stream
                 stream.Position = 0;
-                blob.Upload(stream, overwrite: true);
+                blob.Upload(stream, options);
 
                 // Return public blob URL
                 //return blob.Uri.ToString();
