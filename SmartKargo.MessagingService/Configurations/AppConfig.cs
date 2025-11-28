@@ -57,13 +57,13 @@ namespace SmartKargo.MessagingService.Configurations
     }
 
     //SFTP config
-    public class SftpConfig
-    {
-        public string SftpHostName { get; set; } = string.Empty;
-        public string SftpUserName { get; set; } = string.Empty;
-        public string SftpPassword { get; set; } = string.Empty;
-        public string SftpSshHostKeyFingerprint { get; set; } = string.Empty;
-    }
+    //public class SftpConfig
+    //{
+    //    public string SftpHostName { get; set; } = string.Empty;
+    //    public string SftpUserName { get; set; } = string.Empty;
+    //    public string SftpPassword { get; set; } = string.Empty;
+    //    public string SftpSshHostKeyFingerprint { get; set; } = string.Empty;
+    //}
 
     //public class ServiceBusConfig
     //{
@@ -81,7 +81,7 @@ namespace SmartKargo.MessagingService.Configurations
         public PollingConfig Polling { get; set; } = new();
         //public AlertConfig Alert { get; set; } = new();
         public MiscellaneousConfig Miscellaneous { get; set; } = new();
-        public SftpConfig Sftp { get; set; } = new();
+        //public SftpConfig Sftp { get; set; } = new();
         //public ServiceBusConfig ServiceBus { get; set; } = new();
     }
 }

@@ -1449,24 +1449,33 @@ namespace QidWorkerRole
             TransferOperationResult transferResult = null;
             try
             {
-
                 //@ConfigurationManager.AppSettings["XMLFilePath"]
                 var xMLFilePath = _appConfig.Miscellaneous.XMLFilePath;
+
+                //@ConfigurationManager.AppSettings["SFTPFolderPath"].ToString()
+                var rapidSFTPFolderPath = ConfigCache.Get("RapidSFTPFolderPath");
 
                 // Setup session options
                 SessionOptions sessionOptions = new SessionOptions
                 {
                     Protocol = Protocol.Sftp,
+
                     //HostName = ConfigurationManager.AppSettings["HostName"].ToString(),
                     //UserName = ConfigurationManager.AppSettings["UserName"].ToString(),
                     //Password = ConfigurationManager.AppSettings["Password"].ToString(),
                     //SshHostKeyFingerprint = ConfigurationManager.AppSettings["SshHostKeyFingerprint"].ToString()
 
-                    HostName = _appConfig.Sftp.SftpHostName,
-                    UserName = _appConfig.Sftp.SftpUserName,
-                    Password = _appConfig.Sftp.SftpPassword,
-                    SshHostKeyFingerprint = _appConfig.Sftp.SftpSshHostKeyFingerprint
+                    //HostName = _appConfig.Sftp.SftpHostName,
+                    //UserName = _appConfig.Sftp.SftpUserName,
+                    //Password = _appConfig.Sftp.SftpPassword,
+                    //SshHostKeyFingerprint = _appConfig.Sftp.SftpSshHostKeyFingerprint
+
+                    HostName = ConfigCache.Get("RapidSFTPHostName"),
+                    UserName = ConfigCache.Get("RapidSFTPUserName"),
+                    Password = ConfigCache.Get("RapidSFTPPassword"),
+                    SshHostKeyFingerprint = ConfigCache.Get("RapidSFTPSshHostKeyFingerprint")
                 };
+
                 using (Session session = new Session())
                 {
                     session.Open(sessionOptions);
@@ -1476,7 +1485,7 @@ namespace QidWorkerRole
                     transferOptions.TransferMode = TransferMode.Binary;
                     transferOptions.ResumeSupport.State = TransferResumeSupportState.Off;
                     //transferResult = session.PutFiles(@ConfigurationManager.AppSettings["XMLFilePath"].ToString() + "*", @ConfigurationManager.AppSettings["SFTPFolderPath"].ToString(), true, transferOptions);
-                    transferResult = session.PutFiles(@xMLFilePath + "*", @xMLFilePath, true, transferOptions);
+                    transferResult = session.PutFiles(xMLFilePath + "*", rapidSFTPFolderPath, true, transferOptions);
 
                     if (transferResult.IsSuccess)
                     {
